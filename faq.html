@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#FFFFFF" />
+<title>F.A.Q. — PRE-GEN Foundation</title>
+<meta name="description" content="Frequently asked questions about PRE-GEN." />
+<meta property="og:title" content="F.A.Q. — PRE-GEN" />
+<meta property="og:description" content="Frequently asked questions about the PRE-GEN open standard." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://promptprotocolfoundation.org/faq" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="F.A.Q. — PRE-GEN" />
+<meta name="twitter:description" content="Frequently asked questions about the PRE-GEN open standard." />
+<link rel="icon" type="image/png" href="assets/pregen-logo.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+    <svg class="moon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 1 1 8.5 4a5.5 5.5 0 0 0 7.5 7.5z"/></svg>
+    <svg class="sun" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.5"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="10" y1="16" x2="10" y2="18"/><line x1="2" y1="10" x2="4" y2="10"/><line x1="16" y1="10" x2="18" y2="10"/><line x1="4.3" y1="4.3" x2="5.7" y2="5.7"/><line x1="14.3" y1="14.3" x2="15.7" y2="15.7"/><line x1="4.3" y1="15.7" x2="5.7" y2="14.3"/><line x1="14.3" y1="5.7" x2="15.7" y2="4.3"/></svg>
+  </button>
+
+  <header class="header-mobile">
+    <a class="header-mobile__brand brand__link" href="/">
+      <img class="brand__logo" src="assets/pregen-logo.png" alt="PRE-GEN" />
+      <div class="brand__text"><div class="brand__name">PRE-GEN</div><div class="brand__sub">Foundation</div></div>
+    </a>
+    <div style="display:flex;align-items:center;gap:4px;">
+      <button class="theme-toggle" id="themeToggleMobile" aria-label="Toggle theme">
+        <svg class="moon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 1 1 8.5 4a5.5 5.5 0 0 0 7.5 7.5z"/></svg>
+        <svg class="sun" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.5"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="10" y1="16" x2="10" y2="18"/><line x1="2" y1="10" x2="4" y2="10"/><line x1="16" y1="10" x2="18" y2="10"/><line x1="4.3" y1="4.3" x2="5.7" y2="5.7"/><line x1="14.3" y1="14.3" x2="15.7" y2="15.7"/><line x1="4.3" y1="15.7" x2="5.7" y2="14.3"/><line x1="14.3" y1="5.7" x2="15.7" y2="4.3"/></svg>
+      </button>
+      <button class="mobile-getstarted" id="mobileGetStarted">Get started</button>
+      <button class="menu-btn" id="menuOpen" aria-label="Open navigation"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
+    </div>
+  </header>
+
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar__brand">
+        <a class="brand__link" href="/">
+          <img class="brand__logo" src="assets/pregen-logo.png" alt="PRE-GEN" />
+          <div class="brand__text"><div class="brand__name">PRE-GEN</div><div class="brand__sub">Foundation</div></div>
+        </a>
+        <button class="brand__close" id="menuClose" aria-label="Close navigation"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg></button>
+      </div>
+      <nav class="sidebar__scroll" aria-label="Navigation">
+        <div class="nav">
+          <a class="nav-item" href="/">Introduction</a>
+          <a class="nav-item" href="/for-ai">For AI companies</a>
+          <a class="nav-item" href="/for-brands">For brands &amp; public figures</a>
+          <div class="nav-divider"></div>
+          <a class="nav-item is-active" href="/faq">F.A.Q.</a>
+          <a class="nav-item" href="/legal">Legal</a>
+          <a class="nav-item" href="/contact">Contact</a>
+          <a class="nav-item" href="/support">Support</a>
+          <div class="nav-divider"></div>
+          <a class="nav-item" href="https://zenodo.org/records/20319842" target="_blank" rel="noopener noreferrer">Specification ↗</a>
+        </div>
+      </nav>
+      <div class="sidebar__footer">
+        <button class="license-btn" id="desktopGetStarted">
+          <span>Get started</span>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25"><polyline points="3,4 6,7 9,4"/></svg>
+        </button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <button class="open-floating" id="openFloating" aria-label="Open navigation"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="17" y2="15"/></svg></button>
+      <div class="content__inner">
+
+        <h2>Frequently asked questions.</h2>
+
+        <div class="faq-list">
+          <div class="faq-item">
+            <button class="faq-q">
+              What is PRE-GEN?
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="7" y1="3" x2="7" y2="11"/><line x1="3" y1="7" x2="11" y2="7"/></svg>
+            </button>
+            <div class="faq-a">
+              <p>PRE-GEN (PG) is an open standard for pre-generation authorization in generative AI. It answers the question "is this content authorized?" before the AI model produces anything — not after. The protocol uses two-party cryptographic signatures, a verification API, and a pre-emptive opt-out registry to give rights-holders control over how their identity, brand, voice, artistic style, or creative work is used in AI-generated content. It is organized in four independent layers and designed for federation across multiple registry operators.</p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button class="faq-q">
+              How is this different from content provenance (C2PA)?
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="7" y1="3" x2="7" y2="11"/><line x1="3" y1="7" x2="11" y2="7"/></svg>
+            </button>
+            <div class="faq-a">
+              <p>Content provenance standards like C2PA describe <em>what was generated</em>. PRE-GEN determines <em>whether it should be generated</em>. They're complementary — PG can export a signed assertion into a C2PA manifest (Layer 4), but the authorization decision happens before generation, not after.</p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button class="faq-q">
+              Can it stop all unauthorized AI content?
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="7" y1="3" x2="7" y2="11"/><line x1="3" y1="7" x2="11" y2="7"/></svg>
+            </button>
+            <div class="faq-a">
+              <p>No. PG standardizes compliant commercial generation flows. It cannot prevent unauthorized generation by uncooperative providers, local open-source inference, or offshore services. Its value is proportional to the size of the compliant ecosystem — the more providers that integrate, the stronger the protection.</p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button class="faq-q">
+              What does the opt-out actually do?
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="7" y1="3" x2="7" y2="11"/><line x1="3" y1="7" x2="11" y2="7"/></svg>
+            </button>
+            <div class="faq-a">
+              <p>An opt-out is the strongest protection in the protocol. It is checked before any license is consulted, and no license — not even a Premium one with co-signed exceptions — can override it. A subject who opts out will have all generation requests refused by every compliant provider, for the opted-out modalities.</p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button class="faq-q">
+              How much latency does verification add?
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="7" y1="3" x2="7" y2="11"/><line x1="3" y1="7" x2="11" y2="7"/></svg>
+            </button>
+            <div class="faq-a">
+              <p>Per-generation latency is dominated by network round-trip — typically 5–30 milliseconds. The verification query is a single server-to-server call that fits into existing inference pipelines without UI changes or SDK modifications.</p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button class="faq-q">
+              Is PRE-GEN free to use?
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="7" y1="3" x2="7" y2="11"/><line x1="3" y1="7" x2="11" y2="7"/></svg>
+            </button>
+            <div class="faq-a">
+              <p>Yes. The specification is published openly and the reference implementation is released under the Apache-2.0 license. There is no privileged vendor and no fee to implement the protocol.</p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button class="faq-q">
+              What about fair use and parody?
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="7" y1="3" x2="7" y2="11"/><line x1="3" y1="7" x2="11" y2="7"/></svg>
+            </button>
+            <div class="faq-a">
+              <p>The protocol does not adjudicate fair use, parody, or other legal exceptions. It refuses by default and provides cryptographic evidence. Legal exceptions (court orders, journalism, public interest) are handled through jurisdiction profiles (Layer 3) — recorded as parallel records, not as modifications to the opt-out.</p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button class="faq-q">
+              What can be registered as a subject?
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="7" y1="3" x2="7" y2="11"/><line x1="3" y1="7" x2="11" y2="7"/></svg>
+            </button>
+            <div class="faq-a">
+              <p>A subject is any entity to which generative rights attach. This includes: natural persons (likeness, voice, mannerisms); estates of deceased persons; brands and trademarks (logos, color palettes, identity systems); synthetic characters (3D models, virtual influencers, game characters); voice profiles; typefaces and font families; artistic styles (with reference portfolio); product designs (industrial design, fashion, architecture, CAD models); and creative works whose generative reproduction requires authorization. The protocol doesn't define what <em>can</em> be a subject — it defines how subjects are registered, how rights are expressed, and how authorization is verified.</p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button class="faq-q">
+              What are generation guidelines?
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="7" y1="3" x2="7" y2="11"/><line x1="3" y1="7" x2="11" y2="7"/></svg>
+            </button>
+            <div class="faq-a">
+              <p>Generation guidelines are machine-readable specifications attached to a license that describe <em>how</em> the subject should be generated — not just whether it's allowed. They can include reference assets, color palettes, typography rules, 3D mesh references, style parameters, mandatory visual elements, and brand usage instructions. Guidelines are passed to the AI provider as part of the signed Decision object, so the generated content is not only authorized but also correct according to the rights-holder's specifications. Guidelines don't affect the authorization decision itself — they ride alongside it.</p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button class="faq-q">
+              I'm an independent creator. Can I use PG?
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="7" y1="3" x2="7" y2="11"/><line x1="3" y1="7" x2="11" y2="7"/></svg>
+            </button>
+            <div class="faq-a">
+              <p>Yes. PG has two registration tiers. Tier 1 (Verified Registration) is for public figures and major brands — it requires notarized legal authority and has a 14-day cooling period. Tier 2 (Self-Attestation) is designed for independent creators, designers, and small businesses — it requires email verification and a link to your existing portfolio or registry (design platform, font foundry, GitHub) demonstrating your connection to the subject. Tier 2 has a 7-day cooling period and may be challenged through the dispute flow. The core protocol treats both tiers identically for authorization purposes.</p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button class="faq-q">
+              Does the user's prompt get sent to the registry?
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="7" y1="3" x2="7" y2="11"/><line x1="3" y1="7" x2="11" y2="7"/></svg>
+            </button>
+            <div class="faq-a">
+              <p>The verification request may include the prompt text for subject detection purposes. However, no protocol material ever appears in user-facing prompts. The entire verification flow is server-to-server — transparent to the end user. The user's experience does not change.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <div class="cookie-banner" id="cookieBanner">
+    <div class="cookie-inner">
+      <div class="cookie-text">We use cookies to remember your theme preference. Read our <a href="/legal">cookie policy</a>.</div>
+      <div class="cookie-buttons">
+        <button class="cookie-btn" data-cookie="reject">Reject all</button>
+        <button class="cookie-btn" data-cookie="necessary">Necessary only</button>
+        <button class="cookie-btn cookie-btn--accept" data-cookie="all">Accept all</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="getstarted-popup" id="getstartedPopup">
+    <div class="getstarted-overlay" id="getstartedOverlay"></div>
+    <div class="getstarted-card">
+      <button class="getstarted-close" id="getstartedClose"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg></button>
+      <h3>Get started</h3>
+      <div class="getstarted-options">
+        <a class="getstarted-opt" href="/for-ai">
+          I'm an AI company
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="3" y1="6" x2="9" y2="6"/><polyline points="6,3 9,6 6,9"/></svg>
+        </a>
+        <a class="getstarted-opt" href="https://prampta.com" target="_blank" rel="noopener noreferrer">
+          I want to protect or license my identity
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="3" y1="9" x2="9" y2="3"/><polyline points="4,3 9,3 9,8"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#FFFFFF" />
+<title>For AI Companies — PRE-GEN Foundation</title>
+<meta name="description" content="Why AI companies should integrate PRE-GEN — replace guesswork with cryptographic proof of authorization." />
+<meta property="og:title" content="For AI Companies — PRE-GEN" />
+<meta property="og:description" content="Replace guesswork with cryptographic proof of authorization. A single API call, 5–30 ms, before generation." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://promptprotocolfoundation.org/for-ai" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="For AI Companies — PRE-GEN" />
+<meta name="twitter:description" content="Replace guesswork with cryptographic proof of authorization." />
+<link rel="icon" type="image/png" href="assets/pregen-logo.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+    <svg class="moon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 1 1 8.5 4a5.5 5.5 0 0 0 7.5 7.5z"/></svg>
+    <svg class="sun" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.5"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="10" y1="16" x2="10" y2="18"/><line x1="2" y1="10" x2="4" y2="10"/><line x1="16" y1="10" x2="18" y2="10"/><line x1="4.3" y1="4.3" x2="5.7" y2="5.7"/><line x1="14.3" y1="14.3" x2="15.7" y2="15.7"/><line x1="4.3" y1="15.7" x2="5.7" y2="14.3"/><line x1="14.3" y1="5.7" x2="15.7" y2="4.3"/></svg>
+  </button>
+
+  <header class="header-mobile">
+    <a class="header-mobile__brand brand__link" href="/">
+      <img class="brand__logo" src="assets/pregen-logo.png" alt="PRE-GEN" />
+      <div class="brand__text"><div class="brand__name">PRE-GEN</div><div class="brand__sub">Foundation</div></div>
+    </a>
+    <div style="display:flex;align-items:center;gap:4px;">
+      <button class="theme-toggle" id="themeToggleMobile" aria-label="Toggle theme">
+        <svg class="moon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 1 1 8.5 4a5.5 5.5 0 0 0 7.5 7.5z"/></svg>
+        <svg class="sun" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.5"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="10" y1="16" x2="10" y2="18"/><line x1="2" y1="10" x2="4" y2="10"/><line x1="16" y1="10" x2="18" y2="10"/><line x1="4.3" y1="4.3" x2="5.7" y2="5.7"/><line x1="14.3" y1="14.3" x2="15.7" y2="15.7"/><line x1="4.3" y1="15.7" x2="5.7" y2="14.3"/><line x1="14.3" y1="5.7" x2="15.7" y2="4.3"/></svg>
+      </button>
+      <button class="mobile-getstarted" id="mobileGetStarted">Get started</button>
+      <button class="menu-btn" id="menuOpen" aria-label="Open navigation"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
+    </div>
+  </header>
+
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar__brand">
+        <a class="brand__link" href="/">
+          <img class="brand__logo" src="assets/pregen-logo.png" alt="PRE-GEN" />
+          <div class="brand__text"><div class="brand__name">PRE-GEN</div><div class="brand__sub">Foundation</div></div>
+        </a>
+        <button class="brand__close" id="menuClose" aria-label="Close navigation"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg></button>
+      </div>
+      <nav class="sidebar__scroll" aria-label="Navigation">
+        <div class="nav">
+          <a class="nav-item" href="/">Introduction</a>
+          <a class="nav-item is-active" href="/for-ai">For AI companies</a>
+          <a class="nav-item" href="/for-brands">For brands &amp; public figures</a>
+          <div class="nav-divider"></div>
+          <a class="nav-item" href="/faq">F.A.Q.</a>
+          <a class="nav-item" href="/legal">Legal</a>
+          <a class="nav-item" href="/contact">Contact</a>
+          <a class="nav-item" href="/support">Support</a>
+          <div class="nav-divider"></div>
+          <a class="nav-item" href="https://zenodo.org/records/20319842" target="_blank" rel="noopener noreferrer">Specification ↗</a>
+        </div>
+      </nav>
+      <div class="sidebar__footer">
+        <button class="license-btn" id="desktopGetStarted">
+          <span>Get started</span>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25"><polyline points="3,4 6,7 9,4"/></svg>
+        </button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <button class="open-floating" id="openFloating" aria-label="Open navigation"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="17" y2="15"/></svg></button>
+      <div class="content__inner">
+
+        <!-- HERO INTRO -->
+        <section class="page-intro">
+          <h1>
+            For AI companies.
+            <em>Your legal shield for generative content.</em>
+          </h1>
+          <p>
+            Every AI-generated face, voice, or brand is a potential lawsuit.
+            PRE-GEN gives you cryptographic proof of authorization
+            before the first pixel is produced — turning legal risk into
+            a verifiable record.
+          </p>
+          <div class="scroll-hint">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="6" y1="2" x2="6" y2="10"/><polyline points="3,7 6,10 9,7"/></svg>
+            Scroll for details
+          </div>
+        </section>
+
+        <!-- DETAILED CONTENT -->
+        <h2>The legal problem is real — and growing.</h2>
+        <p>
+          Right of publicity lawsuits, GDPR complaints, EU AI Act obligations,
+          class-action deepfake claims — the legal surface of generative AI
+          is expanding faster than any policy team can cover. And it's not
+          just faces anymore. Voices, artistic styles, brand identities, 3D models,
+          typefaces, product designs — anything your model can reproduce is
+          a potential claim.
+        </p>
+        <p>
+          PRE-GEN replaces guesswork with evidence. A single API call
+          returns a cryptographically signed decision — and that signature
+          is your proof that the content was authorized by the rights-holder
+          themselves.
+        </p>
+
+        <h2>What you actually get.</h2>
+
+        <div class="benefits">
+          <div class="benefit">
+            <div class="benefit__icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><rect x="2.5" y="5.5" width="9" height="6.5"/><path d="M4.5 5.5V3.5a2.5 2.5 0 0 1 5 0v2"/></svg></div>
+            <div>
+              <div class="benefit__title">Lawsuit-proof authorization records</div>
+              <p class="benefit__desc">Every allow-decision carries a signed license with the rights-holder's own cryptographic key. When a complaint arrives, your answer is an evidence bundle that any court, regulator, or third party can verify independently — not an internal debate about what the model was "supposed to do."</p>
+            </div>
+          </div>
+          <div class="benefit">
+            <div class="benefit__icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><path d="M2.5 7 L7 2.5 L11.5 7 L7 11.5 Z"/></svg></div>
+            <div>
+              <div class="benefit__title">EU AI Act, GDPR, right of publicity — covered by design</div>
+              <p class="benefit__desc">Regulators are demanding authorization, attribution, and audit trails for synthetic content. PG's append-only hash-chained log with external anchoring produces exactly the evidence record that the EU AI Act, GDPR, CCPA, and US right-of-publicity laws are starting to require. Integrate now, not after the first enforcement action.</p>
+            </div>
+          </div>
+          <div class="benefit">
+            <div class="benefit__icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><polyline points="2,10 5,6 8,8 12,3"/></svg></div>
+            <div>
+              <div class="benefit__title">Unlock revenue you're currently blocking</div>
+              <p class="benefit__desc">Brand campaigns, celebrity endorsements, estate-authorized depictions — high-value use cases that your safety filters refuse by default because there's no way to verify authorization. PG gives the model a clean, verifiable way to say <em>"yes, this one is authorized"</em> — and charge premium rates for it.</p>
+            </div>
+          </div>
+          <div class="benefit">
+            <div class="benefit__icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><circle cx="7" cy="7" r="4.5"/><polyline points="7,4.5 7,7 9,8.5"/></svg></div>
+            <div>
+              <div class="benefit__title">5–30 ms. One API call. No prompt changes.</div>
+              <p class="benefit__desc">A verification round-trip fits into existing inference pipelines without UI changes, SDK modifications, or prompt engineering. Server-to-server, before generation — your users never see it.</p>
+            </div>
+          </div>
+          <div class="benefit">
+            <div class="benefit__icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><rect x="2" y="2" width="10" height="10" rx="1"/><line x1="5" y1="5" x2="9" y2="5"/><line x1="5" y1="7" x2="9" y2="7"/><line x1="5" y1="9" x2="7" y2="9"/></svg></div>
+            <div>
+              <div class="benefit__title">Generation guidelines — not just permission, but instructions</div>
+              <p class="benefit__desc">Licenses can carry machine-readable generation guidelines: color palettes, typography rules, 3D mesh references, style parameters, brand usage instructions. Your model gets both authorization and a specification of how the content should look — producing output that's not only legal but correct.</p>
+            </div>
+          </div>
+          <div class="benefit">
+            <div class="benefit__icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><circle cx="4" cy="7" r="2"/><circle cx="10" cy="7" r="2"/><line x1="6" y1="7" x2="8" y2="7"/></svg></div>
+            <div>
+              <div class="benefit__title">Open standard. No vendor lock-in.</div>
+              <p class="benefit__desc">Apache-2.0 licensed, no privileged operator, federated architecture with cross-signing registries. Integrate once — not per-vendor, not per-jurisdiction.</p>
+            </div>
+          </div>
+        </div>
+
+        <h2>How it fits into your pipeline.</h2>
+        <p>
+          When a user sends a prompt, the provider detects whether it
+          references a registered subject, then issues a server-to-server
+          query to the registry. The registry evaluates opt-outs, license
+          status, scope, and extensions — returning a signed decision.
+        </p>
+
+        <figure class="viz" aria-label="Seven-stage verification pipeline">
+          <svg viewBox="0 0 800 480" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1">
+            <rect x="320" y="20" width="160" height="36"/>
+            <text x="400" y="44" font-size="13" text-anchor="middle">verification request</text>
+            <line x1="400" y1="56" x2="400" y2="420"/>
+            <line x1="400" y1="86" x2="320" y2="86"/><rect x="120" y="68" width="200" height="36"/><text x="140" y="92" font-size="11" class="mono">01</text><text x="170" y="92" font-size="13">Subject detection</text><line x1="400" y1="86" x2="480" y2="86"/><text x="490" y="90" font-size="11" class="mono muted">→ soft_match?</text>
+            <line x1="400" y1="136" x2="320" y2="136"/><rect x="120" y="118" width="200" height="36"/><text x="140" y="142" font-size="11" class="mono">02</text><text x="170" y="142" font-size="13">Subject status</text><line x1="400" y1="136" x2="480" y2="136"/><text x="490" y="140" font-size="11" class="mono muted">→ pending / disputed</text>
+            <line x1="400" y1="186" x2="320" y2="186"/><rect x="120" y="168" width="200" height="36" class="fill-fg"/><text x="140" y="192" font-size="11" class="mono fill-bg" stroke="none">03</text><text x="170" y="192" font-size="13" class="fill-bg" stroke="none" font-weight="600">Opt-out check</text><line x1="400" y1="186" x2="480" y2="186"/><text x="490" y="190" font-size="11" class="mono muted">→ tier-0 refusal · absolute</text>
+            <line x1="400" y1="236" x2="320" y2="236"/><rect x="120" y="218" width="200" height="36"/><text x="140" y="242" font-size="11" class="mono">04</text><text x="170" y="242" font-size="13">Pair check</text><line x1="400" y1="236" x2="480" y2="236"/><text x="490" y="240" font-size="11" class="mono muted">→ no_pair</text>
+            <line x1="400" y1="286" x2="320" y2="286"/><rect x="120" y="268" width="200" height="36"/><text x="140" y="292" font-size="11" class="mono">05</text><text x="170" y="292" font-size="13">License resolution</text><line x1="400" y1="286" x2="480" y2="286"/><text x="490" y="290" font-size="11" class="mono muted">→ invalid_signature</text>
+            <line x1="400" y1="336" x2="320" y2="336"/><rect x="120" y="318" width="200" height="36"/><text x="140" y="342" font-size="11" class="mono">06</text><text x="170" y="342" font-size="13">Scope evaluation</text><line x1="400" y1="336" x2="480" y2="336"/><text x="490" y="340" font-size="11" class="mono muted">→ immutable_denial</text>
+            <line x1="400" y1="386" x2="320" y2="386"/><rect x="120" y="368" width="200" height="36"/><text x="140" y="392" font-size="11" class="mono">07</text><text x="170" y="392" font-size="13">Extensions</text><line x1="400" y1="386" x2="480" y2="386"/><text x="490" y="390" font-size="11" class="mono muted">→ unknown ⇒ refuse</text>
+            <rect x="320" y="430" width="160" height="36" class="fill-fg"/><text x="400" y="454" font-size="13" text-anchor="middle" class="fill-bg" stroke="none" font-weight="600">signed allow</text>
+          </svg>
+          <figcaption>Seven-stage verification pipeline — each stage can terminate the request</figcaption>
+        </figure>
+
+        <h2>Integration example.</h2>
+        <p>A single server-to-server call before generation. No SDK required.</p>
+
+        <div class="code-toggle-wrap">
+          <button class="code-toggle-btn">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><polyline points="4,2 10,7 4,12"/></svg>
+            Show implementation example
+          </button>
+          <div class="code-block">
+            <button class="code-copy" data-copy>Copy</button>
+            <pre><span class="code-comment">// Pre-generation verification — server-side</span>
+<span class="code-comment">// Call this before generating any content depicting a subject</span>
+
+const response = await fetch('https://registry.prampta.com/v1/verify', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + PROVIDER_TOKEN,
+  },
+  body: JSON.stringify({
+    provider_id:  'your-provider-id',
+    licensee_id:  'licensee-account-id',
+    subject_id:   'subject-id-or-null',
+    prompt:        userPrompt,
+    model:        'your-model-name',
+    modality:     'image',
+    intended_use: {
+      channel: 'social',
+      product: 'campaign-spring-2026',
+    }
+  })
+});
+
+const decision = await response.json();
+
+<span class="code-comment">// decision.allowed  — boolean</span>
+<span class="code-comment">// decision.code     — PG_ALLOWED | PG_SUBJECT_OPTED_OUT | ...</span>
+<span class="code-comment">// decision.obligations — required disclosures, labels</span>
+<span class="code-comment">// decision.decision_id — unique, for audit trail</span>
+
+if (decision.allowed) {
+  generateContent(userPrompt, decision);
+} else {
+  refuseGeneration(decision.code);
+}</pre>
+          </div>
+        </div>
+
+        <div class="callout">
+          <p>Unknown rules are enforced by refusal, never by skip. If the verifier doesn't understand a license term, it does not pass.</p>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <div class="cookie-banner" id="cookieBanner">
+    <div class="cookie-inner">
+      <div class="cookie-text">We use cookies to remember your theme preference. Read our <a href="/legal">cookie policy</a>.</div>
+      <div class="cookie-buttons">
+        <button class="cookie-btn" data-cookie="reject">Reject all</button>
+        <button class="cookie-btn" data-cookie="necessary">Necessary only</button>
+        <button class="cookie-btn cookie-btn--accept" data-cookie="all">Accept all</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="getstarted-popup" id="getstartedPopup">
+    <div class="getstarted-overlay" id="getstartedOverlay"></div>
+    <div class="getstarted-card">
+      <button class="getstarted-close" id="getstartedClose"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg></button>
+      <h3>Get started</h3>
+      <div class="getstarted-options">
+        <a class="getstarted-opt" href="/for-ai">
+          I'm an AI company
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="3" y1="6" x2="9" y2="6"/><polyline points="6,3 9,6 6,9"/></svg>
+        </a>
+        <a class="getstarted-opt" href="https://prampta.com" target="_blank" rel="noopener noreferrer">
+          I want to protect or license my identity
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="3" y1="9" x2="9" y2="3"/><polyline points="4,3 9,3 9,8"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

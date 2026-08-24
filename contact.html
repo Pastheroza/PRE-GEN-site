@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#FFFFFF" />
+<title>Contact — PRE-GEN Foundation</title>
+<meta name="description" content="Get in touch with the PRE-GEN Foundation project." />
+<meta property="og:title" content="Contact — PRE-GEN" />
+<meta property="og:description" content="Get in touch with the PRE-GEN Foundation project." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://promptprotocolfoundation.org/contact" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="Contact — PRE-GEN" />
+<meta name="twitter:description" content="Get in touch with the PRE-GEN Foundation project." />
+<link rel="icon" type="image/png" href="assets/pregen-logo.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+    <svg class="moon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 1 1 8.5 4a5.5 5.5 0 0 0 7.5 7.5z"/></svg>
+    <svg class="sun" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.5"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="10" y1="16" x2="10" y2="18"/><line x1="2" y1="10" x2="4" y2="10"/><line x1="16" y1="10" x2="18" y2="10"/><line x1="4.3" y1="4.3" x2="5.7" y2="5.7"/><line x1="14.3" y1="14.3" x2="15.7" y2="15.7"/><line x1="4.3" y1="15.7" x2="5.7" y2="14.3"/><line x1="14.3" y1="5.7" x2="15.7" y2="4.3"/></svg>
+  </button>
+
+  <header class="header-mobile">
+    <a class="header-mobile__brand brand__link" href="/">
+      <img class="brand__logo" src="assets/pregen-logo.png" alt="PRE-GEN" />
+      <div class="brand__text"><div class="brand__name">PRE-GEN</div><div class="brand__sub">Foundation</div></div>
+    </a>
+    <div style="display:flex;align-items:center;gap:4px;">
+      <button class="theme-toggle" id="themeToggleMobile" aria-label="Toggle theme">
+        <svg class="moon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 1 1 8.5 4a5.5 5.5 0 0 0 7.5 7.5z"/></svg>
+        <svg class="sun" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.5"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="10" y1="16" x2="10" y2="18"/><line x1="2" y1="10" x2="4" y2="10"/><line x1="16" y1="10" x2="18" y2="10"/><line x1="4.3" y1="4.3" x2="5.7" y2="5.7"/><line x1="14.3" y1="14.3" x2="15.7" y2="15.7"/><line x1="4.3" y1="15.7" x2="5.7" y2="14.3"/><line x1="14.3" y1="5.7" x2="15.7" y2="4.3"/></svg>
+      </button>
+      <button class="mobile-getstarted" id="mobileGetStarted">Get started</button>
+      <button class="menu-btn" id="menuOpen" aria-label="Open navigation"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
+    </div>
+  </header>
+
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar__brand">
+        <a class="brand__link" href="/">
+          <img class="brand__logo" src="assets/pregen-logo.png" alt="PRE-GEN" />
+          <div class="brand__text"><div class="brand__name">PRE-GEN</div><div class="brand__sub">Foundation</div></div>
+        </a>
+        <button class="brand__close" id="menuClose" aria-label="Close navigation"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg></button>
+      </div>
+      <nav class="sidebar__scroll" aria-label="Navigation">
+        <div class="nav">
+          <a class="nav-item" href="/">Introduction</a>
+          <a class="nav-item" href="/for-ai">For AI companies</a>
+          <a class="nav-item" href="/for-brands">For brands &amp; public figures</a>
+          <div class="nav-divider"></div>
+          <a class="nav-item" href="/faq">F.A.Q.</a>
+          <a class="nav-item" href="/legal">Legal</a>
+          <a class="nav-item is-active" href="/contact">Contact</a>
+          <a class="nav-item" href="/support">Support</a>
+          <div class="nav-divider"></div>
+          <a class="nav-item" href="https://zenodo.org/records/20319842" target="_blank" rel="noopener noreferrer">Specification ↗</a>
+        </div>
+      </nav>
+      <div class="sidebar__footer">
+        <button class="license-btn" id="desktopGetStarted">
+          <span>Get started</span>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25"><polyline points="3,4 6,7 9,4"/></svg>
+        </button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <button class="open-floating" id="openFloating" aria-label="Open navigation"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="17" y2="15"/></svg></button>
+      <div class="content__inner">
+
+        <h2>Contact.</h2>
+        <p>
+          For questions about the protocol, partnership inquiries,
+          or general feedback — reach out by email.
+        </p>
+
+        <div class="contact-box">
+          <p>Email</p>
+          <p><a class="contact-email" href="mailto:pastheroza@gmail.com">pastheroza@gmail.com</a></p>
+        </div>
+
+        <p>
+          For technical issues with the specification, you can also
+          open an issue in the project's repository.
+        </p>
+
+      </div>
+    </main>
+  </div>
+
+  <div class="cookie-banner" id="cookieBanner">
+    <div class="cookie-inner">
+      <div class="cookie-text">We use cookies to remember your theme preference. Read our <a href="/legal">cookie policy</a>.</div>
+      <div class="cookie-buttons">
+        <button class="cookie-btn" data-cookie="reject">Reject all</button>
+        <button class="cookie-btn" data-cookie="necessary">Necessary only</button>
+        <button class="cookie-btn cookie-btn--accept" data-cookie="all">Accept all</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="getstarted-popup" id="getstartedPopup">
+    <div class="getstarted-overlay" id="getstartedOverlay"></div>
+    <div class="getstarted-card">
+      <button class="getstarted-close" id="getstartedClose"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg></button>
+      <h3>Get started</h3>
+      <div class="getstarted-options">
+        <a class="getstarted-opt" href="/for-ai">
+          I'm an AI company
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="3" y1="6" x2="9" y2="6"/><polyline points="6,3 9,6 6,9"/></svg>
+        </a>
+        <a class="getstarted-opt" href="https://prampta.com" target="_blank" rel="noopener noreferrer">
+          I want to protect or license my identity
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="3" y1="9" x2="9" y2="3"/><polyline points="4,3 9,3 9,8"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#FFFFFF" />
+<title>For Brands &amp; Public Figures — PRE-GEN Foundation</title>
+<meta name="description" content="Protect and monetize your identity, brand, voice, artistic style, or creative work in generative AI with PRE-GEN." />
+<meta property="og:title" content="For Brands &amp; Public Figures — PRE-GEN" />
+<meta property="og:description" content="Your face, brand, voice, style, or design — protect it or monetize it. Your call." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://promptprotocolfoundation.org/for-brands" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="For Brands &amp; Public Figures — PRE-GEN" />
+<meta name="twitter:description" content="The first place to say yes — or no — to AI-generated depictions of your identity." />
+<link rel="icon" type="image/png" href="assets/pregen-logo.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+    <svg class="moon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 1 1 8.5 4a5.5 5.5 0 0 0 7.5 7.5z"/></svg>
+    <svg class="sun" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.5"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="10" y1="16" x2="10" y2="18"/><line x1="2" y1="10" x2="4" y2="10"/><line x1="16" y1="10" x2="18" y2="10"/><line x1="4.3" y1="4.3" x2="5.7" y2="5.7"/><line x1="14.3" y1="14.3" x2="15.7" y2="15.7"/><line x1="4.3" y1="15.7" x2="5.7" y2="14.3"/><line x1="14.3" y1="5.7" x2="15.7" y2="4.3"/></svg>
+  </button>
+
+  <header class="header-mobile">
+    <a class="header-mobile__brand brand__link" href="/">
+      <img class="brand__logo" src="assets/pregen-logo.png" alt="PRE-GEN" />
+      <div class="brand__text"><div class="brand__name">PRE-GEN</div><div class="brand__sub">Foundation</div></div>
+    </a>
+    <div style="display:flex;align-items:center;gap:4px;">
+      <button class="theme-toggle" id="themeToggleMobile" aria-label="Toggle theme">
+        <svg class="moon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 1 1 8.5 4a5.5 5.5 0 0 0 7.5 7.5z"/></svg>
+        <svg class="sun" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.5"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="10" y1="16" x2="10" y2="18"/><line x1="2" y1="10" x2="4" y2="10"/><line x1="16" y1="10" x2="18" y2="10"/><line x1="4.3" y1="4.3" x2="5.7" y2="5.7"/><line x1="14.3" y1="14.3" x2="15.7" y2="15.7"/><line x1="4.3" y1="15.7" x2="5.7" y2="14.3"/><line x1="14.3" y1="5.7" x2="15.7" y2="4.3"/></svg>
+      </button>
+      <button class="mobile-getstarted" id="mobileGetStarted">Get started</button>
+      <button class="menu-btn" id="menuOpen" aria-label="Open navigation"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
+    </div>
+  </header>
+
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar__brand">
+        <a class="brand__link" href="/">
+          <img class="brand__logo" src="assets/pregen-logo.png" alt="PRE-GEN" />
+          <div class="brand__text"><div class="brand__name">PRE-GEN</div><div class="brand__sub">Foundation</div></div>
+        </a>
+        <button class="brand__close" id="menuClose" aria-label="Close navigation"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg></button>
+      </div>
+      <nav class="sidebar__scroll" aria-label="Navigation">
+        <div class="nav">
+          <a class="nav-item" href="/">Introduction</a>
+          <a class="nav-item" href="/for-ai">For AI companies</a>
+          <a class="nav-item is-active" href="/for-brands">For brands &amp; public figures</a>
+          <div class="nav-divider"></div>
+          <a class="nav-item" href="/faq">F.A.Q.</a>
+          <a class="nav-item" href="/legal">Legal</a>
+          <a class="nav-item" href="/contact">Contact</a>
+          <a class="nav-item" href="/support">Support</a>
+          <div class="nav-divider"></div>
+          <a class="nav-item" href="https://zenodo.org/records/20319842" target="_blank" rel="noopener noreferrer">Specification ↗</a>
+        </div>
+      </nav>
+      <div class="sidebar__footer">
+        <button class="license-btn" id="desktopGetStarted">
+          <span>Get started</span>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25"><polyline points="3,4 6,7 9,4"/></svg>
+        </button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <button class="open-floating" id="openFloating" aria-label="Open navigation"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="17" y2="15"/></svg></button>
+      <div class="content__inner">
+
+        <!-- HERO INTRO -->
+        <section class="page-intro">
+          <h1>
+            Your face is worth something.
+            <em>Protect it. Or monetize it. Your call.</em>
+          </h1>
+          <p>
+            Register once. Every compliant AI model asks before producing
+            your likeness, voice, or brand. Block what you don't want.
+            License what you do — and get paid for it.
+          </p>
+          <div class="scroll-hint">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="6" y1="2" x2="6" y2="10"/><polyline points="3,7 6,10 9,7"/></svg>
+            Scroll for details
+          </div>
+        </section>
+
+        <!-- DETAILED CONTENT -->
+        <h2>Not just protection — a new revenue stream.</h2>
+        <p>
+          Right now, AI companies generate content depicting real people, brands,
+          and creative works without asking. You have two options: ignore it,
+          or sue after the fact. PRE-GEN creates a third option —
+          get asked first, say yes on your terms, and earn from every authorized use.
+        </p>
+
+        <div class="twocol">
+          <div>
+            <h3>For public figures &amp; creators</h3>
+            <p>
+              Your face, your voice, your style — these are assets.
+              With PG, you can license them to advertisers, content creators,
+              or studios the same way you'd license a song or a photo.
+              An influencer can authorize a brand to use their AI likeness
+              in a campaign. An actor can license their voice for a game.
+              An estate can allow a documentary to recreate a historical figure.
+              Every license is scoped — specific channel, specific time window,
+              specific product — and you set the terms.
+            </p>
+          </div>
+          <div>
+            <h3>For brands &amp; trademarks</h3>
+            <p>
+              Your partners need to use your brand in AI-generated content —
+              marketing materials, product demos, co-branded campaigns.
+              Instead of lengthy legal reviews for each use case, issue a
+              scoped PG license: this partner, this product, this territory,
+              these disclosures. They get instant authorization from any
+              compliant AI provider. You keep full control over who generates
+              what, and every use is logged.
+            </p>
+          </div>
+        </div>
+
+        <div class="twocol">
+          <div>
+            <h3>For designers &amp; independent creators</h3>
+            <p>
+              Your unique typeface, illustration style, 3D model, or CAD design
+              can be registered as a subject. When anyone tries to generate
+              content in your style or reproduce your work through a compliant
+              AI provider, the system checks your license first. You decide
+              who can use it, how, and for how much.
+            </p>
+          </div>
+          <div>
+            <h3>Not just who you are — how it should look</h3>
+            <p>
+              PG licenses can carry generation guidelines: exact color palettes,
+              typography rules, 3D mesh references, style parameters, mandatory
+              visual elements. The AI provider receives not just permission but
+              a machine-readable specification — so the generated content is
+              not only authorized but correct according to your standards.
+            </p>
+          </div>
+        </div>
+
+        <h3>How it works for you</h3>
+        <div class="benefits">
+          <div class="benefit">
+            <div class="benefit__icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><polyline points="2,10 5,6 8,8 12,3"/></svg></div>
+            <div>
+              <div class="benefit__title">Monetize your identity across every AI platform at once</div>
+              <p class="benefit__desc">Issue a license once — it works across every compliant AI provider simultaneously. No individual negotiations with each platform. One registry, global reach.</p>
+            </div>
+          </div>
+          <div class="benefit">
+            <div class="benefit__icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><polyline points="3,7 6,10 11,4"/></svg></div>
+            <div>
+              <div class="benefit__title">Grant rights in seconds, not weeks</div>
+              <p class="benefit__desc">An advertiser wants to use your likeness in a campaign? Issue a scoped license — specific channel, territory, time window, required disclosures. They get instant authorization. No lawyers, no back-and-forth, no delays.</p>
+            </div>
+          </div>
+          <div class="benefit">
+            <div class="benefit__icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg></div>
+            <div>
+              <div class="benefit__title">Absolute opt-out — nothing overrides it</div>
+              <p class="benefit__desc">Don't want AI-generated content of yourself at all? One opt-out record blocks every compliant provider on Earth. No price, no contract, no operator setting can override it. It's checked before any license is even consulted.</p>
+            </div>
+          </div>
+          <div class="benefit">
+            <div class="benefit__icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><rect x="2.5" y="2.5" width="9" height="9"/><line x1="2.5" y1="6" x2="11.5" y2="6"/></svg></div>
+            <div>
+              <div class="benefit__title">Permanent red lines for categories you'd never authorize</div>
+              <p class="benefit__desc">Political messaging, adult content, deepfake endorsements — lock these categories permanently with immutable denials. No future negotiator, no amount of money can reopen them inside the protocol.</p>
+            </div>
+          </div>
+          <div class="benefit">
+            <div class="benefit__icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><path d="M2 7 Q 7 2, 12 7"/><path d="M2 7 Q 7 12, 12 7"/><circle cx="7" cy="7" r="1.5" fill="currentColor"/></svg></div>
+            <div>
+              <div class="benefit__title">Full audit trail — know exactly who used your identity and when</div>
+              <p class="benefit__desc">Every license, every authorization, every refusal is hash-chained and externally anchored. If someone claims rights they don't have, the gap is cryptographically provable.</p>
+            </div>
+          </div>
+        </div>
+
+        <h2>What can be protected.</h2>
+        <p>
+          PG is not a patent, not a trademark, and not a copyright registration.
+          It doesn't grant you new legal rights — it gives you a mechanism to
+          enforce rights you already have in the context of generative AI.
+          Think of it as a lock on a door that already belongs to you.
+        </p>
+
+        <div class="benefits">
+          <div class="benefit">
+            <div class="benefit__icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><polyline points="3,7 6,10 11,4"/></svg></div>
+            <div>
+              <div class="benefit__title">Your likeness, voice, or mannerisms</div>
+              <p class="benefit__desc">Natural persons have inherent right of publicity. PG enforces it at generation time — no one can generate your face or voice without your signed authorization.</p>
+            </div>
+          </div>
+          <div class="benefit">
+            <div class="benefit__icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><polyline points="3,7 6,10 11,4"/></svg></div>
+            <div>
+              <div class="benefit__title">Brands, logos, and identity systems</div>
+              <p class="benefit__desc">Trademarks and brand identities are already legally protected. PG adds a pre-generation enforcement layer — with machine-readable brand guidelines attached.</p>
+            </div>
+          </div>
+          <div class="benefit">
+            <div class="benefit__icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><polyline points="3,7 6,10 11,4"/></svg></div>
+            <div>
+              <div class="benefit__title">Artistic styles, typefaces, and creative works</div>
+              <p class="benefit__desc">If you created a unique style, font family, or body of work — you can register it with a reference portfolio. AI providers will check before generating "in your style."</p>
+            </div>
+          </div>
+          <div class="benefit">
+            <div class="benefit__icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><polyline points="3,7 6,10 11,4"/></svg></div>
+            <div>
+              <div class="benefit__title">3D models, product designs, and CAD</div>
+              <p class="benefit__desc">Industrial designs, fashion, architecture, game assets — any creative work whose generative reproduction requires authorization can be registered as a subject.</p>
+            </div>
+          </div>
+          <div class="benefit">
+            <div class="benefit__icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><polyline points="3,7 6,10 11,4"/></svg></div>
+            <div>
+              <div class="benefit__title">Synthetic characters and virtual personas</div>
+              <p class="benefit__desc">Virtual influencers, game characters, AI-generated personas — if you own the rights, you can register and control generative use just like a real person.</p>
+            </div>
+          </div>
+          <div class="benefit">
+            <div class="benefit__icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><polyline points="3,7 6,10 11,4"/></svg></div>
+            <div>
+              <div class="benefit__title">Estates of deceased persons</div>
+              <p class="benefit__desc">Estates can register and control generative depictions of deceased individuals — protecting legacy, preventing unauthorized recreations.</p>
+            </div>
+          </div>
+        </div>
+
+        <h3>Two registration tiers</h3>
+        <div class="twocol">
+          <div>
+            <h3>Tier 1 — Verified Registration</h3>
+            <p>
+              For public figures, major brands, and estates. Requires
+              notarized legal authority establishing the registrant's right
+              to control generative use. 14-day cooling period. Provides
+              the strongest standing in dispute resolution.
+            </p>
+          </div>
+          <div>
+            <h3>Tier 2 — Self-Attestation</h3>
+            <p>
+              For independent creators, designers, and small businesses.
+              Requires email verification and a link to an existing portfolio
+              or registry (design platform, font foundry, GitHub) demonstrating
+              your connection to the subject. 7-day cooling period.
+              May be challenged through the dispute flow.
+            </p>
+          </div>
+        </div>
+
+        <h3>What PG is not</h3>
+        <div class="twocol">
+          <div>
+            <h3>Not a patent</h3>
+            <p>
+              PG doesn't protect ideas, methods, or inventions. It protects
+              the generative reproduction of specific identities and creative
+              works. You can't register "the concept of a red logo" — but
+              you can register your specific red logo.
+            </p>
+          </div>
+          <div>
+            <h3>Not a trademark office</h3>
+            <p>
+              PG doesn't grant legal rights — it enforces rights you already
+              have. A trademark registration with your government is still yours.
+              PG adds a pre-generation enforcement layer on top of it, specific
+              to AI systems. Think: technical enforcement, not legal creation.
+            </p>
+          </div>
+        </div>
+
+        <h2>Get started.</h2>
+        <p>
+          Register your identity, brand, or estate on the PRE-GEN
+          registry. Start earning from authorized AI use — or block it entirely.
+        </p>
+        <a class="cta-link" href="https://prampta.com" target="_blank" rel="noopener noreferrer">
+          Register on prampta.com
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="3" y1="9" x2="9" y2="3"/><polyline points="4,3 9,3 9,8"/></svg>
+        </a>
+
+        <div class="callout">
+          <p>Your identity is already being used by AI. The only question is whether you're the one deciding how — and whether you're getting paid for it.</p>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <div class="cookie-banner" id="cookieBanner">
+    <div class="cookie-inner">
+      <div class="cookie-text">We use cookies to remember your theme preference. Read our <a href="/legal">cookie policy</a>.</div>
+      <div class="cookie-buttons">
+        <button class="cookie-btn" data-cookie="reject">Reject all</button>
+        <button class="cookie-btn" data-cookie="necessary">Necessary only</button>
+        <button class="cookie-btn cookie-btn--accept" data-cookie="all">Accept all</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="getstarted-popup" id="getstartedPopup">
+    <div class="getstarted-overlay" id="getstartedOverlay"></div>
+    <div class="getstarted-card">
+      <button class="getstarted-close" id="getstartedClose"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg></button>
+      <h3>Get started</h3>
+      <div class="getstarted-options">
+        <a class="getstarted-opt" href="/for-ai">
+          I'm an AI company
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="3" y1="6" x2="9" y2="6"/><polyline points="6,3 9,6 6,9"/></svg>
+        </a>
+        <a class="getstarted-opt" href="https://prampta.com" target="_blank" rel="noopener noreferrer">
+          I want to protect or license my identity
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="3" y1="9" x2="9" y2="3"/><polyline points="4,3 9,3 9,8"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
