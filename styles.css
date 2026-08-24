@@ -119,6 +119,7 @@ body:has(.app.sidebar-collapsed) .open-floating:hover { opacity: 1; }
 .brand__close svg { display: block; }
 
 .brand__logo { width: 32px; height: 32px; flex-shrink: 0; display: block; object-fit: cover; }
+[data-theme="dark"] .brand__logo { filter: invert(0.92); }
 
 .brand__link {
   display: flex; align-items: center; gap: 12px;
