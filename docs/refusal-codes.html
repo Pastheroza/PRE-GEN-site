@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#ffffff" />
+<title>Refusal codes — PRE-GEN Docs</title>
+<meta name="description" content="Every PG_* reason code /verify can return: category, hard/soft classification, and when it was introduced. Generated from the policy registry." />
+<meta property="og:title" content="PRE-GEN refusal codes" />
+<meta property="og:type" content="article" />
+<link rel="icon" type="image/png" href="/assets/pregen-logo.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <div class="shell header-in">
+    <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="PRE-GEN" /><span class="brand-name">PRE-GEN</span></a>
+    <nav class="top-nav">
+      <a href="/">Protocol</a>
+      <a href="/docs" class="is-active">Docs</a>
+      <a href="/for-ai">For AI companies</a>
+      <a href="/for-brands">For rights holders</a>
+      <a href="/faq">FAQ</a>
+      <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+    </nav>
+    <div class="header-actions">
+      <button class="theme-toggle" data-theme-toggle aria-label="Toggle theme">
+        <svg class="moon" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M16 11.5A6.5 6.5 0 1 1 8.5 4a5.5 5.5 0 0 0 7.5 7.5z"/></svg>
+        <svg class="sun" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="10" y1="16" x2="10" y2="18"/><line x1="2" y1="10" x2="4" y2="10"/><line x1="16" y1="10" x2="18" y2="10"/><line x1="4.3" y1="4.3" x2="5.7" y2="5.7"/><line x1="14.3" y1="4.3" x2="15.7" y2="5.7"/><line x1="4.3" y1="15.7" x2="5.7" y2="14.3"/><line x1="14.3" y1="5.7" x2="15.7" y2="4.3"/></svg>
+      </button>
+      <a class="btn btn-solid btn-sm" href="/docs/sdk">Integrate</a>
+      <button class="menu-btn" id="menuOpen" aria-label="Open navigation"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
+    </div>
+  </div>
+</header>
+
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="" /><span class="brand-name">PRE-GEN</span></a>
+    <button class="menu-close" id="menuClose" aria-label="Close navigation">✕</button>
+  </div>
+  <nav>
+    <a href="/">Protocol</a>
+    <a href="/docs" class="is-active">Docs</a>
+    <a href="/for-ai">For AI companies</a>
+    <a href="/for-brands">For rights holders</a>
+    <a href="/faq">FAQ</a>
+    <a href="/support">Support</a>
+    <a href="/legal">Legal</a>
+    <a href="/contact">Contact</a>
+    <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+  </nav>
+</div>
+
+<div class="docs-shell">
+  <aside class="docs-nav">
+    <div class="docs-nav-label">Documentation</div>
+    <a href="/docs">Overview</a>
+    <a href="/docs/pg-code">PG code format</a>
+    <a href="/docs/versions">Versioning</a>
+    <a href="/docs/refusal-codes" class="is-active">Refusal codes</a>
+    <a href="/docs/sdk">SDKs &amp; integration</a>
+    <div class="sep"></div>
+    <a class="ext" href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub — SDKs ↗</a>
+  </aside>
+
+  <article class="docs-body">
+    <div class="doc-crumb"><a href="/docs">Docs</a> / Refusal codes</div>
+    <h1>Refusal codes</h1>
+    <p class="doc-meta">36 codes · Generated from the versioned policy registry · 2026-08-23</p>
+
+    <p>
+      Every refusal from <code>POST /v1/verify/</code> carries a machine-readable
+      <code>PG_*</code> reason code. Codes are classified <strong>hard</strong> — no retry,
+      reshaped request, or replacement license changes the outcome — or
+      <strong>soft</strong>: a different request, a valid license, or a different provider
+      might still succeed. An unregistered code fails <em>closed</em> (treated as hard), never
+      silently retryable.
+    </p>
+
+    <div class="refusal-filter">
+      <button class="chip on" data-filter="all">all · 36</button>
+      <button class="chip" data-filter="request">request</button>
+      <button class="chip" data-filter="identity">identity</button>
+      <button class="chip" data-filter="subject_trust">subject trust</button>
+      <button class="chip" data-filter="license">license</button>
+      <button class="chip" data-filter="review">review</button>
+    </div>
+
+    <table class="doc-table" id="refusalTable">
+      <thead><tr><th>Code</th><th>Category</th><th>Type</th><th>Since</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr data-category="request"><td class="mono">PG_MISSING_PROMPT_HASH</td><td>request</td><td><span class="tag">soft</span></td><td class="mono">2025-01-01</td><td>The request did not include a prompt_hash to bind the decision to.</td></tr>
+        <tr data-category="identity"><td class="mono">PG_NO_PAIR</td><td>identity</td><td><span class="tag">soft</span></td><td class="mono">2025-01-01</td><td>No live provider↔licensee pair authorizes this caller.</td></tr>
+        <tr data-category="identity"><td class="mono">PG_IDENTITY_REVOKED</td><td>identity</td><td><span class="tag tag-hard">HARD</span></td><td class="mono">2025-06-01</td><td>The provider disowned this end user’s identity link.</td></tr>
+        <tr data-category="identity"><td class="mono">PG_ENTITLEMENT_INACTIVE</td><td>identity</td><td><span class="tag tag-hard">HARD</span></td><td class="mono">2025-06-01</td><td>The purchase (entitlement) backing this request is no longer active — reversed or expired.</td></tr>
+        <tr data-category="identity"><td class="mono">PG_PROVIDER_NOT_ALLOWED</td><td>identity</td><td><span class="tag">soft</span></td><td class="mono">2025-06-01</td><td>This license’s allow/block list excludes the calling provider.</td></tr>
+        <tr data-category="identity"><td class="mono">PG_IDENTITY_UNKNOWN</td><td>identity</td><td><span class="tag">soft</span></td><td class="mono">2026-07-26</td><td>The asserted end-user identity does not resolve to any live identity link for this provider — the user has not completed the connect flow, or the link was deleted.</td></tr>
+        <tr data-category="identity"><td class="mono">PG_IDENTITY_MISMATCH</td><td>identity</td><td><span class="tag">soft</span></td><td class="mono">2026-07-26</td><td>The license belongs to a different end user than the one the caller is acting for — cross-user reuse.</td></tr>
+        <tr data-category="identity"><td class="mono">PG_IDENTITY_REQUIRED</td><td>identity</td><td><span class="tag">soft</span></td><td class="mono">2026-07-26</td><td>The license is bound to a specific end user, so the caller must say which user it is acting for.</td></tr>
+        <tr data-category="subject_trust"><td class="mono">PG_NO_SUBJECT</td><td>subject trust</td><td><span class="tag">soft</span></td><td class="mono">2025-01-01</td><td>No registered subject matches subject_id.</td></tr>
+        <tr data-category="subject_trust"><td class="mono">PG_SUBJECT_OPTED_OUT</td><td>subject trust</td><td><span class="tag tag-hard">HARD</span></td><td class="mono">2025-01-01</td><td>The subject’s rules refuse this request’s category outright. Checked before any license — no license can override it.</td></tr>
+        <tr data-category="subject_trust"><td class="mono">PG_SUBJECT_DISPUTED</td><td>subject trust</td><td><span class="tag tag-hard">HARD</span></td><td class="mono">2025-09-01</td><td>A dispute is open on this subject — licensing is frozen pending outcome.</td></tr>
+        <tr data-category="subject_trust"><td class="mono">PG_SUBJECT_WITHDRAWN</td><td>subject trust</td><td><span class="tag tag-hard">HARD</span></td><td class="mono">2025-01-01</td><td>The subject was withdrawn by its owner or on moderation takedown.</td></tr>
+        <tr data-category="subject_trust"><td class="mono">PG_SUBJECT_PENDING</td><td>subject trust</td><td><span class="tag">soft</span></td><td class="mono">2025-01-01</td><td>The subject is awaiting operator review before it may license at all.</td></tr>
+        <tr data-category="subject_trust"><td class="mono">PG_SUBJECT_PAUSED</td><td>subject trust</td><td><span class="tag">soft</span></td><td class="mono">2025-01-01</td><td>The subject’s owner temporarily paused licensing.</td></tr>
+        <tr data-category="subject_trust"><td class="mono">PG_SUBJECT_NOT_LICENSABLE</td><td>subject trust</td><td><span class="tag tag-hard">HARD</span></td><td class="mono">2025-10-01</td><td>The subject’s trust-lifecycle state (suspended/disputed/revoked/archived) permits no licensing at all.</td></tr>
+        <tr data-category="subject_trust"><td class="mono">PG_REFERENCE_ONLY</td><td>subject trust</td><td><span class="tag tag-hard">HARD</span></td><td class="mono">2025-01-01</td><td>The subject is registered as reference-only and never licenses.</td></tr>
+        <tr data-category="subject_trust"><td class="mono">PG_PROVIDER_VETOED</td><td>subject trust</td><td><span class="tag tag-hard">HARD</span></td><td class="mono">2025-07-01</td><td>The rights holder blocked this specific provider — no license changes that.</td></tr>
+        <tr data-category="subject_trust"><td class="mono">PG_SANDBOX_SUBJECT_ONLY</td><td>subject trust</td><td><span class="tag tag-hard">HARD</span></td><td class="mono">2025-08-01</td><td>A sandbox (Tier 1) provider credential may only verify against synthetic test subjects.</td></tr>
+        <tr data-category="subject_trust"><td class="mono">PG_PROHIBITED_USE</td><td>subject trust</td><td><span class="tag tag-hard">HARD</span></td><td class="mono">2026-06-01</td><td>A permanently-denied use for a high-risk subject — e.g. a sexualized category for a minor.</td></tr>
+        <tr data-category="subject_trust"><td class="mono">PG_INSUFFICIENT_AUTHORITY</td><td>subject trust</td><td><span class="tag">soft</span></td><td class="mono">2025-10-01</td><td>The subject’s authority/verification tier does not meet the bar this request needs.</td></tr>
+        <tr data-category="subject_trust"><td class="mono">PG_OWNER_NOT_VERIFIED</td><td>subject trust</td><td><span class="tag">soft</span></td><td class="mono">2026-08-19</td><td>Commercial use also requires the subject’s owning account to be verified — the subject alone reaching commercial status is not sufficient.</td></tr>
+        <tr data-category="license"><td class="mono">PG_NO_LICENSE</td><td>license</td><td><span class="tag">soft</span></td><td class="mono">2025-01-01</td><td>No valid, live license authorizes this licensee for this subject.</td></tr>
+        <tr data-category="license"><td class="mono">PG_INVALID_SIGNATURE</td><td>license</td><td><span class="tag tag-hard">HARD</span></td><td class="mono">2025-01-01</td><td>A license was found but its signature does not verify.</td></tr>
+        <tr data-category="license"><td class="mono">PG_SCOPE_VIOLATION</td><td>license</td><td><span class="tag">soft</span></td><td class="mono">2025-01-01</td><td>The request’s modality, channel, or territory falls outside what the license scopes.</td></tr>
+        <tr data-category="license"><td class="mono">PG_PRODUCT_MISMATCH</td><td>license</td><td><span class="tag">soft</span></td><td class="mono">2025-04-01</td><td>The license is bound to a specific product and this request names a different one.</td></tr>
+        <tr data-category="license"><td class="mono">PG_PROJECT_MISMATCH</td><td>license</td><td><span class="tag">soft</span></td><td class="mono">2025-04-01</td><td>The license is bound to a specific project and this request names a different one.</td></tr>
+        <tr data-category="license"><td class="mono">PG_MISSING_CONTEXT</td><td>license</td><td><span class="tag">soft</span></td><td class="mono">2025-04-01</td><td>The license restricts a dimension and the request omitted it — fail-closed rather than let an omission bypass a restriction.</td></tr>
+        <tr data-category="license"><td class="mono">PG_IMMUTABLE_DENIAL</td><td>license</td><td><span class="tag tag-hard">HARD</span></td><td class="mono">2025-01-01</td><td>The request’s declared category matches one of the license’s immutable (never-grantable) denials.</td></tr>
+        <tr data-category="license"><td class="mono">PG_TIER_VIOLATION</td><td>license</td><td><span class="tag">soft</span></td><td class="mono">2025-05-01</td><td>The declared use case ranks above what this license’s tier authorizes.</td></tr>
+        <tr data-category="license"><td class="mono">PG_EXTENSION_REFUSED</td><td>license</td><td><span class="tag">soft</span></td><td class="mono">2025-05-01</td><td>A license extension (e.g. a region rider) evaluated and refused this request.</td></tr>
+        <tr data-category="license"><td class="mono">PG_REGION_BLOCKED</td><td>license</td><td><span class="tag">soft</span></td><td class="mono">2025-06-01</td><td>The request’s territory falls outside the license’s allowed regions.</td></tr>
+        <tr data-category="license"><td class="mono">PG_LICENSE_REVOKED</td><td>license</td><td><span class="tag tag-hard">HARD</span></td><td class="mono">2025-09-15</td><td>A live revocation (full or partial) withdraws this license.</td></tr>
+        <tr data-category="license"><td class="mono">PG_RIGHTS_NOT_GRANTED</td><td>license</td><td><span class="tag">soft</span></td><td class="mono">2026-06-01</td><td>The request exercises a rights dimension (e.g. model_training) the license never granted.</td></tr>
+        <tr data-category="license"><td class="mono">PG_USAGE_LIMIT</td><td>license</td><td><span class="tag">soft</span></td><td class="mono">2025-05-01</td><td>The license’s purchased quantity (max_uses) is exhausted. Surface this to the buyer as “buy more”, not as an error.</td></tr>
+        <tr data-category="license"><td class="mono">PG_CONCURRENCY_LIMIT</td><td>license</td><td><span class="tag">soft</span></td><td class="mono">2025-05-01</td><td>The license’s concurrent in-flight generation cap is reached. Back off and retry later.</td></tr>
+        <tr data-category="review"><td class="mono">PG_HELD_FOR_REVIEW</td><td>review</td><td><span class="tag">soft</span></td><td class="mono">2026-07-24</td><td>Not a refusal: a commercial generation that would otherwise be allowed is held for human review. Treat as pending, not denied.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <span class="mono">For implementers</span>
+      A correct client <strong>stops retrying on HARD codes</strong> and reacts to soft ones
+      (offer a license-request flow, surface “buy more”, back off on concurrency). Retrying a
+      withdrawn subject forever is the canonical wrong behavior — the hard/soft split exists
+      precisely to prevent it.
+    </div>
+
+    <div class="pager">
+      <a href="/docs/versions"><span class="dir">← PREV</span>Versioning</a>
+      <a href="/docs/sdk"><span class="dir">NEXT →</span>SDKs &amp; integration</a>
+    </div>
+  </article>
+</div>
+
+<footer class="site-footer">
+  <div class="shell">
+    <div class="footer-in">
+      <div class="footer-brand">
+        <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="" /><span class="brand-name">PRE-GEN</span></a>
+        <p>Authorization before generation. An open protocol for consent in generative AI.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Protocol</h4>
+        <a href="/docs">Overview</a>
+        <a href="/docs/pg-code">PG code format</a>
+        <a href="/docs/versions">Versioning</a>
+        <a href="/docs/refusal-codes">Refusal codes</a>
+        <a href="/docs/sdk">SDKs</a>
+      </div>
+      <div class="footer-col">
+        <h4>Project</h4>
+        <a href="/for-ai">For AI companies</a>
+        <a href="/for-brands">For rights holders</a>
+        <a href="/faq">FAQ</a>
+        <a href="/support">Support</a>
+      </div>
+      <div class="footer-col">
+        <h4>Elsewhere</h4>
+        <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub — SDKs ↗</a>
+        <a href="https://prampta.com" target="_blank" rel="noopener noreferrer">PRAMPTA (registry) ↗</a>
+        <a href="/contact">Contact</a>
+        <a href="/legal">Legal</a>
+      </div>
+    </div>
+    <div class="footer-base">
+      <span>© 2026 PRE-GEN Foundation project. Specification under Apache-2.0.</span>
+      <span class="mono">pregen.org</span>
+    </div>
+  </div>
+</footer>
+
+<div class="cookie-banner" id="cookieBanner">
+  <div class="cookie-inner">
+    <div class="cookie-text">We store only your theme preference. Read our <a href="/legal">privacy policy</a>.</div>
+    <div class="cookie-buttons">
+      <button class="cookie-btn" data-cookie="necessary">Necessary only</button>
+      <button class="cookie-btn cookie-btn--accept" data-cookie="all">Accept</button>
+    </div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

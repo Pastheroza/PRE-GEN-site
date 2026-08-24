@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#ffffff" />
+<title>Versioning — PRE-GEN Docs</title>
+<meta name="description" content="PRE-GEN protocol versioning: what each schema version marker means, what bumps it, and which changes are additive-safe." />
+<meta property="og:title" content="PRE-GEN protocol versioning" />
+<meta property="og:type" content="article" />
+<link rel="icon" type="image/png" href="/assets/pregen-logo.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <div class="shell header-in">
+    <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="PRE-GEN" /><span class="brand-name">PRE-GEN</span></a>
+    <nav class="top-nav">
+      <a href="/">Protocol</a>
+      <a href="/docs" class="is-active">Docs</a>
+      <a href="/for-ai">For AI companies</a>
+      <a href="/for-brands">For rights holders</a>
+      <a href="/faq">FAQ</a>
+      <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+    </nav>
+    <div class="header-actions">
+      <button class="theme-toggle" data-theme-toggle aria-label="Toggle theme">
+        <svg class="moon" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M16 11.5A6.5 6.5 0 1 1 8.5 4a5.5 5.5 0 0 0 7.5 7.5z"/></svg>
+        <svg class="sun" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="10" y1="16" x2="10" y2="18"/><line x1="2" y1="10" x2="4" y2="10"/><line x1="16" y1="10" x2="18" y2="10"/><line x1="4.3" y1="4.3" x2="5.7" y2="5.7"/><line x1="14.3" y1="4.3" x2="15.7" y2="5.7"/><line x1="4.3" y1="15.7" x2="5.7" y2="14.3"/><line x1="14.3" y1="5.7" x2="15.7" y2="4.3"/></svg>
+      </button>
+      <a class="btn btn-solid btn-sm" href="/docs/sdk">Integrate</a>
+      <button class="menu-btn" id="menuOpen" aria-label="Open navigation"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
+    </div>
+  </div>
+</header>
+
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="" /><span class="brand-name">PRE-GEN</span></a>
+    <button class="menu-close" id="menuClose" aria-label="Close navigation">✕</button>
+  </div>
+  <nav>
+    <a href="/">Protocol</a>
+    <a href="/docs" class="is-active">Docs</a>
+    <a href="/for-ai">For AI companies</a>
+    <a href="/for-brands">For rights holders</a>
+    <a href="/faq">FAQ</a>
+    <a href="/support">Support</a>
+    <a href="/legal">Legal</a>
+    <a href="/contact">Contact</a>
+    <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+  </nav>
+</div>
+
+<div class="docs-shell">
+  <aside class="docs-nav">
+    <div class="docs-nav-label">Documentation</div>
+    <a href="/docs">Overview</a>
+    <a href="/docs/pg-code">PG code format</a>
+    <a href="/docs/versions" class="is-active">Versioning</a>
+    <a href="/docs/refusal-codes">Refusal codes</a>
+    <a href="/docs/sdk">SDKs &amp; integration</a>
+    <div class="sep"></div>
+    <a class="ext" href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub — SDKs ↗</a>
+  </aside>
+
+  <article class="docs-body">
+    <div class="doc-crumb"><a href="/docs">Docs</a> / Versioning</div>
+    <h1>Protocol versioning</h1>
+    <p class="doc-meta">Updated 2026-08-23 · Applies to every signed protocol object</p>
+
+    <p>
+      Every signed object carries its schema version <strong>inside the signed bytes</strong> —
+      the version marker is itself cryptographically committed, not a label on the envelope.
+      This page states, for each object: what the marker is, what bumps it, and which changes
+      are additive-safe.
+    </p>
+
+    <div class="callout">
+      <span class="mono">The compatibility rule</span>
+      Adding a new <em>optional</em> field does not bump a version: every SDK already ignores
+      unknown fields and defaults missing ones, so additive changes are free. Removing a field,
+      changing a field’s meaning, or changing what a value can mean — that is a new version.
+    </div>
+
+    <h2>Summary</h2>
+    <table class="doc-table">
+      <thead><tr><th>Surface</th><th>Marker</th><th>Signed?</th><th>Additive-safe today?</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Decision</strong></td><td class="mono">schema_version = pg.decision.v1</td><td>Yes</td><td>Yes — new optional fields are free</td></tr>
+        <tr><td><strong>Policy</strong></td><td class="mono">policy_version</td><td>Stamped on every decision</td><td>Versioned by design (append-only history)</td></tr>
+        <tr><td><strong>License</strong></td><td class="mono">v = pg.license.v2</td><td>Yes</td><td>Within v2, yes; a meaning change needs a v3 branch</td></tr>
+        <tr><td><strong>Receipt</strong></td><td class="mono">v = pg.receipt.v2</td><td>Yes</td><td>No — body changes ship live on merge</td></tr>
+        <tr><td><strong>Identity assertion</strong></td><td class="mono">audience = prampta:identity:v1</td><td>Yes</td><td>No — a new required field breaks old signatures, by design</td></tr>
+        <tr><td><strong>Entitlement</strong></td><td class="mono">audience (same mechanism)</td><td>Yes</td><td>No — same reason</td></tr>
+        <tr><td><strong>Evidence bundle</strong></td><td class="mono">pg.evidence.v1</td><td>Yes — minted fresh at read time</td><td>—</td></tr>
+        <tr><td><strong>Assertion (§11 bridge)</strong></td><td class="mono">pg.assertion.v1</td><td>Yes — built and signed fresh</td><td>—</td></tr>
+        <tr><td>Identity assertion (response wrapper)</td><td class="mono">pg.identity.v1</td><td>Response-only</td><td>—</td></tr>
+        <tr><td>Audit event</td><td class="mono">pg.audit-event.v1</td><td>Response-only</td><td>—</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Decision vs policy versioning</h2>
+    <p>
+      The <strong>schema</strong> (<code>schema_version</code>) is the shape of the envelope;
+      the <strong>policy</strong> (<code>policy_version</code>) is the rule set that filled it
+      in. They are stamped independently. A decision can be read against exactly the rules in
+      force when it was signed, even after the rules change — both versions are on the object.
+      Policy history is append-only: every entry names the date and the change, and every
+      <code>PG_*</code> refusal code is registered and classified there (see
+      <a href="/docs/refusal-codes">Refusal codes</a>).
+    </p>
+
+    <h2>Why some objects are deliberately not additive-safe</h2>
+    <p>
+      The license body’s <code>v</code> marker was added as a <em>hard cut</em>: the point was
+      a real, load-bearing version marker inside the signed bytes, not another optional field a
+      legacy row can silently ignore. The identity assertion’s <code>audience</code> string is
+      part of what gets signed — changing it is exactly how a v2 assertion refuses to replay
+      against a v1 verifier. Where a break is possible, it is a break <em>on purpose</em>, so a
+      signature from one format era cannot silently pass as another.
+    </p>
+
+    <h2>Receipts: the known gap</h2>
+    <p>
+      There is currently no deprecation window or dual-accept mechanism for receipt format
+      changes — an addition to the receipt body ships live the moment it merges. The receipt’s
+      version marker closed the “no marker at all” gap; the evolution-window gap is known and
+      tracked, not hidden. Providers holding cached receipts should verify them against the
+      operator key set and store the evidence bundle for long-term audit.
+    </p>
+
+    <div class="pager">
+      <a href="/docs/pg-code"><span class="dir">← PREV</span>PG code format</a>
+      <a href="/docs/refusal-codes"><span class="dir">NEXT →</span>Refusal codes</a>
+    </div>
+  </article>
+</div>
+
+<footer class="site-footer">
+  <div class="shell">
+    <div class="footer-in">
+      <div class="footer-brand">
+        <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="" /><span class="brand-name">PRE-GEN</span></a>
+        <p>Authorization before generation. An open protocol for consent in generative AI.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Protocol</h4>
+        <a href="/docs">Overview</a>
+        <a href="/docs/pg-code">PG code format</a>
+        <a href="/docs/versions">Versioning</a>
+        <a href="/docs/refusal-codes">Refusal codes</a>
+        <a href="/docs/sdk">SDKs</a>
+      </div>
+      <div class="footer-col">
+        <h4>Project</h4>
+        <a href="/for-ai">For AI companies</a>
+        <a href="/for-brands">For rights holders</a>
+        <a href="/faq">FAQ</a>
+        <a href="/support">Support</a>
+      </div>
+      <div class="footer-col">
+        <h4>Elsewhere</h4>
+        <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub — SDKs ↗</a>
+        <a href="https://prampta.com" target="_blank" rel="noopener noreferrer">PRAMPTA (registry) ↗</a>
+        <a href="/contact">Contact</a>
+        <a href="/legal">Legal</a>
+      </div>
+    </div>
+    <div class="footer-base">
+      <span>© 2026 PRE-GEN Foundation project. Specification under Apache-2.0.</span>
+      <span class="mono">pregen.org</span>
+    </div>
+  </div>
+</footer>
+
+<div class="cookie-banner" id="cookieBanner">
+  <div class="cookie-inner">
+    <div class="cookie-text">We store only your theme preference. Read our <a href="/legal">privacy policy</a>.</div>
+    <div class="cookie-buttons">
+      <button class="cookie-btn" data-cookie="necessary">Necessary only</button>
+      <button class="cookie-btn cookie-btn--accept" data-cookie="all">Accept</button>
+    </div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

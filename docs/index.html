@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#ffffff" />
+<title>Protocol overview — PRE-GEN Docs</title>
+<meta name="description" content="The PRE-GEN crypto invariant: canonical JSON, SHA-256, Ed25519. What every implementation must agree on, byte for byte." />
+<meta property="og:title" content="PRE-GEN protocol overview" />
+<meta property="og:type" content="article" />
+<link rel="icon" type="image/png" href="/assets/pregen-logo.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <div class="shell header-in">
+    <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="PRE-GEN" /><span class="brand-name">PRE-GEN</span></a>
+    <nav class="top-nav">
+      <a href="/">Protocol</a>
+      <a href="/docs" class="is-active">Docs</a>
+      <a href="/for-ai">For AI companies</a>
+      <a href="/for-brands">For rights holders</a>
+      <a href="/faq">FAQ</a>
+      <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+    </nav>
+    <div class="header-actions">
+      <button class="theme-toggle" data-theme-toggle aria-label="Toggle theme">
+        <svg class="moon" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M16 11.5A6.5 6.5 0 1 1 8.5 4a5.5 5.5 0 0 0 7.5 7.5z"/></svg>
+        <svg class="sun" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="10" y1="16" x2="10" y2="18"/><line x1="2" y1="10" x2="4" y2="10"/><line x1="16" y1="10" x2="18" y2="10"/><line x1="4.3" y1="4.3" x2="5.7" y2="5.7"/><line x1="14.3" y1="4.3" x2="15.7" y2="5.7"/><line x1="4.3" y1="15.7" x2="5.7" y2="14.3"/><line x1="14.3" y1="5.7" x2="15.7" y2="4.3"/></svg>
+      </button>
+      <a class="btn btn-solid btn-sm" href="/docs/sdk">Integrate</a>
+      <button class="menu-btn" id="menuOpen" aria-label="Open navigation"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
+    </div>
+  </div>
+</header>
+
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="" /><span class="brand-name">PRE-GEN</span></a>
+    <button class="menu-close" id="menuClose" aria-label="Close navigation">✕</button>
+  </div>
+  <nav>
+    <a href="/">Protocol</a>
+    <a href="/docs" class="is-active">Docs</a>
+    <a href="/for-ai">For AI companies</a>
+    <a href="/for-brands">For rights holders</a>
+    <a href="/faq">FAQ</a>
+    <a href="/support">Support</a>
+    <a href="/legal">Legal</a>
+    <a href="/contact">Contact</a>
+    <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+  </nav>
+</div>
+
+<div class="docs-shell">
+  <aside class="docs-nav">
+    <div class="docs-nav-label">Documentation</div>
+    <a href="/docs" class="is-active">Overview</a>
+    <a href="/docs/pg-code">PG code format</a>
+    <a href="/docs/versions">Versioning</a>
+    <a href="/docs/refusal-codes">Refusal codes</a>
+    <a href="/docs/sdk">SDKs &amp; integration</a>
+    <div class="sep"></div>
+    <a class="ext" href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub — SDKs ↗</a>
+    <a class="ext" href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA/blob/main/openapi.json" target="_blank" rel="noopener noreferrer">OpenAPI contract ↗</a>
+  </aside>
+
+  <article class="docs-body">
+    <div class="doc-crumb"><a href="/docs">Docs</a> / Overview</div>
+    <h1>PRE-GEN protocol overview</h1>
+    <p class="doc-meta">License: Apache-2.0 · Test vectors: <span class="mono">vectors v2</span> · Where prose and vectors disagree, <strong>the vectors win</strong>.</p>
+
+    <p>
+      PRE-GEN is a protocol for <strong>pre-generation authorization</strong>: before an AI
+      model produces content depicting a registered person, brand, voice, style, or creative
+      work, the provider asks a registry whether the use is licensed — and receives a
+      cryptographically signed decision that can be stored and independently verified forever.
+    </p>
+    <p>
+      The specification is licensed under the Apache License 2.0, separately from any service
+      that implements it. Anyone may implement PRE-GEN without permission. The parts every
+      implementation must agree on are pinned as <strong>byte-level test vectors</strong>, not
+      prose alone: if an implementation’s canonicalization drifts, its vector test fails.
+    </p>
+
+    <h2>The crypto invariant</h2>
+    <p>Four rules, agreed on byte for byte by every implementation:</p>
+    <ol>
+      <li><strong>Canonical JSON.</strong> Keys sorted by Unicode code point, no whitespace,
+      non-ASCII values emitted as raw UTF-8 (never escaped), integers only — no floats, because
+      float serialization is not portable.</li>
+      <li><strong>Hashing.</strong> SHA-256, lowercase hex.</li>
+      <li><strong>Signatures.</strong> Ed25519 (RFC 8032, deterministic), hex-encoded, over the
+      canonical JSON bytes of the body <em>excluding the signature field itself</em>.</li>
+      <li><strong>Audit chain.</strong> Each event’s <code>prev_hash</code> is the SHA-256 of
+      the previous event’s canonical bytes; the first event uses the literal string
+      <code>genesis</code>.</li>
+    </ol>
+
+    <div class="callout">
+      <span class="mono">Unicode warning</span>
+      Signatures are computed over raw UTF-8 bytes. NFC- and NFD-normalized strings that look
+      identical produce <strong>different</strong> signatures — this is by design. Never
+      normalize a signed body before verification; verify the bytes you received.
+    </div>
+
+<pre><code>canonical_json(obj) = UTF8( json.dumps(obj,
+    sort_keys=True, separators=(",", ":"), ensure_ascii=False) )
+
+signature = Ed25519.sign( SHA256? no — sign(canonical_json(body minus signature)) )
+key_fingerprint = "pg-ed25519:" + hex( SHA256(raw 32-byte public key) )[0:32]</code></pre>
+
+    <h2>Signed objects</h2>
+    <p>
+      Five object types cross the wire, each carrying its own schema version marker inside the
+      signed bytes. See <a href="/docs/versions">Versioning</a> for what bumps each marker and
+      which changes are additive-safe.
+    </p>
+    <table class="doc-table">
+      <thead><tr><th>Object</th><th>Marker</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">Decision</td><td class="mono">pg.decision.v1</td><td>The /verify answer — signed by the registry operator</td></tr>
+        <tr><td class="mono">License</td><td class="mono">pg.license.v2</td><td>Scoped permission — signed by the rights holder, countersigned by the operator</td></tr>
+        <tr><td class="mono">Receipt</td><td class="mono">pg.receipt.v2</td><td>Post-generation proof — signed by the provider, hashed by the operator</td></tr>
+        <tr><td class="mono">Evidence bundle</td><td class="mono">pg.evidence.v1</td><td>Verifiable offline package of decision + license + audit chain</td></tr>
+        <tr><td class="mono">Assertion</td><td class="mono">pg.assertion.v1</td><td>Portable provenance claim, embeddable in C2PA manifests</td></tr>
+      </tbody>
+    </table>
+
+    <h2>The flow</h2>
+    <ol>
+      <li><strong>Detect</strong> — poll <code>GET /v1/subjects/index</code> (ETag-cached) and
+      match user prompts against registered subjects with the SDK matcher.</li>
+      <li><strong>Verify</strong> — <code>POST /v1/verify/</code> returns a signed decision:
+      allowed (with obligations) or refused (with a machine-readable <code>PG_*</code> code —
+      see <a href="/docs/refusal-codes">Refusal codes</a>).</li>
+      <li><strong>Prove</strong> — verify the signature against
+      <code>GET /keys</code> (rotation-aware), store the decision, and file a receipt after
+      generation.</li>
+    </ol>
+
+    <h2>Implementations pinned by vectors</h2>
+    <table class="doc-table">
+      <thead><tr><th>Implementation</th><th>Vector test</th></tr></thead>
+      <tbody>
+        <tr><td>Registry backend (source of truth)</td><td class="mono">test_spec_vectors.py</td></tr>
+        <tr><td>Reference single-file registry</td><td class="mono">TestReferenceImplementation</td></tr>
+        <tr><td>Python SDK (<span class="mono">prampta</span>)</td><td class="mono">test_spec_vectors.py</td></tr>
+        <tr><td>TypeScript SDK (<span class="mono">@prampta/sdk</span>)</td><td class="mono">vectors.test.ts</td></tr>
+      </tbody>
+    </table>
+    <p>
+      The vectors use a fixed, <strong>public</strong> test key derived from a known seed —
+      never use it in any deployment. Regenerating vectors is allowed only after an
+      <em>intentional</em> protocol change: the generator is deterministic, so regenerating
+      without a protocol change produces a byte-identical file. A noisy diff means the
+      invariant moved.
+    </p>
+
+    <div class="pager">
+      <span></span>
+      <a href="/docs/pg-code"><span class="dir">NEXT →</span>PG code format</a>
+    </div>
+  </article>
+</div>
+
+<footer class="site-footer">
+  <div class="shell">
+    <div class="footer-in">
+      <div class="footer-brand">
+        <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="" /><span class="brand-name">PRE-GEN</span></a>
+        <p>Authorization before generation. An open protocol for consent in generative AI.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Protocol</h4>
+        <a href="/docs">Overview</a>
+        <a href="/docs/pg-code">PG code format</a>
+        <a href="/docs/versions">Versioning</a>
+        <a href="/docs/refusal-codes">Refusal codes</a>
+        <a href="/docs/sdk">SDKs</a>
+      </div>
+      <div class="footer-col">
+        <h4>Project</h4>
+        <a href="/for-ai">For AI companies</a>
+        <a href="/for-brands">For rights holders</a>
+        <a href="/faq">FAQ</a>
+        <a href="/support">Support</a>
+      </div>
+      <div class="footer-col">
+        <h4>Elsewhere</h4>
+        <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub — SDKs ↗</a>
+        <a href="https://prampta.com" target="_blank" rel="noopener noreferrer">PRAMPTA (registry) ↗</a>
+        <a href="/contact">Contact</a>
+        <a href="/legal">Legal</a>
+      </div>
+    </div>
+    <div class="footer-base">
+      <span>© 2026 PRE-GEN Foundation project. Specification under Apache-2.0.</span>
+      <span class="mono">pregen.org</span>
+    </div>
+  </div>
+</footer>
+
+<div class="cookie-banner" id="cookieBanner">
+  <div class="cookie-inner">
+    <div class="cookie-text">We store only your theme preference. Read our <a href="/legal">privacy policy</a>.</div>
+    <div class="cookie-buttons">
+      <button class="cookie-btn" data-cookie="necessary">Necessary only</button>
+      <button class="cookie-btn cookie-btn--accept" data-cookie="all">Accept</button>
+    </div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

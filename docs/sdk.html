@@ -4,11 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#ffffff" />
-<title>Support PRE-GEN</title>
-<meta name="description" content="Support the PRE-GEN protocol — keep pre-generation authorization open, free, and independent." />
-<meta property="og:title" content="Support PRE-GEN" />
-<meta property="og:type" content="website" />
-<meta property="og:url" content="https://www.pregen.org/support" />
+<title>SDKs &amp; integration — PRE-GEN Docs</title>
+<meta name="description" content="Integrate PRE-GEN: Python and TypeScript SDKs, the three-call flow, credentials, and the OpenAPI contract." />
+<meta property="og:title" content="PRE-GEN SDKs &amp; integration" />
+<meta property="og:type" content="article" />
 <link rel="icon" type="image/png" href="/assets/pregen-logo.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -22,7 +21,7 @@
     <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="PRE-GEN" /><span class="brand-name">PRE-GEN</span></a>
     <nav class="top-nav">
       <a href="/">Protocol</a>
-      <a href="/docs">Docs</a>
+      <a href="/docs" class="is-active">Docs</a>
       <a href="/for-ai">For AI companies</a>
       <a href="/for-brands">For rights holders</a>
       <a href="/faq">FAQ</a>
@@ -33,7 +32,7 @@
         <svg class="moon" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M16 11.5A6.5 6.5 0 1 1 8.5 4a5.5 5.5 0 0 0 7.5 7.5z"/></svg>
         <svg class="sun" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="10" y1="16" x2="10" y2="18"/><line x1="2" y1="10" x2="4" y2="10"/><line x1="16" y1="10" x2="18" y2="10"/><line x1="4.3" y1="4.3" x2="5.7" y2="5.7"/><line x1="14.3" y1="4.3" x2="15.7" y2="5.7"/><line x1="4.3" y1="15.7" x2="5.7" y2="14.3"/><line x1="14.3" y1="5.7" x2="15.7" y2="4.3"/></svg>
       </button>
-      <a class="btn btn-solid btn-sm" href="https://github.com/sponsors/Pastheroza" target="_blank" rel="noopener noreferrer">Sponsor</a>
+      <a class="btn btn-solid btn-sm" href="/docs/sdk">Integrate</a>
       <button class="menu-btn" id="menuOpen" aria-label="Open navigation"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
     </div>
   </div>
@@ -47,87 +46,113 @@
   </div>
   <nav>
     <a href="/">Protocol</a>
-    <a href="/docs">Docs</a>
+    <a href="/docs" class="is-active">Docs</a>
     <a href="/for-ai">For AI companies</a>
     <a href="/for-brands">For rights holders</a>
     <a href="/faq">FAQ</a>
-    <a href="/support" class="is-active">Support</a>
+    <a href="/support">Support</a>
     <a href="/legal">Legal</a>
     <a href="/contact">Contact</a>
     <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
   </nav>
-  <div class="drawer-foot"><a class="btn btn-solid" href="https://github.com/sponsors/Pastheroza" target="_blank" rel="noopener noreferrer" style="width:100%;justify-content:center">Become a sponsor ↗</a></div>
 </div>
 
-<main class="page">
-  <div class="shell">
-    <div class="page-head">
-      <div class="hero-kicker">Support</div>
-      <h1>Keep authorization<em>open, free, and independent.</em></h1>
-      <p class="lede">
-        PRE-GEN is an open protocol, not a product. The specification, the test vectors, and
-        the SDKs are Apache-2.0 — free for anyone to implement, forever. Your support keeps
-        the standard independent and the protection free for the people who need it most.
-      </p>
-      <div class="hero-cta">
-        <a class="btn btn-solid" href="https://github.com/sponsors/Pastheroza" target="_blank" rel="noopener noreferrer">Become a sponsor ↗</a>
-        <a class="btn btn-ghost" href="/contact">Talk to us</a>
-      </div>
-    </div>
+<div class="docs-shell">
+  <aside class="docs-nav">
+    <div class="docs-nav-label">Documentation</div>
+    <a href="/docs">Overview</a>
+    <a href="/docs/pg-code">PG code format</a>
+    <a href="/docs/versions">Versioning</a>
+    <a href="/docs/refusal-codes">Refusal codes</a>
+    <a href="/docs/sdk" class="is-active">SDKs &amp; integration</a>
+    <div class="sep"></div>
+    <a class="ext" href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub — SDKs ↗</a>
+    <a class="ext" href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA/blob/main/openapi.json" target="_blank" rel="noopener noreferrer">OpenAPI contract ↗</a>
+  </aside>
 
-    <div class="page-section">
-      <h2>Why it matters.</h2>
-      <p>
-        Generative AI can already depict anyone — a person, an artist’s style, a brand, a
-        voice — without asking. The people most affected, independent creators and artists,
-        are usually the ones with the least power to fight back. PRE-GEN exists to give them
-        a way to say yes or no <em>before</em> anything is generated, and to prove it
-        cryptographically.
-      </p>
-      <p>
-        For that protection to mean something, the standard has to stay open and neutral:
-        free for anyone to implement, with no vendor lock-in. Openness is cheap to promise
-        and expensive to maintain — documentation, vectors, SDKs, and the registry itself
-        all cost real work. That’s where you come in.
-      </p>
-    </div>
+  <article class="docs-body">
+    <div class="doc-crumb"><a href="/docs">Docs</a> / SDKs &amp; integration</div>
+    <h1>SDKs &amp; integration</h1>
+    <p class="doc-meta">Python: <span class="mono">prampta</span> · TypeScript: <span class="mono">@prampta/sdk</span> · Both Apache-2.0</p>
 
-    <div class="page-section">
-      <h2>Where your support goes.</h2>
-      <div class="grid-3">
-        <div class="card">
-          <div class="card-num">/01</div>
-          <h3>Rights holders first</h3>
-          <p>Registration and the unconditional opt-out stay free for creators, performers,
-          estates, and brands — protection is never a premium feature.</p>
-        </div>
-        <div class="card">
-          <div class="card-num">/02</div>
-          <h3>Open specification work</h3>
-          <p>Keeping the spec, byte-level test vectors, and documentation current and honest —
-          so any provider, in any language, can implement PRE-GEN without paying anyone.</p>
-        </div>
-        <div class="card">
-          <div class="card-num">/03</div>
-          <h3>Open SDKs &amp; conformance</h3>
-          <p>Apache-2.0 SDKs for more languages, and a public conformance suite so a
-          “PRE-GEN compatible” label means something checkable.</p>
-        </div>
-      </div>
-    </div>
+    <p>
+      The SDKs implement the full three-call flow — <strong>detect, verify, prove</strong> —
+      including signature verification against the rotating operator key set and the canonical
+      subject matcher. Both SDKs ship identical matching semantics and replay the same
+      byte-level test vectors.
+    </p>
 
-    <div class="band" style="border-top:1px solid var(--line); margin-top:72px;">
-      <div class="band-in" style="padding-left:0;padding-right:0;">
-        <div>
-          <h2>Every bit helps the standard stay neutral.</h2>
-          <p>Sponsorships fund the open protocol work — not any commercial service. The
-          commercial registry (PRAMPTA) funds itself.</p>
-        </div>
-        <a class="btn btn-solid" href="https://github.com/sponsors/Pastheroza" target="_blank" rel="noopener noreferrer">GitHub Sponsors ↗</a>
-      </div>
+    <h2>Python</h2>
+<pre><code>pip install prampta</code></pre>
+<pre><code>from prampta import Prampta
+
+pg = Prampta(
+    base_url="https://api2.prampta.com",
+    provider_id="your-provider-id",
+    licensee_id="your-licensee-id",
+    token="pair-token",
+)
+
+hits = pg.match_subjects(user_prompt)
+for h in hits:
+    pg.assert_allowed(h["subject_id"], prompt=user_prompt, modality="image")
+# no exception → all matched subjects authorized, proceed with generation</code></pre>
+    <p>
+      <code>assert_allowed</code> raises on any refusal, exposing the structured
+      <code>PG_*</code> code — see <a href="/docs/refusal-codes">Refusal codes</a> for how to
+      react to each class. An async client (<code>AsyncPrampta</code>) mirrors the sync API.
+    </p>
+
+    <h2>TypeScript</h2>
+<pre><code>npm install @prampta/sdk</code></pre>
+<pre><code>import { Prampta } from "@prampta/sdk";
+
+const pg = new Prampta({
+  baseUrl: "https://api2.prampta.com",
+  providerId: "your-provider-id",
+  licenseeId: "your-licensee-id",
+  token: process.env.PRAMPTA_TOKEN,
+});
+
+const hits = await pg.matchSubjects(userPrompt);
+for (const h of hits) {
+  await pg.assertAllowed(h.subject_id, { prompt: userPrompt, modality: "image" });
+}</code></pre>
+
+    <h2>Getting credentials</h2>
+    <p>
+      Provider credentials — a provider id and pair tokens — are issued through
+      <a href="https://prampta.com" target="_blank" rel="noopener noreferrer">prampta.com</a>,
+      the protocol’s first commercial registry. Rights-holder subjects live there too; the
+      sandbox tier verifies against synthetic test subjects only, so you can integrate before
+      touching real licenses.
+    </p>
+
+    <h2>Why integrate</h2>
+    <ul>
+      <li><strong>One call, court-ready proof</strong> — every decision is Ed25519-signed and
+      written to a tamper-evident audit chain. Store it and you can show you had permission.</li>
+      <li><strong>Refusals are structured</strong> — machine-readable codes with hard/soft
+      classification, so your product can offer a license flow, block, or rephrase.</li>
+      <li><strong>Free to integrate</strong> — a few lines before your model runs. The
+      specification and SDKs are Apache-2.0.</li>
+    </ul>
+
+    <h2>API contract</h2>
+    <p>
+      The full wire contract is published as
+      <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA/blob/main/openapi.json" target="_blank" rel="noopener noreferrer">OpenAPI 3.1</a>
+      in the SDK repository, alongside an
+      <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA/blob/main/docs/integration.ru.md" target="_blank" rel="noopener noreferrer">integration guide</a>
+      and runnable examples for both languages.
+    </p>
+
+    <div class="pager">
+      <a href="/docs/refusal-codes"><span class="dir">← PREV</span>Refusal codes</a>
+      <span></span>
     </div>
-  </div>
-</main>
+  </article>
+</div>
 
 <footer class="site-footer">
   <div class="shell">

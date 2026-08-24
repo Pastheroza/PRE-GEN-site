@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#ffffff" />
+<title>PG code format — PRE-GEN Docs</title>
+<meta name="description" content="The PRE-GEN identifier format: Crockford base32, mod-37 check character, frozen as of 2026-08-20. Implement from scratch without reading any registry source." />
+<meta property="og:title" content="PG code — identifier format specification" />
+<meta property="og:type" content="article" />
+<link rel="icon" type="image/png" href="/assets/pregen-logo.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <div class="shell header-in">
+    <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="PRE-GEN" /><span class="brand-name">PRE-GEN</span></a>
+    <nav class="top-nav">
+      <a href="/">Protocol</a>
+      <a href="/docs" class="is-active">Docs</a>
+      <a href="/for-ai">For AI companies</a>
+      <a href="/for-brands">For rights holders</a>
+      <a href="/faq">FAQ</a>
+      <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+    </nav>
+    <div class="header-actions">
+      <button class="theme-toggle" data-theme-toggle aria-label="Toggle theme">
+        <svg class="moon" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M16 11.5A6.5 6.5 0 1 1 8.5 4a5.5 5.5 0 0 0 7.5 7.5z"/></svg>
+        <svg class="sun" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="10" y1="16" x2="10" y2="18"/><line x1="2" y1="10" x2="4" y2="10"/><line x1="16" y1="10" x2="18" y2="10"/><line x1="4.3" y1="4.3" x2="5.7" y2="5.7"/><line x1="14.3" y1="4.3" x2="15.7" y2="5.7"/><line x1="4.3" y1="15.7" x2="5.7" y2="14.3"/><line x1="14.3" y1="5.7" x2="15.7" y2="4.3"/></svg>
+      </button>
+      <a class="btn btn-solid btn-sm" href="/docs/sdk">Integrate</a>
+      <button class="menu-btn" id="menuOpen" aria-label="Open navigation"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
+    </div>
+  </div>
+</header>
+
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="" /><span class="brand-name">PRE-GEN</span></a>
+    <button class="menu-close" id="menuClose" aria-label="Close navigation">✕</button>
+  </div>
+  <nav>
+    <a href="/">Protocol</a>
+    <a href="/docs" class="is-active">Docs</a>
+    <a href="/for-ai">For AI companies</a>
+    <a href="/for-brands">For rights holders</a>
+    <a href="/faq">FAQ</a>
+    <a href="/support">Support</a>
+    <a href="/legal">Legal</a>
+    <a href="/contact">Contact</a>
+    <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+  </nav>
+</div>
+
+<div class="docs-shell">
+  <aside class="docs-nav">
+    <div class="docs-nav-label">Documentation</div>
+    <a href="/docs">Overview</a>
+    <a href="/docs/pg-code" class="is-active">PG code format</a>
+    <a href="/docs/versions">Versioning</a>
+    <a href="/docs/refusal-codes">Refusal codes</a>
+    <a href="/docs/sdk">SDKs &amp; integration</a>
+    <div class="sep"></div>
+    <a class="ext" href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub — SDKs ↗</a>
+  </aside>
+
+  <article class="docs-body">
+    <div class="doc-crumb"><a href="/docs">Docs</a> / PG code format</div>
+    <h1>PG code — identifier format</h1>
+    <p class="doc-meta">Status: <strong>frozen 2026-08-20</strong> · Vectors: <span class="mono">pg_code</span>, vectors v2 · License: Apache-2.0 · Where prose and vectors disagree, <strong>the vectors win</strong>.</p>
+
+    <p>
+      This document specifies the PRE-GEN identifier format completely enough to implement
+      from scratch, without reading any registry source code. A PG code is assigned once and
+      cited forever — in a license, a dispute, a court filing — which is why the format is
+      <strong>frozen</strong>: changing how the check character is computed would invalidate
+      every code already issued, with no way to tell an old-but-valid code from a corrupted one.
+    </p>
+
+    <h2>1 · Two shapes, and only two</h2>
+    <table class="doc-table">
+      <thead><tr><th>Shape</th><th>Example</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">PG-&lt;serial&gt;&lt;check&gt;</td><td class="mono">PG-000042*</td><td>A subject’s permanent registry number</td></tr>
+        <tr><td class="mono">PG-&lt;CLASS&gt;-&lt;serial&gt;-&lt;tail&gt;&lt;check&gt;</td><td class="mono">PG-STD-000001-K7M2QX9</td><td>A license identifier</td></tr>
+      </tbody>
+    </table>
+    <p>
+      A subject code carries no class letters — a subject has no license class; its licenses
+      do. A bare <code>PG-</code> followed by digits is always a subject; <code>PG-</code>
+      followed by letters is always a license.
+    </p>
+    <h3>Historical subject shapes (permanently valid)</h3>
+    <table class="doc-table">
+      <thead><tr><th>Shape</th><th>Era</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">PG-000042*</td><td>current (2026-08-19 onward)</td></tr>
+        <tr><td class="mono">PG-STD-000123</td><td>2026-08 → 2026-08-19 (shared the STD license counter)</td></tr>
+        <tr><td class="mono">PG-SUB-000123</td><td>pre-2026-08 (dedicated SUB counter, retired)</td></tr>
+      </tbody>
+    </table>
+    <p>
+      The two legacy shapes have <strong>no check character</strong> — all digits after the
+      prefix. An implementation must recognize them for resolution and must not attempt to
+      validate a check character on them.
+    </p>
+
+    <h2>2 · Alphabet</h2>
+<pre><code>0123456789ABCDEFGHJKMNPQRSTVWXYZ</code></pre>
+    <p>
+      32 symbols: Crockford base32 — digits plus uppercase Latin letters
+      <strong>excluding <code>I</code>, <code>L</code>, <code>O</code>, <code>U</code></strong>
+      (<code>I</code>/<code>L</code> misread as <code>1</code>, <code>O</code> as <code>0</code>;
+      <code>U</code> excluded by Crockford’s convention). A character’s value is its zero-based
+      index in that string.
+    </p>
+    <h3>Check symbols</h3>
+<pre><code>* ~ $ = !</code></pre>
+    <p>
+      Five symbols, valid <strong>only in the check position</strong>, never inside a body.
+      They exist because the modulus is 37 while the alphabet holds 32 — the five overflow
+      values need somewhere to go (mirroring Crockford’s optional check-symbol convention).
+      All five are URL-path-safe unencoded (RFC 3986). The full check alphabet, indexed 0–36:
+    </p>
+<pre><code>0123456789ABCDEFGHJKMNPQRSTVWXYZ*~$=!</code></pre>
+
+    <h2>3 · Check character</h2>
+    <p>Given a <strong>body</strong> (alphabet characters, dashes removed, no check character):</p>
+<pre><code>sum   = Σ value(body[i]) × (i + 1)    for i = 0 … len(body)−1
+check = CHECK_ALPHABET[ sum mod 37 ]</code></pre>
+    <p>Positions are 1-based weighted left to right. Worked example — body <code>000042</code>:</p>
+    <table class="doc-table">
+      <thead><tr><th>i</th><th>char</th><th>value</th><th>weight</th><th>product</th></tr></thead>
+      <tbody>
+        <tr><td>0</td><td class="mono">0</td><td>0</td><td>1</td><td>0</td></tr>
+        <tr><td>1</td><td class="mono">0</td><td>0</td><td>2</td><td>0</td></tr>
+        <tr><td>2</td><td class="mono">0</td><td>0</td><td>3</td><td>0</td></tr>
+        <tr><td>3</td><td class="mono">0</td><td>0</td><td>4</td><td>0</td></tr>
+        <tr><td>4</td><td class="mono">4</td><td>4</td><td>5</td><td>20</td></tr>
+        <tr><td>5</td><td class="mono">2</td><td>2</td><td>6</td><td>12</td></tr>
+      </tbody>
+    </table>
+    <p><code>sum = 32</code>, <code>32 mod 37 = 32</code>, <code>CHECK_ALPHABET[32] = '*'</code> → <code>PG-000042*</code>.</p>
+
+    <h3>Why 37 and not 32</h3>
+    <p>
+      32 is composite (2⁵): a weighted sum modulo a composite has zero divisors. Brute-forcing
+      a naive mod-32 variant over every single-character substitution in a 13-symbol body left
+      roughly <strong>4% of substitutions undetected</strong> — collisions by construction, not
+      bad luck. 37 is the next prime at or above the alphabet size: the difference any
+      substitution makes is <code>weight × delta mod 37</code>, which can only be 0 if the
+      weight itself is 0 mod 37 — no position weight here ever is.
+    </p>
+    <p><strong>Guarantees</strong> (verified by exhaustive brute force, not asserted):</p>
+    <ul>
+      <li>every single-character substitution changes the check character;</li>
+      <li>every adjacent transposition of two <em>different</em> characters changes it.</li>
+    </ul>
+    <p>Transposing two identical characters changes nothing — correctly, since it changes no code.</p>
+
+    <h3>What the check covers</h3>
+    <table class="doc-table">
+      <thead><tr><th>Code</th><th>Body fed to the algorithm</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">PG-000042*</td><td class="mono">000042</td></tr>
+        <tr><td class="mono">PG-STD-000001-K7M2QX9</td><td class="mono">STD000001K7M2QX</td></tr>
+      </tbody>
+    </table>
+    <p>Class letters are part of the body — a wrong class is as much “a wrong code” as a wrong
+    serial. The literal <code>PG-</code> prefix is not: it is a fixed marker, identical in every code.</p>
+
+    <h2>4 · Subject codes</h2>
+<pre><code>PG-&lt;serial, zero-padded to at least 6 digits&gt;&lt;check&gt;</code></pre>
+    <p>
+      The serial comes from a registry-wide counter, padded to a <strong>minimum</strong> of 6
+      digits — six is not a maximum: serial 1 234 567 renders as <code>1234567</code> and stays
+      valid. Implementations must not assume a fixed length.
+    </p>
+    <table class="doc-table">
+      <thead><tr><th>Serial</th><th>Code</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td class="mono">PG-0000016</td></tr>
+        <tr><td>42</td><td class="mono">PG-000042*</td></tr>
+        <tr><td>99999</td><td class="mono">PG-099999*</td></tr>
+        <tr><td>999999</td><td class="mono">PG-9999994</td></tr>
+        <tr><td>1000000</td><td class="mono">PG-10000001</td></tr>
+        <tr><td>12345678</td><td class="mono">PG-12345678K</td></tr>
+      </tbody>
+    </table>
+
+    <h2>5 · License identifiers</h2>
+<pre><code>PG-&lt;CLASS&gt;-&lt;subject serial, ≥6 digits&gt;-&lt;tail&gt;&lt;check&gt;</code></pre>
+    <ul>
+      <li><strong>CLASS</strong> — three letters. Currently <code>STD</code>, <code>RND</code>, <code>PRM</code>.</li>
+      <li><strong>subject serial</strong> — the serial of the subject the license is for, so an
+      id names its subject without a lookup.</li>
+      <li><strong>tail</strong> — 6 random alphabet characters from a cryptographically secure
+      source. Random, not sequential, so the number of licenses on one subject cannot be
+      inferred from an id.</li>
+    </ul>
+    <table class="doc-table">
+      <thead><tr><th>Class</th><th>Serial</th><th>Tail</th><th>License id</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">STD</td><td>1</td><td class="mono">K7M2QX</td><td class="mono">PG-STD-000001-K7M2QX9</td></tr>
+        <tr><td class="mono">RND</td><td>42</td><td class="mono">ZZZZZZ</td><td class="mono">PG-RND-000042-ZZZZZZ1</td></tr>
+        <tr><td class="mono">PRM</td><td>999999</td><td class="mono">000000</td><td class="mono">PG-PRM-999999-0000000</td></tr>
+      </tbody>
+    </table>
+    <div class="callout">
+      <span class="mono">Retired forever</span>
+      A class code that has ever appeared in an issued license id is never re-admitted and
+      never given a different meaning. Currently retired: <code>EDT</code>, <code>EST</code>,
+      <code>ENT</code>, <code>PER</code>, <code>OWN</code>. A code whose meaning depends on when
+      it was issued defeats the point of a permanent citation.
+    </div>
+
+    <h2>6 · Resolution rules</h2>
+    <ul>
+      <li><strong>Case-insensitive.</strong> <code>pg-000042*</code> and <code>PG-000042*</code>
+      are the same code; canonical form is uppercase. People retype these from screenshots.</li>
+      <li><strong>Whitespace is stripped</strong> before matching.</li>
+      <li>A code whose check character fails must be reported as <strong>mistyped</strong>,
+      distinctly from <strong>not found</strong> — the two mean different things to whoever
+      holds the code.</li>
+    </ul>
+
+    <h2>7 · The load-bearing rule: resolved, never parsed</h2>
+    <p>
+      <strong>An identifier is resolved by database lookup. It is never parsed to extract
+      meaning.</strong> The serial inside a license id exists so a human can see which subject
+      it belongs to — not so software can <code>split('-')</code> and skip the lookup. Anything
+      derived by parsing becomes wrong, silently, the moment the format widens (a 7-digit
+      serial, a future issuer prefix). The reference implementation enforces this on itself
+      with a repository-wide guard test that fails the build if any code path starts slicing an id.
+    </p>
+
+    <h2>8 · Room left for the future</h2>
+    <p>Two extensions are possible <strong>without invalidating any issued code</strong>:</p>
+    <ol>
+      <li><strong>Longer serials</strong> — the pad width is a minimum; nothing breaks at a
+      million subjects.</li>
+      <li><strong>A second issuer</strong> — if PRE-GEN is ever operated by more than one
+      registry, <code>PG-&lt;ISSUER&gt;-&lt;serial&gt;&lt;check&gt;</code> can be defined for
+      other issuers while a bare <code>PG-&lt;serial&gt;&lt;check&gt;</code> permanently means
+      the origin registry. No collision with the legacy shapes: those are all-digits and carry
+      no check character.</li>
+    </ol>
+    <p>Neither is implemented today; both are recorded so a future implementer sees the format
+    was designed with the room.</p>
+
+    <h2>9 · Conformance</h2>
+    <p>An implementation conforms if it reproduces every case in the <code>pg_code</code>
+    section of the test vectors:</p>
+    <ul>
+      <li><code>check_char</code> — all 37 possible outputs, including all five overflow symbols;</li>
+      <li><code>subject_code</code> — serials spanning the 6-digit boundary in both directions;</li>
+      <li><code>license_id</code> — every current class, plus a serial past the pad width;</li>
+      <li><code>rejects</code> — corrupted codes that <strong>must</strong> fail verification.</li>
+    </ul>
+    <p>
+      Vectors live in the SDK repository:
+      <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA/blob/main/spec/test-vectors/vectors.json" target="_blank" rel="noopener noreferrer"><code>spec/test-vectors/vectors.json</code></a>.
+      Regenerate only after an intentional format change — the generator is deterministic, so
+      a noisy diff means the format moved.
+    </p>
+
+    <div class="pager">
+      <a href="/docs"><span class="dir">← PREV</span>Overview</a>
+      <a href="/docs/versions"><span class="dir">NEXT →</span>Versioning</a>
+    </div>
+  </article>
+</div>
+
+<footer class="site-footer">
+  <div class="shell">
+    <div class="footer-in">
+      <div class="footer-brand">
+        <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="" /><span class="brand-name">PRE-GEN</span></a>
+        <p>Authorization before generation. An open protocol for consent in generative AI.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Protocol</h4>
+        <a href="/docs">Overview</a>
+        <a href="/docs/pg-code">PG code format</a>
+        <a href="/docs/versions">Versioning</a>
+        <a href="/docs/refusal-codes">Refusal codes</a>
+        <a href="/docs/sdk">SDKs</a>
+      </div>
+      <div class="footer-col">
+        <h4>Project</h4>
+        <a href="/for-ai">For AI companies</a>
+        <a href="/for-brands">For rights holders</a>
+        <a href="/faq">FAQ</a>
+        <a href="/support">Support</a>
+      </div>
+      <div class="footer-col">
+        <h4>Elsewhere</h4>
+        <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub — SDKs ↗</a>
+        <a href="https://prampta.com" target="_blank" rel="noopener noreferrer">PRAMPTA (registry) ↗</a>
+        <a href="/contact">Contact</a>
+        <a href="/legal">Legal</a>
+      </div>
+    </div>
+    <div class="footer-base">
+      <span>© 2026 PRE-GEN Foundation project. Specification under Apache-2.0.</span>
+      <span class="mono">pregen.org</span>
+    </div>
+  </div>
+</footer>
+
+<div class="cookie-banner" id="cookieBanner">
+  <div class="cookie-inner">
+    <div class="cookie-text">We store only your theme preference. Read our <a href="/legal">privacy policy</a>.</div>
+    <div class="cookie-buttons">
+      <button class="cookie-btn" data-cookie="necessary">Necessary only</button>
+      <button class="cookie-btn cookie-btn--accept" data-cookie="all">Accept</button>
+    </div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
