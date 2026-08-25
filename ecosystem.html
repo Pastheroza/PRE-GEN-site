@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0a0a0a" />
+<title>Ecosystem — PRE-GEN</title>
+<meta name="description" content="Who does what in the PRE-GEN ecosystem: rights holders, registry operators, AI providers, creative productions, and verifiers — and how PRE-GEN sits against RSL and C2PA." />
+<meta property="og:title" content="PRE-GEN — Ecosystem" />
+<meta property="og:image" content="https://www.pregen.org/assets/og-image.png" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://www.pregen.org/ecosystem" />
+<link rel="icon" type="image/png" href="/assets/pregen-logo.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400..500&display=swap" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <div class="shell header-in">
+    <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="PRE-GEN" /><span class="brand-name">PRE-GEN</span></a>
+    <nav class="top-nav">
+      <a href="/">Protocol</a>
+      <a href="/docs">Docs</a>
+      <a href="/ecosystem" class="is-active">Ecosystem</a>
+      <a href="/for-ai">For AI companies</a>
+      <a href="/for-brands">For rights holders</a>
+      <a href="/faq">FAQ</a>
+      <a href="/lookup">Lookup</a>
+      <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+    </nav>
+    <div class="header-actions">
+      <a class="btn btn-solid btn-sm" href="/docs/sdk">Integrate</a>
+      <button class="menu-btn" id="menuOpen" aria-label="Open navigation"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
+    </div>
+  </div>
+</header>
+
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="" /><span class="brand-name">PRE-GEN</span></a>
+    <button class="menu-close" id="menuClose" aria-label="Close navigation">✕</button>
+  </div>
+  <nav>
+    <a href="/">Protocol</a>
+    <a href="/docs">Docs</a>
+    <a href="/ecosystem" class="is-active">Ecosystem</a>
+    <a href="/for-ai">For AI companies</a>
+    <a href="/for-brands">For rights holders</a>
+    <a href="/faq">FAQ</a>
+    <a href="/lookup">Lookup</a>
+    <a href="/support">Support</a>
+    <a href="/legal">Legal</a>
+    <a href="/contact">Contact</a>
+    <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+  </nav>
+</div>
+
+<main class="page">
+  <div class="shell">
+    <div class="page-head">
+      <div class="hero-kicker">Ecosystem</div>
+      <h1>One protocol,<em>every seat at the table.</em></h1>
+      <p class="lede">
+        PRE-GEN is not a product — it is a division of labor. Five kinds of participants,
+        five signed objects moving between them, and one shared outcome: AI-generated content
+        that arrives with its permissions attached.
+      </p>
+    </div>
+
+    <div class="page-section">
+      <h2>Who does what.</h2>
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-num">RIGHTS HOLDERS</div>
+          <h3>The source of permission</h3>
+          <p>Actors, public figures, brands, estates, voice owners, style holders. They register
+          subjects, set terms and tiers, approve or refuse license requests — or file an
+          unconditional opt-out. Their cryptographic key signs the license; nothing moves
+          without it.</p>
+        </div>
+        <div class="card">
+          <div class="card-num">REGISTRY OPERATORS</div>
+          <h3>The neutral counterparty</h3>
+          <p>Run the registry: assign PG codes, sign every allow/deny decision, keep the
+          hash-chained audit log, resolve disputes, verify rights-holder identity.
+          <strong>PRAMPTA</strong> is the first commercial operator — the specification is
+          operator-agnostic, and anyone may run one.</p>
+        </div>
+        <div class="card">
+          <div class="card-num">AI PROVIDERS</div>
+          <h3>The ones who must ask</h3>
+          <p>Model companies, voice platforms, image and video generators. They implement the
+          three-call flow — detect, verify, prove — and keep the signed decisions. Compliance
+          becomes a property of their pipeline, not of their promises.</p>
+        </div>
+        <div class="card">
+          <div class="card-num">CREATIVE PRODUCTIONS</div>
+          <h3>The buyers of certainty</h3>
+          <p>Film and TV studios, advertising agencies, game studios using generative tools.
+          They need a clean <strong>chain of title</strong> for AI-generated scenes: E&amp;O
+          insurers, distributors, and broadcasters require documented rights — not vibes.
+          PRE-GEN output is that documentation.</p>
+        </div>
+        <div class="card">
+          <div class="card-num">VERIFIERS</div>
+          <h3>The trust check</h3>
+          <p>Platforms, insurers, courts, journalists, anyone. They verify evidence bundles
+          offline, resolve PG codes publicly at <a href="/lookup">/lookup</a>, and read
+          embedded assertions inside C2PA manifests — years later, without trusting anyone’s
+          word for it.</p>
+        </div>
+        <div class="card">
+          <div class="card-num">THE SPEC</div>
+          <h3>The referee</h3>
+          <p>Apache-2.0, byte-level test vectors, frozen identifier format. No single company
+          owns the protocol — including us. Operators compete on service; the rules stay
+          open.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-section">
+      <h2>How an authorized generation flows.</h2>
+      <p>
+        One scene in a film, generated with a licensed actor’s likeness. Six moves, five
+        signed objects, zero ambiguity afterwards.
+      </p>
+      <div class="eco-flow">
+        <div class="eco-step"><span class="n">01</span><div><strong>Register.</strong> The actor registers a subject on a registry. PG code <span class="mono">PG-000042*</span> assigned — permanent, check-summed.</div></div>
+        <div class="eco-step"><span class="n">02</span><div><strong>License.</strong> The production requests a license; the actor approves. Scoped: film title, territory, media, time window. Signed by both sides. <span class="mono">pg.license.v2</span></div></div>
+        <div class="eco-step"><span class="n">03</span><div><strong>Ask.</strong> The studio’s generative pipeline detects the subject in a prompt and calls <span class="mono">/v1/verify/</span>. Signed decision comes back: allowed. <span class="mono">pg.decision.v1</span></div></div>
+        <div class="eco-step"><span class="n">04</span><div><strong>Generate &amp; prove.</strong> The scene is produced; the provider files a receipt tying the output to the decision. <span class="mono">pg.receipt.v2</span></div></div>
+        <div class="eco-step"><span class="n">05</span><div><strong>Attach.</strong> A PRE-GEN assertion is embedded into the scene’s C2PA manifest — the permission travels inside the file. <span class="mono">pg.assertion.v1</span></div></div>
+        <div class="eco-step"><span class="n">06</span><div><strong>Clear.</strong> The studio exports the evidence bundle — decision, license, audit chain — into the chain-of-title file for insurers and distributors. <span class="mono">pg.evidence.v1</span></div></div>
+      </div>
+    </div>
+
+    <div class="page-section">
+      <h2>Where PRE-GEN sits — and why RSL and C2PA are not it.</h2>
+      <p>
+        The honest map of the AI-trust stack has three layers, and they answer different
+        questions. PRE-GEN does not compete with the other two; it completes them.
+      </p>
+      <table class="doc-table eco-table">
+        <thead><tr><th></th><th>RSL</th><th>C2PA / watermarking</th><th>PRE-GEN</th></tr></thead>
+        <tbody>
+          <tr><td class="eco-q">Question answered</td><td>“May AI crawl or train on my website?”</td><td>“Who made this, and when?”</td><td>“Was <strong>this generation</strong> authorized — before it happened?”</td></tr>
+          <tr><td class="eco-q">Layer</td><td>Input — training &amp; crawl access</td><td>Output — provenance marking</td><td>Authorization — pre-generation consent</td></tr>
+          <tr><td class="eco-q">Instrument</td><td>License terms declared in <span class="mono">robots.txt</span> / <span class="mono">rsl.txt</span></td><td>Signed manifest inside the file</td><td>Ed25519-signed decision + scoped license + hash-chained audit</td></tr>
+          <tr><td class="eco-q">Likeness, voice, brand?</td><td>No — copyright-centric; right of publicity is out of scope</td><td>No — labels origin, not permission</td><td>Yes — subjects are people, voices, brands, styles, estates</td></tr>
+          <tr><td class="eco-q">Per-use proof</td><td>No — self-published terms, no per-use record</td><td>Provenance only</td><td>Yes — every generation leaves a signed, verifiable trail</td></tr>
+        </tbody>
+      </table>
+      <p>
+        <strong>“Why not just RSL?”</strong> Because RSL answers a question PRE-GEN doesn’t ask:
+        whether a crawler may read your pages to train a model. It has no concept of a person,
+        a likeness, a scoped film license, or a signed per-generation decision — and it cannot
+        hand a studio a chain-of-title file. The reverse is also true: PRE-GEN does not govern
+        crawlers. A complete stack uses both — RSL for the training layer, PRE-GEN for the
+        generation layer. And where RSL <em>declares</em> terms for machines to read, PRE-GEN
+        <em>executes</em> them: scoped tiers, auto-approval, license requests, and a signed
+        answer per use.
+      </p>
+    </div>
+
+    <div class="page-section">
+      <h2>Why the split between spec and operator matters.</h2>
+      <p>
+        PRE-GEN is an open specification; PRAMPTA is its first commercial registry. That
+        separation is deliberate. If a studio’s legal department distrusts one operator, the
+        protocol outlives that distrust — anyone can run a competing registry, and the signed
+        objects verify the same way. Trust attaches to signatures and audit chains, not to a
+        company’s word.
+      </p>
+    </div>
+
+    <div class="band" style="border-top:1px solid var(--line); margin-top:72px;">
+      <div class="band-in" style="padding-left:0;padding-right:0;">
+        <div>
+          <h2>Take a seat.</h2>
+          <p>
+            Rights holders register free on PRAMPTA. Providers integrate via SDK. Studios start
+            collecting chain-of-title evidence on the next production.
+          </p>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <a class="btn btn-solid" href="https://prampta.com" target="_blank" rel="noopener noreferrer">PRAMPTA registry ↗</a>
+          <a class="btn btn-ghost" href="/docs/sdk">Read the integration docs</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="shell">
+    <div class="footer-in">
+      <div class="footer-brand">
+        <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="" /><span class="brand-name">PRE-GEN</span></a>
+        <p>Authorization before generation. An open protocol for consent in generative AI.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Protocol</h4>
+        <a href="/docs">Overview</a>
+        <a href="/docs/pg-code">PG code format</a>
+        <a href="/docs/versions">Versioning</a>
+        <a href="/docs/refusal-codes">Refusal codes</a>
+        <a href="/docs/sdk">SDKs</a>
+        <a href="/lookup">Resolve a PG code</a>
+      </div>
+      <div class="footer-col">
+        <h4>Project</h4>
+        <a href="/ecosystem">Ecosystem</a>
+        <a href="/for-ai">For AI companies</a>
+        <a href="/for-brands">For rights holders</a>
+        <a href="/faq">FAQ</a>
+        <a href="/support">Support</a>
+      </div>
+      <div class="footer-col">
+        <h4>Elsewhere</h4>
+        <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub — SDKs ↗</a>
+        <a href="https://prampta.com" target="_blank" rel="noopener noreferrer">PRAMPTA (registry) ↗</a>
+        <a href="/contact">Contact</a>
+        <a href="/legal">Legal</a>
+      </div>
+    </div>
+    <div class="footer-base">
+      <span>© 2026 PRE-GEN Foundation project. Specification under Apache-2.0. · <a href="#" data-cookie-reset>Cookie settings</a></span>
+      <span class="mono">pregen.org</span>
+    </div>
+    <p class="footer-disclaimer">PRE-GEN is an independent open protocol. It is not owned or operated by PRAMPTA Corporation.</p>
+  </div>
+</footer>
+
+<div class="cookie-banner" id="cookieBanner">
+  <div class="cookie-inner">
+    <div class="cookie-text">We store only your cookie choice. Read our <a href="/legal">privacy policy</a>.</div>
+    <div class="cookie-buttons">
+      <button class="cookie-btn" data-cookie="necessary">Necessary only</button>
+      <button class="cookie-btn cookie-btn--accept" data-cookie="all">Accept</button>
+    </div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
