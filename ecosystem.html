@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#0a0a0a" />
 <title>Ecosystem — PRE-GEN</title>
-<meta name="description" content="Who does what in the PRE-GEN ecosystem: rights holders, registry operators, AI providers, creative productions, and verifiers — and how PRE-GEN sits against RSL and C2PA." />
+<meta name="description" content="The PRE-GEN ecosystem: the protocol, the registry operator (PRAMPTA), copyright owners, AI providers, and creative studios — who does what, and what each role gets." />
 <meta property="og:title" content="PRE-GEN — Ecosystem" />
 <meta property="og:image" content="https://www.pregen.org/assets/og-image.png" />
 <meta property="og:type" content="website" />
@@ -63,76 +63,89 @@
   <div class="shell">
     <div class="page-head">
       <div class="hero-kicker">Ecosystem</div>
-      <h1>One protocol,<em>every seat at the table.</em></h1>
+      <h1>Five roles,<em>one contract.</em></h1>
       <p class="lede">
-        PRE-GEN is not a product — it is a division of labor. Five kinds of participants,
-        five signed objects moving between them, and one shared outcome: AI-generated content
-        that arrives with its permissions attached.
+        PRE-GEN works because each participant does one thing well. The protocol defines the
+        rules. A registry operator runs the infrastructure. Copyright owners set the terms.
+        AI providers ask before they generate. Creative studios get content with its rights
+        attached. Here is exactly what each role does — and what it gets back.
       </p>
     </div>
 
     <div class="page-section">
-      <h2>Who does what.</h2>
+      <h2>The roles.</h2>
       <div class="grid-3">
         <div class="card">
-          <div class="card-num">RIGHTS HOLDERS</div>
-          <h3>The source of permission</h3>
-          <p>Actors, public figures, brands, estates, voice owners, style holders. They register
-          subjects, set terms and tiers, approve or refuse license requests — or file an
-          unconditional opt-out. Their cryptographic key signs the license; nothing moves
-          without it.</p>
+          <div class="card-num">THE PROTOCOL</div>
+          <h3>PRE-GEN</h3>
+          <p><strong>Role:</strong> the rulebook. Defines PG identifiers, the five signed
+          objects (license, decision, receipt, evidence bundle, assertion), and byte-level
+          test vectors every implementation must pass.</p>
+          <p><strong>What it gives everyone:</strong> one contract. Any registry, any provider,
+          any studio — same rules, same verification, no bespoke integrations. Open
+          specification under Apache-2.0, owned by no one.</p>
         </div>
         <div class="card">
-          <div class="card-num">REGISTRY OPERATORS</div>
-          <h3>The neutral counterparty</h3>
-          <p>Run the registry: assign PG codes, sign every allow/deny decision, keep the
-          hash-chained audit log, resolve disputes, verify rights-holder identity.
-          <strong>PRAMPTA</strong> is the first commercial operator — the specification is
-          operator-agnostic, and anyone may run one.</p>
+          <div class="card-num">REGISTRY OPERATOR</div>
+          <h3>PRAMPTA</h3>
+          <p><strong>Role:</strong> runs the infrastructure. Verifies rights-holder identity,
+          assigns PG codes, signs every allow/deny decision, keeps the hash-chained audit
+          log, resolves disputes, issues provider credentials.</p>
+          <p><strong>What it gives:</strong> you never run a server to use the protocol —
+          rights holders register, providers get keys, studios get evidence. And the spec
+          stays operator-agnostic: PRAMPTA is the first, not the only.</p>
+        </div>
+        <div class="card">
+          <div class="card-num">COPYRIGHT OWNERS</div>
+          <h3>Actors, musicians, brands, estates</h3>
+          <p><strong>Role:</strong> the source of every permission. Register a subject once,
+          set the terms — tiers, scopes, prices — or file a free unconditional opt-out.</p>
+          <p><strong>What they get:</strong> every compliant AI asks before it generates.
+          Authorized uses pay on their terms; unauthorized uses are provable. No monitoring
+          burden — the ask happens automatically, at generation time.</p>
         </div>
         <div class="card">
           <div class="card-num">AI PROVIDERS</div>
-          <h3>The ones who must ask</h3>
-          <p>Model companies, voice platforms, image and video generators. They implement the
-          three-call flow — detect, verify, prove — and keep the signed decisions. Compliance
-          becomes a property of their pipeline, not of their promises.</p>
+          <h3>Model &amp; platform companies</h3>
+          <p><strong>Role:</strong> the ones who must ask. Image, video, and voice generators
+          integrate the three-call flow — detect subjects in prompts, verify, keep the signed
+          decision.</p>
+          <p><strong>What they get:</strong> a legal shield three calls deep. Per-generation
+          proof of authorization, structured refusals instead of silent risk, and an audit
+          trail built for the regulator era.</p>
         </div>
         <div class="card">
-          <div class="card-num">CREATIVE PRODUCTIONS</div>
-          <h3>The buyers of certainty</h3>
-          <p>Film and TV studios, advertising agencies, game studios using generative tools.
-          They need a clean <strong>chain of title</strong> for AI-generated scenes: E&amp;O
-          insurers, distributors, and broadcasters require documented rights — not vibes.
-          PRE-GEN output is that documentation.</p>
+          <div class="card-num">CREATIVE STUDIOS</div>
+          <h3>Film, TV, advertising, games</h3>
+          <p><strong>Role:</strong> the ones who ship AI content into the world. Their
+          pipelines call PRE-GEN before generating, collect the signed objects per scene, and
+          export evidence bundles into production paperwork.</p>
+          <p><strong>What they get:</strong> chain of title on autopilot. E&amp;O insurers and
+          distributors receive documentation, not promises — and content stays shippable as
+          disclosure rules tighten.</p>
         </div>
         <div class="card">
-          <div class="card-num">VERIFIERS</div>
-          <h3>The trust check</h3>
-          <p>Platforms, insurers, courts, journalists, anyone. They verify evidence bundles
-          offline, resolve PG codes publicly at <a href="/lookup">/lookup</a>, and read
-          embedded assertions inside C2PA manifests — years later, without trusting anyone’s
-          word for it.</p>
-        </div>
-        <div class="card">
-          <div class="card-num">THE SPEC</div>
-          <h3>The referee</h3>
-          <p>Apache-2.0, byte-level test vectors, frozen identifier format. No single company
-          owns the protocol — including us. Operators compete on service; the rules stay
-          open.</p>
+          <div class="card-num">ANYONE</div>
+          <h3>Verifiers</h3>
+          <p><strong>Role:</strong> check the work. Platforms, insurers, courts, journalists —
+          anyone can resolve a PG code at <a href="/lookup">/lookup</a>, verify signatures
+          against public keys, and walk the audit chain offline.</p>
+          <p><strong>What they get:</strong> trust that doesn’t depend on anyone’s word.
+          The math and the audit chain are the witness.</p>
         </div>
       </div>
     </div>
 
     <div class="page-section">
-      <h2>How an authorized generation flows.</h2>
+      <h2>How it works together.</h2>
       <p>
         One scene in a film, generated with a licensed actor’s likeness. Six moves, five
         signed objects, zero ambiguity afterwards.
       </p>
       <div class="eco-flow">
-        <div class="eco-step"><span class="n">01</span><div><strong>Register.</strong> The actor registers a subject on a registry. PG code <span class="mono">PG-000042*</span> assigned — permanent, check-summed.</div></div>
-        <div class="eco-step"><span class="n">02</span><div><strong>License.</strong> The production requests a license; the actor approves. Scoped: film title, territory, media, time window. Signed by both sides. <span class="mono">pg.license.v2</span></div></div>
-        <div class="eco-step"><span class="n">03</span><div><strong>Ask.</strong> The studio’s generative pipeline detects the subject in a prompt and calls <span class="mono">/v1/verify/</span>. Signed decision comes back: allowed. <span class="mono">pg.decision.v1</span></div></div>
+        <div class="eco-step"><span class="n">01</span><div><strong>Register.</strong> The actor registers a subject with the registry. PG code <span class="mono">PG-000042*</span> assigned — permanent, check-summed, cited forever.</div></div>
+        <div class="eco-step"><span class="n">02</span><div><strong>License.</strong> The production requests a license; the actor approves. Scoped: film title, territory, media, time window. Signed by the owner, countersigned by the registry. <span class="mono">pg.license.v2</span></div></div>
+        <div class="eco-step"><span class="n">03</span><div><strong>Ask.</strong> The studio’s generative pipeline detects the subject in a prompt and calls <span class="mono">/v1/verify/</span>. A signed decision comes back: allowed. <span class="mono">pg.decision.v1</span></div></div>
         <div class="eco-step"><span class="n">04</span><div><strong>Generate &amp; prove.</strong> The scene is produced; the provider files a receipt tying the output to the decision. <span class="mono">pg.receipt.v2</span></div></div>
         <div class="eco-step"><span class="n">05</span><div><strong>Attach.</strong> A PRE-GEN assertion is embedded into the scene’s C2PA manifest — the permission travels inside the file. <span class="mono">pg.assertion.v1</span></div></div>
         <div class="eco-step"><span class="n">06</span><div><strong>Clear.</strong> The studio exports the evidence bundle — decision, license, audit chain — into the chain-of-title file for insurers and distributors. <span class="mono">pg.evidence.v1</span></div></div>
@@ -140,30 +153,21 @@
     </div>
 
     <div class="page-section">
-      <h2>Where PRE-GEN sits — and why RSL and C2PA are not it.</h2>
+      <h2>Why PRE-GEN exists.</h2>
       <p>
-        The honest map of the AI-trust stack has three layers, and they answer different
-        questions. PRE-GEN does not compete with the other two; it completes them.
+        Generation got cheap. Permission didn’t. An AI-generated face, voice, or brand in a
+        film is a legal event: someone owns that likeness, and “the model made it” has never
+        been a defense.
       </p>
-      <table class="doc-table eco-table">
-        <thead><tr><th></th><th>RSL</th><th>C2PA / watermarking</th><th>PRE-GEN</th></tr></thead>
-        <tbody>
-          <tr><td class="eco-q">Question answered</td><td>“May AI crawl or train on my website?”</td><td>“Who made this, and when?”</td><td>“Was <strong>this generation</strong> authorized — before it happened?”</td></tr>
-          <tr><td class="eco-q">Layer</td><td>Input — training &amp; crawl access</td><td>Output — provenance marking</td><td>Authorization — pre-generation consent</td></tr>
-          <tr><td class="eco-q">Instrument</td><td>License terms declared in <span class="mono">robots.txt</span> / <span class="mono">rsl.txt</span></td><td>Signed manifest inside the file</td><td>Ed25519-signed decision + scoped license + hash-chained audit</td></tr>
-          <tr><td class="eco-q">Likeness, voice, brand?</td><td>No — copyright-centric; right of publicity is out of scope</td><td>No — labels origin, not permission</td><td>Yes — subjects are people, voices, brands, styles, estates</td></tr>
-          <tr><td class="eco-q">Per-use proof</td><td>No — self-published terms, no per-use record</td><td>Provenance only</td><td>Yes — every generation leaves a signed, verifiable trail</td></tr>
-        </tbody>
-      </table>
       <p>
-        <strong>“Why not just RSL?”</strong> Because RSL answers a question PRE-GEN doesn’t ask:
-        whether a crawler may read your pages to train a model. It has no concept of a person,
-        a likeness, a scoped film license, or a signed per-generation decision — and it cannot
-        hand a studio a chain-of-title file. The reverse is also true: PRE-GEN does not govern
-        crawlers. A complete stack uses both — RSL for the training layer, PRE-GEN for the
-        generation layer. And where RSL <em>declares</em> terms for machines to read, PRE-GEN
-        <em>executes</em> them: scoped tiers, auto-approval, license requests, and a signed
-        answer per use.
+        Until now there was no standard way to <strong>ask</strong>, <strong>grant</strong>,
+        and <strong>prove</strong> permission for one specific generation. Contracts live in
+        inboxes. Consent disputes live in court. The burden of proof lands on whoever
+        generated — months later, with nothing but a vendor’s word.
+      </p>
+      <p>
+        PRE-GEN makes permission a protocol: asked by machines, granted on the owner’s terms,
+        verifiable by anyone — before the pixel exists, and for decades after.
       </p>
     </div>
 
@@ -178,8 +182,8 @@
       </p>
     </div>
 
-    <div class="band" style="border-top:1px solid var(--line); margin-top:72px;">
-      <div class="band-in" style="padding-left:0;padding-right:0;">
+    <div class="band" style="border:1px solid var(--line); margin-top:72px;">
+      <div class="band-in" style="padding:56px 40px;">
         <div>
           <h2>Take a seat.</h2>
           <p>

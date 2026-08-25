@@ -44,7 +44,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 }
 .header-in { display: flex; align-items: center; gap: 28px; height: 60px; }
 .brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-.brand-mark { width: 26px; height: 26px; object-fit: contain; }
+.brand-mark { width: 32px; height: 32px; object-fit: contain; }
 .brand-name { font-weight: 600; letter-spacing: .04em; font-size: 15px; }
 .brand-name em { font-style: normal; color: var(--fg-3); font-weight: 400; }
 
