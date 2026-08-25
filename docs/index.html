@@ -7,11 +7,12 @@
 <title>Protocol overview — PRE-GEN Docs</title>
 <meta name="description" content="The PRE-GEN crypto invariant: canonical JSON, SHA-256, Ed25519. What every implementation must agree on, byte for byte." />
 <meta property="og:title" content="PRE-GEN protocol overview" />
+<meta property="og:image" content="https://www.pregen.org/assets/og-image.png" />
 <meta property="og:type" content="article" />
 <link rel="icon" type="image/png" href="/assets/pregen-logo.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400..500&display=swap" />
 <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
@@ -112,7 +113,7 @@
 <pre><code>canonical_json(obj) = UTF8( json.dumps(obj,
     sort_keys=True, separators=(",", ":"), ensure_ascii=False) )
 
-signature = Ed25519.sign( SHA256? no — sign(canonical_json(body minus signature)) )
+signature = Ed25519.sign( canonical_json(body minus signature) )
 key_fingerprint = "pg-ed25519:" + hex( SHA256(raw 32-byte public key) )[0:32]</code></pre>
 
     <h2>Signed objects</h2>
@@ -200,7 +201,7 @@ key_fingerprint = "pg-ed25519:" + hex( SHA256(raw 32-byte public key) )[0:32]</c
       </div>
     </div>
     <div class="footer-base">
-      <span>© 2026 PRE-GEN Foundation project. Specification under Apache-2.0.</span>
+      <span>© 2026 PRE-GEN Foundation project. Specification under Apache-2.0. · <a href="#" data-cookie-reset>Cookie settings</a></span>
       <span class="mono">pregen.org</span>
     </div>
   </div>

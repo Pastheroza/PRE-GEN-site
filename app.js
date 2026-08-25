@@ -46,6 +46,15 @@
     });
   }
 
+  /* Footer link: clear consent choice and reopen the banner */
+  document.querySelectorAll("[data-cookie-reset]").forEach(function (link) {
+    link.addEventListener("click", function (e) {
+      e.preventDefault();
+      try { localStorage.removeItem("pp-cookies"); } catch (err) {}
+      if (banner) banner.classList.add("show");
+    });
+  });
+
   /* FAQ accordions */
   document.querySelectorAll(".faq-q").forEach(function (q) {
     q.addEventListener("click", function () {

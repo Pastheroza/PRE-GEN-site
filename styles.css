@@ -1,5 +1,5 @@
 /* PRE-GEN Foundation — pregen.org
-   Monochrome design system. Sharp corners. Inter + JetBrains Mono. */
+   Monochrome design system. Sharp corners. Geist + Geist Mono. */
 
 :root {
   --bg:        #ffffff;
@@ -33,7 +33,7 @@ html { scroll-behavior: smooth; }
 body {
   background: var(--bg);
   color: var(--fg);
-  font-family: "Inter", -apple-system, "Segoe UI", sans-serif;
+  font-family: "Geist", -apple-system, "Segoe UI", sans-serif;
   font-size: 16px;
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
@@ -44,7 +44,7 @@ a { color: inherit; text-decoration: none; }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
 
 .shell { max-width: 1140px; margin: 0 auto; padding: 0 24px; }
-.mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+.mono { font-family: "Geist Mono", ui-monospace, monospace; }
 
 ::selection { background: var(--fg); color: var(--bg); }
 
@@ -58,7 +58,6 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .header-in { display: flex; align-items: center; gap: 28px; height: 60px; }
 .brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .brand-mark { width: 26px; height: 26px; object-fit: contain; }
-[data-theme="dark"] .brand-mark { filter: invert(0.92); }
 .brand-name { font-weight: 600; letter-spacing: .04em; font-size: 15px; }
 .brand-name em { font-style: normal; color: var(--fg-3); font-weight: 400; }
 
@@ -125,7 +124,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 /* ── Hero (landing) ─────────────────────────────────────── */
 .hero { padding: 96px 0 84px; border-bottom: 1px solid var(--line); }
 .hero-kicker {
-  font-family: "JetBrains Mono", monospace; font-size: 12px; letter-spacing: .14em;
+  font-family: "Geist Mono", monospace; font-size: 12px; letter-spacing: .14em;
   text-transform: uppercase; color: var(--fg-3); margin-bottom: 22px;
 }
 .hero h1 {
@@ -142,7 +141,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .section { padding: 84px 0; border-bottom: 1px solid var(--line); }
 .section-tight { padding: 64px 0; }
 .kicker {
-  font-family: "JetBrains Mono", monospace; font-size: 12px; letter-spacing: .14em;
+  font-family: "Geist Mono", monospace; font-size: 12px; letter-spacing: .14em;
   text-transform: uppercase; color: var(--fg-3); margin-bottom: 14px;
 }
 h2.section-title { font-size: clamp(1.7rem, 3.4vw, 2.4rem); line-height: 1.15; letter-spacing: -.02em; font-weight: 700; max-width: 720px; }
@@ -151,7 +150,7 @@ h2.section-title { font-size: clamp(1.7rem, 3.4vw, 2.4rem); line-height: 1.15; l
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 44px; }
 .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 44px; }
 .card { background: var(--bg); padding: 28px 26px; }
-.card-num { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--fg-3); margin-bottom: 16px; }
+.card-num { font-family: "Geist Mono", monospace; font-size: 12px; color: var(--fg-3); margin-bottom: 16px; }
 .card h3 { font-size: 17px; font-weight: 600; margin-bottom: 10px; letter-spacing: -.01em; }
 .card p { font-size: 14.5px; color: var(--fg-2); }
 .card .mono { font-size: 13px; }
@@ -161,18 +160,18 @@ h2.section-title { font-size: clamp(1.7rem, 3.4vw, 2.4rem); line-height: 1.15; l
 .code-window-head {
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 16px; border-bottom: 1px solid var(--line);
-  font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--fg-3);
+  font-family: "Geist Mono", monospace; font-size: 12px; color: var(--fg-3);
 }
 .code-window pre {
   padding: 18px 20px; overflow-x: auto;
-  font-family: "JetBrains Mono", monospace; font-size: 13.5px; line-height: 1.6;
+  font-family: "Geist Mono", monospace; font-size: 13.5px; line-height: 1.6;
 }
 pre code { font-family: inherit; }
 
 /* ── Objects table (landing) ────────────────────────────── */
 .obj-table { width: 100%; border-collapse: collapse; margin-top: 44px; font-size: 14px; }
 .obj-table th {
-  text-align: left; font-family: "JetBrains Mono", monospace; font-size: 11.5px;
+  text-align: left; font-family: "Geist Mono", monospace; font-size: 11.5px;
   letter-spacing: .1em; text-transform: uppercase; color: var(--fg-3);
   padding: 10px 14px; border: 1px solid var(--line); background: var(--panel); font-weight: 500;
 }
@@ -190,7 +189,7 @@ pre code { font-family: inherit; }
 .docs-shell { display: grid; grid-template-columns: 240px minmax(0,1fr); gap: 56px; padding: 48px 24px 96px; max-width: 1200px; margin: 0 auto; }
 .docs-nav { position: sticky; top: 84px; align-self: start; }
 .docs-nav-label {
-  font-family: "JetBrains Mono", monospace; font-size: 11px; letter-spacing: .12em;
+  font-family: "Geist Mono", monospace; font-size: 11px; letter-spacing: .12em;
   text-transform: uppercase; color: var(--fg-3); margin-bottom: 12px;
 }
 .docs-nav a {
@@ -203,10 +202,10 @@ pre code { font-family: inherit; }
 .docs-nav .ext { font-size: 13px; }
 
 .docs-body { max-width: 760px; min-width: 0; }
-.doc-crumb { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--fg-3); margin-bottom: 18px; }
+.doc-crumb { font-family: "Geist Mono", monospace; font-size: 12px; color: var(--fg-3); margin-bottom: 18px; }
 .doc-crumb a { text-decoration: underline; text-underline-offset: 3px; }
 .docs-body h1 { font-size: 2rem; line-height: 1.15; letter-spacing: -.02em; font-weight: 700; margin-bottom: 8px; }
-.doc-meta { font-family: "JetBrains Mono", monospace; font-size: 12.5px; color: var(--fg-3); margin-bottom: 34px; }
+.doc-meta { font-family: "Geist Mono", monospace; font-size: 12.5px; color: var(--fg-3); margin-bottom: 34px; }
 .doc-meta a { text-decoration: underline; text-underline-offset: 3px; }
 .docs-body h2 { font-size: 1.35rem; font-weight: 700; letter-spacing: -.015em; margin: 48px 0 14px; padding-top: 8px; }
 .docs-body h3 { font-size: 1.05rem; font-weight: 600; margin: 32px 0 10px; }
@@ -218,19 +217,19 @@ pre code { font-family: inherit; }
 .docs-body hr { border: 0; border-top: 1px solid var(--line); margin: 40px 0; }
 
 .docs-body code {
-  font-family: "JetBrains Mono", monospace; font-size: .86em;
+  font-family: "Geist Mono", monospace; font-size: .86em;
   background: var(--mark-bg); padding: 2px 6px;
 }
 .docs-body pre {
   background: var(--code-bg); border: 1px solid var(--line);
   padding: 16px 18px; overflow-x: auto; margin: 16px 0;
-  font-family: "JetBrains Mono", monospace; font-size: 13px; line-height: 1.6;
+  font-family: "Geist Mono", monospace; font-size: 13px; line-height: 1.6;
 }
 .docs-body pre code { background: none; padding: 0; font-size: inherit; }
 
 .doc-table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 14px; }
 .doc-table th {
-  text-align: left; font-family: "JetBrains Mono", monospace; font-size: 11.5px;
+  text-align: left; font-family: "Geist Mono", monospace; font-size: 11.5px;
   letter-spacing: .08em; text-transform: uppercase; color: var(--fg-3);
   padding: 9px 12px; border: 1px solid var(--line); background: var(--panel); font-weight: 500;
 }
@@ -246,17 +245,17 @@ pre code { font-family: inherit; }
 .pager { display: flex; justify-content: space-between; gap: 20px; margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--line); }
 .pager a { font-size: 14px; color: var(--fg-2); }
 .pager a:hover { color: var(--fg); }
-.pager .dir { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--fg-3); display: block; letter-spacing: .1em; }
+.pager .dir { font-family: "Geist Mono", monospace; font-size: 11px; color: var(--fg-3); display: block; letter-spacing: .1em; }
 
 /* Refusal table */
 .refusal-filter { display: flex; gap: 8px; flex-wrap: wrap; margin: 20px 0 16px; }
 .chip {
-  font-family: "JetBrains Mono", monospace; font-size: 12px; letter-spacing: .04em;
+  font-family: "Geist Mono", monospace; font-size: 12px; letter-spacing: .04em;
   padding: 5px 12px; border: 1px solid var(--line-2); color: var(--fg-2);
 }
 .chip:hover { border-color: var(--fg); color: var(--fg); }
 .chip.on { background: var(--fg); color: var(--bg); border-color: var(--fg); }
-.tag { font-family: "JetBrains Mono", monospace; font-size: 11px; letter-spacing: .06em; padding: 2px 8px; border: 1px solid var(--line-2); color: var(--fg-2); white-space: nowrap; }
+.tag { font-family: "Geist Mono", monospace; font-size: 11px; letter-spacing: .06em; padding: 2px 8px; border: 1px solid var(--line-2); color: var(--fg-2); white-space: nowrap; }
 .tag-hard { border-color: var(--fg); color: var(--fg); font-weight: 600; }
 
 /* ── Content pages (marketing / faq / legal) ────────────── */
@@ -279,7 +278,7 @@ pre code { font-family: inherit; }
   gap: 20px; text-align: left; padding: 22px 4px;
   font-size: 17px; font-weight: 600; letter-spacing: -.01em;
 }
-.faq-q .ind { font-family: "JetBrains Mono", monospace; color: var(--fg-3); font-weight: 400; flex-shrink: 0; }
+.faq-q .ind { font-family: "Geist Mono", monospace; color: var(--fg-3); font-weight: 400; flex-shrink: 0; }
 .faq-a { display: none; padding: 0 4px 26px; color: var(--fg-2); max-width: 720px; font-size: 15.5px; }
 .faq-item.open .faq-a { display: block; }
 .faq-a p { margin: 8px 0; }
@@ -292,7 +291,7 @@ pre code { font-family: inherit; }
 .footer-brand .brand { margin-bottom: 12px; }
 .footer-brand p { font-size: 13.5px; color: var(--fg-3); }
 .footer-col h4 {
-  font-family: "JetBrains Mono", monospace; font-size: 11px; letter-spacing: .12em;
+  font-family: "Geist Mono", monospace; font-size: 11px; letter-spacing: .12em;
   text-transform: uppercase; color: var(--fg-3); margin-bottom: 12px; font-weight: 500;
 }
 .footer-col a { display: block; font-size: 13.5px; color: var(--fg-2); padding: 4px 0; }
@@ -302,6 +301,8 @@ pre code { font-family: inherit; }
   display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap;
   font-size: 12.5px; color: var(--fg-3);
 }
+.footer-base a { text-decoration: underline; text-underline-offset: 3px; }
+.footer-base a:hover { color: var(--fg); }
 
 /* ── Cookie banner ──────────────────────────────────────── */
 .cookie-banner {
@@ -322,7 +323,7 @@ pre code { font-family: inherit; }
 
 /* ── 404 ────────────────────────────────────────────────── */
 .nf-hero { padding: 130px 0; text-align: left; }
-.nf-code { font-family: "JetBrains Mono", monospace; font-size: 13px; letter-spacing: .14em; color: var(--fg-3); margin-bottom: 18px; }
+.nf-code { font-family: "Geist Mono", monospace; font-size: 13px; letter-spacing: .14em; color: var(--fg-3); margin-bottom: 18px; }
 
 /* ── Responsive ─────────────────────────────────────────── */
 @media (max-width: 960px) {
