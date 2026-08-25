@@ -44,7 +44,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 }
 .header-in { display: flex; align-items: center; gap: 28px; height: 60px; }
 .brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-.brand-mark { width: 32px; height: 32px; object-fit: contain; }
+.brand-mark { width: 38px; height: 38px; object-fit: contain; }
 .brand-name { font-weight: 600; letter-spacing: .04em; font-size: 15px; }
 .brand-name em { font-style: normal; color: var(--fg-3); font-weight: 400; }
 
@@ -331,32 +331,9 @@ pre code { font-family: inherit; }
 .cookie-btn--accept { background: var(--fg); color: var(--bg); border-color: var(--fg); }
 
 /* ── Registry lookup ────────────────────────────────────── */
+.pg-search { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .pg-search-wrap { max-width: 720px; margin: 44px 0 0; }
-.pg-search-label {
-  font-family: "Geist Mono", monospace; font-size: 11.5px; letter-spacing: .08em;
-  text-transform: uppercase; color: var(--fg-3); margin-bottom: 10px;
-}
-.pg-search-label .dim { opacity: .55; letter-spacing: .02em; text-transform: none; }
-.pg-search {
-  position: relative; display: flex; align-items: center; gap: 14px;
-  background: var(--panel); border: 1px solid var(--line-2); padding: 15px 18px;
-}
-.pg-search:focus-within { border-color: var(--fg-3); }
-.pg-corner {
-  position: absolute; font-family: "Geist Mono", monospace; font-size: 15px;
-  line-height: 1; color: #db4141; user-select: none;
-}
-.pg-corner.tl { top: -8px; left: -6px; }
-.pg-corner.tr { top: -8px; right: -6px; }
-.pg-corner.bl { bottom: -9px; left: -6px; }
-.pg-corner.br { bottom: -9px; right: -6px; }
 .pg-prompt { font-family: "Geist Mono", monospace; font-size: 17px; font-weight: 500; color: #db4141; }
-.pg-input {
-  flex: 1; min-width: 0; background: none; border: 0; outline: 0;
-  font-family: "Geist Mono", ui-monospace, monospace; font-size: 18px; letter-spacing: .04em;
-  color: var(--fg); caret-color: #db4141; text-transform: uppercase;
-}
-.pg-input::placeholder { color: var(--fg-3); opacity: .6; text-transform: none; letter-spacing: .02em; }
 .pg-go {
   font-family: "Geist Mono", monospace; font-size: 13px; color: var(--fg-2);
   border: 1px solid var(--line-2); padding: 8px 14px; white-space: nowrap;
@@ -398,6 +375,21 @@ pre code { font-family: inherit; }
   .pg-go { padding: 7px 10px; font-size: 12px; }
   .pg-input { font-size: 15px; }
 }
+
+/* ── Hero search ────────────────────────────────────────── */
+.hero-search-input {
+  font-family: "Geist Mono", ui-monospace, monospace; font-size: 14px;
+  color: var(--fg); background: var(--panel); border: 1px solid var(--line-2);
+  padding: 10px 18px; width: 250px; outline: none; letter-spacing: .02em;
+}
+.hero-search-input:focus { border-color: var(--fg-3); }
+.hero-search-input::placeholder { color: var(--fg-3); }
+.card-cta { margin-top: 12px; display: flex; gap: 14px; flex-wrap: wrap; }
+.card-cta a {
+  font-family: "Geist Mono", monospace; font-size: 12.5px;
+  text-decoration: underline; text-underline-offset: 3px; color: var(--fg-2);
+}
+.card-cta a:hover { color: var(--fg); }
 
 /* ── Ecosystem ──────────────────────────────────────────── */
 .eco-flow { margin-top: 32px; border: 1px solid var(--line); }
