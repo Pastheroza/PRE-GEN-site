@@ -338,6 +338,9 @@ pre code { font-family: inherit; }
 @media (max-width: 960px) {
   .top-nav { display: none; }
   .menu-btn { display: inline-flex; }
+  .header-in { gap: 14px; }
+  .header-actions { margin-left: auto; gap: 8px; }
+  .header-actions .btn-sm { padding: 8px 14px; font-size: 13px; }
   .grid-3 { grid-template-columns: 1fr; }
   .grid-2 { grid-template-columns: 1fr; }
   .docs-shell { grid-template-columns: 1fr; gap: 36px; padding-top: 32px; }
