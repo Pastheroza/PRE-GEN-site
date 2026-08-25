@@ -103,8 +103,8 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .hero {
   position: relative; overflow: hidden;
   display: flex; align-items: center;
-  min-height: 100vh; min-height: 100svh;
-  padding: 96px 0 84px; border-bottom: 1px solid var(--line);
+  min-height: calc(100vh - 60px); min-height: calc(100svh - 60px);
+  padding: 72px 0 96px; border-bottom: 1px solid var(--line);
 }
 .hero > .shell { position: relative; z-index: 1; width: 100%; }
 .hero-fire {
@@ -116,14 +116,20 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   background: linear-gradient(to bottom, var(--bg) 0%, rgba(10,10,10,.6) 45%, rgba(10,10,10,0) 78%);
 }
 .hero-ascii {
-  position: absolute; right: 4vw; top: 50%; transform: translateY(-50%);
-  z-index: 1; margin: 0;
+  position: absolute; right: 24px; top: 50%; transform: translateY(-50%);
+  z-index: -1; margin: 0;
   font-family: "Geist Mono", ui-monospace, monospace;
   font-size: 4px; line-height: 1.05;
   color: rgba(219,65,65,.42);
   pointer-events: none; user-select: none;
 }
-@media (max-width: 1180px) { .hero-ascii { display: none; } }
+@media (max-width: 1180px) {
+  .hero-ascii {
+    right: auto; left: 50%; transform: translate(-50%, -50%);
+    font-size: 2.6px;
+    color: rgba(219,65,65,.30);
+  }
+}
 @media (prefers-reduced-motion: reduce) { .hero-fire { opacity: .5; } }
 .hero-kicker {
   font-family: "Geist Mono", monospace; font-size: 12px; letter-spacing: .14em;
