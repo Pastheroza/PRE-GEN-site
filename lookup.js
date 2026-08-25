@@ -147,6 +147,7 @@
         else if (res.status === 401 || res.status === 403) out.innerHTML = renderError("License records are restricted.",
           "Public resolution covers subjects. Full license records require registry credentials — verify the license via prampta.com or ask the rights holder for a signed decision.",
           '<p><a class="pg-link" href="https://prampta.com" target="_blank" rel="noopener noreferrer">prampta.com ↗</a></p>');
+        else if (res.status === 429) out.innerHTML = renderError("Too many requests.", "Give it a minute and try again.");
         else if (res.status === 422) out.innerHTML = renderError(d.error || "Invalid code.", d.detail || "");
         else out.innerHTML = renderError("Registry is not reachable right now.", "Try again in a moment." + (d.error ? " (" + d.error + ")" : ""));
       })

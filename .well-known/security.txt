@@ -1,0 +1,4 @@
+Contact: https://www.pregen.org/contact
+Expires: 2027-08-25T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://www.pregen.org/.well-known/security.txt
