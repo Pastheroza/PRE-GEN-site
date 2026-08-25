@@ -68,8 +68,8 @@
       [0.00,  26,   8,  10, 0],
       [0.25,  90,  22,  24, 0.35],
       [0.55, 219,  65,  65, 0.80],
-      [0.80, 245, 120,  80, 0.95],
-      [1.00, 255, 190, 140, 1]
+      [0.80, 240,  95,  90, 0.95],
+      [1.00, 255, 150, 138, 1]
     ];
     var PAL = [];
     (function () {
@@ -101,10 +101,10 @@
       for (var y = 1; y < ROWS; y++) {
         for (var x = 0; x < COLS; x++) {
           var src = y * COLS + x;
-          var r = (Math.random() * 4) | 0;
+          var r = (Math.random() * 5) | 0;
           var dst = src - COLS - r + 1;
           if (dst < 0) dst = 0;
-          heat[dst] = Math.max(0, heat[src] - (r & 3));
+          heat[dst] = Math.max(0, heat[src] - (r % 4));
         }
       }
     }
