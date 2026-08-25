@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<meta name="theme-color" content="#ffffff" />
+<meta name="theme-color" content="#0a0a0a" />
 <title>PRE-GEN — Authorization before generation</title>
 <meta name="description" content="PRE-GEN is an open protocol for pre-generation authorization in generative AI. Cryptographically signed allow-or-deny decisions — before the first pixel is produced." />
 <meta property="og:title" content="PRE-GEN — Authorization before generation" />
@@ -35,10 +35,6 @@
       <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
     </nav>
     <div class="header-actions">
-      <button class="theme-toggle" data-theme-toggle aria-label="Toggle theme">
-        <svg class="moon" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M16 11.5A6.5 6.5 0 1 1 8.5 4a5.5 5.5 0 0 0 7.5 7.5z"/></svg>
-        <svg class="sun" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="10" y1="16" x2="10" y2="18"/><line x1="2" y1="10" x2="4" y2="10"/><line x1="16" y1="10" x2="18" y2="10"/><line x1="4.3" y1="4.3" x2="5.7" y2="5.7"/><line x1="14.3" y1="4.3" x2="15.7" y2="5.7"/><line x1="4.3" y1="15.7" x2="5.7" y2="14.3"/><line x1="14.3" y1="5.7" x2="15.7" y2="4.3"/></svg>
-      </button>
       <a class="btn btn-solid btn-sm" href="/docs/sdk">Integrate</a>
       <button class="menu-btn" id="menuOpen" aria-label="Open navigation"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
     </div>
@@ -68,6 +64,8 @@
 <main>
 
   <section class="hero">
+    <canvas class="hero-fire" id="heroFire" aria-hidden="true"></canvas>
+    <div class="hero-fire-fade" aria-hidden="true"></div>
     <div class="shell">
       <div class="hero-kicker">Open protocol · Apache-2.0 · Spec frozen 2026-08-20</div>
       <h1>Authorization<em>before generation.</em></h1>
@@ -270,7 +268,7 @@ for h in hits:
 
 <div class="cookie-banner" id="cookieBanner">
   <div class="cookie-inner">
-    <div class="cookie-text">We store only your theme preference. Read our <a href="/legal">privacy policy</a>.</div>
+    <div class="cookie-text">We store only your cookie choice. Read our <a href="/legal">privacy policy</a>.</div>
     <div class="cookie-buttons">
       <button class="cookie-btn" data-cookie="necessary">Necessary only</button>
       <button class="cookie-btn cookie-btn--accept" data-cookie="all">Accept</button>
