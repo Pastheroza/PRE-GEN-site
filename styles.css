@@ -303,6 +303,7 @@ pre code { font-family: inherit; }
 }
 .footer-base a { text-decoration: underline; text-underline-offset: 3px; }
 .footer-base a:hover { color: var(--fg); }
+.footer-disclaimer { margin-top: 14px; font-size: 12px; color: var(--fg-3); max-width: 560px; }
 
 /* ── Cookie banner ──────────────────────────────────────── */
 .cookie-banner {
