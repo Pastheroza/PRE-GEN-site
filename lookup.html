@@ -1,149 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<meta name="theme-color" content="#0a0a0a" />
-<title>Resolve a PG code — PRE-GEN</title>
-<meta name="description" content="Look up any PRE-GEN subject or license by its PG code. Public, account-free registry resolution — check who a code belongs to and what a license actually covers." />
-<meta property="og:title" content="PRE-GEN — Resolve a PG code" />
-<meta property="og:image" content="https://www.pregen.org/assets/og-image.png" />
-<meta property="og:type" content="website" />
-<meta property="og:url" content="https://www.pregen.org/lookup" />
-<link rel="canonical" href="https://www.pregen.org/lookup" />
-<link rel="icon" type="image/png" href="/assets/pregen-logo.png" />
-<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400..500&display=swap" />
-<link rel="stylesheet" href="/styles.css" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Look up a PG code — PRE-GEN</title>
+<meta name="description" content="Resolve any PRE-GEN subject or licence code. Public, read-only, no account.">
+<meta property="og:title" content="Look up a PG code — PRE-GEN">
+<meta property="og:description" content="Resolve any PRE-GEN subject or licence code. Public, read-only, no account.">
+<meta property="og:image" content="https://www.pregen.org/assets/og-image.png">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.pregen.org/lookup">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://www.pregen.org/lookup">
+<link rel="icon" type="image/png" href="/assets/pregen-logo.png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-
-<header class="site-header">
-  <div class="shell header-in">
-    <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="PRE-GEN" /><span class="brand-name">PRE-GEN</span></a>
-    <nav class="top-nav">
-      <a href="/">Protocol</a>
-      <a href="/docs">Docs</a> <a href="/ecosystem">Ecosystem</a>
-     
-     
-      <a href="/faq">FAQ</a>
-      
-      <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
-    </nav>
-    <div class="header-actions">
-      <a class="btn btn-solid btn-sm" href="/docs/sdk">Integrate</a>
-      <button class="menu-btn" id="menuOpen" aria-label="Open navigation"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
-    </div>
-  </div>
-</header>
-
-<div class="drawer-backdrop" id="drawerBackdrop"></div>
-<div class="drawer" id="drawer">
-  <div class="drawer-head">
-    <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="" /><span class="brand-name">PRE-GEN</span></a>
-    <button class="menu-close" id="menuClose" aria-label="Close navigation">✕</button>
-  </div>
-  <nav>
-    <a href="/">Protocol</a>
-    <a href="/docs">Docs</a> <a href="/ecosystem">Ecosystem</a>
-   
-   
-    <a href="/faq">FAQ</a>
-    
-    <a href="/support">Support</a>
-    <a href="/legal">Legal</a>
-    <a href="/contact">Contact</a>
-    <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
-  </nav>
-</div>
-
-<main class="page lookup-page">
-  <div class="shell">
-    <div class="page-head">
-      <div class="hero-kicker">Registry lookup · live</div>
-      <h1>Resolve a<em>PG code.</em></h1>
-      <p class="page-lede">
-        Every PRE-GEN subject and license carries a permanent, check-summed identifier.
-        Enter one to see what the registry says about it — no account, no keys, cited codes resolve forever.
-      </p>
-    </div>
-
-    <div class="pg-search-wrap">
-    <form class="pg-search" id="pgForm" autocomplete="off">
-      <input id="pgInput" class="hero-search-input" type="text" name="code" placeholder="PG-000042*"
-        aria-label="PG code" spellcheck="false" autocapitalize="characters" maxlength="32" style="width:min(360px,100%)" />
-      <button class="pg-go" type="submit">resolve</button>
-    </form>
-    <div class="pg-hint">
-      subject <span class="mono">PG-000042*</span> · license <span class="mono">PG-STD-000001-K7M2QX9</span> · legacy <span class="mono">PG-0000016</span>
-    </div>
-    </div>
-
-    <div id="pgResult" class="pg-result" aria-live="polite"></div>
-
-    <div class="pg-foot">
-      <p>
-        Resolution is read-only and public. Generation rights are never granted here — a provider
-        must obtain a signed decision via <a href="/docs/sdk"><code>POST /v1/verify/</code></a> before
-        generating. Code format: <a href="/docs/pg-code">PG code specification</a>.
-      </p>
-    </div>
-  </div>
-</main>
-
-<footer class="site-footer">
-  <div class="shell">
-    <div class="footer-in">
-      <div class="footer-brand">
-        <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="" /><span class="brand-name">PRE-GEN</span></a>
-        <p>Authorization before generation. An open protocol for consent in generative AI.</p>
-      </div>
-      <div class="footer-col">
-        <h4>Protocol</h4>
-        <a href="/docs">Overview</a>
-        <a href="/docs/pg-code">PG code format</a>
-        <a href="/docs/versions">Versioning</a>
-        <a href="/docs/refusal-codes">Refusal codes</a>
-        <a href="/docs/sdk">SDKs</a>
-        <a href="/lookup">Resolve a PG code</a>
-      </div>
-      <div class="footer-col">
-        <h4>Project</h4>
-        <a href="/ecosystem">Ecosystem</a>
-       
-       
-        <a href="/faq">FAQ</a>
-        <a href="/support">Support</a>
-      </div>
-      <div class="footer-col">
-        <h4>Elsewhere</h4>
-        <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub — SDKs ↗</a>
-        <a href="https://prampta.com" target="_blank" rel="noopener noreferrer">PRAMPTA (registry) ↗</a>
-        <a href="/contact">Contact</a>
-        <a href="/legal">Legal</a>
-      </div>
-    </div>
-    <div class="footer-base">
-      <span>© 2026 PRE-GEN Foundation project. Specification under Apache-2.0. · <a href="#" data-cookie-reset>Cookie settings</a></span>
-      <span class="mono">pregen.org</span>
-    </div>
-    <p class="footer-disclaimer">PRE-GEN is an independent open protocol. It is not owned by PRAMPTA Corporation.</p>
-  </div>
-</footer>
-
-<div class="cookie-banner" id="cookieBanner">
-  <div class="cookie-inner">
-    <div class="cookie-text">We store only your cookie choice. Read our <a href="/legal">privacy policy</a>.</div>
-    <div class="cookie-buttons">
-      <button class="cookie-btn" data-cookie="necessary">Necessary only</button>
-      <button class="cookie-btn cookie-btn--accept" data-cookie="all">Accept</button>
-    </div>
-  </div>
-</div>
-
-<script src="/app.js"></script>
+<header class="top"><div class="wrap">
+<a class="mark" href="/">PRE-GEN</a>
+<nav aria-label="Main"><a href="/docs">Protocol</a><a href="/docs/sdk">Integrate</a><a href="/registries">Registries</a><a href="/lookup" aria-current="page">Lookup</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA">GitHub</a></nav>
+</div></header>
+<main><div class="wrap">
+<h1>Look up a PG code</h1>
+<p class="lede">Every subject and licence has a permanent, check-summed code. Enter one to see what the registry holds. No account needed.</p>
+<form class="search" id="pgForm" autocomplete="off">
+<input id="pgInput" type="text" name="code" placeholder="PG-000042*" aria-label="PG code" spellcheck="false" autocapitalize="characters" maxlength="32">
+<button type="submit">Look up</button>
+</form>
+<p class="meta">Subject <span class="mono">PG-000042*</span> · licence <span class="mono">PG-STD-000001-K7M2QX9</span> · legacy <span class="mono">PG-0000016</span></p>
+<div id="pgResult" class="pg-result" aria-live="polite"></div>
+<p class="meta">Looking up a code never grants anything. A provider needs a signed decision from <a href="/docs/sdk"><code>POST /v1/verify/</code></a> before generating. Format: <a href="/docs/pg-code">PG codes</a>.</p>
 <script src="/lookup.js"></script>
+
+</div></main>
+<footer class="foot"><div class="wrap">
+<p>PRE-GEN is an open protocol under Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
+<nav aria-label="Site"><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
+</div></footer>
 </body>
 </html>

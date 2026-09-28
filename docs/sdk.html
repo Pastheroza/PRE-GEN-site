@@ -1,208 +1,89 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<meta name="theme-color" content="#0a0a0a" />
-<title>SDKs &amp; integration — PRE-GEN Docs</title>
-<meta name="description" content="Integrate PRE-GEN: Python and TypeScript SDKs, the three-call flow, credentials, and the OpenAPI contract." />
-<meta property="og:title" content="PRE-GEN SDKs &amp; integration" />
-<meta property="og:image" content="https://www.pregen.org/assets/og-image.png" />
-<meta property="og:type" content="article" />
-<link rel="icon" type="image/png" href="/assets/pregen-logo.png" />
-<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
-<link rel="canonical" href="https://www.pregen.org/docs/sdk" />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400..500&display=swap" />
-<link rel="stylesheet" href="/styles.css" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Integrate — PRE-GEN</title>
+<meta name="description" content="Integrating PRE-GEN over HTTP or with the reference TypeScript SDK.">
+<meta property="og:title" content="Integrate — PRE-GEN">
+<meta property="og:description" content="Integrating PRE-GEN over HTTP or with the reference TypeScript SDK.">
+<meta property="og:image" content="https://www.pregen.org/assets/og-image.png">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.pregen.org/docs/sdk">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://www.pregen.org/docs/sdk">
+<link rel="icon" type="image/png" href="/assets/pregen-logo.png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
+<header class="top"><div class="wrap">
+<a class="mark" href="/">PRE-GEN</a>
+<nav aria-label="Main"><a href="/docs">Protocol</a><a href="/docs/sdk" aria-current="page">Integrate</a><a href="/registries">Registries</a><a href="/lookup">Lookup</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA">GitHub</a></nav>
+</div></header>
+<main><div class="wrap">
+<div class="doc"><aside><ul><li><a href="/docs">Overview</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versioning</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk" aria-current="page">Integrate</a></li><li><a href="/docs/c2pa">C2PA</a></li></ul></aside><article><h1>Integrate</h1>
+<p class="meta">HTTP · reference TypeScript SDK <span class="mono">@prampta/sdk</span> 0.6.0 (Apache-2.0)</p>
+<p>A provider needs credentials from a <a href="/registries">registry</a>. The first registry, PRAMPTA, issues a sandbox key after a verified company email and a production key after a DNS record on the company domain. The sandbox reaches synthetic test subjects only.</p>
+<p class="note">Keep the provider secret on your server. It never goes to a browser, a URL or client code. Send a hash of the prompt, never the prompt.</p>
 
-<header class="site-header">
-  <div class="shell header-in">
-    <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="PRE-GEN" /><span class="brand-name">PRE-GEN</span></a>
-    <nav class="top-nav">
-      <a href="/">Protocol</a>
-      <a href="/docs" class="is-active">Docs</a> <a href="/ecosystem">Ecosystem</a>
-     
-     
-      <a href="/faq">FAQ</a>
-      <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
-    </nav>
-    <div class="header-actions">
-      <a class="btn btn-solid btn-sm" href="/docs/sdk">Integrate</a>
-      <button class="menu-btn" id="menuOpen" aria-label="Open navigation"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
-    </div>
-  </div>
-</header>
+<h2>Ask before generating</h2>
+<pre><code>POST https://api2.prampta.com/v1/verify/
+Authorization: Bearer $PROVIDER_SECRET
+X-Provider-ID: your-provider-id
+X-Licensee-ID: lic-…            # the connected user; omit for personal use
+Content-Type: application/json
 
-<div class="drawer-backdrop" id="drawerBackdrop"></div>
-<div class="drawer" id="drawer">
-  <div class="drawer-head">
-    <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="" /><span class="brand-name">PRE-GEN</span></a>
-    <button class="menu-close" id="menuClose" aria-label="Close navigation">✕</button>
-  </div>
-  <nav>
-    <a href="/">Protocol</a>
-    <a href="/docs" class="is-active">Docs</a> <a href="/ecosystem">Ecosystem</a>
-   
-   
-    <a href="/faq">FAQ</a>
-    <a href="/support">Support</a>
-    <a href="/legal">Legal</a>
-    <a href="/contact">Contact</a>
-    <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
-  </nav>
-</div>
+{"subject_id": "sbx-allowed",
+ "prompt_hash": "&lt;sha256 hex of the prompt&gt;",
+ "modality": "image",
+ "intended_use": {"use_case": "research"}}</code></pre>
+<p>Read <code>disposition</code>. Generate only on <code>allow</code> (or, for personal use, <code>not_blocked</code> under your own policy). On <code>deny</code> show <code>remediation.url</code> when present: it is where the user can request a licence.</p>
 
-<div class="docs-shell">
-  <aside class="docs-nav">
-    <div class="docs-nav-label">Documentation</div>
-    <a href="/docs">Overview</a>
-    <a href="/docs/pg-code">PG code format</a>
-    <a href="/docs/versions">Versioning</a>
-    <a href="/docs/refusal-codes">Refusal codes</a>
-    <a href="/docs/sdk" class="is-active">SDKs &amp; integration</a>
-    <div class="sep"></div>
-    <a class="ext" href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub — SDKs ↗</a>
-    <a class="ext" href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA/blob/main/openapi.json" target="_blank" rel="noopener noreferrer">OpenAPI contract ↗</a>
-  </aside>
+<h2>Report after generating</h2>
+<pre><code>POST https://api2.prampta.com/v1/receipts/
+Authorization: Bearer $PROVIDER_SECRET
+X-Provider-ID: your-provider-id
+X-Licensee-ID: lic-…
 
-  <article class="docs-body">
-    <div class="doc-crumb"><a href="/docs">Docs</a> <a href="/ecosystem">Ecosystem</a> / SDKs &amp; integration</div>
-    <h1>SDKs &amp; integration</h1>
-    <p class="doc-meta">Python: <span class="mono">prampta</span> · TypeScript: <span class="mono">@prampta/sdk</span> · Both Apache-2.0</p>
+{"decision_id": "dec_…", "prompt_hash": "…", "output_hash": "&lt;sha256 of the file&gt;",
+ "event_type": "output_accepted", "obligations_applied": {}}</code></pre>
+<p>One receipt per <code>allow</code> decision. A second receipt for the same decision is refused.</p>
 
-    <p>
-      The SDKs implement the full three-call flow — <strong>detect, verify, prove</strong> —
-      including signature verification against the rotating operator key set and the canonical
-      subject matcher. Both SDKs ship identical matching semantics and replay the same
-      byte-level test vectors.
-    </p>
-
-    <h2>Python</h2>
-<pre><code>pip install prampta</code></pre>
-<pre><code>from prampta import Prampta
-
-pg = Prampta(
-    base_url="https://api2.prampta.com",
-    provider_id="your-provider-id",
-    licensee_id="your-licensee-id",
-    token="pair-token",
-)
-
-hits = pg.match_subjects(user_prompt)
-for h in hits:
-    pg.assert_allowed(h["subject_id"], prompt=user_prompt, modality="image")
-# no exception → all matched subjects authorized, proceed with generation</code></pre>
-    <p>
-      <code>assert_allowed</code> raises on any refusal, exposing the structured
-      <code>PG_*</code> code — see <a href="/docs/refusal-codes">Refusal codes</a> for how to
-      react to each class. An async client (<code>AsyncPrampta</code>) mirrors the sync API.
-    </p>
-
-    <h2>TypeScript</h2>
+<h2>TypeScript SDK</h2>
 <pre><code>npm install @prampta/sdk</code></pre>
 <pre><code>import { Prampta } from "@prampta/sdk";
 
 const pg = new Prampta({
   baseUrl: "https://api2.prampta.com",
   providerId: "your-provider-id",
-  licenseeId: "your-licensee-id",
-  token: process.env.PRAMPTA_TOKEN,
+  licenseeId: "lic-sandbox",            // synthetic fixture
+  token: process.env.PRAMPTA_TOKEN,     // provider secret, server-side only
 });
 
-const hits = await pg.matchSubjects(userPrompt);
-for (const h of hits) {
-  await pg.assertAllowed(h.subject_id, { prompt: userPrompt, modality: "image" });
-}</code></pre>
+const d = await pg.verify("sbx-allowed", {
+  prompt: "A sandbox portrait", modality: "image", intendedUse: { useCase: "research" },
+});
+if (d.allowed) generate({ obligations: d.obligations });</code></pre>
+<p>The SDK verifies the registry's signature on every decision. <code>assertAllowed()</code> throws on any refusal.</p>
 
-    <h2>Getting credentials</h2>
-    <p>
-      Provider credentials — a provider id and pair tokens — are issued through
-      <a href="https://prampta.com" target="_blank" rel="noopener noreferrer">prampta.com</a>,
-      the protocol’s first commercial registry. Rights-holder subjects live there too; the
-      sandbox tier verifies against synthetic test subjects only, so you can integrate before
-      touching real licenses.
-    </p>
-
-    <h2>Why integrate</h2>
-    <ul>
-      <li><strong>One call, court-ready proof</strong> — every decision is Ed25519-signed and
-      written to a tamper-evident audit chain. Store it and you can show you had permission.</li>
-      <li><strong>Refusals are structured</strong> — machine-readable codes with hard/soft
-      classification, so your product can offer a license flow, block, or rephrase.</li>
-      <li><strong>Free to integrate</strong> — a few lines before your model runs. The
-      specification and SDKs are Apache-2.0.</li>
-    </ul>
-
-    <h2>API contract</h2>
-    <p>
-      The full wire contract is published as
-      <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA/blob/main/openapi.json" target="_blank" rel="noopener noreferrer">OpenAPI 3.1</a>
-      in the SDK repository, alongside an
-      <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA/blob/main/docs/integration.ru.md" target="_blank" rel="noopener noreferrer">integration guide</a>
-      and runnable examples for both languages.
-    </p>
-
-    <div class="pager">
-      <a href="/docs/refusal-codes"><span class="dir">← PREV</span>Refusal codes</a>
-      <span></span>
-    </div>
-  </article>
-</div>
-
-<footer class="site-footer">
-  <div class="shell">
-    <div class="footer-in">
-      <div class="footer-brand">
-        <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="" /><span class="brand-name">PRE-GEN</span></a>
-        <p>Authorization before generation. An open protocol for consent in generative AI.</p>
-      </div>
-      <div class="footer-col">
-        <h4>Protocol</h4>
-        <a href="/docs">Overview</a>
-        <a href="/docs/pg-code">PG code format</a>
-        <a href="/docs/versions">Versioning</a>
-        <a href="/docs/refusal-codes">Refusal codes</a>
-        <a href="/docs/sdk">SDKs</a>
-        <a href="/lookup">Resolve a PG code</a>
-      </div>
-      <div class="footer-col">
-        <h4>Project</h4>
-        <a href="/ecosystem">Ecosystem</a>
-       
-       
-        <a href="/faq">FAQ</a>
-        <a href="/support">Support</a>
-      </div>
-      <div class="footer-col">
-        <h4>Elsewhere</h4>
-        <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub — SDKs ↗</a>
-        <a href="https://prampta.com" target="_blank" rel="noopener noreferrer">PRAMPTA (registry) ↗</a>
-        <a href="/contact">Contact</a>
-        <a href="/legal">Legal</a>
-      </div>
-    </div>
-    <div class="footer-base">
-      <span>© 2026 PRE-GEN Foundation project. Specification under Apache-2.0. · <a href="#" data-cookie-reset>Cookie settings</a></span>
-      <span class="mono">pregen.org</span>
-    </div>
-    <p class="footer-disclaimer">PRE-GEN is an independent open protocol. It is not owned by PRAMPTA Corporation.</p>
-  </div>
-</footer>
-
-<div class="cookie-banner" id="cookieBanner">
-  <div class="cookie-inner">
-    <div class="cookie-text">We store only your cookie choice. Read our <a href="/legal">privacy policy</a>.</div>
-    <div class="cookie-buttons">
-      <button class="cookie-btn" data-cookie="necessary">Necessary only</button>
-      <button class="cookie-btn cookie-btn--accept" data-cookie="all">Accept</button>
-    </div>
-  </div>
-</div>
-
-<script src="/app.js"></script>
+<h2>Sandbox test subjects</h2>
+<div class="table"><table>
+<thead><tr><th>subject_id</th><th>Expected answer (research use, <code>lic-sandbox</code>)</th></tr></thead>
+<tbody>
+<tr><td class="mono">sbx-allowed</td><td><code>allow</code></td></tr>
+<tr><td class="mono">sbx-revoked</td><td><code>PG_NO_LICENSE</code></td></tr>
+<tr><td class="mono">sbx-expired</td><td><code>PG_NO_LICENSE</code></td></tr>
+<tr><td class="mono">sbx-exhausted</td><td><code>PG_USAGE_LIMIT</code></td></tr>
+<tr><td class="mono">sbx-optedout</td><td><code>PG_SUBJECT_OPTED_OUT</code> — hard, never retry</td></tr>
+<tr><td class="mono">sbx-unknown</td><td><code>PG_NO_SUBJECT</code></td></tr>
+</tbody></table></div>
+<p>Full step-by-step guide for providers: <a href="https://prampta.com/get-started.md">prampta.com/get-started.md</a>. Wire contract: <a href="https://api2.prampta.com/openapi.json">OpenAPI</a>.</p>
+<nav class="pager" aria-label="Pages"><a href="/docs/refusal-codes">← Refusal codes</a><a href="/docs/c2pa">C2PA →</a></nav></article></div>
+</div></main>
+<footer class="foot"><div class="wrap">
+<p>PRE-GEN is an open protocol under Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
+<nav aria-label="Site"><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
+</div></footer>
 </body>
 </html>

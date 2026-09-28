@@ -1,184 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<meta name="theme-color" content="#0a0a0a" />
-<title>F.A.Q. — PRE-GEN</title>
-<meta name="description" content="Frequently asked questions about the PRE-GEN protocol: what it is, how it differs from C2PA, what the opt-out does, and what it honestly cannot do." />
-<meta property="og:title" content="PRE-GEN — F.A.Q." />
-<meta property="og:image" content="https://www.pregen.org/assets/og-image.png" />
-<meta property="og:type" content="website" />
-<meta property="og:url" content="https://www.pregen.org/faq" />
-<link rel="canonical" href="https://www.pregen.org/faq" />
-<link rel="icon" type="image/png" href="/assets/pregen-logo.png" />
-<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400..500&display=swap" />
-<link rel="stylesheet" href="/styles.css" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAQ — PRE-GEN</title>
+<meta name="description" content="Short answers about the PRE-GEN protocol.">
+<meta property="og:title" content="FAQ — PRE-GEN">
+<meta property="og:description" content="Short answers about the PRE-GEN protocol.">
+<meta property="og:image" content="https://www.pregen.org/assets/og-image.png">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.pregen.org/faq">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://www.pregen.org/faq">
+<link rel="icon" type="image/png" href="/assets/pregen-logo.png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-
-<header class="site-header">
-  <div class="shell header-in">
-    <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="PRE-GEN" /><span class="brand-name">PRE-GEN</span></a>
-    <nav class="top-nav">
-      <a href="/">Protocol</a>
-      <a href="/docs">Docs</a> <a href="/ecosystem">Ecosystem</a>
-     
-     
-      <a href="/faq" class="is-active">FAQ</a>
-      <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
-    </nav>
-    <div class="header-actions">
-      <a class="btn btn-solid btn-sm" href="/docs/sdk">Integrate</a>
-      <button class="menu-btn" id="menuOpen" aria-label="Open navigation"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
-    </div>
-  </div>
-</header>
-
-<div class="drawer-backdrop" id="drawerBackdrop"></div>
-<div class="drawer" id="drawer">
-  <div class="drawer-head">
-    <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="" /><span class="brand-name">PRE-GEN</span></a>
-    <button class="menu-close" id="menuClose" aria-label="Close navigation">✕</button>
-  </div>
-  <nav>
-    <a href="/">Protocol</a>
-    <a href="/docs">Docs</a> <a href="/ecosystem">Ecosystem</a>
-   
-   
-    <a href="/faq" class="is-active">FAQ</a>
-    <a href="/support">Support</a>
-    <a href="/legal">Legal</a>
-    <a href="/contact">Contact</a>
-    <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
-  </nav>
-</div>
-
-<main class="page">
-  <div class="shell">
-    <div class="page-head">
-      <div class="hero-kicker">F.A.Q.</div>
-      <h1>Frequently asked<em>questions.</em></h1>
-    </div>
-
-    <div class="faq-list">
-      <div class="faq-item open">
-        <button class="faq-q">What is PRE-GEN?<span class="ind">+</span></button>
-        <div class="faq-a">
-          <p>PRE-GEN is an open protocol for pre-generation authorization in generative AI. It answers “is this content authorized?” <em>before</em> the model produces anything — not after. A rights registry, a verification API, two-party cryptographic signatures, and a hash-chained audit log give rights holders control over how their identity, brand, voice, style, or creative work is used in AI-generated content — and give providers signed, storable proof of compliance.</p>
-        </div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q">How is this different from content provenance (C2PA)?<span class="ind">+</span></button>
-        <div class="faq-a">
-          <p>Provenance standards like C2PA describe what was generated. PRE-GEN determines whether it should be generated. They are complementary: PRE-GEN can export a signed assertion that embeds into a C2PA manifest, but the authorization decision happens before generation, not after.</p>
-        </div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q">Can it stop all unauthorized AI content?<span class="ind">+</span></button>
-        <div class="faq-a">
-          <p>No — and we say so plainly. PRE-GEN standardizes compliant generation flows. It cannot prevent unauthorized generation by uncooperative providers, local open-source inference, or offshore services. Its value is proportional to the size of the compliant ecosystem: the more providers that integrate, the stronger the protection and the stronger the market norm of asking first.</p>
-        </div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q">What does the opt-out actually do?<span class="ind">+</span></button>
-        <div class="faq-a">
-          <p>The opt-out is the strongest protection in the protocol. It is checked before any license is consulted, and no license — not even a premium one with co-signed exceptions — can override it. A subject who opts out of a category is invisible to compliant generation in that category, full stop. Registration and the opt-out are free.</p>
-        </div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q">What exactly is a PG code?<span class="ind">+</span></button>
-        <div class="faq-a">
-          <p>The permanent identifier every subject and license carries — e.g. <span class="mono">PG-000042*</span> for a subject, <span class="mono">PG-STD-000001-K7M2QX9</span> for a license. Crockford base32 (no <span class="mono">I/L/O/U</span>) with a mod-37 check character that catches every single-character substitution and adjacent transposition — designed to be retyped correctly from a screenshot. The format is frozen; codes are cited in licenses, disputes, and court filings. See the <a href="/docs/pg-code">full specification</a>.</p>
-        </div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q">Who runs it?<span class="ind">+</span></button>
-        <div class="faq-a">
-          <p>Today, a single registry operates the verification API and issues credentials — PRAMPTA, the protocol’s first commercial implementation. The specification itself is open (Apache-2.0) with published byte-level test vectors, so anyone can implement it; the format explicitly reserves room for additional issuers. The long-term intent is a federated, multi-operator network — and the protocol is designed so codes issued today remain valid in that future.</p>
-        </div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q">Is the specification really open? Where is it?<span class="ind">+</span></button>
-        <div class="faq-a">
-          <p>Yes. The crypto invariant, the PG code format, versioning rules, and the full refusal-code registry are published on this site (<a href="/docs">start here</a>) and in the <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">SDK repository</a> under Apache-2.0, with byte-level test vectors that pin every implementation. A formal conformance suite is on the roadmap; today the vectors are the conformance contract.</p>
-        </div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q">What if a provider ignores a refusal?<span class="ind">+</span></button>
-        <div class="faq-a">
-          <p>The signed refusal and the audit chain are evidence: they establish that the provider was told “no”, by whom, when, and under which rule version — independently verifiable by any third party. PRE-GEN does not replace law enforcement or courts; it gives them something verifiable to work with.</p>
-        </div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q">How much does it cost providers to integrate?<span class="ind">+</span></button>
-        <div class="faq-a">
-          <p>The protocol, SDKs, and specification are free. A few lines of code before your model runs. Provider credentials are issued through <a href="https://prampta.com" target="_blank" rel="noopener noreferrer">prampta.com</a>; a sandbox tier verifies against synthetic subjects only, so integration costs engineering time, nothing else.</p>
-        </div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q">How do signatures stay verifiable if keys rotate?<span class="ind">+</span></button>
-        <div class="faq-a">
-          <p>Decisions reference the operator key fingerprint (<span class="mono">pg-ed25519:…</span>) they were signed with, and the key set is published at <span class="mono">GET /keys</span> with rotation-awareness: old keys remain available for verification of past decisions, new decisions use the new key. Stored evidence bundles remain verifiable offline, years later.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</main>
-
-<footer class="site-footer">
-  <div class="shell">
-    <div class="footer-in">
-      <div class="footer-brand">
-        <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="" /><span class="brand-name">PRE-GEN</span></a>
-        <p>Authorization before generation. An open protocol for consent in generative AI.</p>
-      </div>
-      <div class="footer-col">
-        <h4>Protocol</h4>
-        <a href="/docs">Overview</a>
-        <a href="/docs/pg-code">PG code format</a>
-        <a href="/docs/versions">Versioning</a>
-        <a href="/docs/refusal-codes">Refusal codes</a>
-        <a href="/docs/sdk">SDKs</a>
-        <a href="/lookup">Resolve a PG code</a>
-      </div>
-      <div class="footer-col">
-        <h4>Project</h4>
-        <a href="/ecosystem">Ecosystem</a>
-       
-       
-        <a href="/faq">FAQ</a>
-        <a href="/support">Support</a>
-      </div>
-      <div class="footer-col">
-        <h4>Elsewhere</h4>
-        <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub — SDKs ↗</a>
-        <a href="https://prampta.com" target="_blank" rel="noopener noreferrer">PRAMPTA (registry) ↗</a>
-        <a href="/contact">Contact</a>
-        <a href="/legal">Legal</a>
-      </div>
-    </div>
-    <div class="footer-base">
-      <span>© 2026 PRE-GEN Foundation project. Specification under Apache-2.0. · <a href="#" data-cookie-reset>Cookie settings</a></span>
-      <span class="mono">pregen.org</span>
-    </div>
-    <p class="footer-disclaimer">PRE-GEN is an independent open protocol. It is not owned by PRAMPTA Corporation.</p>
-  </div>
-</footer>
-
-<div class="cookie-banner" id="cookieBanner">
-  <div class="cookie-inner">
-    <div class="cookie-text">We store only your cookie choice. Read our <a href="/legal">privacy policy</a>.</div>
-    <div class="cookie-buttons">
-      <button class="cookie-btn" data-cookie="necessary">Necessary only</button>
-      <button class="cookie-btn cookie-btn--accept" data-cookie="all">Accept</button>
-    </div>
-  </div>
-</div>
-
-<script src="/app.js"></script>
+<header class="top"><div class="wrap">
+<a class="mark" href="/">PRE-GEN</a>
+<nav aria-label="Main"><a href="/docs">Protocol</a><a href="/docs/sdk">Integrate</a><a href="/registries">Registries</a><a href="/lookup">Lookup</a><a href="/faq" aria-current="page">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA">GitHub</a></nav>
+</div></header>
+<main><div class="wrap">
+<h1>FAQ</h1><details><summary>What is PRE-GEN?</summary><p>An open protocol for asking permission before AI generates a real person, brand, voice or work. A registry answers with a signed decision; the provider keeps it and reports what it generated.</p></details><details><summary>How is it different from C2PA?</summary><p>C2PA describes what was generated and by whom. PRE-GEN decides whether it should be generated, before the model runs. A PRE-GEN assertion can travel inside a C2PA manifest.</p></details><details><summary>Can it stop all unauthorized AI content?</summary><p>No. It works only where providers integrate it. It cannot stop systems that never ask, local models or services that ignore it. Its value grows with the number of providers that ask.</p></details><details><summary>What does not_blocked mean?</summary><p>Personal use of a registered subject that nothing prohibits: no opt-out, no protection for minors, no fixed denial applies. It grants no licence and gives no right to publish commercially. It exists so personal use can be reported and counted.</p></details><details><summary>What does an opt-out do?</summary><p>It is checked before any licence. No licence can override it. Registering and opting out are free.</p></details><details><summary>Who runs it?</summary><p>Anyone may run a registry or integrate; the specification is Apache-2.0. Today one registry operates in production: PRAMPTA. See <a href="/registries">Registries</a>.</p></details><details><summary>What if a provider ignores a refusal?</summary><p>The signed refusal and the audit chain show that the provider was told no, by whom, when and under which rules. PRE-GEN gives courts and platforms something they can verify; it does not enforce.</p></details><details><summary>What does it cost to integrate?</summary><p>The protocol, vectors and reference SDK are free. Registries set their own terms for credentials; PRAMPTA's sandbox is free.</p></details><details><summary>How do signatures survive key rotation?</summary><p>Every decision names the key fingerprint it was signed with. Registries keep old public keys in their key set so past decisions stay verifiable.</p></details>
+</div></main>
+<footer class="foot"><div class="wrap">
+<p>PRE-GEN is an open protocol under Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
+<nav aria-label="Site"><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
+</div></footer>
 </body>
 </html>

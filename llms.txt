@@ -1,0 +1,21 @@
+# PRE-GEN
+
+> PRE-GEN is an open protocol (Apache-2.0) for asking permission before an AI system generates a real person, brand, voice or work. A registry answers with an Ed25519-signed decision that anyone can verify later. It is not owned by any registry.
+
+- A provider asks `POST /v1/verify/` before generating and gets a `disposition`: `allow` (a licence covers it), `not_blocked` (personal use, nothing granted), `review` (wait for the rights holder) or `deny` (a `PG_*` reason code says why).
+- After an `allow`, the provider files a receipt. A decision proves what the registry answered to a declared request, not that the output matched it or that a use is lawful.
+- PRE-GEN does not stop systems that never ask. It is authorization, not provenance; it complements C2PA.
+- Never send prompt text: send `prompt_hash` (SHA-256 hex). Keep provider secrets server-side.
+
+## Docs
+
+- [Protocol overview](https://www.pregen.org/docs): crypto invariant, signed objects, flow
+- [PG codes](https://www.pregen.org/docs/pg-code): identifier format and check character
+- [Refusal codes](https://www.pregen.org/docs/refusal-codes): every reason code, hard or soft
+- [Integrate](https://www.pregen.org/docs/sdk): HTTP requests, TypeScript SDK, sandbox subjects
+- [Versioning](https://www.pregen.org/docs/versions) and [C2PA](https://www.pregen.org/docs/c2pa)
+
+## Registries
+
+- [Registries](https://www.pregen.org/registries) and [registries.json](https://www.pregen.org/registries.json): who runs PRE-GEN. Today one registry is in production: PRAMPTA (https://prampta.com, API https://api2.prampta.com). Multi-registry discovery is proposed, not yet specified.
+- [Look up a PG code](https://www.pregen.org/lookup)

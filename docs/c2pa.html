@@ -1,83 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<meta name="theme-color" content="#0a0a0a" />
-<title>C2PA integration — PRE-GEN Docs</title>
-<meta name="description" content="Embedding PRE-GEN authorization assertions (pg.assertion.v1) into C2PA manifests: what travels inside the file, how to embed it, and how anyone can verify it." />
-<meta property="og:title" content="PRE-GEN × C2PA" />
-<meta property="og:type" content="article" />
-<meta property="og:image" content="https://www.pregen.org/assets/og-image.png" />
-<link rel="icon" type="image/png" href="/assets/pregen-logo.png" />
-<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
-<link rel="canonical" href="https://www.pregen.org/docs/c2pa" />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400..500&display=swap" />
-<link rel="stylesheet" href="/styles.css" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>C2PA — PRE-GEN</title>
+<meta name="description" content="Embedding a PRE-GEN authorization assertion in a C2PA manifest.">
+<meta property="og:title" content="C2PA — PRE-GEN">
+<meta property="og:description" content="Embedding a PRE-GEN authorization assertion in a C2PA manifest.">
+<meta property="og:image" content="https://www.pregen.org/assets/og-image.png">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.pregen.org/docs/c2pa">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://www.pregen.org/docs/c2pa">
+<link rel="icon" type="image/png" href="/assets/pregen-logo.png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-
-<header class="site-header">
-  <div class="shell header-in">
-    <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="PRE-GEN" /><span class="brand-name">PRE-GEN</span></a>
-    <nav class="top-nav">
-      <a href="/">Protocol</a>
-      <a href="/docs" class="is-active">Docs</a>
-      <a href="/ecosystem">Ecosystem</a>
-     
-     
-      <a href="/faq">FAQ</a>
-     
-      <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
-    </nav>
-    <div class="header-actions">
-      <a class="btn btn-solid btn-sm" href="/docs/sdk">Integrate</a>
-      <button class="menu-btn" id="menuOpen" aria-label="Open navigation"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
-    </div>
-  </div>
-</header>
-
-<div class="drawer-backdrop" id="drawerBackdrop"></div>
-<div class="drawer" id="drawer">
-  <div class="drawer-head">
-    <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="" /><span class="brand-name">PRE-GEN</span></a>
-    <button class="menu-close" id="menuClose" aria-label="Close navigation">✕</button>
-  </div>
-  <nav>
-    <a href="/">Protocol</a>
-    <a href="/docs" class="is-active">Docs</a>
-    <a href="/ecosystem">Ecosystem</a>
-   
-   
-    <a href="/faq">FAQ</a>
-   
-    <a href="/support">Support</a>
-    <a href="/legal">Legal</a>
-    <a href="/contact">Contact</a>
-    <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
-  </nav>
-</div>
-
-<div class="docs-shell">
-  <aside class="docs-nav">
-    <div class="docs-nav-label">Documentation</div>
-    <a href="/docs">Overview</a>
-    <a href="/docs/pg-code">PG code format</a>
-    <a href="/docs/versions">Versioning</a>
-    <a href="/docs/refusal-codes">Refusal codes</a>
-    <a href="/docs/sdk">SDKs &amp; integration</a>
-    <a href="/docs/c2pa" class="is-active">C2PA integration</a>
-    <div class="sep"></div>
-    <a class="ext" href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub — SDKs ↗</a>
-    <a class="ext" href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA/blob/main/openapi.json" target="_blank" rel="noopener noreferrer">OpenAPI contract ↗</a>
-  </aside>
-
-  <article class="docs-body">
-    <div class="doc-crumb"><a href="/docs">Docs</a> / C2PA integration</div>
-    <h1>PRE-GEN assertions in C2PA manifests</h1>
-    <p class="doc-meta">Status: <span class="mono">spec draft</span> · Assertion marker: <span class="mono">pg.assertion.v1</span> · C2PA: <span class="mono">1.x</span></p>
+<header class="top"><div class="wrap">
+<a class="mark" href="/">PRE-GEN</a>
+<nav aria-label="Main"><a href="/docs" aria-current="page">Protocol</a><a href="/docs/sdk">Integrate</a><a href="/registries">Registries</a><a href="/lookup">Lookup</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA">GitHub</a></nav>
+</div></header>
+<main><div class="wrap">
+<div class="doc"><aside><ul><li><a href="/docs">Overview</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versioning</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Integrate</a></li><li><a href="/docs/c2pa" aria-current="page">C2PA</a></li></ul></aside><article><h1>PRE-GEN assertions in C2PA manifests</h1>
+    <p class="meta">Status: <span class="mono">spec draft</span> · Assertion marker: <span class="mono">pg.assertion.v1</span> · C2PA: <span class="mono">1.x</span></p>
 
     <p>
       C2PA answers <strong>“who made this and when”</strong>. It does not answer
@@ -87,7 +33,7 @@
       database somewhere. Content and its consent become inseparable.
     </p>
 
-    <div class="callout">
+    <div class="note">
       <span class="mono">Division of labor</span>
       C2PA is provenance. PRE-GEN is authorization. An assertion is <strong>not a license</strong> —
       it is a verifiable pointer to one. Anyone can resolve the PG codes and check the
@@ -114,7 +60,7 @@
   "receipt_ref": "rcp_01J8ZM…",
   "generated_at": 1787600123
 }</code></pre>
-    <table class="doc-table">
+    <div class="table"><table>
       <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
       <tbody>
         <tr><td class="mono">subject_pg</td><td>The subject depicted — resolvable at <a href="/lookup">/lookup</a></td></tr>
@@ -122,7 +68,7 @@
         <tr><td class="mono">license_pg</td><td>The license that backed the decision (optional in opt-out denials)</td></tr>
         <tr><td class="mono">receipt_ref</td><td>The provider’s post-generation receipt tying output to decision</td></tr>
       </tbody>
-    </table>
+    </table></div>
 
     <h2>Embedding</h2>
     <p>
@@ -163,65 +109,11 @@ writer.sign(...)                           # your C2PA credential</code></pre>
       proves which license applied and that the provider asked. It also says nothing about
       provenance of the <em>input</em> material — that remains C2PA’s job. The two layers are
       complementary by design: C2PA for origin, PRE-GEN for consent.
-    </p>
-
-    <div class="pager">
-      <a href="/docs/sdk"><span class="dir">← PREV</span>SDKs &amp; integration</a>
-      <span></span>
-    </div>
-  </article>
-</div>
-
-<footer class="site-footer">
-  <div class="shell">
-    <div class="footer-in">
-      <div class="footer-brand">
-        <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="" /><span class="brand-name">PRE-GEN</span></a>
-        <p>Authorization before generation. An open protocol for consent in generative AI.</p>
-      </div>
-      <div class="footer-col">
-        <h4>Protocol</h4>
-        <a href="/docs">Overview</a>
-        <a href="/docs/pg-code">PG code format</a>
-        <a href="/docs/versions">Versioning</a>
-        <a href="/docs/refusal-codes">Refusal codes</a>
-        <a href="/docs/sdk">SDKs</a>
-        <a href="/lookup">Resolve a PG code</a>
-      </div>
-      <div class="footer-col">
-        <h4>Project</h4>
-        <a href="/ecosystem">Ecosystem</a>
-       
-       
-        <a href="/faq">FAQ</a>
-        <a href="/support">Support</a>
-      </div>
-      <div class="footer-col">
-        <h4>Elsewhere</h4>
-        <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub — SDKs ↗</a>
-        <a href="https://prampta.com" target="_blank" rel="noopener noreferrer">PRAMPTA (registry) ↗</a>
-        <a href="/contact">Contact</a>
-        <a href="/legal">Legal</a>
-      </div>
-    </div>
-    <div class="footer-base">
-      <span>© 2026 PRE-GEN Foundation project. Specification under Apache-2.0. · <a href="#" data-cookie-reset>Cookie settings</a></span>
-      <span class="mono">pregen.org</span>
-    </div>
-    <p class="footer-disclaimer">PRE-GEN is an independent open protocol. It is not owned by PRAMPTA Corporation.</p>
-  </div>
-</footer>
-
-<div class="cookie-banner" id="cookieBanner">
-  <div class="cookie-inner">
-    <div class="cookie-text">We store only your cookie choice. Read our <a href="/legal">privacy policy</a>.</div>
-    <div class="cookie-buttons">
-      <button class="cookie-btn" data-cookie="necessary">Necessary only</button>
-      <button class="cookie-btn cookie-btn--accept" data-cookie="all">Accept</button>
-    </div>
-  </div>
-</div>
-
-<script src="/app.js"></script>
+    </p><nav class="pager" aria-label="Pages"><a href="/docs/sdk">← Integrate</a><span></span></nav></article></div>
+</div></main>
+<footer class="foot"><div class="wrap">
+<p>PRE-GEN is an open protocol under Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
+<nav aria-label="Site"><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
+</div></footer>
 </body>
 </html>

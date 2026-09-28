@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Registries — PRE-GEN</title>
+<meta name="description" content="Who runs PRE-GEN: registries and the AI providers integrated with them.">
+<meta property="og:title" content="Registries — PRE-GEN">
+<meta property="og:description" content="Who runs PRE-GEN: registries and the AI providers integrated with them.">
+<meta property="og:image" content="https://www.pregen.org/assets/og-image.png">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.pregen.org/registries">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://www.pregen.org/registries">
+<link rel="icon" type="image/png" href="/assets/pregen-logo.png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="top"><div class="wrap">
+<a class="mark" href="/">PRE-GEN</a>
+<nav aria-label="Main"><a href="/docs">Protocol</a><a href="/docs/sdk">Integrate</a><a href="/registries" aria-current="page">Registries</a><a href="/lookup">Lookup</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA">GitHub</a></nav>
+</div></header>
+<main><div class="wrap">
+<h1>Registries</h1>
+<p class="lede">Who runs PRE-GEN today. Registries and providers are listed so they can find each other and give consistent answers about the same people and works.</p>
+<p class="meta">Updated 2026-09-28 · machine-readable: <a href="/registries.json">registries.json</a></p>
+
+<h2>Registries</h2>
+<p>A registry holds subjects, issues licences and signs decisions.</p>
+<div class="table"><table>
+<thead><tr><th>Name</th><th>Role</th><th>Codes</th><th>API</th><th>Status</th><th>Since</th></tr></thead>
+<tbody><tr><td><a href="https://prampta.com">PRAMPTA</a></td><td>Registry operator, origin issuer</td><td class="mono">PG-… (bare codes)</td><td class="mono">https://api2.prampta.com</td><td>Production</td><td class="mono">2026</td></tr></tbody></table></div>
+
+<h2>Providers</h2>
+<p>AI systems that ask a listed registry before generating.</p>
+<div class="table"><table>
+<thead><tr><th>Name</th><th>Registry</th><th>Status</th></tr></thead>
+<tbody><tr><td colspan="3" class="muted">None yet. A provider appears here once it completes a production check and receipt with a listed registry.</td></tr></tbody></table></div>
+
+<h2>Getting listed</h2>
+<p><b>Registries</b> open an issue in the <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA">specification repository</a> with:</p>
+<ol>
+<li>a public API with <code>/v1/verify/</code>, <code>/v1/subjects/index</code> and a rotation-aware key set at <code>/keys</code>;</li>
+<li>a passing run of the published test vectors;</li>
+<li>a contact for rights holders and a contact for security reports.</li>
+</ol>
+<p><b>Providers</b> are listed by the registry they integrate with, after a production decision and matching receipt.</p>
+
+<h2>Working together</h2>
+<p class="note">Proposed, not yet part of the specification. Discussed in the open before anything changes on the wire.</p>
+<ul>
+<li><strong>One code, one issuer.</strong> A PG code belongs to exactly one registry. A bare <code>PG-…</code> code always means the origin registry; other registries get their own prefix (<code>PG-&lt;ISSUER&gt;-…</code>, format under discussion), so codes never collide.</li>
+<li><strong>Discovery.</strong> Each registry publishes the same machine-readable description of its endpoints and keys, so one provider integration can reach every listed registry.</li>
+<li><strong>A no is shared.</strong> An opt-out or a protection for a minor at one registry should be honoured by every registry holding the same person.</li>
+<li><strong>Disputes.</strong> When two registries claim the same person or work, neither issues new licences for it until the claim is resolved.</li>
+</ul>
+
+</div></main>
+<footer class="foot"><div class="wrap">
+<p>PRE-GEN is an open protocol under Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
+<nav aria-label="Site"><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
+</div></footer>
+</body>
+</html>

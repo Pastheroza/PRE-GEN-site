@@ -1,409 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<meta name="theme-color" content="#0a0a0a" />
-<title>PRE-GEN — Authorization before generation</title>
-<meta name="description" content="PRE-GEN is an open protocol for pre-generation authorization in generative AI. Cryptographically signed allow-or-deny decisions — before the first pixel is produced." />
-<meta property="og:title" content="PRE-GEN — Authorization before generation" />
-<meta property="og:image" content="https://www.pregen.org/assets/og-image.png" />
-<meta property="og:description" content="An open protocol for pre-generation authorization in generative AI. Signed, verifiable, court-ready." />
-<meta property="og:type" content="website" />
-<meta property="og:url" content="https://www.pregen.org" />
-<link rel="canonical" href="https://www.pregen.org/" />
-<meta name="twitter:card" content="summary_large_image" />
-<link rel="icon" type="image/png" href="/assets/pregen-logo.png" />
-<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400..500&display=swap" />
-<link rel="stylesheet" href="/styles.css" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRE-GEN — permission before generation</title>
+<meta name="description" content="PRE-GEN is an open protocol for asking permission before AI generates a real person, brand or work, and proving the answer afterwards.">
+<meta property="og:title" content="PRE-GEN — permission before generation">
+<meta property="og:description" content="PRE-GEN is an open protocol for asking permission before AI generates a real person, brand or work, and proving the answer afterwards.">
+<meta property="og:image" content="https://www.pregen.org/assets/og-image.png">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.pregen.org/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://www.pregen.org/">
+<link rel="icon" type="image/png" href="/assets/pregen-logo.png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
+<header class="top"><div class="wrap">
+<a class="mark" href="/">PRE-GEN</a>
+<nav aria-label="Main"><a href="/docs">Protocol</a><a href="/docs/sdk">Integrate</a><a href="/registries">Registries</a><a href="/lookup">Lookup</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA">GitHub</a></nav>
+</div></header>
+<main><div class="wrap">
+<h1>Permission before generation.</h1>
+<p class="lede">PRE-GEN is an open protocol. Before an AI system generates a real person, brand or work, it asks a registry. The registry answers with a signed decision that anyone can check later.</p>
+<div class="actions"><a class="btn primary" href="/docs">Read the protocol</a><a class="btn" href="/docs/sdk">Integrate</a><a class="btn" href="/registries">Registries</a></div>
 
-<header class="site-header">
-  <div class="shell header-in">
-    <a class="brand" href="/">
-      <img class="brand-mark" src="/assets/pregen-logo.png" alt="PRE-GEN" />
-      <span class="brand-name">PRE-GEN</span>
-    </a>
-    <nav class="top-nav">
-      <a href="/" class="is-active">Protocol</a>
-      <a href="/docs">Docs</a> <a href="/ecosystem">Ecosystem</a>
-     
-     
-      <a href="/faq">FAQ</a>
-      <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
-    </nav>
-    <div class="header-actions">
-      <a class="btn btn-solid btn-sm" href="/docs/sdk">Integrate</a>
-      <button class="menu-btn" id="menuOpen" aria-label="Open navigation"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
-    </div>
-  </div>
-</header>
+<h2>How it works</h2>
+<ol class="steps">
+<li><b>1. Detect</b>The provider matches the prompt against the registry's public subject index.</li>
+<li><b>2. Ask</b><code>POST /v1/verify/</code> with the subject and the intended use. The registry returns a signed decision.</li>
+<li><b>3. Report</b>After generating, the provider files a receipt that ties the output to that decision.</li>
+</ol>
 
-<div class="drawer-backdrop" id="drawerBackdrop"></div>
-<div class="drawer" id="drawer">
-  <div class="drawer-head">
-    <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="" /><span class="brand-name">PRE-GEN</span></a>
-    <button class="menu-close" id="menuClose" aria-label="Close navigation">✕</button>
-  </div>
-  <nav>
-    <a href="/" class="is-active">Protocol</a>
-    <a href="/docs">Docs</a> <a href="/ecosystem">Ecosystem</a>
-   
-   
-    <a href="/faq">FAQ</a>
-    <a href="/support">Support</a>
-    <a href="/legal">Legal</a>
-    <a href="/contact">Contact</a>
-    <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
-  </nav>
-  <div class="drawer-foot"><a class="btn btn-solid" href="/docs/sdk" style="width:100%;justify-content:center">Integrate</a></div>
-</div>
+<h2>Four answers</h2>
+<div class="table"><table>
+<thead><tr><th>disposition</th><th>Meaning</th><th>Provider</th></tr></thead>
+<tbody>
+<tr><td class="mono">allow</td><td>A licence covers this use.</td><td>Generate, apply the obligations, file a receipt.</td></tr>
+<tr><td class="mono">not_blocked</td><td>Personal use that nothing prohibits. No licence is granted.</td><td>May generate under its own policy. Report it; there is no receipt.</td></tr>
+<tr><td class="mono">review</td><td>The rights holder has to decide.</td><td>Do not generate yet.</td></tr>
+<tr><td class="mono">deny</td><td>Refused. The <code>PG_*</code> reason code says why and whether retrying can help.</td><td>Do not generate.</td></tr>
+</tbody></table></div>
+<p class="meta">Every decision is canonical JSON signed with Ed25519 and written to a hash-chained audit log. See <a href="/docs">the protocol overview</a>.</p>
 
-<main>
+<h2>What it does not do</h2>
+<ul>
+<li>It does not stop generation by systems that never ask.</li>
+<li>A decision proves what the registry answered to a declared request. It does not prove the output matched the request, or that a use is lawful.</li>
+<li>It is not provenance. C2PA says what was made; PRE-GEN says whether it was allowed. They work together — see <a href="/docs/c2pa">C2PA</a>.</li>
+</ul>
 
-  <section class="hero">
-    <canvas class="hero-fire" id="heroFire" aria-hidden="true"></canvas>
-    <div class="hero-fire-fade" aria-hidden="true"></div>
-    <div class="shell">
-    <pre class="hero-ascii" aria-hidden="true">.·················································································································································································       .·················.
-·•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·••••••••••·           :••••••••••••••••••••••••••••••.                        ••••••••••••••••••••••••••••••:                            ••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·••••••••••·           ••••••••••••••••••••••••••••••••••                     ·•••••••••••••••••••••••••••••••••                         .••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·••••••••••·           •••••••••••••••••••••••••••••••••••:                   ••••••••••••••••••••••••••••••••••••                       ·••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·••••••••••·           •••••••••••••••••••••••••••••••••••••                  •••••••••••••••••••••••••••••••••••••.                     •••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·••••••••••·          :••••••••••·           ·•••••••••••••••                 ••••••••••:           .:••••••••••••••.                    •••••••••••                   •••••••••••       :•••••••••••••••••:
-·••••••••••·          •••••••••••.               •••••••••••••               ·••••••••••:               :••••••••••••                   .•••••••••••                   •••••••••••       :•••••••••••••••••:
-·••••••••••·          •••••••••••                 .•••••••••••·              •••••••••••.                 •••••••••••:                  ·••••••••••·                   •••••••••••       :•••••••••••••••••:
-·••••••••••·          ••••••••••:                  ·•••••••••••              •••••••••••                  .•••••••••••                  :••••••••••                    •••••••••••       :•••••••••••••••••:
-·••••••••••·         ·••••••••••·                   •••••••••••              •••••••••••                   •••••••••••.                 •••••••••••                    •••••••••••       :•••••••••••••••••:
-·••••••••••·         •••••••••••.                   •••••••••••             ·••••••••••:                   •••••••••••.                .•••••••••••                    •••••••••••       :•••••••••••••••••:
-·••••••••••·         •••••••••••                    •••••••••••             :••••••••••.                   •••••••••••.                ·••••••••••·                    •••••••••••       :•••••••••••••••••:
-·••••••••••·        .••••••••••:                   ·•••••••••••             •••••••••••                   .•••••••••••                 :••••••••••                     •••••••••••       :•••••••••••••••••:
-·••••••••••·        ·••••••••••·                   •••••••••••·             •••••••••••                   •••••••••••:                 •••••••••••                     •••••••••••       :•••••••••••••••••:
-·••••••••••·        •••••••••••.                  ••••••••••••             .••••••••••:                 .••••••••••••                 .•••••••••••                     •••••••••••       :•••••••••••••••••:
-·••••••••••·        •••••••••••                 :••••••••••••              :••••••••••.               .•••••••••••••.                 ·•••••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·••••••••••·       .•••••••••••              :••••••••••••••               •••••••••••             ·•••••••••••••••.                  ••••••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·••••••••••·       ·••••••••••••••••••••••••••••••••••••••:                ••••••••••••••••••••••••••••••••••••••:                    ••••••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·••••••••••·       :•••••••••••••••••••••••••••••••••••••                 .••••••••••••••••••••••••••••••••••••:                      ••••••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·••••••••••·       ••••••••••••••••••••••••••••••••••••                   :••••••••••••••••••••••••••••••••••.                       ·•••••••••••······················•••••••••••       :•••••••••••••••••:
-·••••••••••·      .•••••••••••••••••••••••••••••••••                      •••••••••••••••••••••••••••••••.                           •••••••••••.                      •••••••••••       :•••••••••••••••••:
-·••••••••••·      ·•••••••••••••••••••••••••••·.                          ••••••••••••••••••••••••••                                 •••••••••••                       •••••••••••       :•••••••••••••••••:
-·••••••••••·      :••••••••••                                            ·•••••••••••    .••••••••••:                                •••••••••••                       •••••••••••       :•••••••••••••••••:
-·••••••••••·      •••••••••••                                            :••••••••••.      •••••••••••                              ·••••••••••:                       •••••••••••       :•••••••••••••••••:
-·••••••••••·     .•••••••••••                                            •••••••••••        •••••••••••                             •••••••••••.                       •••••••••••       :•••••••••••••••••:
-·••••••••••·     ·••••••••••:                                            •••••••••••         •••••••••••.                           •••••••••••                        •••••••••••       :•••••••••••••••••:
-·••••••••••·     :••••••••••.                                           ·•••••••••••          :••••••••••·                          •••••••••••                        •••••••••••       :•••••••••••••••••:
-·••••••••••·     •••••••••••                                            :••••••••••·           :••••••••••:                        ·••••••••••·                        •••••••••••       :•••••••••••••••••:
-·••••••••••·     •••••••••••                                            •••••••••••             ·•••••••••••                       :••••••••••.                        •••••••••••       :•••••••••••••••••:
-·••••••••••·    ·••••••••••:                                            •••••••••••              .•••••••••••                      •••••••••••                         •••••••••••       :•••••••••••••••••:
-·••••••••••·    •••••••••••.                                           .••••••••••:                •••••••••••.                    •••••••••••                         •••••••••••       :•••••••••••••••••:
-·••••••••••·    •••••••••••                                            :••••••••••·                 •••••••••••·                  .••••••••••:                         •••••••••••       :•••••••••••••••••:
-·••••••••••·    ••••••••••:                                            •••••••••••                   •••••••••••:                 :•••••••••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·••••••••••·   ·••••••••••·                                            •••••••••••                    :•••••••••••                ••••••••••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·••••••••••·   •••••••••••.                                           .••••••••••:                     ·•••••••••••              .••••••••••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·••••••••••·   •••••••••••                                            :••••••••••·                      .•••••••••••.            ·••••••••••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·••••••••••:········•••••·····································•••••••••···········•••••••••••••••••••••••••••••••:······················:•••••••••••••••••••••••·······•••••••••••       :•••••••••••••••••:
-·••••••••••·       .••••••                                    •••••••••           •••••••••••••••••••••••••••••••                    ·•••••••••••••••••••••••••••••·   •••••••••••       :•••••••••••••••••:
-·••••••••••·       ·•••••••:                                 .••••••••·           •••••••••••••••••••••••••••••••                  •••••••••••••••••••••••••••••••••••.•••••••••••       :•••••••••••••••••:
-·••••••••••·       :•••••••••                                :••••••••           .••••••••••••••••••••••••••••••:                •••••••••••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·••••••••••·       •••••••••••:                              •••••••••                                 ·••••••••               :•••••••••••·                ·•••••••••••••••••••••       :•••••••••••••••••:
-·••••••••••·      .•••••••••••••.                            •••••••••                                 •••••••••              ••••••••••·                      .••••••••••••••••••       :•••••••••••••••••:
-·••••••••••·      ·•••••••••••••••                          ·••••••••·                                 •••••••••             •••••••••.                           ••••••••••••••••       :•••••••••••••••••:
-·••••••••••·      :••••••••••••••••·                        :••••••••                                 .••••••••:            •••••••••                              .••••••••••••••       :•••••••••••••••••:
-·••••••••••·      •••••••••••••••••••                       •••••••••                                 ·••••••••.           •••••••••                                 •••••••••••••       :•••••••••••••••••:
-·••••••••••·     .••••••••: ·•••••••••·                     ••••••••:                                 :••••••••           ·••••••••.                                  ••••••••••••       :•••••••••••••••••:
-·••••••••••·     ·••••••••.   ••••••••••.                  ·••••••••·                                 •••••••••           ••••••••••••••••••••••••                     •••••••••••       :•••••••••••••••••:
-·••••••••••·     :••••••••     .•••••••••:                 :••••••••.                                .••••••••:          ·•••••••••••••••••••••••·                     •••••••••••       :•••••••••••••••••:
-·••••••••••·     •••••••••       :•••••••••.               •••••••••                                 ·••••••••.          :•••••••••••••••••••••••.                     •••••••••••       :•••••••••••••••••:
-·••••••••••·     ••••••••·        .••••••••••              ••••••••:                                 :••••••••           ••••••••••••••••••••••••                      •••••••••••       :•••••••••••••••••:
-·••••••••••·    ·••••••••.          :•••••••••·           .••••••••·           •••••••••••••••••••••••••••••••                                                         •••••••••••       :•••••••••••••••••:
-·••••••••••·    •••••••••             ••••••••••          :••••••••.          .••••••••••••••••••••••••••••••:                                                         •••••••••••       :•••••••••••••••••:
-·••••••••••·    •••••••••              ·•••••••••:        •••••••••           :••••••••••••••••••••••••••••••.                                                         •••••••••••       :•••••••••••••••••:
-·••••••••••·    ••••••••:                ••••••••••       ••••••••:           •••••••••••••••••••••••••••••••                                                          •••••••••••       :•••••••••••••••••:
-·••••••••••·   ·••••••••.                 .•••••••••:    .••••••••·                                 •••••••••                                                          •••••••••••       :•••••••••••••••••:
-·••••••••••·   •••••••••                    ••••••••••.  :••••••••.                                 ••••••••:                                                         ••••••••••••       :•••••••••••••••••:
-·••••••••••·   •••••••••                     .•••••••••• •••••••••                                 ·••••••••·                                                        ·••••••••••••       :•••••••••••••••••:
-·••••••••••·   ••••••••:                       :••••••••••••••••••                                 •••••••••                                                        :•••••••••••••       :•••••••••••••••••:
-·••••••••••·  .••••••••.                         ••••••••••••••••·                                 •••••••••                 .••:                                  •••••••••••••••       :•••••••••••••••••:
-·••••••••••·  :••••••••                           :••••••••••••••.                                 ••••••••:               .••••••:                              •••••••••••••••••       :•••••••••••••••••:
-·••••••••••·  •••••••••                             •••••••••••••                                 ·••••••••.             .•••••••••••.                         •••••••••••••••••••       :•••••••••••••••••:
-·••••••••••·  •••••••••                              ·•••••••••••                                 •••••••••                •••••••••••••:.                 ·••••••••••••••••••••••       :•••••••••••••••••:
-·••••••••••· .••••••••.                                •••••••••·           •••••••••••••••••••••••••••••••                  ••••••••••••••••••::···::••••••••••••••••••••••••••••       :•••••••••••••••••:
-·••••••••••· :••••••••                                   •••••••           .••••••••••••••••••••••••••••••:                    ·•••••••••••••••••••••••••••••••••••••  •••••••••••       :•••••••••••••••••:
-·••••••••••· •••••••••                                    :•••••           ·••••••••••••••••••••••••••••••.                       ·•••••••••••••••••••••••••••••••.    •••••••••••       :•••••••••••••••••:
-·••••••••••· •••••••••                                      ••••           :••••••••••••••••••••••••••••••                            ·••••••••••••••••••••••:.        •••••••••••       :•••••••••••••••••:
-·•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
-·•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••       :•••••••••••••••••:
- .................................................................................................................................................................................        .................</pre>
-      <div class="hero-kicker">Open protocol · Apache-2.0</div>
-      <h1><span class="pregen">PRE-GEN</span><span class="erational">erational</span><em>Authorization.</em></h1>
-      <p class="hero-lede">
-        PRE-GEN is the open protocol for licensing AI-generated content.
-        Rights holders set the terms. AI companies ask before they generate.
-        Everyone gets signed proof.
-      </p>
-      <div class="hero-cta">
-        <a class="btn btn-solid" href="/docs">Read the specification</a>
-        <a class="btn btn-ghost" href="/ecosystem">For AI companies</a>
-        <form class="hero-search" action="/lookup" method="get">
-          <input class="hero-search-input" type="text" name="code" placeholder="Resolve a PG code…" aria-label="Resolve a PG code" spellcheck="false" autocapitalize="characters" maxlength="32" />
-        </form>
-      </div>
-      <p class="hero-note">
-        “Did anyone authorize this generation?” · “Am I allowed to generate it?” — one protocol answers both. With signatures, not promises.
-      </p>
-    </div>
-  </section>
+<h2>One protocol, many registries</h2>
+<p>The specification and test vectors are Apache-2.0: anyone can run a registry or integrate without asking permission. <a href="/registries">Registries</a> lists who runs PRE-GEN today, so that registries and providers can find each other and give consistent answers.</p>
+<p>Look up any PG code: <a href="/lookup">pregen.org/lookup</a>.</p>
 
-  <section class="section">
-    <div class="shell">
-      <div class="kicker">01 — The gap</div>
-      <h2 class="section-title">Provenance standards label output. None of them ask permission.</h2>
-      <p class="section-lede">
-        C2PA and similar efforts describe what was generated. PRE-GEN determines whether it
-        should be generated — the consent decision happens before the model runs.
-      </p>
-      <div class="grid-3">
-        <div class="card">
-          <div class="card-num">/01</div>
-          <h3>Consent, not detection</h3>
-          <p>Detection and watermarking happen after the fact. PRE-GEN puts a rights registry
-          and a license check in front of generation — the model asks first.</p>
-        </div>
-        <div class="card">
-          <div class="card-num">/02</div>
-          <h3>Proof, not policy</h3>
-          <p>Every decision is Ed25519-signed over canonical bytes and written to a
-          hash-chained audit log. Your compliance record is verifiable by anyone —
-          including a court — years later.</p>
-        </div>
-        <div class="card">
-          <div class="card-num">/03</div>
-          <h3>Refusals you can act on</h3>
-          <p>Denials carry machine-readable <span class="mono">PG_*</span> codes with
-          hard/soft classification — so your product can offer a license flow, back off,
-          or reshape the request instead of guessing.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="shell">
-      <div class="kicker">02 — The studio file</div>
-      <h2 class="section-title">Chain of title for AI content — generated automatically.</h2>
-      <p class="section-lede">
-        Film and TV studios, ad agencies, and game teams using generative tools face a
-        distribution-blocking question: prove the rights behind every AI-generated scene.
-        PRE-GEN turns that paper chase into a pipeline artifact — scoped license, signed
-        decision, receipt, audit chain — exportable as evidence for E&amp;O insurers,
-        distributors, and courts. And with C2PA assertions, the permission travels inside
-        the file itself.
-      </p>
-      <div class="grid-3">
-        <div class="card">
-          <div class="card-num">E&amp;O-READY</div>
-          <h3>The file insurers ask for</h3>
-          <p>Every authorized generation leaves an evidence bundle: who granted the right, on
-          what terms, who asked, what was produced. Signed, hash-chained, independently
-          verifiable — hand it to the insurer instead of an inbox of PDFs.</p>
-        </div>
-        <div class="card">
-          <div class="card-num">TRAVELS IN-FILE</div>
-          <h3>Permission inside the C2PA manifest</h3>
-          <p>A PRE-GEN assertion rides inside the content’s C2PA manifest, pointing at the
-          signed decision and license. Strip the file from your archive and the metadata
-          still answers the question.</p>
-        </div>
-        <div class="card">
-          <div class="card-num">RESOLVES FOREVER</div>
-          <h3>PG codes are permanent</h3>
-          <p>Cited in a license today, resolvable by anyone in ten years —
-          <a href="/lookup" style="text-decoration:underline;text-underline-offset:3px">pregen.org/lookup</a>
-          resolves any code without an account. Chain of title that outlives the vendor.</p>
-        </div>
-      </div>
-      <p style="margin-top:22px"><a class="btn btn-ghost" href="/ecosystem">See the full ecosystem →</a></p>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="shell">
-      <div class="kicker">03 — Integration</div>
-      <h2 class="section-title">Three calls between your prompt and the model.</h2>
-      <div class="grid-3">
-        <div class="card">
-          <div class="card-num">CALL 1</div>
-          <h3>Detect</h3>
-          <p>Poll the subject index (ETag-cached) and match user prompts against registered
-          people, brands, voices, styles. Both SDKs ship identical matching semantics.</p>
-        </div>
-        <div class="card">
-          <div class="card-num">CALL 2</div>
-          <h3>Verify</h3>
-          <p><span class="mono">POST /v1/verify/</span> with the matched subject. You get a
-          signed decision: allowed (with obligations) or refused (with a reason code).</p>
-        </div>
-        <div class="card">
-          <div class="card-num">CALL 3</div>
-          <h3>Prove</h3>
-          <p>Verify the signature against the operator key set, store the decision, and —
-          after generation — file a receipt proving what was actually produced.</p>
-        </div>
-      </div>
-      <div class="code-window">
-        <div class="code-window-head"><span>python · quickstart</span><span>pip install prampta</span></div>
-<pre><code>from prampta import Prampta
-
-pg = Prampta(
-    base_url="https://api2.prampta.com",
-    provider_id="your-provider-id",
-    licensee_id="your-licensee-id",
-    token="pair-token",
-)
-
-hits = pg.match_subjects(user_prompt)
-for h in hits:
-    pg.assert_allowed(h["subject_id"], prompt=user_prompt, modality="image")
-# no exception → all matched subjects authorized, proceed with generation</code></pre>
-      </div>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="shell">
-      <div class="kicker">04 — Protocol objects</div>
-      <h2 class="section-title">Five signed objects. Every one carries its schema version.</h2>
-      <p class="section-lede">
-        Each object is canonical JSON, signed with Ed25519, with the signature excluded from
-        its own signed bytes. Additive field changes are free; meaning changes bump the version.
-      </p>
-      <table class="obj-table">
-        <thead><tr><th>Object</th><th>Version marker</th><th>Signed by</th><th>What it proves</th></tr></thead>
-        <tbody>
-          <tr><td><strong>Decision</strong></td><td class="mono">pg.decision.v1</td><td>Registry operator</td><td class="dim">The allow/deny answer, its policy version, and cache scope</td></tr>
-          <tr><td><strong>License</strong></td><td class="mono">pg.license.v2</td><td>Rights holder + operator</td><td class="dim">Scoped permission: modality, channel, territory, time</td></tr>
-          <tr><td><strong>Receipt</strong></td><td class="mono">pg.receipt.v2</td><td>Provider</td><td class="dim">That a specific generation actually happened, under which decision</td></tr>
-          <tr><td><strong>Evidence bundle</strong></td><td class="mono">pg.evidence.v1</td><td>Registry operator</td><td class="dim">The full decision + license + audit chain, verifiable offline</td></tr>
-          <tr><td><strong>Assertion</strong></td><td class="mono">pg.assertion.v1</td><td>Registry operator</td><td class="dim">Portable provenance claim — embeddable in C2PA manifests</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="shell">
-      <div class="kicker">05 — Identifiers</div>
-      <h2 class="section-title">PG codes: permanent, check-summed, human-transcribable.</h2>
-      <p class="section-lede">
-        Every subject and license carries an identifier designed to be read off a screenshot
-        and retyped correctly. Crockford base32 — no <span class="mono">I L O U</span> — with a
-        mod-37 check character that catches every single-character substitution and every
-        adjacent transposition. The format is frozen; codes are cited forever.
-      </p>
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-num">SUBJECT</div>
-          <h3 class="mono">PG-000042*</h3>
-          <p>Serial + check character. Assigned once, resolves forever — including two legacy
-          shapes from before the check character existed.</p>
-        </div>
-        <div class="card">
-          <div class="card-num">LICENSE</div>
-          <h3 class="mono">PG-STD-000001-K7M2QX9</h3>
-          <p>Class + subject serial + random tail. A license id names its subject without a
-          lookup — but is always resolved by lookup, never parsed.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="band">
-    <div class="shell band-in">
-      <div>
-        <h2>Open specification. Commercial registry.</h2>
-        <p>
-          The PRE-GEN specification, test vectors, and SDKs are Apache-2.0 — free for anyone
-          to implement, no permission required. PRAMPTA is the protocol’s first commercial
-          implementation and registry operator, where rights holders register and AI providers
-          get credentials.
-        </p>
-      </div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <a class="btn btn-solid" href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">SDKs on GitHub</a>
-        <a class="btn btn-ghost" href="https://prampta.com" target="_blank" rel="noopener noreferrer">PRAMPTA ↗</a>
-      </div>
-    </div>
-  </section>
-
-</main>
-
-<footer class="site-footer">
-  <div class="shell">
-    <div class="footer-in">
-      <div class="footer-brand">
-        <a class="brand" href="/"><img class="brand-mark" src="/assets/pregen-logo.png" alt="" /><span class="brand-name">PRE-GEN</span></a>
-        <p>Authorization before generation. An open protocol for consent in generative AI.</p>
-      </div>
-      <div class="footer-col">
-        <h4>Protocol</h4>
-        <a href="/docs">Overview</a>
-        <a href="/docs/pg-code">PG code format</a>
-        <a href="/docs/versions">Versioning</a>
-        <a href="/docs/refusal-codes">Refusal codes</a>
-        <a href="/docs/sdk">SDKs</a>
-        <a href="/lookup">Resolve a PG code</a>
-      </div>
-      <div class="footer-col">
-        <h4>Project</h4>
-        <a href="/ecosystem">Ecosystem</a>
-       
-       
-        <a href="/faq">FAQ</a>
-        <a href="/support">Support</a>
-      </div>
-      <div class="footer-col">
-        <h4>Elsewhere</h4>
-        <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA" target="_blank" rel="noopener noreferrer">GitHub — SDKs ↗</a>
-        <a href="https://prampta.com" target="_blank" rel="noopener noreferrer">PRAMPTA (registry) ↗</a>
-        <a href="/contact">Contact</a>
-        <a href="/legal">Legal</a>
-      </div>
-    </div>
-    <div class="footer-base">
-      <span>© 2026 PRE-GEN Foundation project. Specification under Apache-2.0. · <a href="#" data-cookie-reset>Cookie settings</a></span>
-      <span class="mono">pregen.org</span>
-    </div>
-    <p class="footer-disclaimer">PRE-GEN is an independent open protocol. It is not owned by PRAMPTA Corporation.</p>
-  </div>
-</footer>
-
-<div class="cookie-banner" id="cookieBanner">
-  <div class="cookie-inner">
-    <div class="cookie-text">We store only your cookie choice. Read our <a href="/legal">privacy policy</a>.</div>
-    <div class="cookie-buttons">
-      <button class="cookie-btn" data-cookie="necessary">Necessary only</button>
-      <button class="cookie-btn cookie-btn--accept" data-cookie="all">Accept</button>
-    </div>
-  </div>
-</div>
-
-<script src="/app.js"></script>
+</div></main>
+<footer class="foot"><div class="wrap">
+<p>PRE-GEN is an open protocol under Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
+<nav aria-label="Site"><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
+</div></footer>
 </body>
 </html>
