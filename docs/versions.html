@@ -22,8 +22,29 @@
 <nav aria-label="Main"><a href="/docs" aria-current="page">Protocol</a><a href="/docs/sdk">Integrate</a><a href="/registries">Registries</a><a href="/lookup">Lookup</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a></nav>
 </div></header>
 <main><div class="wrap">
-<div class="doc"><aside><ul><li><a href="/docs">Overview</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions" aria-current="page">Versioning</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Integrate</a></li><li><a href="/docs/c2pa">C2PA</a></li></ul></aside><article><h1>Protocol versioning</h1>
-    <p class="meta">Updated 2026-08-23 · Applies to every signed protocol object</p>
+<div class="doc"><aside><ul><li><a href="/docs">Overview</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions" aria-current="page">Versioning</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Integrate</a></li><li><a href="/docs/c2pa">C2PA</a></li></ul></aside><article><h1>Versioning</h1>
+    <p class="meta">Current version: <strong>PRE-GEN v5</strong>, 28 September 2026 · <a href="/spec/PRE-GEN-v5.pdf">PDF</a> · <a href="/spec/VERSIONS.md">VERSIONS.md</a></p>
+
+    <h2>Specification versions</h2>
+    <p>PRE-GEN has one version number, the same here, in the <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">specification source</a> and on Zenodo. Each version is one Zenodo release under the concept DOI <a href="https://doi.org/10.5281/zenodo.20129901">10.5281/zenodo.20129901</a>, which always resolves to the latest.</p>
+    <div class="table"><table>
+      <thead><tr><th>Version</th><th>Date</th><th>Title</th><th>DOI</th></tr></thead>
+      <tbody>
+        <tr><td>v1</td><td class="mono">2026-05-12</td><td>Prompt Protocol Version 1</td><td><a href="https://doi.org/10.5281/zenodo.20129902">10.5281/zenodo.20129902</a></td></tr>
+        <tr><td>v2</td><td class="mono">2026-05-12</td><td>Prompt Protocol</td><td><a href="https://doi.org/10.5281/zenodo.20132247">10.5281/zenodo.20132247</a></td></tr>
+        <tr><td>v3</td><td class="mono">2026-05-20</td><td>Prompt Protocol</td><td><a href="https://doi.org/10.5281/zenodo.20319842">10.5281/zenodo.20319842</a></td></tr>
+        <tr><td>v4</td><td class="mono">2026-06-01</td><td>PRE-GEN — Technical Specification</td><td><a href="https://doi.org/10.5281/zenodo.20500208">10.5281/zenodo.20500208</a></td></tr>
+        <tr><td><strong>v5</strong></td><td class="mono">2026-09-28</td><td>PRE-GEN — Technical Specification</td><td>assigned on publication · <a href="/spec/PRE-GEN-v5.pdf">PDF</a></td></tr>
+      </tbody>
+    </table></div>
+    <ul>
+      <li><strong>A version is a published snapshot.</strong> The number changes only with a new Zenodo release; between releases the text is the draft of the next one.</li>
+      <li><strong>Nothing issued ever changes meaning.</strong> A code, signed object or vector valid under one version stays valid under every later one. A version may stop issuing something, never stop recognizing it.</li>
+      <li><strong>Each version lists what changed</strong> against the previous one — see <a href="/spec/VERSIONS.md">VERSIONS.md</a> for v4 → v5.</li>
+    </ul>
+
+    <h2>Signed object markers</h2>
+    <p class="meta">Updated 2026-08-23 · Independent of the specification version</p>
 
     <p>
       Every signed object carries its schema version <strong>inside the signed bytes</strong> —

@@ -1,16 +1,18 @@
 # PRE-GEN Protocol Specification
 
-**Status:** draft, Phase 6 of the standardization effort (2026-08-24) ·
-**Spec-Version:** 2026-09-23.1 · **Vectors:** `spec/test-vectors/vectors.json`
+**Version:** PRE-GEN v5 (2026-09-28) · Zenodo concept DOI
+[10.5281/zenodo.20129901](https://doi.org/10.5281/zenodo.20129901) ·
+**Vectors:** `spec/test-vectors/vectors.json`
 · **License:** Apache License 2.0 — see [`spec/LICENSE`](LICENSE); licensed
 separately from the PRAMPTA service, same as [`spec/README.md`](README.md)
 and [`spec/PG-CODE.md`](PG-CODE.md).
 
-`Spec-Version` bumps on a normative change (see
-[`docs/PROTOCOL-GOVERNANCE.md`](../docs/PROTOCOL-GOVERNANCE.md) for what
-counts), not on a typo fix — same date-plus-`.N`-suffix convention
-`policy_registry.py`'s `POLICY_HISTORY` already uses.
-[`spec/CHANGELOG.md`](CHANGELOG.md) is the entry-by-entry record.
+The version is the PRE-GEN release number, the same one Zenodo and
+pregen.org show ([`spec/VERSIONS.md`](VERSIONS.md)). It changes when a new
+version is published; normative changes made after v5 is published mark this
+header "v6 draft" until then. [`spec/CHANGELOG.md`](CHANGELOG.md) is the
+entry-by-entry record; its dated `Spec-Version` entries up to 2026-09-28 are
+the history of v5's drafts.
 
 This document specifies PRE-GEN's signed protocol objects, its
 canonicalization rule, its refusal codes, and its identifier format,
@@ -83,7 +85,7 @@ signed and returned to the caller.
 | `decision_id` | string | unique per decision |
 | `nonce` | string | one-time-use token; a consumer must not reuse it |
 | `allowed` | boolean | `true` only when `disposition == "allow"` |
-| `disposition` | string | `"allow"` \| `"deny"` \| `"review"` — a three-value outcome; `allowed` stays a boolean derived from it so an older client that only reads `allowed` treats `review` as not-allowed (fail-closed) |
+| `disposition` | string | `"allow"` \| `"not_blocked"` \| `"review"` \| `"deny"` — `not_blocked` (with `PG_STD_TRACKING_ONLY`) is personal use that nothing prohibits and nothing grants; `allowed` stays a boolean, `true` only on `allow`, so an older client that only reads `allowed` treats the other three as not-allowed (fail-closed) |
 | `policy_version` | string | which entry of the refusal-code registry (§5.2) produced this decision — independent of `schema_version`: the *rules* can change without the *envelope shape* changing |
 | `reason` | string \| null | a `PG_*` code from §5, or null on allow |
 | `subject_id` | string | |
@@ -603,8 +605,8 @@ Summary:
   for a while, and say so.
 - **Announcing a breaking change** moves three things together:
   `Deprecation`/`Sunset` response headers during the window, a
-  [`spec/CHANGELOG.md`](CHANGELOG.md) entry, and this document's own
-  `Spec-Version` line (header, top of this file) bumping.
+  [`spec/CHANGELOG.md`](CHANGELOG.md) entry, and the next PRE-GEN version
+  ([`spec/VERSIONS.md`](VERSIONS.md)) saying what an implementation must change.
 - **Security advisories**: [`/SECURITY.md`](../SECURITY.md) — contact,
   scope (the spec itself is explicitly in scope, not just running code),
   and response SLA.
@@ -635,9 +637,8 @@ implementations named in `spec/README.md`.
 
 **Nothing in this section is normative.** No object or field named here
 exists in the reference implementation, in `spec/test-vectors/vectors.json`,
-or in `spec/conformance/`. `Spec-Version` is deliberately **not** bumped for
-this section: `docs/PROTOCOL-GOVERNANCE.md` reserves a bump for a normative
-change, and describing what the protocol cannot currently do is not one. An
+or in `spec/conformance/`. This section is not a normative change and needs
+no new version: describing what the protocol cannot currently do is not one. An
 implementer building against §§1–7 today is unaffected by everything below.
 
 It is here because an implementer deserves to know where the edges are
@@ -676,5 +677,5 @@ rather than about the proposal: of the four objects that would change, only
 **Receipt** breaks. It is the one object with no additive-safety convention
 (§1.3), so adding any field to it would be the first real use of the
 dual-accept window §6 describes as built-but-dormant — with the
-`Deprecation`/`Sunset` headers, `CHANGELOG` entry, and `Spec-Version` bump
+`Deprecation`/`Sunset` headers, `CHANGELOG` entry, and new PRE-GEN version
 that §6 requires.

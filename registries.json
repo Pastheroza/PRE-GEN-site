@@ -12,7 +12,8 @@
       "keys": "https://api2.prampta.com/keys",
       "status": "Production",
       "since": "2026",
-      "prefix": ""
+      "prefix": "",
+      "pregen_version": "5"
     }
   ],
   "providers": []

@@ -8,7 +8,14 @@ comments cited throughout `spec/PRE-GEN-SPEC.md`.
 
 See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
 
-## 2026-09-28
+## v5 — 2026-09-28
+
+PRE-GEN version numbers now match Zenodo (`VERSIONS.md`): v1–v4 are the four
+published Zenodo versions, this is v5. The dated entries below, from
+2026-08-24 on, are the drafts that became v5; "Spec-Version" in them was the
+earlier, date-based label. What a v4 implementation must change is listed in
+`VERSIONS.md`.
+
 
 - PRE-GEN is published as a public standard at https://www.pregen.org,
   copyright Valerii Egorov, Apache-2.0.

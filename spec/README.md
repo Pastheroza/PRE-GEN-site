@@ -2,7 +2,8 @@
 
 PRE-GEN is an open standard for asking permission before an AI system
 generates a real person, brand, voice or work, and for proving the answer
-afterwards. Copyright 2026 Valerii Egorov, licensed under the Apache License
+afterwards. Current version: **v5** (28 September 2026, `VERSIONS.md`).
+Copyright 2026 Valerii Egorov, licensed under the Apache License
 2.0 (`LICENSE`, `NOTICE`). Anyone may implement it, run a registry or build on
 it without asking permission.
 
@@ -11,6 +12,8 @@ it without asking permission.
 | `PRE-GEN-SPEC.md` | The protocol: signed objects, canonicalization, grammar, versioning |
 | `PG-CODE.md` | Identifier format, check character, issuer prefixes (§9) |
 | `REFUSAL-CODES.md` | Every `PG_*` reason code, hard or soft |
+| `VERSIONS.md` | Every version, numbered as on Zenodo, and what changed |
+| `PRE-GEN-v5.pdf` | Version 5 as a paper (source: `paper/`) |
 | `CHANGELOG.md` | Protocol changes |
 | `test-vectors/vectors.json` | Byte-level vectors every implementation must reproduce |
 | `conformance/` | The level-1 runner that replays the vectors against an implementation |

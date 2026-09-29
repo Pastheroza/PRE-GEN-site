@@ -1,6 +1,6 @@
 # PG Code — Identifier Format Specification
 
-**Status:** frozen as of 2026-08-20 · **Vectors:** `spec/test-vectors/vectors.json` (`pg_code` section, vectors v2)  
+**Part of:** PRE-GEN v5 ([`VERSIONS.md`](VERSIONS.md)) · **Status:** frozen as of 2026-08-20, issuer prefix added 2026-09-28 · **Vectors:** `spec/test-vectors/vectors.json` (`pg_code` section, vectors v2)  
 **License:** Apache License 2.0 — see [`spec/LICENSE`](LICENSE); licensed separately from the PRAMPTA service (the repo root `/LICENSE` is proprietary and covers the service itself — see `spec/README.md`'s note on this).
 
 This document specifies the PRE-GEN identifier format completely enough to
