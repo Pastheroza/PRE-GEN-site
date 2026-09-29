@@ -9,7 +9,7 @@
 
 ## Docs
 
-- Current version: PRE-GEN v5 (2026-09-28). Versions match Zenodo, concept DOI 10.5281/zenodo.20129901: [versions](https://www.pregen.org/docs/versions), [PDF](https://www.pregen.org/spec/PRE-GEN-v5.pdf)
+- Version: PRE-GEN v5 draft (2026-09-28), awaiting publication on Zenodo; last published: v4. Versions match Zenodo, concept DOI 10.5281/zenodo.20129901: [versions](https://www.pregen.org/docs/versions), [PDF](https://www.pregen.org/spec/PRE-GEN-v5.pdf)
 
 - [Protocol overview](https://www.pregen.org/docs): crypto invariant, signed objects, flow
 - [PG codes](https://www.pregen.org/docs/pg-code): identifier format and check character

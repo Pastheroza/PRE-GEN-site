@@ -13,7 +13,7 @@ always resolves to the latest one. (Founder, 2026-09-28: "синхронизир
 | v2 | 2026-05-12 | Prompt Protocol | [10.5281/zenodo.20132247](https://doi.org/10.5281/zenodo.20132247) | historical |
 | v3 | 2026-05-20 | Prompt Protocol | [10.5281/zenodo.20319842](https://doi.org/10.5281/zenodo.20319842) | historical |
 | v4 | 2026-06-01 | PRE-GEN — Technical Specification | [10.5281/zenodo.20500208](https://doi.org/10.5281/zenodo.20500208) | historical |
-| **v5** | 2026-09-28 | PRE-GEN — Technical Specification | assigned when published on Zenodo | **current** |
+| **v5** | 2026-09-28 | PRE-GEN — Technical Specification | assigned when published on Zenodo | **draft** — current once published |
 
 The "Technical Specification v1.1" addendum (August 2026) was never published
 as its own Zenodo version; everything it added is part of v5.

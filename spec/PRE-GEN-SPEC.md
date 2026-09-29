@@ -1,6 +1,6 @@
 # PRE-GEN Protocol Specification
 
-**Version:** PRE-GEN v5 (2026-09-28) · Zenodo concept DOI
+**Version:** PRE-GEN v5 draft (2026-09-28, becomes v5 when published on Zenodo) · Zenodo concept DOI
 [10.5281/zenodo.20129901](https://doi.org/10.5281/zenodo.20129901) ·
 **Vectors:** `spec/test-vectors/vectors.json`
 · **License:** Apache License 2.0 — see [`spec/LICENSE`](LICENSE); licensed
@@ -730,6 +730,17 @@ before hitting one in production.
   prevent code collisions, not rights conflicts: two registries can hold
   the same person and answer differently, and v5 defines no rule for which
   answer prevails, no shared opt-out, and no dispute freeze.
+- **An opt-out waits before it takes effect.** A new opt-out is `pending`
+  for the registry's cooling period (reference: `COOLING_PERIOD_DAYS` = 14)
+  and has no effect on decisions until `effective_from`
+  (`backend/app/core/verify_engine.py`); providers are notified at
+  registration. The immediate path is a subject pause (`paused`, refused
+  before license resolution); protections for minors and immutable denials
+  never depend on an opt-out.
+- **External anchoring is best effort.** Signed roots are submitted to
+  OpenTimestamps calendars about hourly (`backend/app/core/anchor_publish.py`);
+  an event is anchored only once a later accepted root includes it, and an
+  outage leaves a root unpublished.
 - **Managed custody proves key use, not consent** (§1.2, "Custody and
   consent").
 - **Settlement has no signed object.** A decision dispute resolves against
