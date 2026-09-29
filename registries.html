@@ -19,7 +19,7 @@
 <body>
 <header class="top"><div class="wrap">
 <a class="mark" href="/">PRE-GEN</a>
-<nav aria-label="Main"><a href="/docs">Protocol</a><a href="/docs/sdk">Integrate</a><a href="/registries" aria-current="page">Registries</a><a href="/lookup">Lookup</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA">GitHub</a></nav>
+<nav aria-label="Main"><a href="/docs">Protocol</a><a href="/docs/sdk">Integrate</a><a href="/registries" aria-current="page">Registries</a><a href="/lookup">Lookup</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a></nav>
 </div></header>
 <main><div class="wrap">
 <h1>Registries</h1>
@@ -29,8 +29,8 @@
 <h2>Registries</h2>
 <p>A registry holds subjects, issues licences and signs decisions.</p>
 <div class="table"><table>
-<thead><tr><th>Name</th><th>Role</th><th>Codes</th><th>API</th><th>Status</th><th>Since</th></tr></thead>
-<tbody><tr><td><a href="https://prampta.com">PRAMPTA</a></td><td>Registry operator, origin issuer</td><td class="mono">PG-… (bare codes)</td><td class="mono">https://api2.prampta.com</td><td>Production</td><td class="mono">2026</td></tr></tbody></table></div>
+<thead><tr><th>Name</th><th>Role</th><th>Prefix</th><th>API</th><th>Status</th><th>Since</th></tr></thead>
+<tbody><tr><td><a href="https://prampta.com">PRAMPTA</a></td><td>Registry operator, origin issuer</td><td class="mono">none — bare PG-… codes</td><td class="mono">https://api2.prampta.com</td><td>Production</td><td class="mono">2026</td></tr></tbody></table></div>
 
 <h2>Providers</h2>
 <p>AI systems that ask a listed registry before generating.</p>
@@ -39,7 +39,7 @@
 <tbody><tr><td colspan="3" class="muted">None yet. A provider appears here once it completes a production check and receipt with a listed registry.</td></tr></tbody></table></div>
 
 <h2>Getting listed</h2>
-<p><b>Registries</b> open an issue in the <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA">specification repository</a> with:</p>
+<p><b>Registries</b> open an issue in the <a href="https://github.com/Pastheroza/PRE-GEN-site/issues">specification repository</a> and receive a four-letter prefix (<a href="/docs/pg-code">PG codes §8</a>). Bring:</p>
 <ol>
 <li>a public API with <code>/v1/verify/</code>, <code>/v1/subjects/index</code> and a rotation-aware key set at <code>/keys</code>;</li>
 <li>a passing run of the published test vectors;</li>
@@ -48,9 +48,9 @@
 <p><b>Providers</b> are listed by the registry they integrate with, after a production decision and matching receipt.</p>
 
 <h2>Working together</h2>
+<p><strong>Specified:</strong> every code belongs to exactly one registry. Bare <code>PG-…</code> codes are the origin registry's; every other registry prefixes its codes with its four letters, so codes never collide. A registry asked about another registry's code points to this list.</p>
 <p class="note">Proposed, not yet part of the specification. Discussed in the open before anything changes on the wire.</p>
 <ul>
-<li><strong>One code, one issuer.</strong> A PG code belongs to exactly one registry. A bare <code>PG-…</code> code always means the origin registry; other registries get their own prefix (<code>PG-&lt;ISSUER&gt;-…</code>, format under discussion), so codes never collide.</li>
 <li><strong>Discovery.</strong> Each registry publishes the same machine-readable description of its endpoints and keys, so one provider integration can reach every listed registry.</li>
 <li><strong>A no is shared.</strong> An opt-out or a protection for a minor at one registry should be honoured by every registry holding the same person.</li>
 <li><strong>Disputes.</strong> When two registries claim the same person or work, neither issues new licences for it until the claim is resolved.</li>
@@ -58,8 +58,8 @@
 
 </div></main>
 <footer class="foot"><div class="wrap">
-<p>PRE-GEN is an open protocol under Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
-<nav aria-label="Site"><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
+<p>PRE-GEN is an open standard by Valerii Egorov, Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
+<nav aria-label="Site"><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification source</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
 </div></footer>
 </body>
 </html>

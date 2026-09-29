@@ -19,11 +19,11 @@
 <body>
 <header class="top"><div class="wrap">
 <a class="mark" href="/">PRE-GEN</a>
-<nav aria-label="Main"><a href="/docs" aria-current="page">Protocol</a><a href="/docs/sdk">Integrate</a><a href="/registries">Registries</a><a href="/lookup">Lookup</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA">GitHub</a></nav>
+<nav aria-label="Main"><a href="/docs" aria-current="page">Protocol</a><a href="/docs/sdk">Integrate</a><a href="/registries">Registries</a><a href="/lookup">Lookup</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a></nav>
 </div></header>
 <main><div class="wrap">
 <div class="doc"><aside><ul><li><a href="/docs">Overview</a></li><li><a href="/docs/pg-code" aria-current="page">PG codes</a></li><li><a href="/docs/versions">Versioning</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Integrate</a></li><li><a href="/docs/c2pa">C2PA</a></li></ul></aside><article><h1>PG code — identifier format</h1>
-    <p class="meta">Status: <strong>frozen 2026-08-20</strong> · Vectors: <span class="mono">pg_code</span>, vectors v2 · License: Apache-2.0 · Where prose and vectors disagree, <strong>the vectors win</strong>.</p>
+    <p class="meta">Status: <strong>frozen 2026-08-20</strong>, issuer prefix added 2026-09-28 · Vectors: <span class="mono">pg_code</span>, vectors v2 · License: Apache-2.0 · Where prose and vectors disagree, <strong>the vectors win</strong>.</p>
 
     <p>
       This document specifies the PRE-GEN identifier format completely enough to implement
@@ -190,19 +190,23 @@ check = CHECK_ALPHABET[ sum mod 37 ]</code></pre>
       with a repository-wide guard test that fails the build if any code path starts slicing an id.
     </p>
 
-    <h2>8 · Room left for the future</h2>
-    <p>Two extensions are possible <strong>without invalidating any issued code</strong>:</p>
+    <h2>8 · Issuers: more than one registry</h2>
+    <p>Any company may run a PRE-GEN registry. So that two registries never issue the same code, every registry other than the origin one puts its <strong>issuer prefix</strong> in every code it issues.</p>
+    <div class="table"><table>
+      <thead><tr><th>Shape</th><th>Example</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">PG-&lt;ISSUER&gt;-&lt;serial&gt;&lt;check&gt;</td><td class="mono">PG-NWRD-000042=</td><td>A subject in registry NWRD</td></tr>
+        <tr><td class="mono">PG-&lt;ISSUER&gt;-&lt;CLASS&gt;-&lt;serial&gt;-&lt;tail&gt;&lt;check&gt;</td><td class="mono">PG-NWRD-RND-000042-ZZZZZZJ</td><td>A licence issued by registry NWRD</td></tr>
+      </tbody>
+    </table></div>
     <ol>
-      <li><strong>Longer serials</strong> — the pad width is a minimum; nothing breaks at a
-      million subjects.</li>
-      <li><strong>A second issuer</strong> — if PRE-GEN is ever operated by more than one
-      registry, <code>PG-&lt;ISSUER&gt;-&lt;serial&gt;&lt;check&gt;</code> can be defined for
-      other issuers while a bare <code>PG-&lt;serial&gt;&lt;check&gt;</code> permanently means
-      the origin registry. No collision with the legacy shapes: those are all-digits and carry
-      no check character.</li>
+      <li><strong>Exactly four letters</strong> from the PG alphabet, <code>ABCDEFGHJKMNPQRSTVWXYZ</code> — no digits, no I, L, O, U. Four, never three, so a prefix can't be mistaken for a licence class or a legacy <code>PG-STD-</code> code. 234 256 possible prefixes.</li>
+      <li><strong>The prefix is checked.</strong> The check character covers <code>ISSUER + serial</code> (subject) or <code>ISSUER + CLASS + serial + tail</code> (licence), so a mistyped prefix is reported as mistyped.</li>
+      <li><strong>Bare codes mean the origin registry, forever.</strong> Every code issued without a prefix keeps its meaning.</li>
+      <li><strong>Prefixes are assigned in public</strong>, through the <a href="/registries">registry list</a>, and never reassigned.</li>
+      <li><strong>The issuer is the one thing software may read from a code</strong> — to know which registry to ask. Everything else is resolved, never parsed.</li>
     </ol>
-    <p>Neither is implemented today; both are recorded so a future implementer sees the format
-    was designed with the room.</p>
+    <p>A registry that receives a code with a prefix it doesn't hold answers that the code belongs to another registry, not "not found". Longer serials stay free as well: the pad width is a minimum.</p>
 
     <h2>9 · Conformance</h2>
     <p>An implementation conforms if it reproduces every case in the <code>pg_code</code>
@@ -215,14 +219,14 @@ check = CHECK_ALPHABET[ sum mod 37 ]</code></pre>
     </ul>
     <p>
       Vectors live in the SDK repository:
-      <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA/blob/main/spec/test-vectors/vectors.json" target="_blank" rel="noopener noreferrer"><code>spec/test-vectors/vectors.json</code></a>.
+      <a href="/spec/test-vectors/vectors.json" target="_blank" rel="noopener noreferrer"><code>spec/test-vectors/vectors.json</code></a>.
       Regenerate only after an intentional format change — the generator is deterministic, so
       a noisy diff means the format moved.
     </p><nav class="pager" aria-label="Pages"><a href="/docs">← Overview</a><a href="/docs/versions">Versioning →</a></nav></article></div>
 </div></main>
 <footer class="foot"><div class="wrap">
-<p>PRE-GEN is an open protocol under Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
-<nav aria-label="Site"><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
+<p>PRE-GEN is an open standard by Valerii Egorov, Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
+<nav aria-label="Site"><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification source</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
 </div></footer>
 </body>
 </html>

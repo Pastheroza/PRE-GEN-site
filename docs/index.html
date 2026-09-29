@@ -19,11 +19,11 @@
 <body>
 <header class="top"><div class="wrap">
 <a class="mark" href="/">PRE-GEN</a>
-<nav aria-label="Main"><a href="/docs" aria-current="page">Protocol</a><a href="/docs/sdk">Integrate</a><a href="/registries">Registries</a><a href="/lookup">Lookup</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA">GitHub</a></nav>
+<nav aria-label="Main"><a href="/docs" aria-current="page">Protocol</a><a href="/docs/sdk">Integrate</a><a href="/registries">Registries</a><a href="/lookup">Lookup</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a></nav>
 </div></header>
 <main><div class="wrap">
 <div class="doc"><aside><ul><li><a href="/docs" aria-current="page">Overview</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versioning</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Integrate</a></li><li><a href="/docs/c2pa">C2PA</a></li></ul></aside><article><h1>Protocol overview</h1>
-<p class="meta">Apache-2.0 · Test vectors v2 · Policy version <span class="mono">2026-09-22</span> · Where prose and vectors disagree, the vectors win.</p>
+<p class="meta">Copyright Valerii Egorov · Apache-2.0 · <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">source</a> · Test vectors v2 · Policy version <span class="mono">2026-09-22</span> · Where prose and vectors disagree, the vectors win.</p>
 <p>PRE-GEN is a protocol for <strong>pre-generation authorization</strong>. Before a model produces content depicting a registered person, brand, voice or work, the provider asks a registry whether the use is permitted and receives a signed decision it can store and anyone can verify.</p>
 
 <h2>The crypto invariant</h2>
@@ -57,12 +57,12 @@ key_fingerprint     = "pg-ed25519:" + hex(SHA256(raw 32-byte public key))[0:32]<
 </ol>
 
 <h2>Conformance</h2>
-<p>An implementation conforms when it reproduces every case in the published <a href="https://github.com/Pastheroza/PRE-GEN-PRAMPTA/blob/main/spec/test-vectors/vectors.json">test vectors</a>: canonicalization, signatures, audit chain and PG codes. The vectors use a fixed public test key — never use it in a deployment.</p>
+<p>An implementation conforms when it reproduces every case in the published <a href="/spec/test-vectors/vectors.json">test vectors</a>: canonicalization, signatures, audit chain and PG codes. The vectors use a fixed public test key — never use it in a deployment.</p>
 <nav class="pager" aria-label="Pages"><span></span><a href="/docs/pg-code">PG codes →</a></nav></article></div>
 </div></main>
 <footer class="foot"><div class="wrap">
-<p>PRE-GEN is an open protocol under Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
-<nav aria-label="Site"><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
+<p>PRE-GEN is an open standard by Valerii Egorov, Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
+<nav aria-label="Site"><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification source</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
 </div></footer>
 </body>
 </html>

@@ -24,6 +24,14 @@
     if (/[ILOU]/.test(rest))
       return { error: "“" + (/./.exec(rest.split("").find(function (ch) { return "ILOU".indexOf(ch) >= 0; })) || ["?"])[0] + "” is never used in a PG body — Crockford base32 excludes I, L, O, U.", hint: "I and L are usually mistyped 1; O is usually a zero “0”." };
     var m;
+    /* another registry (four-letter issuer prefix, PG-CODE.md §9) */
+    m = /^([ABCDEFGHJKMNPQRSTVWXYZ]{4})-([A-Z]{3})-([0-9]{6,})-([0-9A-Z]{6})([0-9A-Z*~$=!])$/.exec(rest)
+      || /^([ABCDEFGHJKMNPQRSTVWXYZ]{4})-()([0-9]{6,})()([0-9A-Z*~$=!])$/.exec(rest);
+    if (m) {
+      var want = checkChar(m[1] + m[2] + m[3] + m[4]);
+      if (m[5] !== want) return { error: "Check character mismatch: expected “" + want + "”, got “" + m[5] + "”.", hint: "The prefix is part of the checked code — compare it with its source." };
+      return { kind: m[2] ? "license" : "subject", code: "PG-" + rest, issuer: m[1] };
+    }
     /* license: PG-CLASS-serial-tail+check */
     m = /^([A-Z]{3})-([0-9]{6,})-([0-9A-Z]{6})([0-9A-Z*~$=!])$/.exec(rest);
     if (m) {
@@ -143,6 +151,9 @@
         var d = res.body || {};
         if (res.status === 200 && c.kind === "subject") out.innerHTML = renderSubject(d);
         else if (res.status === 200) out.innerHTML = renderLicense(d);
+        else if (res.status === 404 && d.error === "unknown_issuer") out.innerHTML = renderError("No listed registry holds the prefix " + c.issuer + ".",
+          "The code is well-formed. Its registry isn't on the registry list yet.",
+          '<p><a class="pg-link" href="/registries">Registries</a></p>');
         else if (res.status === 404) out.innerHTML = renderError("Nothing is registered under " + c.code + ".", "The code is well-formed but the registry has no record for it.");
         else if (res.status === 401 || res.status === 403) out.innerHTML = renderError("License records are restricted.",
           "Public resolution covers subjects. Full license records require registry credentials — verify the license via prampta.com or ask the rights holder for a signed decision.",

@@ -1,17 +1,18 @@
 {
-  "schema": "pregen.registries.v0",
+  "schema": "pregen.registries.v1",
   "updated": "2026-09-28",
-  "note": "Draft listing. The multi-registry parts of PRE-GEN (issuer prefixes, discovery) are proposed, not yet in the specification.",
+  "note": "Draft listing. Issuer prefixes are specified in PG-CODE.md §9; discovery beyond this list is proposed, not yet specified.",
   "registries": [
     {
       "name": "PRAMPTA",
       "role": "Registry operator, origin issuer",
-      "issuer": "PG-… (bare codes)",
+      "issuer": "none (bare PG-… codes)",
       "website": "https://prampta.com",
       "api": "https://api2.prampta.com",
       "keys": "https://api2.prampta.com/keys",
       "status": "Production",
-      "since": "2026"
+      "since": "2026",
+      "prefix": ""
     }
   ],
   "providers": []

@@ -1,0 +1,387 @@
+# PG Code — Identifier Format Specification
+
+**Status:** frozen as of 2026-08-20 · **Vectors:** `spec/test-vectors/vectors.json` (`pg_code` section, vectors v2)  
+**License:** Apache License 2.0 — see [`spec/LICENSE`](LICENSE); licensed separately from the PRAMPTA service (the repo root `/LICENSE` is proprietary and covers the service itself — see `spec/README.md`'s note on this).
+
+This document specifies the PRE-GEN identifier format completely enough to
+implement from scratch, without reading any PRAMPTA source code. The
+normative reference implementation is `backend/app/core/pg_code.py`; where
+this prose and the test vectors disagree, **the vectors win**.
+
+---
+
+## 1. Why this is frozen
+
+A PG code is assigned once and cited forever — in a licence, a dispute, an
+email, a court filing. Once real subjects hold real codes, changing how the
+check character is computed would invalidate every code already issued, with
+no way to tell an old-but-valid code from a corrupted one.
+
+The check character had property tests before this document existed
+("catches every single-character substitution", "catches every adjacent
+transposition"). Those are necessary but **not sufficient**: a different,
+equally-correct scheme passes all of them while producing different
+characters. That is why the exact outputs are pinned as byte-level vectors,
+not just described.
+
+---
+
+## 2. Two shapes, and only two
+
+| Shape | Example | Meaning |
+|---|---|---|
+| `PG-<serial><check>` | `PG-000042*` | A **subject's** permanent registry number |
+| `PG-<CLASS>-<serial>-<tail><check>` | `PG-STD-000001-K7M2QX9` | A **licence** identifier |
+
+A subject code carries **no class letters** — a subject has no licence class
+of its own; its licences do. This makes the two shapes unambiguous by
+construction: a bare `PG-` followed by digits is always a subject, and a
+`PG-` followed by letters is always a licence.
+
+### 2.1 Historical subject shapes (permanently valid)
+
+`pg_code` is assigned once and never rewritten, so every shape a subject
+could have been given must keep resolving forever:
+
+| Shape | Era |
+|---|---|
+| `PG-000042*` | current (2026-08-19 onward) |
+| `PG-STD-000123` | 2026-08 – 2026-08-19 (shared the STD licence counter) |
+| `PG-SUB-000123` | pre-2026-08 (dedicated SUB counter, retired) |
+
+The two legacy shapes have **no check character** — they are all-digits
+after the prefix. An implementation must recognise them for resolution, and
+must not attempt to validate a check character on them.
+
+---
+
+## 3. Alphabet
+
+```
+0123456789ABCDEFGHJKMNPQRSTVWXYZ
+```
+
+32 symbols: Crockford base32 — the digits, plus the Latin uppercase letters
+**excluding `I`, `L`, `O`, `U`**. The first three are excluded because a
+human misreads them off a screenshot (`I`/`1`, `L`/`1`, `O`/`0`); `U` is
+excluded by Crockford's convention.
+
+A character's **value** is its zero-based index in that string: `0` → 0,
+`9` → 9, `A` → 10, … `Z` → 31.
+
+### 3.1 Check symbols
+
+```
+*~$=!
+```
+
+Five additional symbols, valid **only in the check position**, never inside
+a body. They exist because the modulus is 37 (see §4) while the alphabet
+holds only 32 symbols — the five overflow values need somewhere to go. This
+mirrors Crockford's own optional check-symbol convention.
+
+All five are URL-path-safe unencoded (RFC 3986 unreserved or sub-delims).
+
+The full check alphabet, indexed 0–36, is therefore:
+
+```
+0123456789ABCDEFGHJKMNPQRSTVWXYZ*~$=!
+```
+
+**The canonical form is ASCII-only.** A human retyping or pasting a code
+may end up with a visually-identical character from a different Unicode
+block — a Cyrillic letter that looks like a Latin one, a fullwidth digit
+from a mobile keyboard. Those are input-method artifacts to fold back to
+their ASCII equivalent before validation, never a second valid alphabet
+(§13 covers the resolver's own folding step; it is explicitly
+non-exhaustive, not a claim of covering every Unicode confusable).
+
+---
+
+## 4. Check character
+
+### 4.1 Algorithm
+
+Given a **body** (a string of alphabet characters, no dashes, no check
+character):
+
+```
+sum = Σ  value(bodyᵢ) × (i + 1)        for i = 0 … len(body)−1
+check = CHECK_ALPHABET[ sum mod 37 ]
+```
+
+Positions are **1-based weights** applied left to right: the first character
+is multiplied by 1, the second by 2, and so on.
+
+Worked example — body `000042`:
+
+| i | char | value | weight (i+1) | product |
+|---|---|---|---|---|
+| 0 | `0` | 0 | 1 | 0 |
+| 1 | `0` | 0 | 2 | 0 |
+| 2 | `0` | 0 | 3 | 0 |
+| 3 | `0` | 0 | 4 | 0 |
+| 4 | `4` | 4 | 5 | 20 |
+| 5 | `2` | 2 | 6 | 12 |
+
+`sum = 32`, `32 mod 37 = 32`, `CHECK_ALPHABET[32] = '*'` → code `PG-000042*`.
+
+### 4.2 Why 37 and not 32
+
+32 is composite (2⁵). A weighted sum modulo a composite has zero divisors:
+brute-forcing a naive mod-32 variant against every single-character
+substitution in a 13-symbol body found roughly **4% of substitutions it
+could not catch** — not bad luck, but pairs of bodies that collide by
+construction.
+
+37 is the next prime at or above the alphabet size. The difference any
+single substitution makes to the sum is `weight × delta mod 37`; since 37 is
+prime and `delta < 32 < 37`, that difference can only be 0 mod 37 if the
+weight itself is 0 mod 37 — which no position weight here ever is. The same
+argument gives adjacent-transposition detection.
+
+**Guarantees** (verified by exhaustive brute force, not asserted):
+- every single-character substitution changes the check character;
+- every adjacent transposition of two *different* characters changes it.
+
+Transposing two *identical* characters does not change the check character —
+correctly, since it does not change the code either.
+
+### 4.3 What the check character covers
+
+**Everything meaningful in the code**, concatenated with dashes removed:
+
+| Code | Body fed to the algorithm |
+|---|---|
+| `PG-000042*` | `000042` |
+| `PG-STD-000001-K7M2QX9` | `STD000001K7M2QX` |
+
+For a licence, the class letters are part of the body: a wrong class is
+exactly as much "a wrong code" as a wrong serial, so it must trip the same
+check. The literal `PG-` prefix is **not** part of the body — it is a fixed
+marker, identical in every code, and contributes nothing.
+
+---
+
+## 5. Subject codes
+
+```
+PG-<serial padded to at least 6 digits><check>
+```
+
+The serial is a positive integer from a registry-wide counter, formatted
+with **zero-padding to a minimum of 6 digits**. Six is a minimum, not a
+maximum: serial 1 234 567 renders as `1234567` (7 digits), and the format
+stays valid. Implementations **must not** assume a fixed length.
+
+| Serial | Code |
+|---|---|
+| 1 | `PG-0000016` |
+| 42 | `PG-000042*` |
+| 99999 | `PG-099999*` |
+| 999999 | `PG-9999994` |
+| 1000000 | `PG-10000001` |
+| 12345678 | `PG-12345678K` |
+
+---
+
+## 6. Licence identifiers
+
+```
+PG-<CLASS>-<subject serial padded to at least 6 digits>-<tail><check>
+```
+
+- **CLASS** — a three-letter licence class. Currently `STD`, `RND`, `PRM`.
+- **subject serial** — the serial of the subject this licence is *for*, so a
+  licence id names its subject without a lookup being required to know
+  *which* subject it belongs to (the lookup is still required for anything
+  else — see §8).
+- **tail** — 6 random alphabet characters, drawn from a cryptographically
+  secure source. Random rather than sequential specifically so the *number
+  of licences on one subject* cannot be inferred from an id.
+
+| Class | Serial | Tail | Licence id |
+|---|---|---|---|
+| `STD` | 1 | `K7M2QX` | `PG-STD-000001-K7M2QX9` |
+| `RND` | 42 | `ZZZZZZ` | `PG-RND-000042-ZZZZZZ1` |
+| `PRM` | 999999 | `000000` | `PG-PRM-999999-0000000` |
+
+### 6.1 Retired classes are retired forever
+
+A class code that has ever appeared in an issued licence id is **never**
+re-admitted and **never** given a different meaning, no matter how long it
+has been unused. Currently retired: `EDT`, `EST`, `ENT`, `PER`, `OWN`.
+
+A human reading an id infers meaning from the class letters. A code whose
+meaning depends on *when* it was issued defeats the point of a permanent
+citation.
+
+---
+
+## 7. Resolution rules
+
+- **Case-insensitive.** `pg-000042*` and `PG-000042*` are the same code;
+  canonical form is uppercase. People retype these from screenshots.
+- **Surrounding whitespace is stripped** before matching.
+- A code whose check character does not verify must be reported as
+  *mistyped*, distinctly from *not found* — the two mean different things to
+  whoever is holding the code.
+
+---
+
+## 8. The load-bearing rule: resolved, never parsed
+
+**An identifier is resolved by database lookup. It is never parsed to
+extract meaning.**
+
+The serial embedded in a licence id is there so a human can see which
+subject it belongs to, and so support can eyeball a mismatch — not so
+software can `split('-')` and skip the lookup. Anything derived by parsing
+becomes wrong the moment the format widens (a 7-digit serial, a future
+issuer prefix), and it will be wrong *silently*.
+
+The reference implementation enforces this on itself with a repository-wide
+guard test (`backend/tests/test_pg_code_format.py`), which fails the build
+if any code path starts slicing an id.
+
+---
+
+## 9. Issuers: more than one registry
+
+PRE-GEN is an open standard, and any company may run a registry. So that two
+registries can never issue the same code, every registry other than the
+origin one puts its **issuer prefix** in every code it issues.
+
+| Shape | Example | Meaning |
+|---|---|---|
+| `PG-<ISSUER>-<serial><check>` | `PG-NWRD-000042=` | A subject in registry `NWRD` |
+| `PG-<ISSUER>-<CLASS>-<serial>-<tail><check>` | `PG-NWRD-RND-000042-ZZZZZZJ` | A licence issued by registry `NWRD` |
+
+Rules:
+
+1. **Exactly four letters** from the PG alphabet — `ABCDEFGHJKMNPQRSTVWXYZ`
+   (no digits; no `I`, `L`, `O`, `U`). Four, never three, so an issuer can
+   never be mistaken for a licence class (`STD`, `RND`, `PRM`) or for the
+   legacy `PG-STD-` / `PG-SUB-` subject shapes. 22⁴ = 234 256 possible
+   prefixes.
+2. **The prefix is part of the checked body.** The check character is
+   computed over `ISSUER + serial` for a subject and
+   `ISSUER + CLASS + serial + tail` for a licence, so a mistyped prefix is
+   reported as mistyped (§7), like any other typo.
+3. **Bare codes mean the origin registry, forever.** `PG-000042*` and every
+   code issued before this section existed keep their meaning. The origin
+   registry (PRAMPTA, the first registry) never uses a prefix.
+4. **Prefixes are assigned publicly.** A registry asks for one through the
+   public registry list at `https://www.pregen.org/registries`; the list
+   (`registries.json`) is the only record of who holds which prefix. A
+   prefix is never reassigned, even if its registry closes, because codes
+   are cited forever.
+5. **The issuer is the one thing software may read from a code** — to know
+   which registry to ask. Everything else is still resolved, never parsed
+   (§8): the issuer names the registry, the registry answers for the code.
+
+A registry that receives a code with a prefix it does not hold must not
+report it as "not found" or "invalid": it answers that the code belongs to
+another registry and points to the registry list.
+
+Longer serials remain free as well: the pad width is a minimum, and nothing
+breaks at a million subjects.
+
+---
+
+## 10. Conformance
+
+An implementation conforms if it reproduces every case in the `pg_code`
+section of `spec/test-vectors/vectors.json`:
+
+- `check_char` — all **37** possible outputs, including all five overflow
+  symbols;
+- `subject_code` — serials spanning the 6-digit boundary in both directions;
+- `license_id` — every current class, plus a serial past the pad width;
+- `rejects` — corrupted codes that **must** fail verification.
+
+Regenerate vectors only after an intentional, deliberate format change:
+
+```bash
+backend/.venv/bin/python spec/generate_vectors.py
+```
+
+The generator imports the reference implementation directly and is fully
+deterministic — regenerating without a format change produces a
+byte-identical file. **A noisy diff here means the format moved.**
+
+---
+
+## 11. Reserved range
+
+**Status:** added 2026-08-24 (Phase 5 of the standardization effort),
+founder-confirmed as a numeric block, RFC 5737/`example.com`-style.
+
+Documentation, worked examples, and test fixtures need codes that can
+never collide with a real subject or license — this document's own
+worked examples (`PG-000042*`, `PG-STD-000001-K7M2QX9`, …) share the
+current format's live serial space with real registrations, so if the
+registry ever organically reaches serial 42, that citation stops being a
+safe placeholder.
+
+**`RESERVED_SUBJECT_SERIAL_FLOOR = 900,000,000`** — subject serials at or
+above this floor are reserved for documentation, examples, and tests.
+Because a license id always embeds its subject's own serial
+(`format_license_id`, §6), reserving the subject range transitively
+reserves every license-id example built on one too; no separate
+license-class reservation is needed.
+
+Enforced at the one real allocation choke point,
+`backend/app/core/subject_code.py::allocate_subject_code` — refuses
+outside `ENVIRONMENT=development`. This is a safety net against the
+counter somehow reaching the floor, not a live control (at current
+registration rates it will not happen for centuries); stated as such
+rather than oversold.
+
+---
+
+## 12. Public resolver and `.well-known/pg-policy`
+
+**`GET /v1/pg/{code}`** — public, unauthenticated, rate-limited existence
++ coarse-status lookup, no account required. Mirrors the one existing
+narrow-payload precedent in this codebase, `GET /v1/subjects/{id}/epoch`.
+Response is exactly `{"kind": "subject"|"license", "found": true,
+"status": <the real status column value>}` — nothing else, no PII.
+
+Distinguishes the three outcomes this document's own §7 already names but
+that no running code implemented before this:
+
+- **`400 invalid_format`** — doesn't look like either shape at all.
+- **`400 mistyped`** — looks like a shape, but the check character is
+  wrong (§4). A legacy `PG-STD-`/`PG-SUB-` code has no check character to
+  get wrong, so it skips straight to the next outcome.
+- **`404 not_found`** — shape and checksum are valid, but no such code has
+  ever been issued.
+- **`200`** — found (see response shape above).
+
+**`GET /.well-known/pg-policy`** (RFC 8615) — a static JSON manifest at
+the server root (not under the versioned API prefix, per RFC 8615):
+issuer, current format version, the resolver's URL template, the reserved
+serial floor (§11), and a link back to this document.
+
+## 13. QR encoding and homoglyph protection
+
+**Canonical QR payload: the full resolver URL**
+(`https://api2.prampta.com/v1/pg/{code}`), not the bare code. A URL is
+directly actionable by any generic QR scanner — it opens a page and shows
+the code's status in one action. A bare code requires the scanner to
+already be PRAMPTA-aware to do anything useful with the text at all.
+
+**Manual-entry grouping is display-only**, never part of the canonical
+wire form — the dash in a subject/license code already means something
+specific (§2), so a second grouping character can't reuse it. When
+showing a code for a human to retype, group the body in space-separated
+triplets, e.g. `PG 000 042 *`; strip the spaces before validation.
+
+**Homoglyph folding**: `backend/app/core/pg_code_confusables.py` folds a
+small, explicitly non-exhaustive table of realistic input-method
+confusables (Cyrillic look-alikes for the Latin letters that appear in
+the Crockford alphabet; fullwidth ASCII letters/digits from mobile/IME
+keyboards) to their ASCII equivalent, applied only at the resolver's
+input boundary (§12) — never at minting time, since minted codes are
+always server-generated ASCII already.

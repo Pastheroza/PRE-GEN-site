@@ -7,6 +7,9 @@
    - no secrets in responses; registry token stays in env */
 
 const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+const REGISTRIES = require("../registries.json");
+/* Another registry's prefix: exactly four letters (PG-CODE.md §9). */
+const ISSUER = "([ABCDEFGHJKMNPQRSTVWXYZ]{4})";
 const CHECK = ALPHABET + "*~$=!";
 
 function checkChar(body) {
@@ -25,6 +28,18 @@ function classify(raw) {
   if (/[ILOU]/.test(rest))
     return { error: "invalid_code", detail: "I, L, O, U are excluded from the PG alphabet (Crockford base32).", status: 422 };
   let m;
+  m = new RegExp("^" + ISSUER + "-([A-Z]{3})-([0-9]{6,})-([0-9A-Z]{6})([0-9A-Z*~$=!])$").exec(rest);
+  if (m) {
+    if (checkChar(m[1] + m[2] + m[3] + m[4]) !== m[5])
+      return { error: "check_mismatch", detail: "License check character invalid.", status: 422 };
+    return { kind: "license", code: "PG-" + rest, issuer: m[1] };
+  }
+  m = new RegExp("^" + ISSUER + "-([0-9]{6,})([0-9A-Z*~$=!])$").exec(rest);
+  if (m) {
+    if (checkChar(m[1] + m[2]) !== m[3])
+      return { error: "check_mismatch", detail: "Subject check character invalid.", status: 422 };
+    return { kind: "subject", code: "PG-" + rest, issuer: m[1] };
+  }
   m = /^([A-Z]{3})-([0-9]{6,})-([0-9A-Z]{6})([0-9A-Z*~$=!])$/.exec(rest);
   if (m) {
     if (checkChar(m[1] + m[2] + m[3]) !== m[4])
@@ -117,11 +132,22 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const base = process.env.PRAMPTA_API_URL || "https://api2.prampta.com";
-  const path = (c.kind === "license" ? "/v1/licenses/" : "/v1/subjects/") + encodeURIComponent(c.code);
+  /* The issuer names the registry; bare codes belong to the origin registry. */
+  const registry = REGISTRIES.registries.find((r) => (r.prefix || "") === (c.issuer || ""));
+  if (!registry) {
+    res.status(404).json({ error: "unknown_issuer", issuer: c.issuer,
+      detail: "No listed registry holds the prefix " + c.issuer + "." });
+    return;
+  }
+  const origin = !c.issuer;
+  const base = origin ? (process.env.PRAMPTA_API_URL || registry.api) : registry.api;
+  /* Other registries answer through the standard resolver (PRE-GEN §12). */
+  const path = origin
+    ? (c.kind === "license" ? "/v1/licenses/" : "/v1/subjects/") + encodeURIComponent(c.code)
+    : "/v1/pg/" + encodeURIComponent(c.code);
   const headers = { Accept: "application/json" };
   const token = process.env.PRAMPTA_TOKEN;
-  if (token) headers["Authorization"] = "Bearer " + token;
+  if (token && origin) headers["Authorization"] = "Bearer " + token;
 
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 5000);

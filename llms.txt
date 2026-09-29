@@ -1,6 +1,6 @@
 # PRE-GEN
 
-> PRE-GEN is an open protocol (Apache-2.0) for asking permission before an AI system generates a real person, brand, voice or work. A registry answers with an Ed25519-signed decision that anyone can verify later. It is not owned by any registry.
+> PRE-GEN is an open standard by Valerii Egorov (Apache-2.0) for asking permission before an AI system generates a real person, brand, voice or work. A registry answers with an Ed25519-signed decision that anyone can verify later. It is not owned by any registry.
 
 - A provider asks `POST /v1/verify/` before generating and gets a `disposition`: `allow` (a licence covers it), `not_blocked` (personal use, nothing granted), `review` (wait for the rights holder) or `deny` (a `PG_*` reason code says why).
 - After an `allow`, the provider files a receipt. A decision proves what the registry answered to a declared request, not that the output matched it or that a use is lawful.
@@ -17,5 +17,7 @@
 
 ## Registries
 
-- [Registries](https://www.pregen.org/registries) and [registries.json](https://www.pregen.org/registries.json): who runs PRE-GEN. Today one registry is in production: PRAMPTA (https://prampta.com, API https://api2.prampta.com). Multi-registry discovery is proposed, not yet specified.
+- [Registries](https://www.pregen.org/registries) and [registries.json](https://www.pregen.org/registries.json): who runs PRE-GEN. Today one registry is in production: PRAMPTA (https://prampta.com, API https://api2.prampta.com). Issuer prefixes are specified; wider discovery is proposed.
+- PG codes: bare `PG-000042*` codes belong to the origin registry; other registries use a four-letter prefix, `PG-NWRD-000042=` (PG codes §8). The prefix is the only part of a code software may read — to find the registry.
+- [Specification source](https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec): Markdown spec, test vectors, conformance runner
 - [Look up a PG code](https://www.pregen.org/lookup)
