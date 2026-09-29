@@ -4,9 +4,10 @@
 **License:** Apache License 2.0 — see [`spec/LICENSE`](LICENSE); licensed separately from the PRAMPTA service (the repo root `/LICENSE` is proprietary and covers the service itself — see `spec/README.md`'s note on this).
 
 This document specifies the PRE-GEN identifier format completely enough to
-implement from scratch, without reading any PRAMPTA source code. The
-normative reference implementation is `backend/app/core/pg_code.py`; where
-this prose and the test vectors disagree, **the vectors win**.
+implement from scratch, without reading any PRAMPTA source code. The text is
+normative; the `pg_code` vectors are its conformance test, and a
+disagreement between them is an erratum, handled as `PRE-GEN-SPEC.md` §0.3
+states. *Reference implementation:* `backend/app/core/pg_code.py`.
 
 ---
 

@@ -16,10 +16,11 @@ Two independent levels, stated plainly:
 > right refusal for the right reason, submit a receipt, and trust that the
 > audit chain it's building is internally consistent.
 
-Neither level is exhaustive. Level 1 replays every case in
-`spec/test-vectors/vectors.json` — that corpus itself isn't infinite, but
-it's the actual contract (`spec/README.md`: "where prose and vectors
-disagree, the vectors win"). **Level 2's refusal-code coverage is a
+Neither level is exhaustive, and passing both is necessary but not
+sufficient for a conformance claim: `PRE-GEN-SPEC.md` §8 defines the
+profiles and lists, requirement by requirement, what these checks do and do
+not cover. The text is normative; a vector that disagrees with it is an
+erratum (§0.3). **Level 2's refusal-code coverage is a
 representative subset, not all 36 registered codes** — one per category
 (request/identity/subject_trust/license) plus happy-path, a receipt, and
 audit-chain re-validation. `review` (`PG_HELD_FOR_REVIEW`, the only code in
@@ -44,6 +45,11 @@ implementation in *any* language, not just the four already in this repo.
 {"op": "pg_verify_check_char", "body": "000042", "check_char": "*"} → {"valid": true}
 {"op": "pg_subject_code", "serial": 42} → {"code": "PG-000042*"}
 {"op": "pg_license_id", "license_class": "STD", "subject_serial": 1, "tail": "K7M2QX"} → {"license_id": "..."}
+
+{"op": "verify_license", "body": {...}, "license_id": "PG-PRM-…",
+ "subject_public_key_hex": "...", "subject_signature_hex": "...",
+ "operator_public_key_hex": "...", "operator_signature_hex": "..."}
+→ {"subject_valid": true, "operator_valid": true}
 ```
 
 An adapter answers `{"unsupported": true}` for an op it doesn't implement.

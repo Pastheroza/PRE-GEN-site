@@ -235,6 +235,39 @@
       "signature_hex": "afcc110520c7db40e90636447bcde388256a0a92915f6032a98701353c21ce9a35e1a9da8e368dbbaaf26de52a491034a058e893daa5ed720fc06f45abe77903"
     }
   ],
+  "license_countersignature": {
+    "license_id": "PG-PRM-000042-K7M2QXV",
+    "body": {
+      "v": "pg.license.v2",
+      "subject_id": "sub_ada_lovelace",
+      "licensee_id": "lic_prampta_studio",
+      "license_class": "PRM",
+      "scope": [
+        "image"
+      ],
+      "deny_categories": [],
+      "immutable_denials": [
+        "adult"
+      ],
+      "required_obligations": {
+        "watermark": true
+      },
+      "expires_at": 1796271600,
+      "contract_start": 1764735600,
+      "product_name": "",
+      "project_name": "station-2026",
+      "purpose": {
+        "use_case": "commercial"
+      },
+      "extensions": [],
+      "rules_text": ""
+    },
+    "canonical_utf8": "{\"contract_start\":1764735600,\"deny_categories\":[],\"expires_at\":1796271600,\"extensions\":[],\"immutable_denials\":[\"adult\"],\"license_class\":\"PRM\",\"licensee_id\":\"lic_prampta_studio\",\"product_name\":\"\",\"project_name\":\"station-2026\",\"purpose\":{\"use_case\":\"commercial\"},\"required_obligations\":{\"watermark\":true},\"rules_text\":\"\",\"scope\":[\"image\"],\"subject_id\":\"sub_ada_lovelace\",\"v\":\"pg.license.v2\"}",
+    "subject_public_key_hex": "f74cc250ef1768ad35723b05134ed3b49cdd7dd7c93e13aff11b72e7345f5711",
+    "subject_signature_hex": "4375a957f05caa8d17930dc6558557bff96aaddf9a1fd2c4252e02e3f8706e665c1e60ab087603849b2d4fa6fa9b2ade05e8d6f470110f88e2bca013b210db05",
+    "countersign_message_hex": "7b22636f6e74726163745f7374617274223a313736343733353630302c2264656e795f63617465676f72696573223a5b5d2c22657870697265735f6174223a313739363237313630302c22657874656e73696f6e73223a5b5d2c22696d6d757461626c655f64656e69616c73223a5b226164756c74225d2c226c6963656e73655f636c617373223a2250524d222c226c6963656e7365655f6964223a226c69635f7072616d7074615f73747564696f222c2270726f647563745f6e616d65223a22222c2270726f6a6563745f6e616d65223a2273746174696f6e2d32303236222c22707572706f7365223a7b227573655f63617365223a22636f6d6d65726369616c227d2c2272657175697265645f6f626c69676174696f6e73223a7b2277617465726d61726b223a747275657d2c2272756c65735f74657874223a22222c2273636f7065223a5b22696d616765225d2c227375626a6563745f6964223a227375625f6164615f6c6f76656c616365222c2276223a2270672e6c6963656e73652e7632227d4375a957f05caa8d17930dc6558557bff96aaddf9a1fd2c4252e02e3f8706e665c1e60ab087603849b2d4fa6fa9b2ade05e8d6f470110f88e2bca013b210db0550472d50524d2d3030303034322d4b374d32515856",
+    "operator_signature_hex": "0f17df0682c41368a6edbb0727032056101de158d153aa2488aeeac1dd15e8641bde7d4918456b98ba3fdb27d2c7a6e447d0aaeccbb681a92e5bcf595da6b908"
+  },
   "pg_code": {
     "comment": "PG code format (2026-08-19). Weighted sum mod 37: each body character's alphabet VALUE times its 1-based position, summed, mod 37, indexed into alphabet+check_extra. See spec/PG-CODE.md.",
     "alphabet": "0123456789ABCDEFGHJKMNPQRSTVWXYZ",

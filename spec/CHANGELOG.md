@@ -25,6 +25,24 @@ earlier, date-based label. What a v4 implementation must change is listed in
   Second review: opt-out cooling and anchoring limits stated (§8); paper
   compares RSL and the Human Consent Standard, adds the cycle overview,
   drops PRE-LEARN. v5 is marked draft until published on Zenodo.
+- Written as a standard (2026-09-29): BCP 14 requirement language and
+  numbered requirements (§0, §5, §8); the text is normative and a vector
+  that disagrees with it is an erratum (§0.3), replacing "the vectors win";
+  references to PRAMPTA's code are informative. New normative content that
+  was previously only in code: the verification request and evaluation
+  rules (§5.2–§5.3), how a provider checks a decision (§5.4), receipts and
+  lifecycle events (§5.5), the license countersignature bytes
+  (`body || subject signature || license id`, §1.2), exact canonical-JSON
+  escaping and integer rules (§2), audit event bytes and per-chain
+  `prev_hash` (§2.2), the key set format at `GET /keys` and why it must be
+  pinned (§2.3), and what "stays valid" means (§6.3). Conformance profiles
+  Verifier / Provider / Registry with a table of what the checks cover
+  (§8); reference implementation status (§9).
+- Vectors: new `license_countersignature` case and `verify_license`
+  conformance op. Additive: every existing vector is byte-identical.
+- Evidence bundle (`pg.evidence.v1`): the `license` member now carries
+  `signed_body` and `subject_public_key_hex`, so both license signatures
+  verify offline, as §1.4 always promised. Additive.
 - PRE-GEN is published as a public standard at https://www.pregen.org,
   copyright Valerii Egorov, Apache-2.0.
 - Issuer prefix (`PG-CODE.md` §9): other registries prefix every code they

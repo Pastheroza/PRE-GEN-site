@@ -18,10 +18,16 @@ it without asking permission.
 | `test-vectors/vectors.json` | Byte-level vectors every implementation must reproduce |
 | `conformance/` | The level-1 runner that replays the vectors against an implementation |
 
-**Normative:** the text of these documents and the test vectors. Where prose
-and vectors disagree, the vectors win. References to paths such as
-`backend/app/...`, `pg_registry.py` or `sdk/...` name files in the origin
-registry's implementation (PRAMPTA) and are **non-normative** examples.
+**Normative:** the text of `PRE-GEN-SPEC.md`, `PG-CODE.md` and
+`REFUSAL-CODES.md`, and the test vectors. The text defines the requirements
+(written in BCP 14 language, `PRE-GEN-SPEC.md` §0); the vectors are its
+conformance test, and a disagreement between them is an erratum, never a
+rule (§0.3). References to paths such as `backend/app/...` name files in
+the origin registry's implementation (PRAMPTA) and are **informative**.
+
+What "conforms to PRE-GEN v5" means — the Verifier, Provider and Registry
+profiles, and which requirements the checks do not cover — is
+`PRE-GEN-SPEC.md` §8.
 
 ## Checking an implementation
 
@@ -33,7 +39,8 @@ python3 spec/conformance/level1/run_conformance.py --adapter "<command that runs
 ```
 
 Operations an adapter doesn't implement answer `{"unsupported": true}` and are
-reported as skipped.
+reported as skipped. Passing is necessary for a conformance claim, not
+sufficient (`PRE-GEN-SPEC.md` §8.2).
 
 ## Running a registry
 

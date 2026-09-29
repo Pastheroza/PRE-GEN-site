@@ -14,35 +14,72 @@ header "v6 draft" until then. [`spec/CHANGELOG.md`](CHANGELOG.md) is the
 entry-by-entry record; its dated `Spec-Version` entries up to 2026-09-28 are
 the history of v5's drafts.
 
-This document specifies PRE-GEN's signed protocol objects, its
-canonicalization rule, its refusal codes, and its identifier format,
-completely enough that an implementer can build a compatible client or
-server **without reading PRAMPTA's source code**. Every claim below cites
-its normative source in the reference implementation (a file and a function
-name, not a line number, since line numbers move and this doc shouldn't go
-stale over a refactor that doesn't change behavior) — where this prose and
-`spec/test-vectors/vectors.json` disagree, **the vectors win**, the same
-rule [`spec/PG-CODE.md`](PG-CODE.md) already states for itself.
+This document, with [`PG-CODE.md`](PG-CODE.md),
+[`REFUSAL-CODES.md`](REFUSAL-CODES.md) and the test vectors, specifies the
+PRE-GEN core — signed objects, canonical bytes, identifiers, verification,
+decisions, receipts and key publication — completely enough that a
+registry, a provider, or an independent verifier can be built **without
+reading any registry's source code**. How a registry registers subjects,
+issues licenses, accepts opt-outs and connects end users is registry policy
+in v5, outside this core (§5.1, §8.2).
 
-This is **Phase 6**, the last of the six-phase standardization effort as
-originally scoped. What exists today: this document, the refusal-code
-table and PG-code grammar (Phase 1), a compatibility/deprecation policy
-plus a security-advisory process (§6, Phase 2), a standalone conformance
-suite (§7, Phase 3), a released SDK pipeline (Phase 4,
-`docs/PROTOCOL-GOVERNANCE.md` "Publishing"), PG-code ergonomics — a
-reserved range, a public resolver, `.well-known` policy, QR/homoglyph
-guidance (`spec/PG-CODE.md` §§11–13, Phase 5) — and property-based +
-fuzz testing (Phase 6: hypothesis/fast-check property tests for
-canonicalization and the check-character algorithm, plus fuzzing that
-found and fixed three real robustness bugs — see
-`PRAMPTA_STRATEGIC_TRUST_PLAN.md` §17 for the detail). One item remains
-explicitly deferred rather than silently dropped: standalone
-zero-dependency `pg-code` packages (Phase 5.5) — neither SDK has any
-pg-code logic today, and building real packages with their own
-vector-replay tests is a deliverable on the scale of Phase 4 repeated,
-not a small addition. Property-based coverage of license-term/policy
-combinations (as opposed to the crypto layer underneath them) is
-similarly real, separate, tracked work, not claimed as done here.
+## 0. Conventions and authority
+
+### 0.1 Requirement language
+
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+"SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+"OPTIONAL" in this document are to be interpreted as described in BCP 14
+([RFC 2119](https://www.rfc-editor.org/rfc/rfc2119),
+[RFC 8174](https://www.rfc-editor.org/rfc/rfc8174)) when, and only when,
+they appear in all capitals, as shown here. Numbered requirements (`R-n` for
+registries, `P-n` for providers, `V-n` for verifiers) are collected in §8
+with the check that covers each one.
+
+### 0.2 What is normative
+
+PRE-GEN v5 consists of four normative parts: this document; `PG-CODE.md`
+(identifiers); `REFUSAL-CODES.md` (reason codes); and
+`test-vectors/vectors.json` (byte-level examples). The paper
+`PRE-GEN-v5.pdf` explains the design and is informative.
+
+Also informative, wherever they appear: rationale, examples, and every
+paragraph or pointer marked **Reference implementation** — these name files
+in PRAMPTA, the origin registry, so an implementer can compare notes. No
+requirement depends on them, and an implementation needs none of them.
+
+### 0.3 When the text and a vector disagree
+
+The requirements are defined by the text. The vectors are computed examples
+of it and serve as its conformance test. A disagreement between the two is a
+defect — an erratum — and never by itself a rule:
+
+1. It is reported as an issue in the standard's repository
+   (https://github.com/Pastheroza/PRE-GEN-site).
+2. Until it is resolved, the text governs. An implementation SHOULD NOT
+   change its behaviour to match a disputed vector alone.
+3. The resolution corrects whichever is wrong, lists the affected vector
+   names in [`CHANGELOG.md`](CHANGELOG.md), and republishes the vectors.
+   A correction that would change the meaning of anything already issued —
+   a PG code, a signed object — is not an erratum; it needs a new version
+   (§6).
+
+*Informative:* the v5 vectors are produced by running the reference
+implementation (`spec/generate_vectors.py`). That is why this procedure
+exists: an implementation bug can produce a wrong vector, and a vector is
+evidence of what the text means, not a source of meaning.
+
+### 0.4 Roles and terms
+
+- **Registry** — holds subjects, licenses and opt-outs, answers
+  verification requests with signed decisions, and keeps the audit log.
+  **Operator** is the registry's signing identity (its Ed25519 key set, §2.3).
+- **Provider** — an AI service that asks a registry before generating and
+  reports afterwards. It authenticates with a credential the registry issued.
+- **Licensee** — the party a license is issued to; typically the provider's
+  end user, connected to the provider once (§5.1).
+- **Verifier** — anyone checking a signed object offline: a provider, a
+  rights-holder, an auditor, a court. A provider is always also a verifier.
 
 ---
 
@@ -70,15 +107,15 @@ registry signs only its own audit record of it.
 statement of whether a specific generation is authorized, that a provider
 can verify offline and keep as compliance evidence.
 
-**Normative source.** `backend/app/api/verify.py`, class `SignedDecision`
-and function `_build_signed_decision`. The Pydantic model IS the signed
-body — there is no separate wire-format struct; every field below is both
-signed and returned to the caller.
+**Signed bytes.** The decision is returned as one JSON object. Its signed
+bytes are the canonical JSON (§2) of that object with the single member
+`operator_signature` removed. Every other member is signed, including
+`operator_key_id` and any member the verifier does not recognize: a
+verifier MUST NOT drop unrecognized members before checking the signature
+(V-2), even though it ignores them otherwise.
 
-**What's excluded from the signed bytes.** Exactly one field:
-`operator_signature` itself, via `decision.model_dump(exclude=
-{"operator_signature"})` before signing. Every other field, including
-`operator_key_id` (set before signing), is part of the signed bytes.
+*Reference implementation:* `backend/app/api/verify.py` (`SignedDecision`,
+`_build_signed_decision`).
 
 **Field table:**
 
@@ -89,8 +126,8 @@ signed and returned to the caller.
 | `nonce` | string | one-time-use token; a consumer must not reuse it |
 | `allowed` | boolean | `true` only when `disposition == "allow"` |
 | `disposition` | string | `"allow"` \| `"not_blocked"` \| `"review"` \| `"deny"` — `not_blocked` (with `PG_STD_TRACKING_ONLY`) is personal use that nothing prohibits and nothing grants; `allowed` stays a boolean, `true` only on `allow`, so an older client that only reads `allowed` treats the other three as not-allowed (fail-closed) |
-| `policy_version` | string | which entry of the refusal-code registry (§5.2) produced this decision — independent of `schema_version`: the *rules* can change without the *envelope shape* changing |
-| `reason` | string \| null | a `PG_*` code from §5, or null on allow |
+| `policy_version` | string | which entry of the refusal-code registry (§6.2) produced this decision — independent of `schema_version`: the *rules* can change without the *envelope shape* changing |
+| `reason` | string \| null | a `PG_*` code from §3, or null on allow |
 | `subject_id` | string | |
 | `licensee_id` | string | |
 | `provider_id` | string | |
@@ -104,7 +141,7 @@ signed and returned to the caller.
 | `rules_text_hash` | string | SHA-256 hex of `rules_text`, empty string when `rules_text` is empty |
 | `subject_authority` | string | `self` \| `agency_asserted` \| `consented` \| `verified` — how well the subject's real-world rights are proven, distinct from whether a license exists at all |
 | `watermark_payload` | string \| null | |
-| `is_hard_refusal` | boolean | from the refusal-code registry (§5) — `false` on allow |
+| `is_hard_refusal` | boolean | from the refusal-code registry (§3) — `false` on allow |
 | `issued_at` | integer | Unix seconds |
 | `expires_at` | integer | Unix seconds; hard signature lifetime |
 | `revocation_epoch` | integer | the subject's revocation counter at issuance; `0` on subject-less refusals |
@@ -114,33 +151,48 @@ signed and returned to the caller.
 | `provider_identity_link_id` | string | |
 | `generation_id` | string | echoed from the request |
 | `detection_id` | string | echoed from the request |
-| `operator_key_id` | string | the operator key fingerprint (§2.4) used to sign |
+| `operator_key_id` | string | the operator key fingerprint (§2.1) used to sign |
 | `operator_signature` | string | Ed25519 signature, hex — **excluded from the signed bytes** |
 | `remediation` | object \| null | populated only on `PG_NO_LICENSE`: where and how to fix exactly this refusal |
 
 **Additive safety.** New *optional* fields never bump `schema_version` —
 `generation_id`, `detection_id`, `provider_user_binding`, and `remediation`
-were all added this way. An implementation must ignore fields it doesn't
-recognize and default fields it expects but doesn't find. `schema_version`
-only changes if a field is removed or its *meaning* changes.
+were all added this way. A consumer MUST ignore the meaning of members it
+does not recognize (while still signing over them, above) and treat an
+expected optional member that is absent as its default. `schema_version`
+changes only if a member is removed or its *meaning* changes.
 
 ### 1.2 LicenseBody (`pg.license.v2`)
 
 **Purpose.** The terms a subject's owner grants a licensee — signed by the
-subject (proving the rights holder agreed to exactly these terms) and
-countersigned by the operator (proving PRAMPTA issued it).
+subject's key over exactly these terms and countersigned by the operator
+(proving the registry issued it under that license id). What the subject
+signature proves depends on custody — see "Custody and consent" below.
 
-**Normative source.** `backend/app/core/license_body.py`, function
-`license_model_dump_for_signature(license_row)` — reconstructs the exact
-signed body from a stored license row. This is the function both mint time
-(to sign) and verify time (to re-verify) call; there is no separate
-"build" path that could drift from the "reconstruct" path.
+**Signatures.** Let `body` be the license body defined below and
+`B = canonical_json(body)` (§2).
 
-**What's excluded from the signed bytes.** The License database row has
-several columns that never enter the signed dict at all:
-`subject_signature`, `subject_public_key_hex`, `operator_signature`,
-`signing_key_fingerprint`, `status`, `issued_at`, the internal `id`, and
-`license_id` itself.
+1. The **subject signature** is Ed25519 by the subject's key over `B`
+   (64 bytes, hex on the wire).
+2. The **operator countersignature** is Ed25519 by an operator key over the
+   byte concatenation `B || S || L`, where `S` is the 64 raw bytes of the
+   subject signature and `L` is the license id (`PG-CODE.md`) encoded as
+   ASCII. The countersignature therefore binds the id: the same terms under
+   another id do not verify.
+3. A verifier (V-9) MUST check both, the subject signature against the
+   subject's public key and the countersignature against the operator key
+   named by the license's `signing_key_fingerprint`, and MUST treat a
+   license failing either as forged (`PG_INVALID_SIGNATURE`), not absent.
+
+The vector `license_countersignature` fixes these bytes.
+
+**Not in the body.** The signatures themselves, the subject public key, the
+operator key fingerprint, the license status, the issue time, and the
+license id are carried beside the body and never inside it.
+
+*Reference implementation:* `backend/app/core/license_body.py`
+(`license_model_dump_for_signature`), `backend/app/core/license_mint.py`
+(`finalize_license_signatures`).
 
 **Always-present fields:**
 
@@ -172,36 +224,23 @@ characters), `allowed_channels`, `allowed_territories`, `billing_terms`,
 `max_uses`, `concurrency_limit`, `transferability`, `sublicensing`,
 `attribution_required`, `granted_rights`, `output_survives_termination`.
 
-**The version marker field is named `"v"`, not `"schema_version"`** — a
-deliberate naming split from the response wrapper (see below), made so a
-future implementation can never confuse "the field named `schema_version`
-on the API response" with "the field that's actually inside the signed
-bytes." Its inclusion rule is the **one deliberate exception** to the
-additive-safe convention above:
+**The version marker is the body member `"v"`**, distinct from the
+`schema_version` member of the API response that carries the license, so
+the marker inside the signed bytes is never confused with response metadata.
+It is the one exception to the conditional-inclusion rule above:
 
-```
-if license_row.schema_version is None:
-    # legacy: pre-versioning row. Reconstructs WITHOUT "v" — permanently,
-    # not as a migration-in-progress placeholder. Real historical fact
-    # about that specific row.
-    pass
-elif license_row.schema_version == "pg.license.v2":
-    body_dict["v"] = license_row.schema_version
-else:
-    # A value this code doesn't recognize (typo, corruption, or a real
-    # future v3) refuses rather than silently reconstructing as legacy.
-    raise UnsupportedSchemaVersion(license_row.schema_version)
-```
+- A license signed before version markers existed has **no** `"v"` member,
+  permanently. A verifier MUST reconstruct it without one.
+- A current license has `"v": "pg.license.v2"`.
+- A verifier MUST refuse (`PG_INVALID_SIGNATURE`) a license whose marker it
+  does not recognize, rather than reconstructing it as either of the above.
 
-A future `v3` — one that changes what a field *means*, not just adds a new
-one — gets its own explicit branch in this same function, not a bare field
-addition. An implementer building a v3 parser should look for exactly this
-branch point.
+A future marker that changes what a member *means* is a new value of `"v"`
+with its own reconstruction rule, never a silent addition to v2.
 
-**Version marker on the API response** is a *different* field,
-`schema_version`, on the `/v1/licenses/{id}` detail response — reports the
-same value as `v` today, but is not itself part of the signed bytes; it's
-metadata about the response, not the license.
+**Version marker on the API response** is a different member,
+`schema_version`, on the license detail response. It reports the same value
+as `v` but is not signed; it describes the response, not the license.
 
 **Custody and consent.** A subject's key is held by the subject (`self`)
 or encrypted by the registry and used on the subject's behalf (`managed`);
@@ -216,18 +255,18 @@ certificate, `key_custody`). The two modes do not give the same guarantee:
   instruction — the authenticated account and the terms approved, or the
   automatic-approval rule the subject set in advance
   (`backend/app/api/license_requests.py`). A compromised operator can forge
-  both. A verifier that needs proof of the subject's own act must require
-  `self` custody.
+  both. A verifier that needs proof of the subject's own act MUST require
+  `self` custody. A registry offering `managed` custody MUST publish each
+  subject's custody mode (R-12).
 
 ### 1.3 ReceiptBody (`pg.receipt.v2` / `pg.receipt.v3`)
 
 **Purpose.** A provider's attestation that a generation actually happened,
-bound to a specific decision — the compliance measurement PRAMPTA compares
-against decisions issued (decisions-vs-receipts ratio).
+bound to a specific decision — what a registry compares against the
+decisions it issued. Submission rules are in §5.5.
 
-**Normative source.** `backend/app/core/receipt_body.py`, functions
-`_build_v2` and `_build_v3`, selected by `backend/app/api/receipts.py`'s
-`submit_receipt`.
+*Reference implementation:* `backend/app/core/receipt_body.py` (`_build_v2`,
+`_build_v3`), `backend/app/api/receipts.py` (`submit_receipt`).
 
 **This is the one signed object the operator does not sign at all.** The
 operator only computes `receipt_hash = sha256(canonical_json(receipt_body))`
@@ -282,15 +321,15 @@ identifier/commitment, not independent proof of generation.
 **This object is NOT additive-safe today.** Unlike License, there is no
 `if value is not None` inclusion convention here — every field is
 unconditional, and a field that changes this dict's shape still ships live
-the moment the change merges. What §6 now provides is not additive safety
+the moment the change merges. What §7 now provides is not additive safety
 itself, but a **migration mechanism** for when the shape does change: a
 bounded dual-accept window (`backend/app/core/receipt_body.py`) during
 which the server verifies a provider's signature against either the
 current shape or a recent prior one, marking a fallback match with
-`Deprecation`/`Sunset` headers — see §6 for the policy and
+`Deprecation`/`Sunset` headers — see §7 for the policy and
 `docs/PROTOCOL-GOVERNANCE.md` for why Receipt gets a temporary window where
-License gets a permanent per-row rule instead. A test worth naming
-explicitly for any implementer building a receipt client:
+License gets a permanent per-row rule instead. *Informative:* a test worth
+naming for any implementer building a receipt client:
 `backend/tests/test_receipts.py::test_receipt_provider_signature_verified`
 constructs its own independent copy of `receipt_body` (simulating a real
 external provider, not sharing PRAMPTA's own construction code) — if your
@@ -307,16 +346,14 @@ review: the decision itself, the license it resolved against (if any),
 every audit event tied to it, a Merkle inclusion proof when one exists, and
 the operator key material to check every signature.
 
-**Normative source.** `backend/app/api/audit.py`, handler
-`get_decision_evidence` (`GET /v1/audit/evidence/{decision_id}`).
+Served at `GET /v1/audit/evidence/{decision_id}`. *Reference
+implementation:* `backend/app/api/audit.py` (`get_decision_evidence`).
 
 **What's excluded from the signed bytes.** `evidence_hash`,
 `operator_signature`, and `operator_key_id` — these are computed from
 `canonical_json(evidence)` and only added to the dict *afterward*, so
-they're excluded by construction order, not an explicit exclusion list (a
-different mechanism from Decision's `.model_dump(exclude=...)`, worth
-knowing if you're implementing this from the Python source rather than this
-doc).
+the signed bytes are the canonical JSON of the bundle without those three
+members.
 
 **Field table:**
 
@@ -326,10 +363,10 @@ doc).
 | `decision_id` | string | |
 | `policy_version` | string | from the decision's own audit metadata |
 | `decision_event` | object | `event_id`, `action`, `metadata`, `timestamp`, `signature`, `signing_key_id` |
-| `license` | object \| null | present only if the decision resolved against one; `null` on a subject-less or license-less refusal |
+| `license` | object \| null | present only if the decision resolved against one; `null` on a subject-less or license-less refusal. When present it MUST carry `license_id`, `signed_body` (the exact license body of §1.2, or `null` for a license whose marker cannot be reconstructed), `subject_public_key_hex`, `subject_signature`, `operator_signature` and `signing_key_fingerprint`, so that both license signatures verify offline (V-9) |
 | `related_events` | array of objects | every audit event tied to this decision, chronological |
 | `inclusion_proof` | object \| null | Merkle inclusion proof when the audit anchor exists and is intact; degrades to `null` on a corrupted anchor chain **without** invalidating the rest of the bundle — the license/event evidence is independently useful even without a Merkle proof attached |
-| `operator_keys` | object | the full signed key set (§2.4), so every signature in the bundle can be checked entirely offline |
+| `operator_keys` | object | the full signed key set (§2.3), so every signature in the bundle can be checked entirely offline |
 | `evidence_hash` | string | SHA-256 hex of the canonicalized bundle — **excluded from the signed bytes** |
 | `operator_signature` | string | **excluded from the signed bytes** |
 | `operator_key_id` | string | **excluded from the signed bytes** |
@@ -337,20 +374,20 @@ doc).
 ### 1.5 Assertion (`pg.assertion.v1`)
 
 **Purpose.** A signed statement a provider embeds inside its own C2PA
-manifest — PRAMPTA does not implement C2PA itself; this endpoint produces
-only the signed statement the manifest carries. Deliberately bound to an
+manifest. The registry produces only this statement; building and signing
+the C2PA manifest is the provider's job, and PRE-GEN v5 does not specify
+how the statement is placed in it. Deliberately bound to an
 *existing* `GenerationReceipt` rather than a bare provider-submitted
 output hash, so an assertion and its receipt can never disagree about what
 was actually produced.
 
-**Normative source.** `backend/app/api/assertions.py`, function
-`create_assertion`, the `body` dict (`POST /v1/assertions`). Idempotent —
-re-requesting the assertion for an already-receipted decision returns the
-byte-identical original, never re-signed with a new `issued_at`.
+Issued at `POST /v1/assertions` for a decision that has a receipt. It is
+idempotent: a repeated request MUST return the byte-identical original,
+never a re-signed copy with a new `issued_at`. *Reference implementation:*
+`backend/app/api/assertions.py` (`create_assertion`).
 
-**What's excluded from the signed bytes.** `signature` and `signing_key_id`
-— never added to the `body` dict before signing, the same construction-
-order exclusion pattern as EvidenceBundle.
+**Signed bytes.** The canonical JSON of the assertion without `signature`
+and `signing_key_id`.
 
 **All fields are always present:**
 
@@ -376,9 +413,8 @@ order exclusion pattern as EvidenceBundle.
 A usage report for an output that needs no license — personal use answered
 `not_blocked` (`PG_STD_TRACKING_ONLY`), or an output the provider's own
 detectors link to a subject. `POST /v1/observations`, with the provider's
-credential (`Authorization: Bearer`, `X-Provider-Id`). Source:
-`backend/app/api/observations.py::ObservationRequest`. **An observation never
-authorizes anything** and is not a receipt.
+credential (§5.1). **An observation never authorizes anything** and is not a
+receipt. *Reference implementation:* `backend/app/api/observations.py`.
 
 | Field | Type | Rule |
 |---|---|---|
@@ -417,27 +453,33 @@ implementations that agree on every field but disagree on canonicalization
 produce different signatures over what a human would call "the same
 object."
 
-**Normative source.** `backend/app/core/crypto.py`, function
-`canonical_json`.
-
-1. **Serialize as JSON** with:
-   - Object keys sorted (Python: `sort_keys=True` — lexicographic by
-     Unicode code point).
-   - No whitespace: comma and colon separators with no padding
-     (`separators=(",", ":")`).
-   - Non-ASCII *characters* left as raw UTF-8, never `\uXXXX`-escaped
-     (`ensure_ascii=False`).
-   - Numbers in a signed body are **integers only** — floats are never
-     serialized in a signed object anywhere in this protocol, because
-     float-to-string formatting is not portable across languages.
+1. **Serialize as JSON** (RFC 8259) with:
+   - Object members sorted by key, comparing keys as sequences of Unicode
+     code points. (Not UTF-16 code units: the two orders differ for keys
+     containing characters outside the Basic Multilingual Plane.)
+   - No insignificant whitespace: `,` between members and elements, `:`
+     between key and value, nothing else.
+   - Strings: `"` and `\` escaped as `\"` and `\\`; U+0008, U+0009,
+     U+000A, U+000C, U+000D as `\b`, `\t`, `\n`, `\f`, `\r`; every other
+     code point below U+0020 as `\u00xx` with lowercase hex. Every other
+     character, including `/`, U+007F and all non-ASCII characters, is
+     written as itself, never escaped.
+   - `true`, `false`, `null` as literals.
+   - Numbers in a signed body are **integers only**, written in decimal
+     without a leading `+`, leading zeros or exponent, and within
+     ±(2^53 − 1). A signed object never contains a non-integer number,
+     because float formatting is not portable across languages.
 2. **Encode the result as UTF-8 bytes.**
 3. **Hash** with SHA-256, rendered as lowercase hex.
 4. **Sign** with Ed25519 (RFC 8032, deterministic — the same message and
    key always produce the same signature bytes) over the canonical JSON
    bytes of the body, **with the signature field itself excluded** from
    what gets signed (each §1 subsection above states exactly how its
-   object excludes its own signature field — the mechanism differs
-   between objects, the principle doesn't).
+   object excludes its own signature field).
+
+*Reference implementation:* `backend/app/core/crypto.py` (`canonical_json`,
+equivalent to Python `json.dumps(obj, sort_keys=True, separators=(",", ":"),
+ensure_ascii=False)`).
 
 **⚠ Unicode is NOT normalized.** Two visually-identical strings in
 different Unicode normalization forms (NFC vs. NFD — e.g. an accented
@@ -453,24 +495,52 @@ distinct, and will fail that vector case.
 ### 2.1 Key fingerprint
 
 `pg-ed25519:` followed by the first 32 hex characters of
-`SHA-256(raw 32-byte Ed25519 public key)`. Normative source:
-`backend/app/core/crypto.py`, class `OperatorKeyStore`, property
-`fingerprint`.
+`SHA-256(raw 32-byte Ed25519 public key)`, lowercase. The same rule names
+operator keys, subject keys and provider keys. The vectors' `operator_key`
+entry fixes one example.
 
 ### 2.2 Audit chain
 
-Each audit event's `prev_hash` is the SHA-256 of the previous event's
-canonical JSON bytes; the very first event in the chain uses the literal
-string `"genesis"`, not a hash of anything.
+An audit event is signed over the canonical JSON of exactly these members:
+`event_id`, `action`, `entity_type`, `entity_id`, `actor`, `timestamp`
+(ISO 8601 in UTC with an explicit `+00:00` offset), `metadata` (an object,
+`{}` when empty) and `prev_hash`. Its `event_hash` is the SHA-256 of those
+bytes, and its `signature` is the operator's Ed25519 signature over them,
+named by `signing_key_id`.
+
+`prev_hash` is the `event_hash` of the previous event **in the same chain**;
+the first event of a chain has the literal string `"genesis"`. A registry
+MAY keep several chains (the reference implementation keeps one per subject
+for verification traffic and one for everything else); each chain is
+independently verifiable. The registry's Merkle root over event hashes
+(informative; paper §10) covers the events of all chains. The vectors `audit_event_genesis` and
+`audit_event_chained` fix the bytes.
 
 ### 2.3 Signed key set
 
-`GET /v1/keys` returns the full history of operator keys (current plus
-retired), itself canonicalized and signed by the *current* key — so a
-client polling for rotation can verify the rotation announcement itself,
-not just trust an unsigned HTTP response. See
-`docs/Operator-Key-Rotation-Runbook.md` for the operational procedure this
-protects.
+`GET /keys` (at the registry's API origin, not under `/v1`) returns
+
+```json
+{"current_key_id": "pg-ed25519:…",
+ "keys": [{"key_id": "pg-ed25519:…", "public_key_hex": "…", "activated_at": 0,
+           "deactivated_at": null, "status": "active", "is_ephemeral": false}],
+ "signature": "…"}
+```
+
+`keys` is the full history, current and retired; `signature` is the current
+key's Ed25519 signature over the canonical JSON of the object without
+`signature`. A retired key stays listed so that everything it ever signed
+remains verifiable.
+
+The key set is **self-signed**: it proves the list is consistent, not that
+it is authentic, because anyone can sign a list that includes their own key.
+A provider therefore MUST obtain at least one operator public key out of
+band — from the registry's published listing (`registries.json` `keys`
+field), its documentation, or a pinned configuration — and MUST NOT trust a
+key it learns only from the same connection that serves decisions (V-1).
+
+*Reference implementation:* `backend/app/core/keystore.py` (`get_key_set`);
+operational procedure in `docs/Operator-Key-Rotation-Runbook.md`.
 
 ---
 
@@ -480,27 +550,21 @@ Every `PG_*` code `POST /v1/verify` can return as a `SignedDecision`'s
 `reason` is documented in a companion, **generated** file:
 **[`spec/REFUSAL-CODES.md`](REFUSAL-CODES.md)**.
 
-That file is produced by `spec/generate_refusal_table.py` directly from
-`backend/app/core/policy_registry.py`'s `RULES` registry — the same
-"backend is the source of truth" discipline `spec/generate_vectors.py`
-already applies to the crypto vectors. `backend/tests/
-test_refusal_table_matches_registry.py` regenerates the table on every test
-run and fails if it disagrees with the committed file, so a new refusal
-code registered without regenerating the table is a build failure, not a
-silent doc drift.
+The table is normative. A registry MUST use each code only with the
+meaning the table gives it, and MUST add a new code to the table (§7)
+before issuing it. No code count is stated here; count from the table.
 
-**Deliberately no code count is stated in this prose** — count from the
-table itself; a number written here would go stale the moment one more
-code is registered, which is exactly the kind of doc/code drift this whole
-phase exists to eliminate.
+*Reference implementation:* the table is generated from
+`backend/app/core/policy_registry.py` (`RULES`) by
+`spec/generate_refusal_table.py`, and a test fails if the two diverge.
 
 Each entry carries: the code, its category (`request` / `identity` /
 `subject_trust` / `license` / `review`), whether it's a **hard** refusal
 (no retry, reshaped request, or license change fixes it) or **soft** (a
 different request, license, or provider might succeed), the policy version
-it was introduced in, and a plain-language description. An **unregistered**
-code is treated as hard by `policy_registry.is_hard_refusal()` — fail
-closed on the safer wrong answer, never silently retryable-by-default.
+it was introduced in, and a plain-language description. A provider MUST
+treat a code it does not find in the table as hard (P-6): failing closed is
+the safer wrong answer.
 
 ---
 
@@ -603,100 +667,341 @@ carries a prefix.
 
 ---
 
-## 5. Versioning rules
+## 5. Operations
 
-What bumps a version marker, per object — condensed from
-`docs/PRAMPTA-Protocol-Versions.md`'s fuller treatment (that document also
-covers surfaces outside this spec's current scope, like Identity Assertion
-and Entitlement's shared `audience` check).
+Paths are relative to the registry's API base, which the registry publishes
+(`registries.json`, member `api`; PRAMPTA: `https://api2.prampta.com`).
+Operations live under `/v1`, except `GET /keys` (§2.3). Bodies are JSON.
 
-### 5.1 Per-object rules
+### 5.1 Authentication
+
+A provider sends, on every operation below:
+
+- `X-Provider-ID` — its provider identifier; REQUIRED.
+- `Authorization: Bearer <credential>` — the credential the registry issued
+  to it; REQUIRED. A registry MUST refuse a request whose credential does not
+  match the provider identifier (`PG_NO_PAIR` on `/v1/verify`, HTTP 401
+  elsewhere).
+- `X-Licensee-ID` — the connected end user the provider acts for. When it
+  is absent the request is **provider-level**: it can only ever end in
+  `not_blocked` for declared personal use (R-6), because licenses belong to
+  a licensee.
+
+How an end user is connected to a provider (a one-time authorization code,
+in the manner of OAuth 2.0) is registry policy in v5, not a wire
+requirement. *Reference implementation:* `docs/licensing-integration.md`.
+
+### 5.2 Verification request — `POST /v1/verify`
+
+| Member | Type | Rule |
+|---|---|---|
+| `subject_id` | string | the subject: a PG code or the registry's subject id; REQUIRED |
+| `prompt_hash` | string | SHA-256 hex of the prompt; REQUIRED. The prompt text MUST NOT be sent |
+| `model` | string | the provider's model identifier |
+| `modality` | string | `image`, `video`, `audio`, `voice`, `text`, … |
+| `intended_use` | object | `use_case` (`personal` \| `educational` \| `research` \| `editorial` \| `commercial`), `channel`, `product_name`, `project_name`, `territory`, `categories` (array), `modality`, `rights` (array; empty means output generation only), `campaign_id` — all optional strings unless stated |
+| `generation_id` | string | the provider's own id for this attempt; echoed |
+| `provider_user_id` / `provider_identity_link_id` | string | which connected user the provider acts for; if given, MUST resolve to a link the registry verified, and a license bound to another user is refused (`PG_IDENTITY_MISMATCH`) |
+| `license_id` | string | optional hint; narrows candidate licenses, never widens them |
+| `detection_id` | string | optional link to an earlier detection record; echoed, never used to decide |
+| `idempotency_key` | string | echoed |
+| `return_url` | string | where a `PG_NO_LICENSE` remediation link returns the user |
+
+The response is always HTTP 200 with a signed decision (§1.1), whether the
+answer is allow or a refusal; HTTP errors mean the request itself could not
+be processed (malformed body, rate limit). A caller MAY send
+`X-Prampta-Expected-Schema-Version: pg.decision.v1`; a registry that signs a
+different decision schema MUST then answer HTTP 409 instead of a decision.
+(The header name carries the origin registry's name for compatibility with
+existing clients.)
+
+### 5.3 Evaluation — registry requirements
+
+- **R-1** A request without `prompt_hash` MUST be refused with
+  `PG_MISSING_PROMPT_HASH`; an unknown subject with `PG_NO_SUBJECT`.
+- **R-2** An opt-out **in effect** (its `effective_from` has passed) whose
+  scope is `all_modalities` or equals the request's `modality` MUST produce
+  `PG_SUBJECT_OPTED_OUT`, and MUST be evaluated before the caller is
+  authenticated and before any license is consulted. A pending opt-out has
+  no effect until `effective_from`.
+- **R-3** A subject that is pending, paused, disputed or withdrawn MUST be
+  refused with its own code (`PG_SUBJECT_PENDING`, `PG_SUBJECT_PAUSED`,
+  `PG_SUBJECT_DISPUTED`, `PG_SUBJECT_WITHDRAWN`) before license resolution.
+- **R-4** No license may override an opt-out in effect, a subject status of
+  R-3, an immutable denial, or a fixed protection for minors.
+- **R-5** A registry MUST NOT answer `allow` unless (a) a license whose both
+  signatures verify (§1.2), whose `contract_start` ≤ now < `expires_at`,
+  which is not revoked, and whose scope covers the request, applies to the
+  licensee; or (b) the registry's published policy grants the use without a
+  license, and the decision says so by its reason code
+  (`PG_ORG_INTERNAL_USE`: a member of the organization that itself holds a
+  non-person subject). An allow MUST carry `allowed: true` and
+  `disposition: "allow"`.
+- **R-6** `not_blocked` MAY be answered only when no license applies,
+  `intended_use.use_case` is `personal`, and nothing prohibits the use; it
+  MUST carry `allowed: false` and `PG_STD_TRACKING_ONLY`. It grants nothing.
+- **R-7** When the only candidate license fails signature verification the
+  answer MUST be `PG_INVALID_SIGNATURE`, not `PG_NO_LICENSE`.
+- **R-8** Every decision — allow or refusal — MUST be signed (§1.1), MUST
+  carry a fresh `nonce` and an `expires_at`, MUST echo `subject_id`,
+  `provider_id`, `licensee_id`, `prompt_hash`, `model`, `modality` and
+  `intended_use` as received, and MUST be recorded in the audit log (§2.2).
+- **R-9** `cache_scope` MUST be `not_cacheable` and `max_cache_age_seconds`
+  `0` on anything other than a plain allow.
+
+The remaining order of checks is registry policy. A registry SHOULD follow
+the reference order: caller and sandbox limits; subject status, provider
+vetoes and fixed prohibitions; personal use; license resolution; scope
+(immutable denials, deny categories, license class, channel, territory,
+modality, granted rights); typed extensions, usage and concurrency limits,
+and human review (`PG_HELD_FOR_REVIEW`, disposition `review`).
+*Reference implementation:* `backend/app/core/verify_engine.py`
+(`run_verify`).
+
+### 5.4 Using a decision — provider and verifier requirements
+
+- **V-1** The operator key that verifies a decision MUST be one the provider
+  trusts out of band (§2.3). In pinned mode an unknown `operator_key_id`
+  MUST fail closed.
+- **V-2** The signature MUST be verified over the canonical JSON of the
+  decision exactly as received minus `operator_signature` (§1.1), with the
+  key named by `operator_key_id`.
+- **V-3** A decision whose `expires_at` has passed MUST NOT be used.
+- **V-4** Each echoed member of R-8 MUST equal what the provider sent
+  (members of `intended_use` it did not send appear with their empty
+  defaults); a mismatch MUST be treated as an invalid decision, so that an
+  allow for one product, project or user cannot be replayed for another.
+- **P-5** A provider MUST generate on the registry's authority only when
+  `disposition` is `allow`. On `not_blocked` it MAY generate under its own
+  policy but MUST NOT present the output as licensed. On `review` and `deny`
+  it MUST NOT generate for this request.
+- **P-6** A reason code absent from `REFUSAL-CODES.md` MUST be treated as
+  hard.
+- **P-7** A decision MAY be reused only for the identical request, only
+  when `cache_scope` is `exact_request`, and only within
+  `max_cache_age_seconds`.
+- **P-8** Obligations returned in `obligations` (watermark, disclosure, …)
+  MUST be applied to an output generated under an allow, and reported in the
+  receipt (§5.5).
+- **V-9** A license MUST be checked as §1.2 states: both signatures, the
+  countersignature over body, subject signature and license id.
+
+### 5.5 Receipts — `POST /v1/receipts`
+
+After generating under an allow, the provider SHOULD file one receipt. The
+request carries `decision_id`, `prompt_hash`, `output_hash` (SHA-256 hex of
+the output; REQUIRED), `model`, `obligations_applied` (object),
+`watermark_embedded` (boolean), `generated_at` (Unix seconds), optionally
+`schema_version` / `v` (`pg.receipt.v2` default, `pg.receipt.v3`) and
+`event_type` (v3), and `provider_signature` (hex).
+
+- **R-10** A registry MUST accept at most one receipt per decision (HTTP 409
+  for a second), MUST refuse a receipt whose decision was not an allow issued
+  to the same provider and licensee (HTTP 400 / 403), and MUST refuse a
+  `prompt_hash` that differs from the decision's (HTTP 400).
+- **R-11** If the provider has registered a signing key, the receipt MUST
+  carry `provider_signature` over the canonical JSON of the receipt body of
+  the selected version (§1.3), and the registry MUST verify it; for v3 a v2
+  signature MUST NOT be accepted.
+
+**Later lifecycle events.** `POST /v1/receipts/{decision_id}/events` with
+`event_type` (one of `preview`, `output_accepted`, `output_delivered`,
+`output_published`) and optionally `output_hash` records a later stage of
+the same receipted output. A registry MUST treat a repeated event as
+already recorded, MUST refuse an `output_hash` that differs from the
+receipt's (HTTP 409), and records the event in its audit log. Lifecycle
+events are not signed by the provider.
+
+### 5.6 Observations — `POST /v1/observations`
+
+Uses that need no license are reported as observations (§1.6).
+
+### 5.7 Registry publication
+
+- **R-12** A registry MUST publish its key set (§2.3); MUST publish each
+  subject's custody mode where it offers `managed` custody (§1.2); and, if
+  it is not the origin registry, MUST issue codes with its assigned issuer
+  prefix (`PG-CODE.md` §9).
+- **R-13** A registry that receives a code with an issuer prefix it does not
+  hold MUST answer that the code belongs to another registry, not that it
+  was not found (`PG-CODE.md` §9).
+
+---
+
+## 6. Versioning and compatibility
+
+A **PRE-GEN version** (v5) is one published release of these documents
+(`VERSIONS.md`). Each signed object also carries its own **marker**, which
+changes on the rules below and independently of the PRE-GEN version.
+
+### 6.1 Per-object rules
 
 - **Decision (`schema_version`).** Bumps only when a field is *removed* or
   an existing field's *meaning* changes. Adding a new optional field never
   bumps it (§1.1) — this is the strongest additive-safety guarantee in the
   protocol.
-- **License (`v`).** Everything except `v` itself follows the
-  `if value is not None` additive convention (§1.2) — a new optional field
-  never breaks an old signature. `v` itself is the deliberate exception: a
-  row with `schema_version IS NULL` (signed before this marker existed)
-  permanently reconstructs *without* `v`, forever — not a migration window,
-  a real historical fact about that row. A `v3` that changes a field's
-  *meaning* (not just adds one) gets an explicit new branch in
-  `license_model_dump_for_signature`, never a silent addition to the `v2`
-  branch.
-- **Receipt (`v`).** Not additive-safe today (§1.3) — any change to
-  `receipt_body`'s shape ships live the moment it merges. §6 (stub) is
-  where a deprecation window and dual-accept mechanism for this object are
-  planned.
+- **License (`v`).** Optional members are included only when set (§1.2),
+  so a new optional member never breaks an old signature. A license signed
+  before markers existed has no `v` and is reconstructed without one,
+  permanently. A marker that changes what a member *means* is a new value
+  of `v` with its own reconstruction rule.
+- **Receipt (`v`).** Every member is always present (§1.3), so any change
+  of shape is a new marker (`pg.receipt.v3` was added that way), handled by
+  the window of §7.
 - **Evidence bundle / Assertion (`schema_version`).** Both are minted fresh
   at read/issue time rather than re-serving a pre-existing signed body, so
   neither carries the same retroactive-invalidation risk License does — no
   additive-safety convention has been needed yet.
 
-### 5.2 Policy version (distinct from schema version)
+### 6.2 Policy version (distinct from schema version)
 
 `policy_version` (§1.1, §3) versions the *rules* `/verify` applies —
 independent of `schema_version`, which versions the *shape* of the decision
 envelope. A decision can always be read against the exact rule set that
 produced it, even long after the rules have changed, because both are
-stamped on it. Normative source: `backend/app/core/policy_registry.py`'s
-append-only `POLICY_HISTORY` — `spec/REFUSAL-CODES.md`'s "Policy version
-history" table is generated from the same list.
+stamped on it. The list of policy versions is append-only and published in
+`REFUSAL-CODES.md` ("Policy version history").
+
+### 6.3 What "stays valid" means
+
+Two different promises are made about old material, and they must not be
+confused:
+
+- **As evidence, forever.** A signed object is verified against the rules
+  and keys that applied when it was signed. A decision, license, receipt,
+  evidence bundle or audit event that verified then MUST still verify
+  under every later version, and a PG code once issued keeps resolving to
+  the same thing. Retired keys stay in the key set (§2.3) for this reason.
+- **As authority, only while current.** Nothing old grants anything new by
+  itself. A decision authorizes only the request it answers and only until
+  `expires_at`; a license authorizes only within its own term, while it is
+  neither revoked nor overridden (R-2, R-3, R-4), and only under the rules
+  in force at the time of the new request. A key or algorithm that is
+  retired or compromised stops producing new valid signatures; what it
+  signed before remains readable as historical evidence, and a registry MAY
+  mark such evidence as signed by a compromised key.
 
 ---
 
-## 6. Governance
+## 7. Governance and errata
 
-Full policy: [`docs/PROTOCOL-GOVERNANCE.md`](../docs/PROTOCOL-GOVERNANCE.md).
-Summary:
+- **Editor.** PRE-GEN is edited by its author, Valerii Egorov. Changes are
+  proposed as issues or pull requests in the standard's repository
+  (https://github.com/Pastheroza/PRE-GEN-site).
+- **Errata** follow §0.3 and are listed in `CHANGELOG.md`. An erratum
+  corrects text or vectors to what was always meant; it does not change the
+  version number.
+- **Additive changes** — a new optional member, a new refusal code, a new
+  optional feature — may be made in the next version without breaking any
+  conforming implementation (§1.1, §6.1).
+- **Breaking changes** — removing a member, changing a meaning — need a new
+  version and a new object marker (§6), are announced in `CHANGELOG.md` and
+  `VERSIONS.md` with what an implementation must change, and, where a
+  registry keeps accepting the old form for a while, are signalled with
+  `Deprecation` and `Sunset` HTTP headers during that window. Nothing
+  already issued changes meaning (§6.3).
+- **Receipts.** Because a receipt is verified once, at submission, a
+  registry MAY accept a provider signature over either the current or the
+  previous receipt shape during an announced window; `pg.receipt.v2` and
+  `pg.receipt.v3` currently coexist with no sunset date.
+- **Security.** A vulnerability in the standard itself is reported
+  privately to the editor (Pastheroza@gmail.com) before public disclosure;
+  a vulnerability in a registry's implementation is reported to that
+  registry (PRAMPTA: security@prampta.com).
 
-- **Deprecation windows differ by object**, matching each object's
-  retroactive-invalidation risk (§1): License changes a meaning-bump
-  permanently, per row (`schema_version IS NULL` reconstructs without `v`
-  forever — not a migration window, a historical fact about that row).
-  Receipt gets a **bounded, proposed 90-day dual-accept window**
-  (`backend/app/core/receipt_body.py`) instead, since a receipt is verified
-  once at submission and never re-verified later — the server can afford
-  to accept a signature over either the current or a recent prior shape
-  for a while, and say so.
-- **Announcing a breaking change** moves three things together:
-  `Deprecation`/`Sunset` response headers during the window, a
-  [`spec/CHANGELOG.md`](CHANGELOG.md) entry, and the next PRE-GEN version
-  ([`spec/VERSIONS.md`](VERSIONS.md)) saying what an implementation must change.
-- **Security advisories**: [`/SECURITY.md`](../SECURITY.md) — contact,
-  scope (the spec itself is explicitly in scope, not just running code),
-  and response SLA.
-
-The dual-accept mechanism is tested, but v2 and opt-in v3 currently coexist
-without deprecation. The 90-day sunset remains a proposal, not an active
-deadline. A future breaking retirement must follow
-`docs/PROTOCOL-GOVERNANCE.md` and announce a real sunset date.
-
----
-
-## 7. Conformance
-
-**[`spec/conformance/`](conformance/README.md)** — a standalone artifact,
-separate from any single implementation's own internal test suite. Two
-independent levels, stated there in full: if your implementation passes
-Level 1 (offline, a CLI adapter protocol replaying `vectors.json`), it's
-compatible at the crypto/pg-code layer; if it also passes Level 2 (HTTP
-scenarios against a live server — a representative subset of refusal
-codes, not all 36, stated honestly rather than overclaimed), it's
-compatible as a service. Wired into CI
-(`.github/workflows/ci.yml`'s `conformance` job) against all four
-implementations named in `spec/README.md`.
+*Reference implementation:* PRAMPTA's own compatibility policy is in
+`docs/PROTOCOL-GOVERNANCE.md`, its dual-accept window in
+`backend/app/core/receipt_body.py`.
 
 ---
 
-## 8. Known limitations and planned extensions (non-normative)
+## 8. Conformance
 
-**Nothing in this section is normative.** No object or field named here
-exists in the reference implementation, in `spec/test-vectors/vectors.json`,
-or in `spec/conformance/`. This section is not a normative change and needs
-no new version: describing what the protocol cannot currently do is not one. An
-implementer building against §§1–7 today is unaffected by everything below.
+### 8.1 Profiles
+
+An implementation claims conformance to one or more profiles of
+**PRE-GEN v5**, by name:
+
+- **PRE-GEN v5 Verifier** — V-1, V-2, V-3, V-4, V-9; §2 and §2.1 exactly;
+  PG codes parsed and checked as `PG-CODE.md` states.
+- **PRE-GEN v5 Provider** — everything in Verifier, plus P-5, P-6, P-7,
+  P-8, and §5.1–§5.2 on the wire. Receipts (§5.5) are RECOMMENDED;
+  `pg.receipt.v3`, lifecycle events, observations (§1.6) and assertions
+  (§1.5) are OPTIONAL features, each claimed by name.
+- **PRE-GEN v5 Registry** — R-1 to R-13; decisions (§1.1), licenses
+  (§1.2), the audit chain (§2.2), the key set (§2.3) and receipts (§5.5)
+  exactly. Evidence bundles (§1.4), assertions (§1.5), observations (§1.6)
+  and external anchoring are OPTIONAL features, each claimed by name; a
+  registry that offers one MUST implement it as specified.
+
+A claim names the profile and the optional features, e.g. "PRE-GEN v5
+Registry, with evidence bundles and observations".
+
+### 8.2 What the published checks cover
+
+Passing the checks is necessary for a claim, **not sufficient**. The checks
+are the vectors (`test-vectors/vectors.json`), replayed by the Level 1
+runner, and the Level 2 HTTP scenarios (`conformance/`). Everything marked
+"not checked" below rests on the implementer's reading of the text.
+
+| Requirement | Checked by |
+|---|---|
+| §2 canonical JSON, §2.1 fingerprint | Level 1: `canonical_json`, `signing` vectors |
+| V-2 decision signature | Level 1: `signing_verify:signed_decision_v1` |
+| V-9 / §1.2 license signatures | Level 1: `license_countersignature` (subject + operator, and that the countersignature binds the id) |
+| §2.2 audit event bytes and chaining | Level 1: `audit_event_genesis`, `audit_event_chained`; Level 2: `10_audit_chain_valid` |
+| `PG-CODE.md` formatting and check character | Level 1: `pg_code` vectors |
+| R-1 | Level 2: `02_refusal_missing_prompt_hash`, `04_refusal_no_subject` |
+| §5.1 caller authentication | Level 2: `03_refusal_no_pair` |
+| R-3 (withdrawn only) | Level 2: `05_refusal_subject_withdrawn` |
+| R-5 (allow with a license), scope | Level 2: `01_happy_path_verify`, `06_refusal_no_license`, `07_refusal_immutable_denial`, `08_refusal_scope_violation` |
+| R-10 (accepting a receipt) | Level 2: `09_receipt_recorded` |
+| R-2 opt-out priority; R-3 other statuses; R-4; R-6; R-7; R-8 echo; R-9; R-11; R-12; R-13 | **not checked** |
+| V-1, V-3, V-4; P-5 to P-8 | **not checked** (client behaviour) |
+| §1.4, §1.5, §1.6, lifecycle events, `pg.receipt.v3` | **not checked** |
+
+Level 2 sets up its subjects, licenses and connections through the origin
+registry's own management endpoints, which v5 does not standardize. Against
+another registry the setup steps have to be adapted; the checked requests
+and answers are the standard's.
+
+### 8.3 Independent implementation
+
+PRE-GEN v5 has one production registry (PRAMPTA) and clients written
+alongside it. No implementation built only from this text by another team
+has yet passed the checks. Until one has, compatibility between independent
+implementations is specified but **not demonstrated**.
+
+*Informative:* how to run the checks is in
+[`conformance/README.md`](conformance/README.md); CI runs them against the
+four implementations in this repository.
+
+---
+
+## 9. Reference implementation status (informative)
+
+What the origin registry, PRAMPTA, offers today — so that nothing in this
+document is read as a claim about it:
+
+- **Custody.** Both custody modes are specified (§1.2). PRAMPTA registers
+  new subjects in `managed` custody only; `self` custody registration is
+  retired, and licenses signed under `self` custody earlier still verify.
+- **C2PA.** PRAMPTA issues `pg.assertion.v1` (§1.5). No end-to-end
+  integration with a C2PA manifest has been tested.
+- **Anchoring.** Audit roots are submitted about hourly to public
+  OpenTimestamps calendars, best effort (§10).
+- **Opt-out cooling.** 14 days (`COOLING_PERIOD_DAYS`); a subject pause
+  takes effect immediately.
+- **Level 1 and Level 2** pass against PRAMPTA in CI.
+
+---
+
+## 10. Known limitations and planned extensions (non-normative)
+
+**Nothing in this section is a requirement.** It states what v5 cannot do,
+and what might be added later; proposed objects and fields named here exist
+in no version, no vector and no check. An implementer building against
+§§0–9 today is unaffected by everything below.
 
 It is here because an implementer deserves to know where the edges are
 before hitting one in production.
@@ -720,12 +1025,13 @@ before hitting one in production.
   terms — so commercial terms cannot be bound to the moment a decision was
   signed, only recorded elsewhere.
 - **A decision is not single-use.** One receipt is accepted per decision
-  (§1.3), which limits what can be *reported* against it, not how many
-  generations a provider runs under it. A receipt names one lifecycle
-  event; there is no signed chain from decision to generation to output to
-  its later events (preview, edit, publication), which video and
-  multi-step workflows need. Observations (§1.6) chain events by
-  `output_id` but are unsigned by the provider and carry no authorization.
+  (R-10), which limits what can be *reported* against it, not how many
+  generations a provider runs under it. After the receipt, lifecycle events
+  (§5.5) record later stages of the same output, but they are not signed by
+  the provider, and there is no chain across several outputs or edits from
+  one decision, which video and multi-step workflows need. Observations
+  (§1.6) chain events by `output_id` but are unsigned by the provider and
+  carry no authorization.
 - **Several registries may disagree.** Issuer prefixes (`PG-CODE.md` §9)
   prevent code collisions, not rights conflicts: two registries can hold
   the same person and answer differently, and v5 defines no rule for which
@@ -752,11 +1058,11 @@ before hitting one in production.
 `pg.settlement.v1` (operator-signed reconciliation statement), plus field
 additions to License, Decision, Receipt, and Assertion — is in
 [`docs/PRE-GEN-Revenue-Extensions-DRAFT.md`](../docs/PRE-GEN-Revenue-Extensions-DRAFT.md),
-along with a per-object analysis against §5.1's versioning rules. One point
+along with a per-object analysis against §6.1's versioning rules. One point
 from it is worth stating here because it is a fact about *this* document
 rather than about the proposal: of the four objects that would change, only
 **Receipt** breaks. It is the one object with no additive-safety convention
 (§1.3), so adding any field to it would be the first real use of the
-dual-accept window §6 describes as built-but-dormant — with the
+dual-accept window §7 describes as built-but-dormant — with the
 `Deprecation`/`Sunset` headers, `CHANGELOG` entry, and new PRE-GEN version
-that §6 requires.
+that §7 requires.

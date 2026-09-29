@@ -89,6 +89,26 @@ def run(adapter_cmd: str, cwd: str | None, extra_env: dict | None = None) -> lis
             _check(f"signing_verify:{case['name']}", ok,
                    "" if ok else f"expected valid signature, got {resp}", results)
 
+    # ── license: subject signature + operator countersignature (§1.2) ──
+    lc = vectors.get("license_countersignature")
+    if lc:
+        good = {"op": "verify_license", "body": lc["body"], "license_id": lc["license_id"],
+                "subject_public_key_hex": lc["subject_public_key_hex"],
+                "subject_signature_hex": lc["subject_signature_hex"],
+                "operator_public_key_hex": pubkey_hex,
+                "operator_signature_hex": lc["operator_signature_hex"]}
+        resp = _call(adapter_cmd, cwd, extra_env, good)
+        if resp.get("unsupported"):
+            _check("license_countersignature:valid", True, "skipped (unsupported)", results)
+        else:
+            ok = resp.get("subject_valid") is True and resp.get("operator_valid") is True
+            _check("license_countersignature:valid", ok, "" if ok else f"got {resp}", results)
+            # The countersignature covers the license id: another id must fail.
+            other = dict(good, license_id=lc["license_id"][:-1] + ("A" if lc["license_id"][-1] != "A" else "B"))
+            resp = _call(adapter_cmd, cwd, extra_env, other)
+            ok = resp.get("subject_valid") is True and resp.get("operator_valid") is False
+            _check("license_countersignature:binds_license_id", ok, "" if ok else f"got {resp}", results)
+
     # ── pg_code: check_char, subject_code, license_id, rejects ──
     pg = vectors["pg_code"]
     for case in pg["check_char"]:
