@@ -61,6 +61,9 @@ signed bytes, and how strictly each is versioned.
 | §1.4 Evidence bundle | `schema_version` | `pg.evidence.v1` | Operator | Not addressed |
 | §1.5 Assertion | `schema_version` | `pg.assertion.v1` | Operator | Not addressed |
 
+§1.6 Observation (`pg.observation.v1`) is a sixth, unsigned request object: the
+registry signs only its own audit record of it.
+
 ### 1.1 SignedDecision (`pg.decision.v1`)
 
 **Purpose.** The response to `POST /v1/verify` — a cryptographically signed
@@ -199,6 +202,22 @@ branch point.
 `schema_version`, on the `/v1/licenses/{id}` detail response — reports the
 same value as `v` today, but is not itself part of the signed bytes; it's
 metadata about the response, not the license.
+
+**Custody and consent.** A subject's key is held by the subject (`self`)
+or encrypted by the registry and used on the subject's behalf (`managed`);
+the registry publishes each subject's custody mode (subject record and
+certificate, `key_custody`). The two modes do not give the same guarantee:
+
+- **self**: the subject signature is the subject's own act. A compromised
+  operator cannot produce a license without it.
+- **managed**: the subject signature proves only that the registry used the
+  subject's key (`backend/app/core/license_mint.py::finalize_license_signatures`).
+  The evidence that the subject agreed is the registry's audit record of the
+  instruction — the authenticated account and the terms approved, or the
+  automatic-approval rule the subject set in advance
+  (`backend/app/api/license_requests.py`). A compromised operator can forge
+  both. A verifier that needs proof of the subject's own act must require
+  `self` custody.
 
 ### 1.3 ReceiptBody (`pg.receipt.v2` / `pg.receipt.v3`)
 
@@ -351,6 +370,44 @@ order exclusion pattern as EvidenceBundle.
 | `issued_at` | string, ISO 8601 |
 
 ---
+
+### 1.6 Observation (`pg.observation.v1`)
+
+A usage report for an output that needs no license — personal use answered
+`not_blocked` (`PG_STD_TRACKING_ONLY`), or an output the provider's own
+detectors link to a subject. `POST /v1/observations`, with the provider's
+credential (`Authorization: Bearer`, `X-Provider-Id`). Source:
+`backend/app/api/observations.py::ObservationRequest`. **An observation never
+authorizes anything** and is not a receipt.
+
+| Field | Type | Rule |
+|---|---|---|
+| `schema_version` | string | `"pg.observation.v1"` |
+| `event_id` | string | `[A-Za-z0-9_.:-]{1,100}`, provider-unique; idempotency key |
+| `output_id` | string | same charset; shared by every event of one output |
+| `subject_id` | string | PG code or subject id |
+| `event_type` | string | `output.created` \| `output.modified` \| `output.published` \| `publication.removed` |
+| `output_hash` | string | 64 lowercase hex (SHA-256 of the output bytes) |
+| `occurred_at` | RFC 3339 with offset | not more than 5 minutes in the future |
+| `declared_purpose` | string | `personal` \| `commercial` \| `educational` \| `research` \| `editorial` \| `unknown` (default) |
+| `parent_output_hash` | string \| absent | required on `output.modified`, differs from `output_hash`; forbidden otherwise |
+| `publication_url` | string \| absent | required on the two publication events, forbidden otherwise; `https`, no credentials, query or fragment; never fetched by the registry |
+| `decision_id` | string \| absent | accepted only if that decision already has this provider's receipt |
+| `visual_match` | object \| absent | the provider's own look-alike finding: `method`, `confidence` 0–1, `basis`, `reference_ids` |
+
+Unknown fields are rejected. Resending an `event_id` with the same payload
+returns the existing record; with a different payload, `409`. The lifecycle
+of one output is the set of its events sharing `output_id`, ordered by
+`occurred_at`; `output.modified` links versions by hash.
+
+The provider does not sign observations. The registry appends an
+`observation_received` audit event, signed with its operator key, over the
+SHA-256 of the canonical payload (§2), with `record_kind:
+"usage_observation"` and `authorization: "not_granted_by_this_record"`. A
+record whose audit event does not verify is reported as an integrity failure
+(`PG_OBSERVATION_INTEGRITY_FAILED`), never shown as evidence. An observation
+proves what the provider reported and when the registry received it, not that
+the output exists or matches.
 
 ## 2. Canonicalization
 
@@ -662,6 +719,19 @@ before hitting one in production.
   carries scope, term, and obligations, but no rate, floor, or settlement
   terms — so commercial terms cannot be bound to the moment a decision was
   signed, only recorded elsewhere.
+- **A decision is not single-use.** One receipt is accepted per decision
+  (§1.3), which limits what can be *reported* against it, not how many
+  generations a provider runs under it. A receipt names one lifecycle
+  event; there is no signed chain from decision to generation to output to
+  its later events (preview, edit, publication), which video and
+  multi-step workflows need. Observations (§1.6) chain events by
+  `output_id` but are unsigned by the provider and carry no authorization.
+- **Several registries may disagree.** Issuer prefixes (`PG-CODE.md` §9)
+  prevent code collisions, not rights conflicts: two registries can hold
+  the same person and answer differently, and v5 defines no rule for which
+  answer prevails, no shared opt-out, and no dispute freeze.
+- **Managed custody proves key use, not consent** (§1.2, "Custody and
+  consent").
 - **Settlement has no signed object.** A decision dispute resolves against
   `pg.evidence.v1` (§1.4). A disagreement about what was *owed* has no
   equivalent artifact.

@@ -17,6 +17,11 @@ earlier, date-based label. What a v4 implementation must change is listed in
 `VERSIONS.md`.
 
 
+- Review fixes before publication (text only, no wire change):
+  managed custody is described as proof of key use, not of consent
+  (§1.2 "Custody and consent"); `pg.observation.v1`, already live, is now
+  specified (§1.6); §8 states that a decision is not single-use and that
+  several registries can disagree about rights; C2PA reference corrected.
 - PRE-GEN is published as a public standard at https://www.pregen.org,
   copyright Valerii Egorov, Apache-2.0.
 - Issuer prefix (`PG-CODE.md` §9): other registries prefix every code they

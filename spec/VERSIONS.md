@@ -55,6 +55,8 @@ What an implementation of v4 must change:
   and a licence can be bound to that user. v4's pair token alone is not enough.
 - **Receipts** (`pg.receipt.v2`, opt-in `v3` signing the event type) report
   what was generated after an allow.
+- **Observations** (`pg.observation.v1`) report uses that need no licence,
+  with an output's lifecycle (`created`, `modified`, `published`, `removed`).
 - **Refusal codes** are one versioned registry with hard/soft classification
   (`REFUSAL-CODES.md`).
 - **Several registries.** Every registry except the origin one prefixes its
