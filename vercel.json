@@ -14,6 +14,11 @@
       "permanent": true
     },
     {
+      "source": "/",
+      "destination": "/homepage",
+      "permanent": false
+    },
+    {
       "source": "/ecosystem",
       "destination": "/registries",
       "permanent": true
@@ -50,6 +55,19 @@
         {
           "key": "Cross-Origin-Opener-Policy",
           "value": "same-origin"
+        }
+      ]
+    },
+    {
+      "source": "/spec/:file*.pdf",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; upgrade-insecure-requests"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
         }
       ]
     }

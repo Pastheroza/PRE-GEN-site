@@ -27,4 +27,15 @@ w.add_metadata({"/Title": "PRE-GEN — Technical Specification", "/Author": "Val
                 "/Subject": f"PRE-GEN version {v}", "/Creator": "", "/Keywords": "PRE-GEN, pre-generation authorization"})
 w.write(path)
 PY
-echo "Wrote spec/PRE-GEN-v$V.pdf"
+# Page images for pregen.org/homepage on phones, where a PDF in an iframe
+# shows one page or nothing. Grey PNGs, same pages as the PDF.
+rm -f "$HERE/../pages/v$V-"*.png
+mkdir -p "$HERE/../pages"
+pdftoppm -r 110 -gray -png "$HERE/../PRE-GEN-v$V.pdf" "$HERE/../pages/v$V"
+python3 - "$HERE/../pages" "$V" <<'PY'
+import glob, sys
+from PIL import Image
+for f in glob.glob(f"{sys.argv[1]}/v{sys.argv[2]}-*.png"):   # 16 grey levels: a third of the bytes
+    Image.open(f).convert("L").quantize(16, dither=Image.Dither.NONE).save(f, optimize=True)
+PY
+echo "Wrote spec/PRE-GEN-v$V.pdf and spec/pages/v$V-*.png"

@@ -26,7 +26,9 @@ a:hover { text-decoration-thickness: 2px; }
 /* Header */
 .top { border-bottom: 1px solid var(--rule); }
 .top .wrap { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; padding-block: 16px; }
-.mark { font-weight: 700; letter-spacing: 0.04em; text-decoration: none; }
+.mark { display: block; line-height: 0; text-decoration: none; align-self: center; }
+.mark img { display: block; height: 32px; width: auto; }
+@media (prefers-color-scheme: dark) { .mark img { filter: invert(1); } }
 .top nav { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 15px; }
 .top nav a { text-decoration: none; }
 .top nav a:hover, .top nav a[aria-current] { text-decoration: underline; }
@@ -106,3 +108,16 @@ details p { margin: 10px 0 0; }
 .foot .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; padding-block: 20px 28px; }
 .foot nav { display: flex; flex-wrap: wrap; gap: 4px 16px; }
 .foot p { margin: 0; color: var(--muted); max-width: 34em; }
+
+/* Homepage: the title, then the specification itself. */
+.hero { text-align: center; padding: 40px 0 24px; }
+.hero h1 { margin: 0 0 12px; }
+.paper { margin: 0 0 48px; }
+.paper-frame { display: block; width: 100%; height: calc(100vh - 140px); min-height: 640px; border: 1px solid var(--rule); background: #fff; }
+.paper-pages { display: none; }
+.paper-pages img { display: block; width: 100%; height: auto; border: 1px solid var(--rule); margin: 0 0 12px; background: #fff; }
+@media (max-width: 700px) {
+  /* Phones show a framed PDF as one page or not at all: show the pages. */
+  .paper-frame { display: none; }
+  .paper-pages { display: block; }
+}
