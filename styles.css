@@ -8,14 +8,13 @@
   --tint: #f4f4f4;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --logo-filter: none;
   color-scheme: light;
 }
 /* Dark: the system's choice unless the reader picked light, or the reader's. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --bg: #000; --fg: #fff; --muted: #aaa; --rule: #fff; --soft: #2a2a2a; --tint: #111; --logo-filter: invert(1); color-scheme: dark; }
+  :root:not([data-theme="light"]) { --bg: #000; --fg: #fff; --muted: #aaa; --rule: #fff; --soft: #2a2a2a; --tint: #111; color-scheme: dark; }
 }
-:root[data-theme="dark"] { --bg: #000; --fg: #fff; --muted: #aaa; --rule: #fff; --soft: #2a2a2a; --tint: #111; --logo-filter: invert(1); color-scheme: dark; }
+:root[data-theme="dark"] { --bg: #000; --fg: #fff; --muted: #aaa; --rule: #fff; --soft: #2a2a2a; --tint: #111; color-scheme: dark; }
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -30,7 +29,7 @@ a:hover { text-decoration-thickness: 2px; }
 .top { border-bottom: 1px solid var(--rule); background: var(--bg); }
 .top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 64px; }
 .mark { display: block; line-height: 0; text-decoration: none; flex: none; }
-.mark img { display: block; height: 32px; width: auto; filter: var(--logo-filter); }
+.mark img { display: block; height: 32px; width: auto; }
 .menu { display: flex; align-items: center; gap: 22px; }
 .top nav { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 15px; }
 .top nav a { text-decoration: none; }
@@ -173,7 +172,6 @@ details p { margin: 10px 0 0; }
 
 /* Homepage: the title, then the specification itself. */
 .hero { text-align: center; padding: 24px 0 32px; }
-.eyebrow { margin: 0 0 14px; font: 12px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .hero h1 { margin: 0 auto 14px; max-width: 20em; text-wrap: balance; }
 .hero-meta { margin: 0; font-size: 14px; color: var(--muted); }
 .paper { margin: 0 0 56px; }
@@ -195,4 +193,33 @@ details p { margin: 10px 0 0; }
   .hero h1 { font-size: 32px; }
   .paper-frame { display: none; }
   .paper-pages { display: block; }
+}
+
+/* Homepage below the paper: short, one idea per block. */
+.intro { margin: 0 0 8px; }
+.big { font-size: 24px; line-height: 1.45; letter-spacing: -0.01em; margin: 0; max-width: 30em; }
+.block { margin-top: 56px; }
+.label { margin: 0 0 16px; padding: 0; border: 0; font: 12px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+.flow li { display: flex; gap: 14px; margin: 0; }
+.flow .n { flex: none; font: 600 15px/1.6 var(--mono); }
+.flow b { display: block; font-size: 17px; }
+.flow p { margin: 2px 0 0; color: var(--muted); }
+.answers { margin: 0; }
+.answers div { display: grid; grid-template-columns: 150px 1fr; gap: 16px; padding: 12px 0; border-top: 1px solid var(--soft); }
+.answers div:last-child { border-bottom: 1px solid var(--soft); }
+.answers dt { font-weight: 600; }
+.answers dd { margin: 0; color: var(--muted); }
+.go { list-style: none; margin: 20px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px 28px; }
+.go li { margin: 0; }
+.go a { text-decoration: none; font-weight: 500; }
+.go a::after { content: " →"; }
+.go a:hover { text-decoration: underline; }
+@media (max-width: 720px) {
+  .big { font-size: 20px; }
+  .block { margin-top: 44px; }
+  .flow { grid-template-columns: 1fr; gap: 20px; }
+  .answers div { grid-template-columns: 1fr; gap: 2px; }
+  .go { flex-direction: column; gap: 0; }
+  .go a { display: block; padding: 12px 0; border-top: 1px solid var(--soft); }
 }

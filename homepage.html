@@ -29,9 +29,8 @@
 </div></header>
 <main><div class="wrap">
 <section class="hero">
-<p class="eyebrow">PRE-GEN · Version 5 · Draft</p>
 <h1>Pre-Generative Authorization Protocol</h1>
-<p class="hero-meta">28 September 2026 · <a href="/spec/PRE-GEN-v5.pdf" download>Download PDF</a> · <a href="/docs/versions">All versions</a></p>
+<p class="hero-meta">28 September 2026</p>
 </section>
 
 <div class="paper">
@@ -46,39 +45,39 @@
 </div>
 </div>
 
-<h2>What it is</h2>
-<p class="lede">PRE-GEN is an open protocol. Before an AI system generates a real person, brand or work, it asks a registry. The registry answers with a signed decision that anyone can check later.</p>
-<div class="actions"><a class="btn primary" href="/docs">Read the protocol</a><a class="btn" href="/docs/sdk">Integrate</a><a class="btn" href="/registries">Registries</a></div>
+<section class="intro">
+<p class="big">Before an AI system generates a real person, brand or work, it asks a registry. The registry answers, signs the answer, and anyone can check it later.</p>
+</section>
 
-<h2>How it works</h2>
-<ol class="steps">
-<li><b>1. Detect</b>The provider matches the prompt against the registry's public subject index.</li>
-<li><b>2. Ask</b><code>POST /v1/verify/</code> with the subject and the intended use. The registry returns a signed decision.</li>
-<li><b>3. Report</b>After generating, the provider files a receipt that ties the output to that decision.</li>
+<section class="block">
+<h2 class="label">How it works</h2>
+<ol class="flow">
+<li><span class="n">1</span><div><b>Ask</b><p>The AI service asks the registry before it generates.</p></div></li>
+<li><span class="n">2</span><div><b>Answer</b><p>The registry says yes, no or not yet — and signs it.</p></div></li>
+<li><span class="n">3</span><div><b>Report</b><p>After generating, the service reports what it made.</p></div></li>
 </ol>
+</section>
 
-<h2>Four answers</h2>
-<div class="table"><table>
-<thead><tr><th>disposition</th><th>Meaning</th><th>Provider</th></tr></thead>
-<tbody>
-<tr><td class="mono">allow</td><td>A licence covers this use.</td><td>Generate, apply the obligations, file a receipt.</td></tr>
-<tr><td class="mono">not_blocked</td><td>Personal use that nothing prohibits. No licence is granted.</td><td>May generate under its own policy. Report it; there is no receipt.</td></tr>
-<tr><td class="mono">review</td><td>The rights holder has to decide.</td><td>Do not generate yet.</td></tr>
-<tr><td class="mono">deny</td><td>Refused. The <code>PG_*</code> reason code says why and whether retrying can help.</td><td>Do not generate.</td></tr>
-</tbody></table></div>
-<p class="meta">Every decision is canonical JSON signed with Ed25519 and written to a hash-chained audit log. See <a href="/docs">the protocol overview</a>.</p>
+<section class="block">
+<h2 class="label">Four possible answers</h2>
+<dl class="answers">
+<div><dt>Allow</dt><dd>A licence covers this use.</dd></div>
+<div><dt>Not blocked</dt><dd>Personal use. Nothing forbids it, nothing is granted.</dd></div>
+<div><dt>Review</dt><dd>The rights holder decides first.</dd></div>
+<div><dt>Deny</dt><dd>Refused, with a reason.</dd></div>
+</dl>
+</section>
 
-<h2>What it does not do</h2>
-<ul>
-<li>It does not stop generation by systems that never ask.</li>
-<li>A decision proves what the registry answered to a declared request. It does not prove the output matched the request, or that a use is lawful.</li>
-<li>It is not provenance. C2PA says what was made; PRE-GEN says whether it was allowed. They work together — see <a href="/docs/c2pa">C2PA</a>.</li>
+<section class="block">
+<h2 class="label">Open to everyone</h2>
+<p>Anyone can run a registry or build it into an AI service, free, under Apache-2.0. It works only where AI services choose to ask, and a signed answer shows what the registry said — not that a use is lawful.</p>
+<ul class="go">
+<li><a href="/docs">Read the protocol</a></li>
+<li><a href="/docs/sdk">Integrate</a></li>
+<li><a href="/registries">Registries</a></li>
+<li><a href="/lookup">Look up a PG code</a></li>
 </ul>
-
-<h2>One protocol, many registries</h2>
-<p>The specification and test vectors are Apache-2.0: anyone can run a registry or integrate without asking permission. Each registry gets a four-letter prefix, so codes from different registries never collide (<code>PG-NWRD-000042=</code>). <a href="/registries">Registries</a> lists who runs PRE-GEN today.</p>
-<p>Look up any PG code: <a href="/lookup">pregen.org/lookup</a>.</p>
-<p class="meta">PRE-GEN v5 draft, 28 September 2026, awaiting publication on Zenodo · <a href="/docs/versions">all versions</a></p>
+</section>
 
 </div></main>
 <footer class="foot"><div class="wrap">
