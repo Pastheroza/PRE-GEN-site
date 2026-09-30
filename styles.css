@@ -8,11 +8,14 @@
   --tint: #f4f4f4;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color-scheme: light dark;
+  --logo-filter: none;
+  color-scheme: light;
 }
+/* Dark: the system's choice unless the reader picked light, or the reader's. */
 @media (prefers-color-scheme: dark) {
-  :root { --bg: #000; --fg: #fff; --muted: #aaa; --rule: #fff; --soft: #2a2a2a; --tint: #111; }
+  :root:not([data-theme="light"]) { --bg: #000; --fg: #fff; --muted: #aaa; --rule: #fff; --soft: #2a2a2a; --tint: #111; --logo-filter: invert(1); color-scheme: dark; }
 }
+:root[data-theme="dark"] { --bg: #000; --fg: #fff; --muted: #aaa; --rule: #fff; --soft: #2a2a2a; --tint: #111; --logo-filter: invert(1); color-scheme: dark; }
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -24,14 +27,57 @@ a:hover { text-decoration-thickness: 2px; }
 .wrap { max-width: 880px; margin: 0 auto; padding: 0 16px; }
 
 /* Header */
-.top { border-bottom: 1px solid var(--rule); }
-.top .wrap { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; padding-block: 16px; }
-.mark { display: block; line-height: 0; text-decoration: none; align-self: center; }
-.mark img { display: block; height: 32px; width: auto; }
-@media (prefers-color-scheme: dark) { .mark img { filter: invert(1); } }
+.top { border-bottom: 1px solid var(--rule); background: var(--bg); }
+.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 64px; }
+.mark { display: block; line-height: 0; text-decoration: none; flex: none; }
+.mark img { display: block; height: 32px; width: auto; filter: var(--logo-filter); }
+.menu { display: flex; align-items: center; gap: 22px; }
 .top nav { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 15px; }
 .top nav a { text-decoration: none; }
 .top nav a:hover, .top nav a[aria-current] { text-decoration: underline; }
+
+/* Theme: System / Light / Dark. Icons on wide screens, words in the phone menu. */
+.theme { display: inline-flex; border: 1px solid var(--rule); }
+.theme button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 30px; height: 28px; padding: 0; border: 0; background: none; color: var(--fg); font: inherit; cursor: pointer; }
+.theme button + button { border-left: 1px solid var(--rule); }
+.theme button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.theme svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.theme svg .fill { fill: currentColor; stroke: none; }
+.theme span { display: none; }
+html:not(.js) .theme { display: none; }
+
+.menu-btn { display: none; }
+
+@media (max-width: 720px) {
+  .top { position: sticky; top: 0; z-index: 10; }
+  .top .wrap { min-height: 56px; }
+  .mark img { height: 28px; }
+  html.js .menu-btn {
+    display: flex; flex-direction: column; justify-content: center; align-items: flex-end; gap: 6px;
+    width: 44px; height: 44px; margin-right: -10px; padding: 0 10px; border: 0; background: none; color: var(--fg); cursor: pointer;
+  }
+  .menu-btn span { display: block; width: 22px; height: 1.5px; background: currentColor; transition: transform .2s ease; }
+  .menu-open .menu-btn span:first-child { transform: translateY(3.75px) rotate(45deg); }
+  .menu-open .menu-btn span:last-child { transform: translateY(-3.75px) rotate(-45deg); }
+
+  html.js .menu {
+    position: fixed; inset: 57px 0 0; z-index: 9; display: none; flex-direction: column; align-items: stretch; gap: 0;
+    padding: 8px 16px calc(24px + env(safe-area-inset-bottom)); background: var(--bg); overflow-y: auto;
+  }
+  html.js.menu-open .menu { display: flex; }
+  html.menu-open, html.menu-open body { overflow: hidden; }
+  .top nav { flex-direction: column; flex-wrap: nowrap; gap: 0; font-size: 22px; letter-spacing: -0.01em; }
+  .top nav a { padding: 14px 0; border-bottom: 1px solid var(--soft); }
+  .top nav a[aria-current] { text-decoration: none; font-weight: 600; }
+  .top nav a[aria-current]::after { content: " ·"; }
+  html:not(.js) .top .wrap { flex-wrap: wrap; padding-block: 12px; }
+  html:not(.js) .top nav { flex-direction: row; flex-wrap: wrap; font-size: 15px; gap: 4px 16px; }
+  html:not(.js) .top nav a { padding: 0; border: 0; }
+
+  .theme { margin-top: auto; width: 100%; }
+  .theme button { flex: 1; width: auto; height: 44px; font-size: 14px; }
+  .theme span { display: inline; }
+}
 
 /* Content */
 main { padding-block: 48px 72px; }
@@ -79,10 +125,22 @@ details p { margin: 10px 0 0; }
 .doc aside a { text-decoration: none; }
 .doc aside a[aria-current] { text-decoration: underline; font-weight: 600; }
 .doc article > h1 { margin-top: 0; }
+@media (max-width: 720px) {
+  main { padding-block: 28px 56px; }
+  h2 { font-size: 19px; margin-top: 40px; }
+  .lede { font-size: 17px; }
+  table { font-size: 13.5px; }
+  th, td { padding: 8px 10px; }
+  .steps li { border-right: 0; border-bottom: 1px solid var(--soft); }
+  .steps li:last-child { border-bottom: 0; }
+  .actions .btn { flex: 1 1 auto; text-align: center; }
+}
 .pager { display: flex; justify-content: space-between; gap: 16px; margin-top: 48px; padding-top: 12px; border-top: 1px solid var(--rule); font-size: 15px; }
 @media (max-width: 720px) {
   .doc { grid-template-columns: minmax(0, 1fr); gap: 16px; }
-  .doc aside ul { position: static; display: flex; flex-wrap: wrap; gap: 4px 14px; padding-bottom: 12px; border-bottom: 1px solid var(--soft); }
+  /* One row that scrolls sideways, not three rows of links. */
+  .doc aside ul { position: static; display: flex; gap: 18px; overflow-x: auto; white-space: nowrap; margin: -4px -16px 0; padding: 4px 16px 12px; border-bottom: 1px solid var(--soft); scrollbar-width: none; }
+  .doc aside ul::-webkit-scrollbar { display: none; }
 }
 
 /* Lookup */
@@ -107,17 +165,34 @@ details p { margin: 10px 0 0; }
 .foot { border-top: 1px solid var(--rule); font-size: 14px; }
 .foot .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; padding-block: 20px 28px; }
 .foot nav { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+@media (max-width: 720px) {
+  .foot .wrap { flex-direction: column; gap: 16px; }
+  .foot nav { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
+}
 .foot p { margin: 0; color: var(--muted); max-width: 34em; }
 
 /* Homepage: the title, then the specification itself. */
-.hero { text-align: center; padding: 40px 0 24px; }
-.hero h1 { margin: 0 0 12px; }
-.paper { margin: 0 0 48px; }
-.paper-frame { display: block; width: 100%; height: calc(100vh - 140px); min-height: 640px; border: 1px solid var(--rule); background: #fff; }
+.hero { text-align: center; padding: 24px 0 32px; }
+.eyebrow { margin: 0 0 14px; font: 12px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.hero h1 { margin: 0 auto 14px; max-width: 20em; text-wrap: balance; }
+.hero-meta { margin: 0; font-size: 14px; color: var(--muted); }
+.paper { margin: 0 0 56px; }
+.paper-frame { display: block; width: 100%; height: calc(100vh - 150px); min-height: 640px; border: 1px solid var(--rule); background: #fff; }
 .paper-pages { display: none; }
-.paper-pages img { display: block; width: 100%; height: auto; border: 1px solid var(--rule); margin: 0 0 12px; background: #fff; }
-@media (max-width: 700px) {
-  /* Phones show a framed PDF as one page or not at all: show the pages. */
+.paper-pages img { display: block; width: 100%; height: auto; border: 1px solid var(--soft); background: #fff; }
+.paper-pages .page { display: block; }
+.more-pages, .more-pages:last-of-type { border: 0; padding: 0; margin: 12px 0; }
+.more-pages summary { list-style: none; display: block; padding: 12px 16px; border: 1px solid var(--rule); text-align: center; font-size: 15px; font-weight: 500; }
+.more-pages summary::-webkit-details-marker { display: none; }
+.more-pages .when-open, .more-pages[open] .when-closed { display: none; }
+.more-pages[open] .when-open { display: inline; }
+.more-pages img { margin-top: 12px; }
+.more-pages[open] summary { position: sticky; top: 56px; z-index: 1; background: var(--bg); }
+.btn.wide { display: block; text-align: center; padding: 12px 16px; }
+@media (max-width: 720px) {
+  /* Phones show a framed PDF as one page or not at all: page one, the rest on request. */
+  .hero { padding: 8px 0 24px; }
+  .hero h1 { font-size: 32px; }
   .paper-frame { display: none; }
   .paper-pages { display: block; }
 }
