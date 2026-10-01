@@ -1,4 +1,12 @@
 /* pregen.org — black and white, nothing decorative. */
+/* Geist Sans (Vercel, SIL OFL 1.1 — assets/fonts/Geist-LICENSE.txt), self-hosted. */
+@font-face {
+  font-family: "Geist";
+  src: url("/assets/fonts/Geist-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
 :root {
   --bg: #fff;
   --fg: #000;
@@ -6,7 +14,7 @@
   --rule: #000;
   --soft: #e5e5e5;
   --tint: #f4f4f4;
-  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color-scheme: light;
 }
@@ -25,57 +33,58 @@ a:hover { text-decoration-thickness: 2px; }
 
 .wrap { max-width: 880px; margin: 0 auto; padding: 0 16px; }
 
-/* Header */
-.top { border-bottom: 1px solid var(--rule); background: var(--bg); }
-.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 64px; }
+/* Header: the logo and one menu button, on every screen. */
+.top { position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--rule); background: var(--bg); }
+.top .wrap { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 60px; }
 .mark { display: block; line-height: 0; text-decoration: none; flex: none; }
-.mark img { display: block; height: 32px; width: auto; }
-.menu { display: flex; align-items: center; gap: 22px; }
-.top nav { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 15px; }
-.top nav a { text-decoration: none; }
-.top nav a:hover, .top nav a[aria-current] { text-decoration: underline; }
+.mark img { display: block; height: 30px; width: auto; }
 
-/* Theme: System / Light / Dark. Icons on wide screens, words in the phone menu. */
-.theme { display: inline-flex; border: 1px solid var(--rule); }
-.theme button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 30px; height: 28px; padding: 0; border: 0; background: none; color: var(--fg); font: inherit; cursor: pointer; }
+.menu-btn {
+  display: flex; flex-direction: column; justify-content: center; align-items: flex-end; gap: 6px;
+  width: 44px; height: 44px; margin-right: -10px; padding: 0 10px; border: 0; background: none; color: var(--fg); cursor: pointer;
+}
+.menu-btn span { display: block; width: 22px; height: 1.5px; background: currentColor; transition: transform .2s ease; }
+.menu-open .menu-btn span:first-child { transform: translateY(3.75px) rotate(45deg); }
+.menu-open .menu-btn span:last-child { transform: translateY(-3.75px) rotate(-45deg); }
+
+/* Wide screens: a panel under the button. Phones: the whole screen. */
+.menu {
+  position: absolute; top: calc(100% + 1px); right: 16px; z-index: 9; display: none; flex-direction: column; gap: 0;
+  width: 300px; padding: 8px 20px 20px; border: 1px solid var(--rule); border-top: 0; background: var(--bg);
+}
+.menu-open .menu { display: flex; }
+.top nav { display: flex; flex-direction: column; font-size: 17px; }
+.top nav a { padding: 12px 0; border-bottom: 1px solid var(--soft); text-decoration: none; }
+.top nav a:hover { text-decoration: underline; }
+.top nav a[aria-current] { font-weight: 600; }
+.top nav a[aria-current]::after { content: " ·"; }
+
+/* Theme: System / Light / Dark. */
+.theme { display: flex; margin-top: 16px; border: 1px solid var(--rule); }
+.theme button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px; padding: 0; border: 0; background: none; color: var(--fg); font: inherit; font-size: 13px; cursor: pointer; }
 .theme button + button { border-left: 1px solid var(--rule); }
 .theme button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
 .theme svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .theme svg .fill { fill: currentColor; stroke: none; }
-.theme span { display: none; }
-html:not(.js) .theme { display: none; }
 
-.menu-btn { display: none; }
+/* Without JavaScript the button cannot open anything: show the links instead. */
+html:not(.js) .menu-btn, html:not(.js) .theme { display: none; }
+html:not(.js) .menu { position: static; display: flex; width: auto; padding: 0; border: 0; }
+html:not(.js) .top nav { flex-direction: row; flex-wrap: wrap; gap: 4px 16px; font-size: 15px; }
+html:not(.js) .top nav a { padding: 0; border: 0; }
 
 @media (max-width: 720px) {
-  .top { position: sticky; top: 0; z-index: 10; }
   .top .wrap { min-height: 56px; }
   .mark img { height: 28px; }
-  html.js .menu-btn {
-    display: flex; flex-direction: column; justify-content: center; align-items: flex-end; gap: 6px;
-    width: 44px; height: 44px; margin-right: -10px; padding: 0 10px; border: 0; background: none; color: var(--fg); cursor: pointer;
-  }
-  .menu-btn span { display: block; width: 22px; height: 1.5px; background: currentColor; transition: transform .2s ease; }
-  .menu-open .menu-btn span:first-child { transform: translateY(3.75px) rotate(45deg); }
-  .menu-open .menu-btn span:last-child { transform: translateY(-3.75px) rotate(-45deg); }
-
   html.js .menu {
-    position: fixed; inset: 57px 0 0; z-index: 9; display: none; flex-direction: column; align-items: stretch; gap: 0;
-    padding: 8px 16px calc(24px + env(safe-area-inset-bottom)); background: var(--bg); overflow-y: auto;
+    position: fixed; inset: 57px 0 0; width: auto; padding: 8px 16px calc(24px + env(safe-area-inset-bottom));
+    border: 0; overflow-y: auto;
   }
-  html.js.menu-open .menu { display: flex; }
   html.menu-open, html.menu-open body { overflow: hidden; }
-  .top nav { flex-direction: column; flex-wrap: nowrap; gap: 0; font-size: 22px; letter-spacing: -0.01em; }
-  .top nav a { padding: 14px 0; border-bottom: 1px solid var(--soft); }
-  .top nav a[aria-current] { text-decoration: none; font-weight: 600; }
-  .top nav a[aria-current]::after { content: " ·"; }
-  html:not(.js) .top .wrap { flex-wrap: wrap; padding-block: 12px; }
-  html:not(.js) .top nav { flex-direction: row; flex-wrap: wrap; font-size: 15px; gap: 4px 16px; }
-  html:not(.js) .top nav a { padding: 0; border: 0; }
-
-  .theme { margin-top: auto; width: 100%; }
-  .theme button { flex: 1; width: auto; height: 44px; font-size: 14px; }
-  .theme span { display: inline; }
+  .top nav { font-size: 22px; letter-spacing: -0.01em; }
+  .top nav a { padding: 14px 0; }
+  .theme { margin-top: auto; }
+  .theme button { height: 44px; font-size: 14px; }
 }
 
 /* Content */
@@ -120,7 +129,7 @@ details p { margin: 10px 0 0; }
 /* Docs */
 .doc { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 40px; }
 .doc aside { font-size: 14px; }
-.doc aside ul { list-style: none; padding: 0; margin: 0; position: sticky; top: 16px; }
+.doc aside ul { list-style: none; padding: 0; margin: 0; position: sticky; top: 84px; }
 .doc aside a { text-decoration: none; }
 .doc aside a[aria-current] { text-decoration: underline; font-weight: 600; }
 .doc article > h1 { margin-top: 0; }
@@ -185,7 +194,7 @@ details p { margin: 10px 0 0; }
 .more-pages .when-open, .more-pages[open] .when-closed { display: none; }
 .more-pages[open] .when-open { display: inline; }
 .more-pages img { margin-top: 12px; }
-.more-pages[open] summary { position: sticky; top: 56px; z-index: 1; background: var(--bg); }
+.more-pages[open] summary { position: sticky; top: 57px; z-index: 1; background: var(--bg); }
 .btn.wide { display: block; text-align: center; padding: 12px 16px; }
 @media (max-width: 720px) {
   /* Phones show a framed PDF as one page or not at all: page one, the rest on request. */
@@ -199,10 +208,10 @@ details p { margin: 10px 0 0; }
 .intro { margin: 0 0 8px; }
 .big { font-size: 24px; line-height: 1.45; letter-spacing: -0.01em; margin: 0; max-width: 30em; }
 .block { margin-top: 56px; }
-.label { margin: 0 0 16px; padding: 0; border: 0; font: 12px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.label { margin: 0 0 16px; padding: 0; border: 0; font: 500 12px/1.4 var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
 .flow li { display: flex; gap: 14px; margin: 0; }
-.flow .n { flex: none; font: 600 15px/1.6 var(--mono); }
+.flow .n { flex: none; font: 600 15px/1.6 var(--sans); font-variant-numeric: tabular-nums; }
 .flow b { display: block; font-size: 17px; }
 .flow p { margin: 2px 0 0; color: var(--muted); }
 .answers { margin: 0; }

@@ -17,8 +17,10 @@
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape" && root.classList.contains("menu-open")) { setOpen(false); btn.focus(); }
     });
-    // Leaving phone width with the menu open must not leave the page locked.
-    window.matchMedia("(min-width: 721px)").addEventListener("change", function (m) { if (m.matches) setOpen(false); });
+    // A click anywhere outside the header closes the panel.
+    document.addEventListener("click", function (e) {
+      if (root.classList.contains("menu-open") && !e.target.closest(".top")) setOpen(false);
+    });
   }
 
   var choices = document.querySelectorAll("[data-set-theme]");
