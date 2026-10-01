@@ -1,6 +1,17 @@
 PRE-GEN
 Copyright 2026 Valerii Egorov
 
-Licensed under the Apache License, Version 2.0 (see LICENSE).
+The PRE-GEN standard — everything in the spec/ directory: the specification
+texts, the test vectors, the conformance runner and the paper — is licensed
+under the Apache License, Version 2.0 (spec/LICENSE, spec/NOTICE).
+
+The rest of this repository (the pregen.org website: its pages, styles,
+scripts and logo) is not covered by that licence. The Geist font in
+assets/fonts/ is Vercel's, under the SIL Open Font License 1.1
+(assets/fonts/Geist-LICENSE.txt).
+
+The Apache License does not grant permission to use the name "PRE-GEN" or
+its logo (Apache License 2.0, section 6).
+
 PRE-GEN is an independent open standard. It is not owned by any registry,
 including PRAMPTA Corporation.
