@@ -333,6 +333,16 @@ A listing, once made, is never removed or given to another registry; a
 registry that changes keys gets a new signing that adds the new fingerprint
 and keeps the old ones.
 
+A verifier that keeps the last directory it accepted SHOULD also refuse a
+newer one that removes a listed namespace or fingerprint, and one that
+differs from it at the same `sequence` (two directories signed with one
+number mean the steward key signed twice). A verifier MAY additionally pin
+the origin registry's fingerprints and accept a bare code only from a key in
+both the directory and its pin, so that a stolen steward key cannot add a
+key to the bare namespace; a new origin key then needs a new release of that
+verifier. The PRE-GEN verification libraries (`@pregen/verify`, `pregen`)
+do both from version 0.2.
+
 **The steward key.** Held offline by the editor of the standard, Valerii
 Egorov — not by any registry, including the origin one — and used only to
 sign the directory.

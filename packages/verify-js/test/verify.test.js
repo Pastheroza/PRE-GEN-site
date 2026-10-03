@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { canonicalJson, fingerprint, verifyDirectory, verifyDecision, PregenError, issuerOf } from "../index.js";
+import { canonicalJson, fingerprint, verifyDirectory, verifyDecision, checkDecision, PregenError, issuerOf } from "../index.js";
 
 const hex = (b) => Buffer.from(b).toString("hex");
 async function keypair() {
@@ -83,4 +83,56 @@ test("canonical JSON refuses what cannot be signed portably", () => {
   assert.throws(() => canonicalJson({ x: 2 ** 53 }), PregenError);
   assert.throws(() => canonicalJson({ x: "\ud800" }), PregenError);
   assert.throws(() => canonicalJson({ x: undefined }), PregenError);
+});
+
+test("a stolen steward key cannot add its own key to the pinned origin namespace", async () => {
+  const thief = await keypair();
+  const d = await directory(3, [
+    { name: "Origin", prefix: "", api: "https://origin.test", keys: "https://origin.test/keys", key_fingerprints: [origin.id, thief.id] }]);
+  const pinned = await verifyDirectory(d, { stewardPublicKeyHex: steward.pub, originKeyFingerprints: [origin.id] });
+  assert.equal(pinned.checkSigner("PG-000042*", thief.id), "issuer_mismatch");
+  assert.equal(pinned.checkSigner("PG-000042*", origin.id), "valid");
+});
+
+test("a newer directory may add but never remove or fork", async () => {
+  const prev = await directory(2);
+  const fewer = await directory(3, [prev.registries[0]]);
+  await assert.rejects(load(fewer).then((x) => verifyDirectory(fewer, { stewardPublicKeyHex: steward.pub, previous: prev })), /removed/);
+  const dropKey = await directory(3, [{ ...prev.registries[0], key_fingerprints: [other.id] }, prev.registries[1]]);
+  await assert.rejects(verifyDirectory(dropKey, { stewardPublicKeyHex: steward.pub, previous: prev }), /removed/);
+  const fork = await directory(2, [...prev.registries, { name: "New", prefix: "ABCD", api: "https://n.test", keys: "https://n.test/k", key_fingerprints: [other.id] }]);
+  await assert.rejects(verifyDirectory(fork, { stewardPublicKeyHex: steward.pub, previous: prev }), /same sequence/);
+  const grown = await directory(3, [...prev.registries, { name: "New", prefix: "ABCD", api: "https://n.test", keys: "https://n.test/k", key_fingerprints: [other.id] }]);
+  assert.equal((await verifyDirectory(grown, { stewardPublicKeyHex: steward.pub, previous: prev })).sequence, 3);
+});
+
+test("checkDecision: everything a provider must check before generating", async () => {
+  const dir = await load(directory());
+  const now = 1_800_000_000;
+  const request = { subject_id: "sub_1", provider_id: "acme", licensee_id: "lic-1", prompt_hash: "a".repeat(64),
+    model: "m", modality: "image", intended_use: { use_case: "commercial", categories: ["ads"] }, provider_user_id: "u1" };
+  const base = { decision_id: "d1", allowed: true, disposition: "allow", license_id: "PG-RND-000042-ZZZZZZ1",
+    subject_id: "sub_1", provider_id: "acme", licensee_id: "lic-1", prompt_hash: "a".repeat(64), model: "m", modality: "image",
+    intended_use: { use_case: "commercial", categories: ["ads"], channel: "", territory: "" },
+    provider_user_binding: "verified", provider_identity_link_id: "link-1",
+    issued_at: now - 10, expires_at: now + 60, operator_key_id: origin.id };
+  const opts = { directory: dir, fetch: keysFetch(keySets), now };
+  const signed = (patch) => origin.sign({ ...base, ...patch }, "operator_signature");
+
+  assert.equal((await checkDecision(await signed({}), request, opts)).decision_id, "d1");
+  const refuse = async (patch, re, req = request) => assert.rejects(checkDecision(await signed(patch), req, opts), re);
+  await refuse({ allowed: false, disposition: "deny" }, /not an allow/);
+  await refuse({ disposition: "not_blocked", allowed: false }, /not an allow/);
+  await refuse({ expires_at: now }, /expired/);
+  await refuse({ expires_at: 0 }, /expires_at/);
+  await refuse({ issued_at: now + 3600, expires_at: now + 7200 }, /issued_at/);
+  await refuse({ provider_id: "" }, /provider_id/);                              // empty is not a wildcard
+  await refuse({ prompt_hash: "b".repeat(64) }, /prompt_hash/);
+  await refuse({ intended_use: { ...base.intended_use, channel: "tv" } }, /intended_use.channel/);
+  await refuse({ intended_use: { ...base.intended_use, use_case: "personal" } }, /use_case/);
+  await refuse({ provider_user_binding: "unbound" }, /binding/);
+  await refuse({ provider_identity_link_id: "" }, /binding/);
+  await refuse({ license_id: null }, /license/);
+  const tampered = { ...(await signed({})), model: "other" };
+  await assert.rejects(checkDecision(tampered, { ...request, model: "other" }, opts), /bad signature/);
 });

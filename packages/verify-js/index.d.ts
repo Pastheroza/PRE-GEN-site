@@ -1,5 +1,6 @@
 export const STEWARD_PUBLIC_KEY_HEX: string;
 export const DIRECTORY_URL: string;
+export const ORIGIN_KEY_FINGERPRINTS: readonly string[];
 
 export class PregenError extends Error {}
 
@@ -19,6 +20,8 @@ export class Directory {
   /** Store it and pass it back as `minSequence`, so an older directory is refused. */
   readonly sequence: number;
   readonly registries: RegistryEntry[];
+  /** The signed directory itself: persist it and pass it back as `previous`. */
+  toJSON(): Record<string, unknown>;
   /** The registry that owns a code's namespace (resolve codes only there), or null. */
   registryFor(code: string): RegistryEntry | null;
   /** V-10: may this operator key sign objects carrying this code? */
@@ -38,6 +41,11 @@ export function verifyLicense(license: {
   operatorPublicKeyHex: string; operatorSignatureHex: string;
 }): Promise<{ subjectValid: boolean; operatorValid: boolean }>;
 export function issuerOf(code: string): string;
-export function verifyDirectory(directory: unknown, options?: { stewardPublicKeyHex?: string; minSequence?: number }): Promise<Directory>;
-export function loadDirectory(options?: { url?: string; minSequence?: number; fetch?: Fetch }): Promise<Directory>;
+export function verifyDirectory(directory: unknown, options?: { stewardPublicKeyHex?: string; minSequence?: number;
+  previous?: Directory | Record<string, unknown>; originKeyFingerprints?: string[] | null }): Promise<Directory>;
+export function loadDirectory(options?: { url?: string; minSequence?: number; previous?: Directory | Record<string, unknown>; fetch?: Fetch }): Promise<Directory>;
 export function verifyDecision(decision: Record<string, unknown>, code: string, options?: { directory?: Directory; fetch?: Fetch }): Promise<boolean>;
+/** Everything to check before generating (V-1 to V-4, V-10, V-13, P-5). Throws PregenError with the
+ * reason; returns the decision when you may generate. `request`: the /v1/verify body plus provider_id and licensee_id. */
+export function checkDecision<T extends Record<string, unknown>>(decision: T, request: Record<string, unknown>,
+  options?: { directory?: Directory; fetch?: Fetch; now?: number }): Promise<T>;

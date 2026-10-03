@@ -6,7 +6,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from pregen import PregenError, canonical_json, fingerprint, verify_decision, verify_directory  # noqa: E402
+from pregen import PregenError, canonical_json, check_decision, fingerprint, verify_decision, verify_directory  # noqa: E402
 
 
 class Key:
@@ -84,3 +84,58 @@ def test_canonical_json_refuses_unportable_values():
         with pytest.raises(PregenError):
             canonical_json(bad)
 
+
+
+def test_stolen_steward_key_cannot_add_a_key_to_the_pinned_origin():
+    thief = Key()
+    d = directory(3, [{"name": "Origin", "prefix": "", "api": "https://origin.test",
+                       "keys": "https://origin.test/keys", "key_fingerprints": [origin.id, thief.id]}])
+    pinned = verify_directory(d, steward.pub, origin_key_fingerprints=[origin.id])
+    assert pinned.check_signer("PG-000042*", thief.id) == "issuer_mismatch"
+    assert pinned.check_signer("PG-000042*", origin.id) == "valid"
+
+
+def test_newer_directory_may_add_but_never_remove_or_fork():
+    prev = directory(2)
+    extra = {"name": "New", "prefix": "ABCD", "api": "https://n.test", "keys": "https://n.test/k",
+             "key_fingerprints": [other.id]}
+    with pytest.raises(PregenError, match="removed"):
+        verify_directory(directory(3, prev["registries"][:1]), steward.pub, previous=prev)
+    with pytest.raises(PregenError, match="removed"):
+        verify_directory(directory(3, [{**prev["registries"][0], "key_fingerprints": [other.id]},
+                                       prev["registries"][1]]), steward.pub, previous=prev)
+    with pytest.raises(PregenError, match="same sequence"):
+        verify_directory(directory(2, prev["registries"] + [extra]), steward.pub, previous=prev)
+    assert verify_directory(directory(3, prev["registries"] + [extra]), steward.pub, previous=prev).sequence == 3
+
+
+def test_check_decision_covers_everything_before_generating():
+    dir_ = load(directory())
+    now = 1_800_000_000
+    request = {"subject_id": "sub_1", "provider_id": "acme", "licensee_id": "lic-1", "prompt_hash": "a" * 64,
+               "model": "m", "modality": "image", "intended_use": {"use_case": "commercial", "categories": ["ads"]},
+               "provider_user_id": "u1"}
+    base = {"decision_id": "d1", "allowed": True, "disposition": "allow", "license_id": "PG-RND-000042-ZZZZZZ1",
+            "subject_id": "sub_1", "provider_id": "acme", "licensee_id": "lic-1", "prompt_hash": "a" * 64,
+            "model": "m", "modality": "image",
+            "intended_use": {"use_case": "commercial", "categories": ["ads"], "channel": "", "territory": ""},
+            "provider_user_binding": "verified", "provider_identity_link_id": "link-1",
+            "issued_at": now - 10, "expires_at": now + 60, "operator_key_id": origin.id}
+
+    def check(patch, req=request):
+        return check_decision(origin.sign({**base, **patch}, "operator_signature"), req, dir_,
+                              KEY_SETS.__getitem__, now)
+
+    assert check({})["decision_id"] == "d1"
+    for patch, reason in [({"allowed": False, "disposition": "deny"}, "not an allow"),
+                          ({"expires_at": now}, "expired"), ({"expires_at": 0}, "expires_at"),
+                          ({"issued_at": now + 3600, "expires_at": now + 7200}, "issued_at"),
+                          ({"provider_id": ""}, "provider_id"), ({"prompt_hash": "b" * 64}, "prompt_hash"),
+                          ({"intended_use": {**base["intended_use"], "channel": "tv"}}, "intended_use.channel"),
+                          ({"provider_user_binding": "unbound"}, "binding"),
+                          ({"provider_identity_link_id": ""}, "binding"), ({"license_id": None}, "license")]:
+        with pytest.raises(PregenError, match=reason):
+            check(patch)
+    tampered = {**origin.sign(base, "operator_signature"), "model": "other"}
+    with pytest.raises(PregenError, match="bad signature"):
+        check_decision(tampered, {**request, "model": "other"}, dir_, KEY_SETS.__getitem__, now)

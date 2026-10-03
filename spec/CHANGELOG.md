@@ -10,6 +10,10 @@ See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
 
 ## v5 — draft of 2026-10-03
 
+- Directory continuity (2026-10-03, `PG-CODE.md` §9.1): a verifier that keeps
+  the last accepted directory SHOULD refuse a newer one that removes a
+  namespace or fingerprint, or a different one with the same `sequence`; it
+  MAY pin the origin registry's fingerprints. No wire change.
 - New verifier rules (2026-10-03): directory `api`/`keys` MUST use HTTPS
   without credentials, query or fragment (`PG-CODE.md` §9.1); V-3 requires
   positive integer expiry and issued-before-expiry; new V-13 requires verified,

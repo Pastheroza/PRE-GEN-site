@@ -60,21 +60,20 @@ X-Licensee-ID: lic-…
 <h2>Check the signature against PRE-GEN</h2>
 <p>A signed <code>allow</code> is worth something only if the key that signed it belongs to the registry that owns the code. The verification library checks that chain with the PRE-GEN steward key built in: the <a href="/registries">registry directory</a> is signed by the steward, the code's namespace belongs to one listed registry, the decision's key is one of that registry's keys, and the signature verifies.</p>
 <pre><code>npm install @pregen/verify</code></pre>
-<pre><code>import { loadDirectory, verifyDecision } from "@pregen/verify";
+<pre><code>import { loadDirectory, checkDecision } from "@pregen/verify";
 
-const directory = await loadDirectory({ minSequence: saved });   // refuses older copies
-saved = directory.sequence;
+const directory = await loadDirectory({ previous: saved });   // keep the last one you accepted
+saved = directory.toJSON();
 
-// code: the PG code you asked about, e.g. the decision's license_id
-if (!(await verifyDecision(decision, code, { directory }))) throw new Error("not genuine");</code></pre>
+// request: what you sent to /v1/verify, plus provider_id and licensee_id
+await checkDecision(decision, request, { directory });         // throws with the reason</code></pre>
 <pre><code>pip install pregen</code></pre>
 <pre><code>import pregen
 
-directory = pregen.load_directory(min_sequence=saved)
-saved = directory.sequence
-if not pregen.verify_decision(decision, code, directory):
-    raise RuntimeError("not genuine")</code></pre>
-<p>It does not replace your own checks: the decision must answer your request, must not have expired, must carry a verified user binding when you named a user, and you generate only on <code>allow</code> (<a href="/spec/PRE-GEN-SPEC.md">PRE-GEN-SPEC.md</a> §5.4). Source and tests: <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/packages">packages/</a>, Apache-2.0.</p>
+directory = pregen.load_directory(previous=saved)
+saved = directory.to_json()
+pregen.check_decision(decision, request, directory)           # raises with the reason</code></pre>
+<p><code>checkDecision</code> runs every check of <a href="/spec/PRE-GEN-SPEC.md">PRE-GEN-SPEC.md</a> §5.4 before you generate: a license-backed <code>allow</code>, every echoed field equal to what you sent, a valid lifetime, a verified user binding when you named a user, and the signature chain. It refuses an older or shrunk directory, and the origin registry's keys are pinned in the library. Source and tests: <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/packages">packages/</a>, Apache-2.0.</p>
 
 <h2>TypeScript SDK</h2>
 <pre><code>npm install @prampta/sdk</code></pre>

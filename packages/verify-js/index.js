@@ -4,6 +4,10 @@
 
 export const STEWARD_PUBLIC_KEY_HEX = "5cb949aab04186e3e216ec541b847c912fc3f78138c0ec3cb2560b2dad0d1f1b";
 export const DIRECTORY_URL = "https://www.pregen.org/registries.json";
+/** The origin registry's (PRAMPTA's) operator keys, pinned here as well as in the
+ * directory: a stolen steward key cannot add its own key to the bare namespace.
+ * A new origin key needs a new release of this library (threat model T4). */
+export const ORIGIN_KEY_FINGERPRINTS = Object.freeze(["pg-ed25519:1904514fd2ac442f0a5388d13cc313a0"]);
 const SCHEMA = "pregen.registries.v2";
 const MAX_INT = 2 ** 53 - 1;
 const PREFIX = /^[ABCDEFGHJKMNPQRSTVWXYZ]{4}$/;
@@ -141,16 +145,20 @@ function checkInvariants(d) {
 /** A directory accepted under V-12. Build one with verifyDirectory() or loadDirectory(). */
 export class Directory {
   #d;
-  constructor(token, directory) {
+  #originPin;
+  constructor(token, directory, originPin) {
     if (token !== Directory.#token) fail("use verifyDirectory() or loadDirectory()");
     this.#d = structuredClone(directory);
+    this.#originPin = originPin;
   }
   static #token = Symbol();
-  static _make(directory) { return new Directory(Directory.#token, directory); }
+  static _make(directory, originPin) { return new Directory(Directory.#token, directory, originPin); }
 
   /** Store this and pass it as minSequence next time, so an older copy is refused. */
   get sequence() { return this.#d.sequence; }
   get registries() { return structuredClone(this.#d.registries); }
+  /** The signed directory itself: persist it and pass it back as `previous`. */
+  toJSON() { return structuredClone(this.#d); }
 
   /** The registry that owns a code's namespace (resolve codes only there, V-11), or null. */
   registryFor(code) {
@@ -164,7 +172,9 @@ export class Directory {
   checkSigner(code, signerKeyId) {
     const r = this.registryFor(code);
     if (!r) return "unknown_issuer";
-    return r.key_fingerprints.includes(signerKeyId) ? "valid" : "issuer_mismatch";
+    if (!r.key_fingerprints.includes(signerKeyId)) return "issuer_mismatch";
+    if (r.prefix === "" && this.#originPin && !this.#originPin.includes(signerKeyId)) return "issuer_mismatch";
+    return "valid";
   }
 
   /** The public key behind `keyId`, which must belong to the owner of `code`'s namespace.
@@ -180,28 +190,92 @@ export class Directory {
   }
 }
 
-/** V-12: accept the directory only with the pinned steward's signature, its
- * invariants, and a sequence no lower than one already seen. */
-export async function verifyDirectory(directory, { stewardPublicKeyHex = STEWARD_PUBLIC_KEY_HEX, minSequence = 0 } = {}) {
+/** A newer directory may add registries and keys, never remove or move them (PG-CODE.md §9.1). */
+function checkContinuity(next, previous) {
+  if (next.sequence < previous.sequence) fail(`sequence ${next.sequence} is older than ${previous.sequence} already seen`);
+  if (next.sequence === previous.sequence) {
+    if (canonicalJson(next) !== canonicalJson(previous)) fail("a different directory with the same sequence");
+    return;
+  }
+  for (const old of previous.registries) {
+    const now = next.registries.find((r) => r.prefix === old.prefix);
+    if (!now) fail(`namespace ${old.prefix || "(bare)"} was removed`);
+    for (const f of old.key_fingerprints) if (!now.key_fingerprints.includes(f)) fail(`key ${f} was removed from ${now.name}`);
+  }
+}
+
+/** V-12: accept the directory only with the pinned steward's signature, its invariants,
+ * a sequence no lower than one already seen and, given the last accepted directory,
+ * nothing removed from it. With the built-in steward key the origin keys are pinned too. */
+export async function verifyDirectory(directory, { stewardPublicKeyHex = STEWARD_PUBLIC_KEY_HEX, minSequence = 0,
+  previous, originKeyFingerprints } = {}) {
   if (!Number.isSafeInteger(minSequence) || minSequence < 0) fail("minSequence must be a nonnegative integer");
   checkInvariants(directory);
   if (directory.steward_key_id !== (await fingerprint(stewardPublicKeyHex))) fail("signed by a different steward key");
   if (!(await verifySigned(directory, stewardPublicKeyHex, "signature"))) fail("bad steward signature");
   if (directory.sequence < minSequence) fail(`sequence ${directory.sequence} is older than ${minSequence} already seen`);
-  return Directory._make(directory);
+  if (previous) checkContinuity(directory, previous instanceof Directory ? previous.toJSON() : previous);
+  const pin = originKeyFingerprints !== undefined ? originKeyFingerprints
+    : stewardPublicKeyHex === STEWARD_PUBLIC_KEY_HEX ? ORIGIN_KEY_FINGERPRINTS : null;
+  return Directory._make(directory, pin && [...pin]);
 }
 
-/** Download and verify the directory from pregen.org. */
-export async function loadDirectory({ url = DIRECTORY_URL, minSequence = 0, fetch: fetchFn = globalThis.fetch } = {}) {
+/** Download and verify the directory from pregen.org. Pass the last accepted one as `previous`. */
+export async function loadDirectory({ url = DIRECTORY_URL, minSequence = 0, previous, fetch: fetchFn = globalThis.fetch } = {}) {
   const res = await fetchFn(url, { redirect: "error" });
   if (!res.ok) fail(`directory: HTTP ${res.status}`);
-  return verifyDirectory(await res.json(), { minSequence });
+  return verifyDirectory(await res.json(), { minSequence, previous });
 }
 
-/** Step 4 in one call: is this registry decision genuine, and signed by a key of the
- * registry that owns `code`? Request matching and expiry (V-3, V-4, V-13) stay with the caller. */
+/** Is this registry decision genuine, and signed by a key of the registry that owns `code`?
+ * Signatures only: use checkDecision() before generating. */
 export async function verifyDecision(decision, code, { directory, fetch: fetchFn = globalThis.fetch } = {}) {
   const dir = directory || (await loadDirectory({ fetch: fetchFn }));
   const key = await dir.publicKey(code, decision && decision.operator_key_id, { fetch: fetchFn });
   return verifySigned(decision, key, "operator_signature");
+}
+
+const ECHOED = ["subject_id", "provider_id", "licensee_id", "prompt_hash", "model", "modality"];
+const isEmpty = (v) => v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0);
+const same = (a, b) => canonicalJson(a) === canonicalJson(b);
+
+/** Everything a provider must check before generating on a decision (PRE-GEN-SPEC.md §5.4):
+ * a genuine signature by the owner of the license's namespace (V-1, V-2, V-10), the decision
+ * answers exactly this request (V-4), it is within its validity window (V-3), it carries a
+ * verified user binding when a user was named (V-13), and it is a license-backed allow (P-5).
+ * `request` is what you sent: the /v1/verify body plus provider_id and licensee_id.
+ * Throws PregenError with the reason; returns the decision when you may generate. */
+export async function checkDecision(decision, request, { directory, fetch: fetchFn = globalThis.fetch,
+  now = Math.floor(Date.now() / 1000) } = {}) {
+  if (!decision || typeof decision !== "object") fail("decision must be an object");
+  if (!request || typeof request !== "object") fail("request must be an object");
+  if (decision.allowed !== true || decision.disposition !== "allow") fail(`not an allow: ${decision.disposition}`);
+  if (typeof decision.license_id !== "string" || !decision.license_id) fail("an allow must name its license");
+
+  const exp = decision.expires_at, iat = decision.issued_at;
+  if (!Number.isSafeInteger(exp) || exp <= 0) fail("expires_at must be a positive integer");
+  if (iat !== undefined && iat !== null && (!Number.isSafeInteger(iat) || iat <= 0 || iat >= exp || iat > now + 60)) {
+    fail("issued_at must be a positive integer before expires_at and not in the future");
+  }
+  if (exp <= now) fail("decision expired");
+
+  for (const f of ECHOED) {
+    if ((decision[f] ?? "") !== (request[f] ?? "")) fail(`${f} does not match the request`);
+  }
+  const got = decision.intended_use ?? {}, sent = request.intended_use ?? {};
+  if (typeof got !== "object" || typeof sent !== "object") fail("intended_use must be an object");
+  for (const k of new Set([...Object.keys(got), ...Object.keys(sent)])) {
+    if (k in sent ? !same(got[k] ?? null, sent[k]) : !isEmpty(got[k])) fail(`intended_use.${k} does not match the request`);
+  }
+  for (const f of ["generation_id", "provider_identity_link_id"]) {
+    if (!isEmpty(request[f]) && decision[f] !== request[f]) fail(`${f} does not match the request`);
+  }
+  if (!isEmpty(request.provider_user_id) || !isEmpty(request.provider_identity_link_id)) {
+    if (decision.provider_user_binding !== "verified" || isEmpty(decision.provider_identity_link_id)) {
+      fail("no verified binding to the user you named");
+    }
+  }
+
+  if (!(await verifyDecision(decision, decision.license_id, { directory, fetch: fetchFn }))) fail("bad signature");
+  return decision;
 }

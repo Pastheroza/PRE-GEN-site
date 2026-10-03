@@ -13,15 +13,19 @@ from urllib.parse import urlsplit
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = [
     "STEWARD_PUBLIC_KEY_HEX", "DIRECTORY_URL", "PregenError", "Directory", "canonical_json",
     "fingerprint", "verify_bytes", "verify_signed", "verify_license", "issuer_of",
-    "verify_directory", "load_directory", "verify_decision",
+    "verify_directory", "load_directory", "verify_decision", "check_decision", "ORIGIN_KEY_FINGERPRINTS",
 ]
 
 STEWARD_PUBLIC_KEY_HEX = "5cb949aab04186e3e216ec541b847c912fc3f78138c0ec3cb2560b2dad0d1f1b"
 DIRECTORY_URL = "https://www.pregen.org/registries.json"
+# The origin registry's (PRAMPTA's) operator keys, pinned here as well as in the
+# directory: a stolen steward key cannot add its own key to the bare namespace.
+# A new origin key needs a new release of this library (threat model T4).
+ORIGIN_KEY_FINGERPRINTS = ("pg-ed25519:1904514fd2ac442f0a5388d13cc313a0",)
 SCHEMA = "pregen.registries.v2"
 _MAX_INT = 2**53 - 1
 _PREFIX = re.compile(r"[ABCDEFGHJKMNPQRSTVWXYZ]{4}")
@@ -174,10 +178,11 @@ def _get_json(url: str):
 class Directory:
     """A directory accepted under V-12. Get one from verify_directory() or load_directory()."""
 
-    def __init__(self, directory: dict, _token=None):
+    def __init__(self, directory: dict, _token=None, _origin_pin=None):
         if _token is not _TOKEN:
             raise PregenError("use verify_directory() or load_directory()")
         self._d = deepcopy(directory)
+        self._origin_pin = tuple(_origin_pin) if _origin_pin is not None else None
 
     @property
     def sequence(self) -> int:
@@ -187,6 +192,10 @@ class Directory:
     @property
     def registries(self) -> list:
         return deepcopy(self._d["registries"])
+
+    def to_json(self) -> dict:
+        """The signed directory itself: persist it and pass it back as `previous`."""
+        return deepcopy(self._d)
 
     def registry_for(self, code: str):
         """The registry that owns a code's namespace (resolve codes only there, V-11), or None."""
@@ -202,7 +211,11 @@ class Directory:
         r = self.registry_for(code)
         if r is None:
             return "unknown_issuer"
-        return "valid" if signer_key_id in r["key_fingerprints"] else "issuer_mismatch"
+        if signer_key_id not in r["key_fingerprints"]:
+            return "issuer_mismatch"
+        if r["prefix"] == "" and self._origin_pin is not None and signer_key_id not in self._origin_pin:
+            return "issuer_mismatch"
+        return "valid"
 
     def public_key(self, code: str, key_id: str, get_json=_get_json) -> str:
         """The owner's public key for key_id, from its key set, checked against the listed fingerprint."""
@@ -219,10 +232,31 @@ class Directory:
 _TOKEN = object()
 
 
+def _check_continuity(new: dict, previous: dict) -> None:
+    """A newer directory may add registries and keys, never remove or move them (PG-CODE.md §9.1)."""
+    if new["sequence"] < previous["sequence"]:
+        raise PregenError(f"sequence {new['sequence']} is older than {previous['sequence']} already seen")
+    if new["sequence"] == previous["sequence"]:
+        if canonical_json(new) != canonical_json(previous):
+            raise PregenError("a different directory with the same sequence")
+        return
+    for old in previous["registries"]:
+        now = next((r for r in new["registries"] if r["prefix"] == old["prefix"]), None)
+        if now is None:
+            raise PregenError(f"namespace {old['prefix'] or '(bare)'} was removed")
+        for f in old["key_fingerprints"]:
+            if f not in now["key_fingerprints"]:
+                raise PregenError(f"key {f} was removed from {now['name']}")
+
+
+_DEFAULT = object()
+
+
 def verify_directory(directory: dict, steward_public_key_hex: str = STEWARD_PUBLIC_KEY_HEX,
-                     min_sequence: int = 0) -> Directory:
-    """V-12: accept the directory only with the pinned steward's signature, its
-    invariants, and a sequence no lower than one already seen."""
+                     min_sequence: int = 0, previous=None, origin_key_fingerprints=_DEFAULT) -> Directory:
+    """V-12: accept the directory only with the pinned steward's signature, its invariants,
+    a sequence no lower than one already seen and, given the last accepted directory,
+    nothing removed from it. With the built-in steward key the origin keys are pinned too."""
     if type(min_sequence) is not int or not 0 <= min_sequence <= _MAX_INT:
         raise PregenError("min_sequence must be a nonnegative integer")
     _check_invariants(directory)
@@ -232,17 +266,74 @@ def verify_directory(directory: dict, steward_public_key_hex: str = STEWARD_PUBL
         raise PregenError("bad steward signature")
     if directory["sequence"] < min_sequence:
         raise PregenError(f"sequence {directory['sequence']} is older than {min_sequence} already seen")
-    return Directory(directory, _TOKEN)
+    if previous is not None:
+        _check_continuity(directory, previous.to_json() if isinstance(previous, Directory) else previous)
+    if origin_key_fingerprints is _DEFAULT:
+        origin_key_fingerprints = ORIGIN_KEY_FINGERPRINTS if steward_public_key_hex == STEWARD_PUBLIC_KEY_HEX else None
+    return Directory(directory, _TOKEN, origin_key_fingerprints)
 
 
-def load_directory(url: str = DIRECTORY_URL, min_sequence: int = 0, get_json=_get_json) -> Directory:
-    """Download and verify the directory from pregen.org."""
-    return verify_directory(get_json(url), min_sequence=min_sequence)
+def load_directory(url: str = DIRECTORY_URL, min_sequence: int = 0, get_json=_get_json, previous=None) -> Directory:
+    """Download and verify the directory from pregen.org. Pass the last accepted one as `previous`."""
+    return verify_directory(get_json(url), min_sequence=min_sequence, previous=previous)
 
 
 def verify_decision(decision: dict, code: str, directory: Directory = None, get_json=_get_json) -> bool:
-    """Step 4 in one call: is this registry decision genuine, and signed by a key of the
-    registry that owns `code`? Request matching and expiry (V-3, V-4, V-13) stay with the caller."""
+    """Is this registry decision genuine, and signed by a key of the registry that owns `code`?
+    Signatures only: use check_decision() before generating."""
     directory = directory or load_directory(get_json=get_json)
     key = directory.public_key(code, (decision or {}).get("operator_key_id"), get_json=get_json)
     return verify_signed(decision, key, "operator_signature")
+
+
+_ECHOED = ("subject_id", "provider_id", "licensee_id", "prompt_hash", "model", "modality")
+
+
+def _empty(v) -> bool:
+    return v is None or v == "" or v == []
+
+
+def check_decision(decision: dict, request: dict, directory: Directory = None, get_json=_get_json, now=None) -> dict:
+    """Everything a provider must check before generating on a decision (PRE-GEN-SPEC.md §5.4):
+    a genuine signature by the owner of the license's namespace (V-1, V-2, V-10), the decision
+    answers exactly this request (V-4), it is within its validity window (V-3), it carries a
+    verified user binding when a user was named (V-13), and it is a license-backed allow (P-5).
+    `request` is what you sent: the /v1/verify body plus provider_id and licensee_id.
+    Raises PregenError with the reason; returns the decision when you may generate."""
+    import time
+    now = int(time.time()) if now is None else now
+    if not isinstance(decision, dict) or not isinstance(request, dict):
+        raise PregenError("decision and request must be objects")
+    if decision.get("allowed") is not True or decision.get("disposition") != "allow":
+        raise PregenError(f"not an allow: {decision.get('disposition')}")
+    if not isinstance(decision.get("license_id"), str) or not decision["license_id"]:
+        raise PregenError("an allow must name its license")
+
+    exp, iat = decision.get("expires_at"), decision.get("issued_at")
+    if type(exp) is not int or exp <= 0:
+        raise PregenError("expires_at must be a positive integer")
+    if iat is not None and (type(iat) is not int or iat <= 0 or iat >= exp or iat > now + 60):
+        raise PregenError("issued_at must be a positive integer before expires_at and not in the future")
+    if exp <= now:
+        raise PregenError("decision expired")
+
+    for f in _ECHOED:
+        if (decision.get(f) or "") != (request.get(f) or ""):
+            raise PregenError(f"{f} does not match the request")
+    got, sent = decision.get("intended_use") or {}, request.get("intended_use") or {}
+    if not isinstance(got, dict) or not isinstance(sent, dict):
+        raise PregenError("intended_use must be an object")
+    for k in set(got) | set(sent):
+        ok = canonical_json(got.get(k)) == canonical_json(sent[k]) if k in sent else _empty(got.get(k))
+        if not ok:
+            raise PregenError(f"intended_use.{k} does not match the request")
+    for f in ("generation_id", "provider_identity_link_id"):
+        if not _empty(request.get(f)) and decision.get(f) != request[f]:
+            raise PregenError(f"{f} does not match the request")
+    if not _empty(request.get("provider_user_id")) or not _empty(request.get("provider_identity_link_id")):
+        if decision.get("provider_user_binding") != "verified" or _empty(decision.get("provider_identity_link_id")):
+            raise PregenError("no verified binding to the user you named")
+
+    if not verify_decision(decision, decision["license_id"], directory, get_json):
+        raise PregenError("bad signature")
+    return decision
