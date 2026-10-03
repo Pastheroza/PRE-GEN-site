@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Implement — PRE-GEN</title>
+<meta name="description" content="Everything an independent team needs to implement a PRE-GEN verifier from the text alone and prove it with the conformance runner.">
+<meta property="og:title" content="Implement — PRE-GEN">
+<meta property="og:description" content="Everything an independent team needs to implement a PRE-GEN verifier from the text alone and prove it with the conformance runner.">
+<meta property="og:image" content="https://www.pregen.org/assets/og-image.png">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.pregen.org/docs/implement">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://www.pregen.org/docs/implement">
+<link rel="icon" type="image/png" href="/assets/pregen-logo.png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="stylesheet" href="/styles.css">
+<script src="/theme.js"></script>
+<script src="/site.js" defer></script>
+</head>
+<body>
+<header class="top"><div class="wrap">
+<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="40" height="32" alt="PRE-GEN"></a>
+<button class="menu-btn" type="button" aria-controls="site-menu" aria-expanded="false" aria-label="Open menu"><span></span><span></span></button>
+<div class="menu" id="site-menu">
+<nav aria-label="Main"><a href="/docs">Protocol</a><a href="/docs/sdk">Integrate</a><a href="/registries">Registries</a><a href="/lookup">Lookup</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a><a href="https://github.com/sponsors/Pastheroza">Support</a></nav>
+<div class="theme" role="group" aria-label="Theme"><button type="button" data-set-theme="system" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" class="fill"/></svg><span>System</span></button><button type="button" data-set-theme="light" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg><span>Light</span></button><button type="button" data-set-theme="dark" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><span>Dark</span></button></div>
+</div>
+</div></header>
+<main><div class="wrap">
+<div class="doc"><aside><ul><li><a href="/docs">Overview</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versioning</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Integrate</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement" aria-current="page">Implement</a></li></ul></aside><article><h1>Implement</h1>
+<p class="meta">Independent implementation kit · edition <span class="mono">pre-gen-v5-rc1</span>, 3 October 2026</p>
+<p>No team other than the author has yet implemented PRE-GEN from the text alone. That is the main thing standing between a careful specification and a standard, and no amount of writing by the author can close it. This page is everything you need to do it.</p>
+
+<h2>What to build</h2>
+<p>The offline checks of the <strong>PRE-GEN v5 Verifier</strong> profile (<a href="/spec/PRE-GEN-SPEC.md">PRE-GEN-SPEC.md</a> §8.1), in any language:</p>
+<ul>
+<li>canonical JSON and key fingerprints (§2, §2.1);</li>
+<li>Ed25519 signature verification over canonical JSON;</li>
+<li>a license: the subject's signature and the operator's countersignature over body, subject signature and license id (§1.2, V-9);</li>
+<li>the signed registry directory (<a href="/spec/PG-CODE.md">PG-CODE.md</a> §9.1, V-12) and which key may sign in which namespace (V-10).</li>
+</ul>
+<p>Minting PG codes is not part of it. A small library or command-line tool is enough.</p>
+
+<h2>Rules that keep it independent</h2>
+<ul>
+<li>Work from the edition below only: the text, the vectors and the runner. Do not read or port the reference code (the PRAMPTA backend, <span class="mono">@prampta/sdk</span>, <span class="mono">@pregen/verify</span>, <span class="mono">pregen</span>) until your run passes.</li>
+<li>Ask questions in public, as <a href="https://github.com/Pastheroza/PRE-GEN-site/issues">GitHub issues</a>. An answer that is not already in the text is an erratum, and the text gets fixed.</li>
+<li>Write down what took long or was ambiguous. That is as valuable as passing.</li>
+</ul>
+
+<h2>The edition</h2>
+<p>Git tag <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/pre-gen-v5-rc1"><span class="mono">pre-gen-v5-rc1</span></a>. SHA-256 of the files that define it:</p>
+<div class="table"><table><thead><tr><th>File</th><th>SHA-256</th></tr></thead><tbody><tr><td class="mono"><a href="https://github.com/Pastheroza/PRE-GEN-site/blob/pre-gen-v5-rc1/spec/PRE-GEN-SPEC.md">spec/PRE-GEN-SPEC.md</a></td><td class="mono">8cb4829148089820…d4d81722</td></tr><tr><td class="mono"><a href="https://github.com/Pastheroza/PRE-GEN-site/blob/pre-gen-v5-rc1/spec/PG-CODE.md">spec/PG-CODE.md</a></td><td class="mono">716822e3b41e2d67…89f6dc5c</td></tr><tr><td class="mono"><a href="https://github.com/Pastheroza/PRE-GEN-site/blob/pre-gen-v5-rc1/spec/test-vectors/vectors.json">spec/test-vectors/vectors.json</a></td><td class="mono">eaf94fa0af10507a…3f25010a</td></tr><tr><td class="mono"><a href="https://github.com/Pastheroza/PRE-GEN-site/blob/pre-gen-v5-rc1/spec/conformance/README.md">spec/conformance/README.md</a></td><td class="mono">23f0285d789936f8…9aaa69ea</td></tr><tr><td class="mono"><a href="https://github.com/Pastheroza/PRE-GEN-site/blob/pre-gen-v5-rc1/spec/conformance/level1/run_conformance.py">spec/conformance/level1/run_conformance.py</a></td><td class="mono">6cba49c4d80fabf5…ce1cf241</td></tr></tbody></table></div>
+
+<h2>Run it</h2>
+<p>Your implementation talks to the runner through a small adapter: one JSON request on stdin, one JSON answer on stdout, one process per call (<a href="/spec/conformance/README.md">conformance/README.md</a>, Level 1). Five operations:</p>
+<pre><code>{"op": "canonical_json", "input": {…}}                  → {"canonical_utf8": "…", "sha256_hex": "…"}
+{"op": "verify_signature", "message": {…}, "public_key_hex": "…", "signature_hex": "…"}  → {"valid": true}
+{"op": "verify_license", "body": {…}, "license_id": "…", "subject_public_key_hex": "…",
+ "subject_signature_hex": "…", "operator_public_key_hex": "…", "operator_signature_hex": "…"}
+                                                       → {"subject_valid": true, "operator_valid": true}
+{"op": "verify_directory", "directory": {…}, "steward_public_key_hex": "…", "min_sequence": 0}  → {"valid": true}
+{"op": "check_namespace", "directory": {…}, "steward_public_key_hex": "…", "code": "…", "signer_key_id": "…"}
+                                                       → {"result": "valid" | "issuer_mismatch" | "unknown_issuer"}
+anything else                                          → {"unsupported": true}</code></pre>
+<pre><code>git clone https://github.com/Pastheroza/PRE-GEN-site.git && cd PRE-GEN-site && git checkout pre-gen-v5-rc1
+python3 spec/conformance/level1/run_conformance.py --adapter "&lt;command that runs your adapter&gt;" \
+  --require-op canonical_json --require-op verify_signature --require-op verify_license \
+  --require-op verify_directory --require-op check_namespace</code></pre>
+
+<h2>Done when</h2>
+<ul>
+<li>the runner reports <strong>0 failed</strong> with every required operation run (the <span class="mono">pg_*</span> code-minting operations are reported as skipped, which is expected);</li>
+<li>you have filed an <a href="https://github.com/Pastheroza/PRE-GEN-site/issues/new?template=implementation-report.md">implementation report</a>: language, size, hours, the runner's summary line, and every question you had to ask.</li>
+</ul>
+<p>With your permission, the first passing independent implementation is named on pregen.org and in the next PRE-GEN version.</p>
+
+<h2>What this does not cover</h2>
+<p>The runner does not check what a provider does with a decision: matching it to the request, its lifetime and the user binding (V-3, V-4, V-13) are client behaviour, listed as not checked in §8.2. The Provider and Registry profiles need the Level 2 checks against a running registry. Passing this kit is a first independent result, not a full conformance claim.</p>
+<nav class="pager" aria-label="Pages"><a href="/docs/c2pa">← C2PA</a><span></span></nav></article></div>
+
+</div></main>
+<footer class="foot"><div class="wrap">
+<p>PRE-GEN is an open standard by Valerii Egorov, Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
+<nav aria-label="Site"><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification source</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
+</div></footer>
+</body>
+</html>
