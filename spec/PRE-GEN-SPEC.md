@@ -1026,9 +1026,10 @@ document is read as a claim about it:
   snapshot and namespace/endpoint checks (V-10 to V-12). It requires pinned
   operator keys plus an independently obtained steward key; it does not
   auto-discover a root. This is not yet a published SDK rollout. Python
-  clients still rely on per-registry operator pins. The directory's public
-  steward key is still pending, and v2 does not define freshness or key
-  revocation. Namespace membership is not evidence of rights-holder authority.
+  clients still rely on per-registry operator pins. The steward key is
+  published (`PG-CODE.md` §9.1, 2026-10-03) and the directory on pregen.org
+  is signed (`sequence` 1); no published SDK checks it yet, and v2 does not
+  define freshness or key revocation. Namespace membership is not evidence of rights-holder authority.
 - **Anchoring.** Audit roots are submitted about hourly to public
   OpenTimestamps calendars, best effort (§10).
 - **Opt-out cooling.** 14 days (`COOLING_PERIOD_DAYS`); a subject pause

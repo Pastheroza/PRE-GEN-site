@@ -337,13 +337,18 @@ and keeps the old ones.
 Egorov — not by any registry, including the origin one — and used only to
 sign the directory.
 
-- public key: `STEWARD-PUBLIC-KEY-PENDING`
-- fingerprint: `STEWARD-FINGERPRINT-PENDING`
+- public key: `5cb949aab04186e3e216ec541b847c912fc3f78138c0ec3cb2560b2dad0d1f1b`
+- fingerprint: `pg-ed25519:dcdd244659e6d0e2426f2b504cb11590`
+- created: 2026-10-03; first directory signed with `sequence` 1
 
 The same values are published in the paper, in the standard's repository
 README and as a DNS TXT record at `_pregen-steward.pregen.org`, so that no
-single channel can substitute them. A change of steward is announced in a
-directory signed by the outgoing key. The bare namespace cannot be
+single channel can substitute them. The TXT record reads
+
+    pg-steward=1 fp=pg-ed25519:dcdd244659e6d0e2426f2b504cb11590 pk=5cb949aab04186e3e216ec541b847c912fc3f78138c0ec3cb2560b2dad0d1f1b
+
+and a verifier that checks it compares both values with the ones it pinned.
+A change of steward is announced in a directory signed by the outgoing key. The bare namespace cannot be
 reassigned by any steward: rule 3 above is part of the standard.
 
 *Reference implementation:* `spec/tools/pregen_directory.py`; the steward's

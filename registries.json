@@ -1,20 +1,25 @@
 {
-  "schema": "pregen.registries.v1",
-  "updated": "2026-09-28",
-  "note": "Draft listing. Issuer prefixes are specified in PG-CODE.md §9; discovery beyond this list is proposed, not yet specified.",
+  "schema": "pregen.registries.v2",
+  "sequence": 1,
+  "note": "Signed registry directory (PG-CODE.md §9.1): each namespace — bare for the origin registry, a four-letter prefix for every other — and the operator keys allowed to sign in it. Verify the signature with the published steward key, never with a key taken from this file.",
   "registries": [
     {
       "name": "PRAMPTA",
+      "prefix": "",
       "role": "Registry operator, origin issuer",
-      "issuer": "none (bare PG-… codes)",
       "website": "https://prampta.com",
       "api": "https://api2.prampta.com",
       "keys": "https://api2.prampta.com/keys",
+      "key_fingerprints": [
+        "pg-ed25519:1904514fd2ac442f0a5388d13cc313a0"
+      ],
       "status": "Production",
       "since": "2026",
-      "prefix": "",
       "pregen_version": "5"
     }
   ],
-  "providers": []
+  "providers": [],
+  "issued_at": "2026-10-03T18:03:53Z",
+  "steward_key_id": "pg-ed25519:dcdd244659e6d0e2426f2b504cb11590",
+  "signature": "02579dfb602a01dd36eb9b9c65dfdcf03cb5ad08ab28e99be4258cedc9241319e251371a09b04d5cb2ee4566dc8477202ca91e54c64297710080d30d9946e803"
 }

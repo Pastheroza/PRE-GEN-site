@@ -29,8 +29,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from pregen_directory import (  # noqa: E402
     DirectoryError, fingerprint, public_hex, sign_directory, verify_directory)
 
-# The published steward key (PG-CODE.md §9.1). Empty until it is generated.
-STEWARD_PUBLIC_KEY_HEX = ""
+# The published steward key (PG-CODE.md §9.1).
+STEWARD_PUBLIC_KEY_HEX = "5cb949aab04186e3e216ec541b847c912fc3f78138c0ec3cb2560b2dad0d1f1b"
 
 
 def _passphrase(confirm: bool) -> bytes:
