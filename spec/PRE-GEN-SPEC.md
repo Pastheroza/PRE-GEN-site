@@ -1087,7 +1087,31 @@ before hitting one in production.
   (`backend/app/core/verify_engine.py`); providers are notified at
   registration. The immediate path is a subject pause (`paused`, refused
   before license resolution); protections for minors and immutable denials
-  never depend on an opt-out.
+  never depend on an opt-out. The two differ in who may use them: anyone
+  claiming authority over a subject can file an opt-out, which is why it
+  waits; only the subject's owner or the registry operator can pause it.
+- **An opt-out or pause stops new decisions, not issued ones.** From its
+  effective time every new decision for the subject refuses. A decision
+  issued earlier stays usable until its `expires_at` (reference:
+  `DECISION_TTL_SECONDS` = 300) and a cached plain allow up to
+  `max_cache_age_seconds` (P-7); a provider learns a new `revocation_epoch`
+  only from its next decision. Another registry holding the same person is
+  not bound by it.
+- **Self custody prevents a forged license, not a false allow.** A provider
+  verifies the decision (V-2), not the license it names. A compromised
+  registry can sign an `allow` naming a license that does not exist or that
+  the subject never signed. Under self custody this is provable afterwards —
+  the evidence bundle (§1.4) for that decision has no license carrying the
+  subject's signature — but not prevented: prevention would need providers
+  to verify the license against a subject key established by someone other
+  than the registry, which v5 does not specify.
+- **Legal overrides have no format.** A court may order generation despite
+  an opt-out; v5 defines no record, decision, refusal code or conformance
+  status for such an override, and the reference registry implements none.
+- **Personal use is not linked to its decision.** A `not_blocked` decision
+  has no receipt, and an observation may name a decision only if that
+  decision has the provider's receipt (§1.6), so an observation of personal
+  use cannot point at the decision that answered it.
 - **External anchoring is best effort.** Signed roots are submitted to
   OpenTimestamps calendars about hourly (`backend/app/core/anchor_publish.py`);
   an event is anchored only once a later accepted root includes it, and an

@@ -10,6 +10,12 @@ See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
 
 ## v5 — draft of 2026-10-03
 
+- Known limits stated exactly (2026-10-03, §10, after an external review):
+  self custody prevents a forged license but not a false allow (provable
+  afterwards only); an opt-out or pause stops new decisions, not issued
+  ones; who may file an opt-out versus pause; legal overrides have no
+  format; personal-use observations cannot name their decision. No rule
+  changed.
 - Next key announced in advance (2026-10-03, `PG-CODE.md` §9.1): a
   registry SHOULD list its next operator key's fingerprint before using it,
   so verifiers that pin its keys survive a rotation without an update.
