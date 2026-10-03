@@ -10,6 +10,11 @@ See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
 
 ## v5 — draft of 2026-10-03
 
+- Erratum in the reference code (2026-10-03): the bare namespace includes
+  licenses of every three-letter class, retired ones too (`PG-EDT-…`,
+  `PG-EST-…`, `PG-ENT-…`, `PG-PER-…`, `PG-OWN-…`); `pregen_directory.py`
+  recognised only STD, SUB, PRM and RND and would have refused a genuine old
+  license as `unknown_issuer`. New vector `retired_class_bare_by_origin`.
 - Directory continuity (2026-10-03, `PG-CODE.md` §9.1): a verifier that keeps
   the last accepted directory SHOULD refuse a newer one that removes a
   namespace or fingerprint, or a different one with the same `sequence`; it

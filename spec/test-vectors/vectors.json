@@ -514,6 +514,12 @@
         "result": "issuer_mismatch"
       },
       {
+        "name": "retired_class_bare_by_origin",
+        "code": "PG-EDT-000012",
+        "signer_key_id": "pg-ed25519:225bee029538a6e5bc89f03d83cd45b1",
+        "result": "valid"
+      },
+      {
         "name": "prefixed_by_owner",
         "code": "PG-NWRD-RND-000042-ZZZZZZJ",
         "signer_key_id": "pg-ed25519:77183061652862e2a4a41269711125f2",

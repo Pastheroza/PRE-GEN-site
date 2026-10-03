@@ -1030,7 +1030,8 @@ document is read as a claim about it:
   published (`PG-CODE.md` §9.1, 2026-10-03) and the directory on pregen.org
   is signed (`sequence` 1). The verification libraries `@pregen/verify`
   (npm) and `pregen` (PyPI) 0.1.0 check it with the steward key built in;
-  `@prampta/sdk` does not use them yet. v2 does not define freshness or key
+  the unpublished `@prampta/sdk` 0.7.0 uses them through its opt-in
+  `pregenDirectory` option. v2 does not define freshness or key
   revocation. Namespace membership is not evidence of rights-holder authority.
 - **Anchoring.** Audit roots are submitted about hourly to public
   OpenTimestamps calendars, best effort (§10).

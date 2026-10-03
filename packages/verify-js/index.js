@@ -13,7 +13,7 @@ const MAX_INT = 2 ** 53 - 1;
 const PREFIX = /^[ABCDEFGHJKMNPQRSTVWXYZ]{4}$/;
 const FINGERPRINT = /^pg-ed25519:[0-9a-f]{32}$/;
 const ISSUER_IN_CODE = /^PG-([ABCDEFGHJKMNPQRSTVWXYZ]{4})-/;
-const BARE_CODE = /^PG-(?:(?:STD|SUB|PRM|RND)-)?[0-9]/;
+const BARE_CODE = /^PG-(?:[A-Z]{3}-)?[0-9]/;
 
 export class PregenError extends Error {
   constructor(message) { super(message); this.name = "PregenError"; }
@@ -265,7 +265,8 @@ export async function checkDecision(decision, request, { directory, fetch: fetch
   const got = decision.intended_use ?? {}, sent = request.intended_use ?? {};
   if (typeof got !== "object" || typeof sent !== "object") fail("intended_use must be an object");
   for (const k of new Set([...Object.keys(got), ...Object.keys(sent)])) {
-    if (k in sent ? !same(got[k] ?? null, sent[k]) : !isEmpty(got[k])) fail(`intended_use.${k} does not match the request`);
+    const ok = isEmpty(sent[k]) ? isEmpty(got[k]) : same(got[k] ?? null, sent[k]); // empty and absent are the same
+    if (!ok) fail(`intended_use.${k} does not match the request`);
   }
   for (const f of ["generation_id", "provider_identity_link_id"]) {
     if (!isEmpty(request[f]) && decision[f] !== request[f]) fail(`${f} does not match the request`);

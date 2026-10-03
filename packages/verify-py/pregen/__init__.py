@@ -13,7 +13,7 @@ from urllib.parse import urlsplit
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 __all__ = [
     "STEWARD_PUBLIC_KEY_HEX", "DIRECTORY_URL", "PregenError", "Directory", "canonical_json",
     "fingerprint", "verify_bytes", "verify_signed", "verify_license", "issuer_of",
@@ -31,7 +31,7 @@ _MAX_INT = 2**53 - 1
 _PREFIX = re.compile(r"[ABCDEFGHJKMNPQRSTVWXYZ]{4}")
 _FINGERPRINT = re.compile(r"pg-ed25519:[0-9a-f]{32}")
 _ISSUER_IN_CODE = re.compile(r"^PG-([ABCDEFGHJKMNPQRSTVWXYZ]{4})-")
-_BARE_CODE = re.compile(r"^PG-(?:(?:STD|SUB|PRM|RND)-)?[0-9]")
+_BARE_CODE = re.compile(r"^PG-(?:[A-Z]{3}-)?[0-9]")
 
 
 class PregenError(ValueError):
@@ -324,7 +324,8 @@ def check_decision(decision: dict, request: dict, directory: Directory = None, g
     if not isinstance(got, dict) or not isinstance(sent, dict):
         raise PregenError("intended_use must be an object")
     for k in set(got) | set(sent):
-        ok = canonical_json(got.get(k)) == canonical_json(sent[k]) if k in sent else _empty(got.get(k))
+        # Empty and absent are the same.
+        ok = _empty(got.get(k)) if _empty(sent.get(k)) else canonical_json(got.get(k)) == canonical_json(sent[k])
         if not ok:
             raise PregenError(f"intended_use.{k} does not match the request")
     for f in ("generation_id", "provider_identity_link_id"):

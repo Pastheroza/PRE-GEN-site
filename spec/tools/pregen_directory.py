@@ -152,7 +152,7 @@ def issuer_of(code: str) -> str:
         raise DirectoryError("PG code must be a string")
     normalized = code.strip().upper()
     m = _ISSUER_IN_CODE.match(normalized)
-    if not m and not re.match(r"^PG-(?:(?:STD|SUB|PRM|RND)-)?[0-9]", normalized):
+    if not m and not re.match(r"^PG-(?:[A-Z]{3}-)?[0-9]", normalized):
         raise DirectoryError("unrecognized PG namespace")
     return m.group(1) if m else ""
 
