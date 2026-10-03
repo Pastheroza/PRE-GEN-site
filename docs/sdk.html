@@ -29,7 +29,7 @@
 </div></header>
 <main><div class="wrap">
 <div class="doc"><aside><ul><li><a href="/docs">Overview</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versioning</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk" aria-current="page">Integrate</a></li><li><a href="/docs/c2pa">C2PA</a></li></ul></aside><article><h1>Integrate</h1>
-<p class="meta">HTTP · reference TypeScript SDK <span class="mono">@prampta/sdk</span> 0.4.0 on npm (Apache-2.0); 0.7.0, with the stricter checks of PRE-GEN v5, is prepared but not yet published</p>
+<p class="meta">HTTP · verification: <span class="mono">@pregen/verify</span> (npm) and <span class="mono">pregen</span> (PyPI) 0.1.0 · reference TypeScript SDK <span class="mono">@prampta/sdk</span> 0.4.0 on npm (Apache-2.0); 0.7.0, with the stricter checks of PRE-GEN v5, is prepared but not yet published</p>
 <p>A provider needs credentials from a <a href="/registries">registry</a>. The first registry, PRAMPTA, issues a sandbox key after a verified company email and a production key after a DNS record on the company domain. The sandbox reaches synthetic test subjects only.</p>
 <p class="note">Keep the provider secret on your server. It never goes to a browser, a URL or client code. Send a hash of the prompt, never the prompt.</p>
 
@@ -55,6 +55,25 @@ X-Licensee-ID: lic-…
 {"decision_id": "dec_…", "prompt_hash": "…", "output_hash": "&lt;sha256 of the file&gt;",
  "event_type": "output_accepted", "obligations_applied": {}}</code></pre>
 <p>One receipt per <code>allow</code> decision. A second receipt for the same decision is refused.</p>
+
+<h2>Check the signature against PRE-GEN</h2>
+<p>A signed <code>allow</code> is worth something only if the key that signed it belongs to the registry that owns the code. The verification library checks that chain with the PRE-GEN steward key built in: the <a href="/registries">registry directory</a> is signed by the steward, the code's namespace belongs to one listed registry, the decision's key is one of that registry's keys, and the signature verifies.</p>
+<pre><code>npm install @pregen/verify</code></pre>
+<pre><code>import { loadDirectory, verifyDecision } from "@pregen/verify";
+
+const directory = await loadDirectory({ minSequence: saved });   // refuses older copies
+saved = directory.sequence;
+
+// code: the PG code you asked about, e.g. the decision's license_id
+if (!(await verifyDecision(decision, code, { directory }))) throw new Error("not genuine");</code></pre>
+<pre><code>pip install pregen</code></pre>
+<pre><code>import pregen
+
+directory = pregen.load_directory(min_sequence=saved)
+saved = directory.sequence
+if not pregen.verify_decision(decision, code, directory):
+    raise RuntimeError("not genuine")</code></pre>
+<p>It does not replace your own checks: the decision must answer your request, must not have expired, must carry a verified user binding when you named a user, and you generate only on <code>allow</code> (<a href="/spec/PRE-GEN-SPEC.md">PRE-GEN-SPEC.md</a> §5.4). Source and tests: <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/packages">packages/</a>, Apache-2.0.</p>
 
 <h2>TypeScript SDK</h2>
 <pre><code>npm install @prampta/sdk</code></pre>
