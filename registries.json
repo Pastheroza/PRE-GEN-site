@@ -1,6 +1,6 @@
 {
   "schema": "pregen.registries.v2",
-  "sequence": 1,
+  "sequence": 2,
   "note": "Signed registry directory (PG-CODE.md §9.1): each namespace — bare for the origin registry, a four-letter prefix for every other — and the operator keys allowed to sign in it. Verify the signature with the published steward key, never with a key taken from this file.",
   "registries": [
     {
@@ -11,7 +11,8 @@
       "api": "https://api2.prampta.com",
       "keys": "https://api2.prampta.com/keys",
       "key_fingerprints": [
-        "pg-ed25519:1904514fd2ac442f0a5388d13cc313a0"
+        "pg-ed25519:1904514fd2ac442f0a5388d13cc313a0",
+        "pg-ed25519:58d4a309fff25a0f4763cffc5c92cb0e"
       ],
       "status": "Production",
       "since": "2026",
@@ -19,7 +20,7 @@
     }
   ],
   "providers": [],
-  "issued_at": "2026-10-03T18:03:53Z",
+  "issued_at": "2026-10-03T20:17:32Z",
   "steward_key_id": "pg-ed25519:dcdd244659e6d0e2426f2b504cb11590",
-  "signature": "02579dfb602a01dd36eb9b9c65dfdcf03cb5ad08ab28e99be4258cedc9241319e251371a09b04d5cb2ee4566dc8477202ca91e54c64297710080d30d9946e803"
+  "signature": "703c87477651c0e0f4045a9dd5856c6098c81e9cb7f67cdbfa9cfec9f5d33604405a32cc1c5ea40f10827b356a3bcf572a9ab2f4f64fbeed3a24cbf35e381807"
 }

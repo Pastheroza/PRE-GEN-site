@@ -10,6 +10,9 @@ See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
 
 ## v5 — draft of 2026-10-03
 
+- Next key announced in advance (2026-10-03, `PG-CODE.md` §9.1): a
+  registry SHOULD list its next operator key's fingerprint before using it,
+  so verifiers that pin its keys survive a rotation without an update.
 - Erratum in the reference code (2026-10-03): the bare namespace includes
   licenses of every three-letter class, retired ones too (`PG-EDT-…`,
   `PG-EST-…`, `PG-ENT-…`, `PG-PER-…`, `PG-OWN-…`); `pregen_directory.py`

@@ -13,7 +13,7 @@ from urllib.parse import urlsplit
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 __all__ = [
     "STEWARD_PUBLIC_KEY_HEX", "DIRECTORY_URL", "PregenError", "Directory", "canonical_json",
     "fingerprint", "verify_bytes", "verify_signed", "verify_license", "issuer_of",
@@ -25,7 +25,10 @@ DIRECTORY_URL = "https://www.pregen.org/registries.json"
 # The origin registry's (PRAMPTA's) operator keys, pinned here as well as in the
 # directory: a stolen steward key cannot add its own key to the bare namespace.
 # A new origin key needs a new release of this library (threat model T4).
-ORIGIN_KEY_FINGERPRINTS = ("pg-ed25519:1904514fd2ac442f0a5388d13cc313a0",)
+ORIGIN_KEY_FINGERPRINTS = (
+    "pg-ed25519:1904514fd2ac442f0a5388d13cc313a0",  # current
+    "pg-ed25519:58d4a309fff25a0f4763cffc5c92cb0e",  # next, announced 2026-10-03, offline until rotation
+)
 SCHEMA = "pregen.registries.v2"
 _MAX_INT = 2**53 - 1
 _PREFIX = re.compile(r"[ABCDEFGHJKMNPQRSTVWXYZ]{4}")

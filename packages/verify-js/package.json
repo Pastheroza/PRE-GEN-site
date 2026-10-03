@@ -1,6 +1,6 @@
 {
   "name": "@pregen/verify",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Verify PRE-GEN signatures against the signed registry directory, with the PRE-GEN steward key built in",
   "type": "module",
   "exports": {

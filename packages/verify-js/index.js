@@ -7,7 +7,10 @@ export const DIRECTORY_URL = "https://www.pregen.org/registries.json";
 /** The origin registry's (PRAMPTA's) operator keys, pinned here as well as in the
  * directory: a stolen steward key cannot add its own key to the bare namespace.
  * A new origin key needs a new release of this library (threat model T4). */
-export const ORIGIN_KEY_FINGERPRINTS = Object.freeze(["pg-ed25519:1904514fd2ac442f0a5388d13cc313a0"]);
+export const ORIGIN_KEY_FINGERPRINTS = Object.freeze([
+  "pg-ed25519:1904514fd2ac442f0a5388d13cc313a0", // current
+  "pg-ed25519:58d4a309fff25a0f4763cffc5c92cb0e", // next, announced 2026-10-03, offline until rotation
+]);
 const SCHEMA = "pregen.registries.v2";
 const MAX_INT = 2 ** 53 - 1;
 const PREFIX = /^[ABCDEFGHJKMNPQRSTVWXYZ]{4}$/;

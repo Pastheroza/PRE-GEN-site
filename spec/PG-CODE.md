@@ -308,7 +308,7 @@ signed by the **steward key**:
 | `schema` | `"pregen.registries.v2"` |
 | `sequence` | integer ≥ 1, increased by every signing |
 | `issued_at` | RFC 3339 UTC time of signing (informative) |
-| `registries` | array; each entry has `name`, `prefix` (`""` for the origin registry, otherwise four letters of the PG alphabet), `api`, `keys` (the registry's key set URL, `PRE-GEN-SPEC.md` §2.3) and `key_fingerprints` (every operator key the registry has ever signed with, current and retired, `PRE-GEN-SPEC.md` §2.1) |
+| `registries` | array; each entry has `name`, `prefix` (`""` for the origin registry, otherwise four letters of the PG alphabet), `api`, `keys` (the registry's key set URL, `PRE-GEN-SPEC.md` §2.3) and `key_fingerprints` (every operator key the registry has ever signed with, current and retired, plus keys announced for future use, `PRE-GEN-SPEC.md` §2.1) |
 | `steward_key_id` | fingerprint of the steward key |
 | `signature` | Ed25519 by the steward key over the canonical JSON (`PRE-GEN-SPEC.md` §2) of the object without `signature`, hex |
 
@@ -331,7 +331,11 @@ A verifier accepts the directory only if (`PRE-GEN-SPEC.md` V-12):
 
 A listing, once made, is never removed or given to another registry; a
 registry that changes keys gets a new signing that adds the new fingerprint
-and keeps the old ones.
+and keeps the old ones. A registry SHOULD announce its next operator key
+before it signs anything with it: the key is generated and kept offline, and
+its fingerprint is added to the directory (and to any verifier that pins the
+registry's keys) in advance, so that the day it rotates no verifier has to
+change. A listed key that has not signed yet is not an error.
 
 A verifier that keeps the last directory it accepted SHOULD also refuse a
 newer one that removes a listed namespace or fingerprint, and one that
