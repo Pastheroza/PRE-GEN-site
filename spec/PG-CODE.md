@@ -273,10 +273,10 @@ Rules:
    code issued before this section existed keep their meaning. The origin
    registry (PRAMPTA, the first registry) never uses a prefix.
 4. **Prefixes are assigned publicly.** A registry asks for one through the
-   public registry list at `https://www.pregen.org/registries`; the list
-   (`registries.json`) is the only record of who holds which prefix. A
-   prefix is never reassigned, even if its registry closes, because codes
-   are cited forever.
+   public registry list at `https://www.pregen.org/registries`; the signed
+   registry directory (§9.1) is the only record of who holds which prefix
+   and which keys may sign in it. A prefix is never reassigned, even if its
+   registry closes, because codes are cited forever.
 5. **The issuer is the one thing software may read from a code** — to know
    which registry to ask. Everything else is still resolved, never parsed
    (§8): the issuer names the registry, the registry answers for the code.
@@ -287,6 +287,68 @@ another registry and points to the registry list.
 
 Longer serials remain free as well: the pad width is a minimum, and nothing
 breaks at a million subjects.
+
+### 9.1 The registry directory: who may issue which codes
+
+A PG code is a string; nothing stops anyone from printing one. What the
+standard controls is which codes conforming software **accepts**:
+**one namespace, one registry, one set of keys.** The bare namespace (codes
+with no prefix, including the legacy `PG-STD-` and `PG-SUB-` shapes) belongs
+to the origin registry; each prefix belongs to exactly one other registry.
+A code is valid only when a key of the registry that owns its namespace
+signed it. The rule is the same for every registry: it keeps other
+registries out of the bare namespace exactly as it keeps the origin registry
+out of every prefix.
+
+**The directory** is `https://www.pregen.org/registries.json`, a JSON object
+signed by the **steward key**:
+
+| Member | Rule |
+|---|---|
+| `schema` | `"pregen.registries.v2"` |
+| `sequence` | integer ≥ 1, increased by every signing |
+| `issued_at` | RFC 3339 UTC time of signing (informative) |
+| `registries` | array; each entry has `name`, `prefix` (`""` for the origin registry, otherwise four letters of the PG alphabet), `api`, `keys` (the registry's key set URL, `PRE-GEN-SPEC.md` §2.3) and `key_fingerprints` (every operator key the registry has ever signed with, current and retired, `PRE-GEN-SPEC.md` §2.1) |
+| `steward_key_id` | fingerprint of the steward key |
+| `signature` | Ed25519 by the steward key over the canonical JSON (`PRE-GEN-SPEC.md` §2) of the object without `signature`, hex |
+
+Other members (`website`, `status`, `providers`, …) are informative and
+signed like everything else.
+
+Each registry's `api` and `keys` MUST be HTTPS URLs without credentials,
+query or fragment. A directory containing an endpoint that violates this
+rule MUST NOT be accepted.
+
+A verifier accepts the directory only if (`PRE-GEN-SPEC.md` V-12):
+
+1. the signature verifies with the **published** steward public key below —
+   never with a key taken from the directory itself or from the connection
+   that served it;
+2. exactly one entry has `prefix: ""`, no prefix appears twice, and every
+   entry lists at least one key fingerprint;
+3. its `sequence` is not lower than the highest one the verifier has already
+   accepted, so an old copy cannot be replayed to undo a listing.
+
+A listing, once made, is never removed or given to another registry; a
+registry that changes keys gets a new signing that adds the new fingerprint
+and keeps the old ones.
+
+**The steward key.** Held offline by the editor of the standard, Valerii
+Egorov — not by any registry, including the origin one — and used only to
+sign the directory.
+
+- public key: `STEWARD-PUBLIC-KEY-PENDING`
+- fingerprint: `STEWARD-FINGERPRINT-PENDING`
+
+The same values are published in the paper, in the standard's repository
+README and as a DNS TXT record at `_pregen-steward.pregen.org`, so that no
+single channel can substitute them. A change of steward is announced in a
+directory signed by the outgoing key. The bare namespace cannot be
+reassigned by any steward: rule 3 above is part of the standard.
+
+*Reference implementation:* `spec/tools/pregen_directory.py`; the steward's
+signing tool is `spec/tools/steward.py`. The vectors' `namespace` section
+fixes the directory checks and the issuer check in both directions.
 
 ---
 

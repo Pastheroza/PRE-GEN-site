@@ -8,7 +8,30 @@ comments cited throughout `spec/PRE-GEN-SPEC.md`.
 
 See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
 
-## v5 — 2026-09-28
+## v5 — draft of 2026-10-03
+
+- New verifier rules (2026-10-03): directory `api`/`keys` MUST use HTTPS
+  without credentials, query or fragment (`PG-CODE.md` §9.1); V-3 requires
+  positive integer expiry and issued-before-expiry; new V-13 requires verified,
+  non-empty user binding for an `allow` when the provider supplied a user or
+  identity-link id. §8 requires a claimed profile's operations to run rather
+  than skip. These tighten acceptance without changing signed bytes or existing
+  vectors; client-behaviour coverage remains explicitly separate from Level 1/2.
+- Client/reference hardening (2026-10-02, no wire change): exact request
+  binding including empty values, generation and intended-use context;
+  safe validity checks; boolean/disposition/schema validation; TypeScript
+  code-point key ordering and integer-only signed JSON. Two additive vectors
+  cover Unicode key ordering and safe-integer limits; existing vectors are
+  unchanged. TypeScript source supports an opt-in pinned signed directory
+  with symmetric issuer and endpoint checks, persisted snapshot comparison
+  for rollback and same-sequence equivocation, offline license countersignature
+  verification, and strict `assertLicensed` separate from reporting-only
+  `not_blocked`. Directory root publication, freshness/revocation and
+  rights-authority verification are NOT supplied by these client fixes.
+- Conformance runner now separately counts passes/failures/skips, tests
+  tampered signature bodies and supports `--require-op` so a verifier cannot
+  silently skip mandatory operations. Future trust architecture is a proposal
+  in `drafts/TRUST-ARCHITECTURE.md`, not a new normative schema or release.
 
 PRE-GEN version numbers now match Zenodo (`VERSIONS.md`): v1–v4 are the four
 published Zenodo versions, this is v5. The dated entries below, from
@@ -25,6 +48,13 @@ earlier, date-based label. What a v4 implementation must change is listed in
   Second review: opt-out cooling and anchoring limits stated (§8); paper
   compares RSL and the Human Consent Standard, adds the cycle overview,
   drops PRE-LEARN. v5 is marked draft until published on Zenodo.
+- Who may issue which PG codes (2026-09-30): the registry directory
+  (`registries.json`) is signed by a steward key held by the editor, not by
+  any registry, and binds each namespace — bare for the origin registry, a
+  prefix for every other — to the operator keys allowed to sign in it
+  (`PG-CODE.md` §9.1). New R-14, V-10 to V-12; new `namespace` vectors and
+  `verify_directory` / `check_namespace` conformance ops. Additive: every
+  existing vector is byte-identical.
 - Written as a standard (2026-09-29): BCP 14 requirement language and
   numbered requirements (§0, §5, §8); the text is normative and a vector
   that disagrees with it is an erratum (§0.3), replacing "the vectors win";

@@ -13,7 +13,7 @@ always resolves to the latest one. (Founder, 2026-09-28: "синхронизир
 | v2 | 2026-05-12 | Prompt Protocol | [10.5281/zenodo.20132247](https://doi.org/10.5281/zenodo.20132247) | historical |
 | v3 | 2026-05-20 | Prompt Protocol | [10.5281/zenodo.20319842](https://doi.org/10.5281/zenodo.20319842) | historical |
 | v4 | 2026-06-01 | PRE-GEN — Technical Specification | [10.5281/zenodo.20500208](https://doi.org/10.5281/zenodo.20500208) | historical |
-| **v5** | 2026-09-28 | PRE-GEN — Technical Specification | assigned when published on Zenodo | **draft** — current once published |
+| **v5** | 2026-10-03 (draft) | PRE-GEN — Technical Specification | assigned when published on Zenodo | **draft** — current once published |
 
 The "Technical Specification v1.1" addendum (August 2026) was never published
 as its own Zenodo version; everything it added is part of v5.
@@ -60,6 +60,8 @@ What an implementation of v4 must change:
 - **Refusal codes** are one versioned registry with hard/soft classification
   (`REFUSAL-CODES.md`).
 - **Several registries.** Every registry except the origin one prefixes its
-  codes with four letters (`PG-NWRD-000042=`). Registries are listed on
-  pregen.org.
+  codes with four letters (`PG-NWRD-000042=`). A signed registry directory
+  on pregen.org binds each namespace to the keys allowed to sign in it, so
+  only the origin registry's keys make bare codes valid and only a prefix's
+  owner makes its codes valid (`PG-CODE.md` §9.1).
 - **Published test vectors and a conformance runner** define compatibility.

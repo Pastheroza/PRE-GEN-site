@@ -1,6 +1,6 @@
 # PRE-GEN Protocol Specification
 
-**Version:** PRE-GEN v5 draft (2026-09-28, becomes v5 when published on Zenodo) · Zenodo concept DOI
+**Version:** PRE-GEN v5 draft (2026-10-03, becomes v5 when published on Zenodo) · Zenodo concept DOI
 [10.5281/zenodo.20129901](https://doi.org/10.5281/zenodo.20129901) ·
 **Vectors:** `spec/test-vectors/vectors.json`
 · **License:** Apache License 2.0 — see [`spec/LICENSE`](LICENSE); licensed
@@ -530,7 +530,9 @@ independently verifiable. The registry's Merkle root over event hashes
 `keys` is the full history, current and retired; `signature` is the current
 key's Ed25519 signature over the canonical JSON of the object without
 `signature`. A retired key stays listed so that everything it ever signed
-remains verifiable.
+remains verifiable. Which keys may sign in which PG-code namespace is not a
+registry's own statement: it is fixed by the signed registry directory
+(`PG-CODE.md` §9.1).
 
 The key set is **self-signed**: it proves the list is consistent, not that
 it is authentic, because anyone can sign a list that includes their own key.
@@ -766,7 +768,9 @@ and human review (`PG_HELD_FOR_REVIEW`, disposition `review`).
 - **V-2** The signature MUST be verified over the canonical JSON of the
   decision exactly as received minus `operator_signature` (§1.1), with the
   key named by `operator_key_id`.
-- **V-3** A decision whose `expires_at` has passed MUST NOT be used.
+- **V-3** A decision without a positive integer `expires_at`, whose
+  `issued_at` is not earlier than `expires_at`, or whose `expires_at` has
+  passed MUST NOT be used.
 - **V-4** Each echoed member of R-8 MUST equal what the provider sent
   (members of `intended_use` it did not send appear with their empty
   defaults); a mismatch MUST be treated as an invalid decision, so that an
@@ -785,6 +789,24 @@ and human review (`PG_HELD_FOR_REVIEW`, disposition `review`).
   receipt (§5.5).
 - **V-9** A license MUST be checked as §1.2 states: both signatures, the
   countersignature over body, subject signature and license id.
+- **V-10** For every signed object that carries a PG code — a license (its
+  `license_id`), or a decision naming a license — the verifier MUST look up
+  the code's namespace (`PG-CODE.md` §9 rule 5) in the registry directory
+  and MUST check that the signing operator key is one of the
+  `key_fingerprints` of the registry that owns it. Otherwise the object is
+  invalid (`PG_ISSUER_MISMATCH`, or `PG_ISSUER_UNKNOWN` when no registry
+  holds the namespace) — a verification failure like a bad signature, not a
+  refusal code a registry returns.
+- **V-11** A subject code MUST be resolved only at the registry that owns
+  its namespace (the directory entry's `api`); an answer about it from any
+  other registry MUST be ignored.
+- **V-12** The registry directory MUST be accepted only as `PG-CODE.md`
+  §9.1 states: the published steward key's signature, its invariants, and a
+  `sequence` no lower than one already accepted.
+- **V-13** If the provider sent `provider_user_id` or
+  `provider_identity_link_id`, an `allow` is valid only when
+  `provider_user_binding` is `"verified"` and `provider_identity_link_id`
+  is a non-empty string. Otherwise the decision MUST be rejected.
 
 ### 5.5 Receipts — `POST /v1/receipts`
 
@@ -825,6 +847,10 @@ Uses that need no license are reported as observations (§1.6).
 - **R-13** A registry that receives a code with an issuer prefix it does not
   hold MUST answer that the code belongs to another registry, not that it
   was not found (`PG-CODE.md` §9).
+- **R-14** A registry MUST issue PG codes only in the namespace the registry
+  directory assigns to it, and MUST NOT issue codes before it is listed.
+  Only the directory's origin entry may issue bare codes. Every key it signs
+  with MUST be listed in its entry's `key_fingerprints` before first use.
 
 ---
 
@@ -922,13 +948,13 @@ confused:
 An implementation claims conformance to one or more profiles of
 **PRE-GEN v5**, by name:
 
-- **PRE-GEN v5 Verifier** — V-1, V-2, V-3, V-4, V-9; §2 and §2.1 exactly;
+- **PRE-GEN v5 Verifier** — V-1, V-2, V-3, V-4, V-9 to V-13; §2 and §2.1 exactly;
   PG codes parsed and checked as `PG-CODE.md` states.
 - **PRE-GEN v5 Provider** — everything in Verifier, plus P-5, P-6, P-7,
   P-8, and §5.1–§5.2 on the wire. Receipts (§5.5) are RECOMMENDED;
   `pg.receipt.v3`, lifecycle events, observations (§1.6) and assertions
   (§1.5) are OPTIONAL features, each claimed by name.
-- **PRE-GEN v5 Registry** — R-1 to R-13; decisions (§1.1), licenses
+- **PRE-GEN v5 Registry** — R-1 to R-14; decisions (§1.1), licenses
   (§1.2), the audit chain (§2.2), the key set (§2.3) and receipts (§5.5)
   exactly. Evidence bundles (§1.4), assertions (§1.5), observations (§1.6)
   and external anchoring are OPTIONAL features, each claimed by name; a
@@ -936,6 +962,11 @@ An implementation claims conformance to one or more profiles of
 
 A claim names the profile and the optional features, e.g. "PRE-GEN v5
 Registry, with evidence bundles and observations".
+
+A conformance run that claims a profile MUST NOT skip an operation required
+by that profile. An unsupported or skipped required operation is a failure,
+not a successful check. The release runner's `--require-op` selects the
+required operations; optional unsupported operations are reported as skips.
 
 ### 8.2 What the published checks cover
 
@@ -951,13 +982,15 @@ runner, and the Level 2 HTTP scenarios (`conformance/`). Everything marked
 | V-9 / §1.2 license signatures | Level 1: `license_countersignature` (subject + operator, and that the countersignature binds the id) |
 | §2.2 audit event bytes and chaining | Level 1: `audit_event_genesis`, `audit_event_chained`; Level 2: `10_audit_chain_valid` |
 | `PG-CODE.md` formatting and check character | Level 1: `pg_code` vectors |
+| V-10, V-12 (who may issue which codes; the signed directory) | Level 1: `namespace` vectors — both directions of the issuer check, replayed and tampered directories |
 | R-1 | Level 2: `02_refusal_missing_prompt_hash`, `04_refusal_no_subject` |
 | §5.1 caller authentication | Level 2: `03_refusal_no_pair` |
 | R-3 (withdrawn only) | Level 2: `05_refusal_subject_withdrawn` |
 | R-5 (allow with a license), scope | Level 2: `01_happy_path_verify`, `06_refusal_no_license`, `07_refusal_immutable_denial`, `08_refusal_scope_violation` |
 | R-10 (accepting a receipt) | Level 2: `09_receipt_recorded` |
-| R-2 opt-out priority; R-3 other statuses; R-4; R-6; R-7; R-8 echo; R-9; R-11; R-12; R-13 | **not checked** |
-| V-1, V-3, V-4; P-5 to P-8 | **not checked** (client behaviour) |
+| R-2 opt-out priority; R-3 other statuses; R-4; R-6; R-7; R-8 echo; R-9; R-11; R-12; R-13; R-14 | **not checked** |
+| V-1, V-3, V-4, V-11, V-13; P-5 to P-8 | **not checked** by the published Level 1/2 checks (client behaviour; local SDK regression tests are not a portable conformance operation) |
+| §8.1 no skipped required operation | Runner `--require-op`; unsupported required operations fail, optional skips are counted separately |
 | §1.4, §1.5, §1.6, lifecycle events, `pg.receipt.v3` | **not checked** |
 
 Level 2 sets up its subjects, licenses and connections through the origin
@@ -988,6 +1021,14 @@ document is read as a claim about it:
   retired, and licenses signed under `self` custody earlier still verify.
 - **C2PA.** PRAMPTA issues `pg.assertion.v1` (§1.5). No end-to-end
   integration with a C2PA manifest has been tested.
+- **Namespace.** PRAMPTA is the directory's origin entry and issues bare
+  codes. The TypeScript SDK source now provides an opt-in verified directory
+  snapshot and namespace/endpoint checks (V-10 to V-12). It requires pinned
+  operator keys plus an independently obtained steward key; it does not
+  auto-discover a root. This is not yet a published SDK rollout. Python
+  clients still rely on per-registry operator pins. The directory's public
+  steward key is still pending, and v2 does not define freshness or key
+  revocation. Namespace membership is not evidence of rights-holder authority.
 - **Anchoring.** Audit roots are submitted about hourly to public
   OpenTimestamps calendars, best effort (§10).
 - **Opt-out cooling.** 14 days (`COOLING_PERIOD_DAYS`); a subject pause

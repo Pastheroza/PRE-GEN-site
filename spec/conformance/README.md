@@ -50,9 +50,21 @@ implementation in *any* language, not just the four already in this repo.
  "subject_public_key_hex": "...", "subject_signature_hex": "...",
  "operator_public_key_hex": "...", "operator_signature_hex": "..."}
 → {"subject_valid": true, "operator_valid": true}
+
+{"op": "verify_directory", "directory": {...}, "steward_public_key_hex": "...", "min_sequence": 0}
+→ {"valid": true}
+
+{"op": "check_namespace", "directory": {...}, "code": "PG-NWRD-…", "signer_key_id": "pg-ed25519:…"}
+→ {"result": "valid" | "issuer_mismatch" | "unknown_issuer"}
 ```
 
 An adapter answers `{"unsupported": true}` for an op it doesn't implement.
+For release gates, require the operations your profile claims, for example
+`--require-op verify_signature --require-op verify_license --require-op verify_directory`.
+An unsupported required operation fails the run. Passes, failures and skips
+are counted separately; cryptographic checks include tampered-body rejection.
+`check_namespace` requests also carry the pinned `steward_public_key_hex` so
+the TypeScript adapter can verify the directory before consulting it.
 The `pg_*` ops are backend-only today (`spec/README.md`: the SDKs "receive
 codes, they never mint them") — every other implementation answers those
 `unsupported`, and the runner reports them **skipped**, not failed. No
@@ -73,7 +85,7 @@ python3 level1/run_conformance.py --adapter "python3 level1/adapters/reference_a
 # Python SDK -- crypto only
 python3 level1/run_conformance.py --adapter "python3 level1/adapters/python_sdk_adapter.py"
 
-# TypeScript SDK -- crypto only, zero build step via sucrase
+# TypeScript SDK -- crypto, licenses and namespace directory; no code issuance
 cd ../../sdk/typescript && npm ci   # once, for sucrase-node + @noble/ed25519
 python3 ../../spec/conformance/level1/run_conformance.py \
   --adapter "sdk/typescript/node_modules/.bin/sucrase-node spec/conformance/level1/adapters/typescript_sdk_adapter.ts" \

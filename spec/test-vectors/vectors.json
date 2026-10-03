@@ -25,6 +25,24 @@
       "sha256_hex": "12e69f8dbcb1698475ec9063c5161170f4725bcbb967086657dbb075684daf6c"
     },
     {
+      "name": "unicode_key_codepoint_order",
+      "input": {
+        "𐀀": "astral",
+        "": "bmp"
+      },
+      "canonical_utf8": "{\"\":\"bmp\",\"𐀀\":\"astral\"}",
+      "sha256_hex": "94065525f1ea09913315f5a3f2cb846d9dda91a016d4726a60b4d99a53e50788"
+    },
+    {
+      "name": "safe_integer_boundaries",
+      "input": {
+        "min": -9007199254740991,
+        "max": 9007199254740991
+      },
+      "canonical_utf8": "{\"max\":9007199254740991,\"min\":-9007199254740991}",
+      "sha256_hex": "63546eb60913dcb1cdd5118f7bf4885beed344af930c8a9d5f38fad243fd4819"
+    },
+    {
       "name": "nested",
       "input": {
         "b": {
@@ -267,6 +285,253 @@
     "subject_signature_hex": "4375a957f05caa8d17930dc6558557bff96aaddf9a1fd2c4252e02e3f8706e665c1e60ab087603849b2d4fa6fa9b2ade05e8d6f470110f88e2bca013b210db05",
     "countersign_message_hex": "7b22636f6e74726163745f7374617274223a313736343733353630302c2264656e795f63617465676f72696573223a5b5d2c22657870697265735f6174223a313739363237313630302c22657874656e73696f6e73223a5b5d2c22696d6d757461626c655f64656e69616c73223a5b226164756c74225d2c226c6963656e73655f636c617373223a2250524d222c226c6963656e7365655f6964223a226c69635f7072616d7074615f73747564696f222c2270726f647563745f6e616d65223a22222c2270726f6a6563745f6e616d65223a2273746174696f6e2d32303236222c22707572706f7365223a7b227573655f63617365223a22636f6d6d65726369616c227d2c2272657175697265645f6f626c69676174696f6e73223a7b2277617465726d61726b223a747275657d2c2272756c65735f74657874223a22222c2273636f7065223a5b22696d616765225d2c227375626a6563745f6964223a227375625f6164615f6c6f76656c616365222c2276223a2270672e6c6963656e73652e7632227d4375a957f05caa8d17930dc6558557bff96aaddf9a1fd2c4252e02e3f8706e665c1e60ab087603849b2d4fa6fa9b2ade05e8d6f470110f88e2bca013b210db0550472d50524d2d3030303034322d4b374d32515856",
     "operator_signature_hex": "0f17df0682c41368a6edbb0727032056101de158d153aa2488aeeac1dd15e8641bde7d4918456b98ba3fdb27d2c7a6e447d0aaeccbb681a92e5bcf595da6b908"
+  },
+  "namespace": {
+    "comment": "Directory signed by the test steward; check_namespace assumes the directory was accepted.",
+    "steward_public_key_hex": "f64cf5814ec7126951909fe7999ed35919badbecba1679a051919ccc1cbe64d1",
+    "directory": {
+      "schema": "pregen.registries.v2",
+      "sequence": 3,
+      "issued_at": "2026-10-01T00:00:00Z",
+      "registries": [
+        {
+          "name": "Origin",
+          "prefix": "",
+          "api": "https://origin.example",
+          "keys": "https://origin.example/keys",
+          "key_fingerprints": [
+            "pg-ed25519:225bee029538a6e5bc89f03d83cd45b1"
+          ]
+        },
+        {
+          "name": "Newreg",
+          "prefix": "NWRD",
+          "api": "https://nwrd.example",
+          "keys": "https://nwrd.example/keys",
+          "key_fingerprints": [
+            "pg-ed25519:77183061652862e2a4a41269711125f2"
+          ]
+        }
+      ],
+      "providers": [],
+      "steward_key_id": "pg-ed25519:29088032de37bbef4318392dd94be78d",
+      "signature": "c259ae9b510f9c1a160c11d2ef354d174de109c76a367697002f1024123209302dda63bf1dd004e0ef6f8b92543ada3916867f3af930e127acfd209223ada600"
+    },
+    "directory_cases": [
+      {
+        "name": "valid",
+        "directory": {
+          "schema": "pregen.registries.v2",
+          "sequence": 3,
+          "issued_at": "2026-10-01T00:00:00Z",
+          "registries": [
+            {
+              "name": "Origin",
+              "prefix": "",
+              "api": "https://origin.example",
+              "keys": "https://origin.example/keys",
+              "key_fingerprints": [
+                "pg-ed25519:225bee029538a6e5bc89f03d83cd45b1"
+              ]
+            },
+            {
+              "name": "Newreg",
+              "prefix": "NWRD",
+              "api": "https://nwrd.example",
+              "keys": "https://nwrd.example/keys",
+              "key_fingerprints": [
+                "pg-ed25519:77183061652862e2a4a41269711125f2"
+              ]
+            }
+          ],
+          "providers": [],
+          "steward_key_id": "pg-ed25519:29088032de37bbef4318392dd94be78d",
+          "signature": "c259ae9b510f9c1a160c11d2ef354d174de109c76a367697002f1024123209302dda63bf1dd004e0ef6f8b92543ada3916867f3af930e127acfd209223ada600"
+        },
+        "min_sequence": 0,
+        "valid": true
+      },
+      {
+        "name": "older_than_seen",
+        "directory": {
+          "schema": "pregen.registries.v2",
+          "sequence": 3,
+          "issued_at": "2026-10-01T00:00:00Z",
+          "registries": [
+            {
+              "name": "Origin",
+              "prefix": "",
+              "api": "https://origin.example",
+              "keys": "https://origin.example/keys",
+              "key_fingerprints": [
+                "pg-ed25519:225bee029538a6e5bc89f03d83cd45b1"
+              ]
+            },
+            {
+              "name": "Newreg",
+              "prefix": "NWRD",
+              "api": "https://nwrd.example",
+              "keys": "https://nwrd.example/keys",
+              "key_fingerprints": [
+                "pg-ed25519:77183061652862e2a4a41269711125f2"
+              ]
+            }
+          ],
+          "providers": [],
+          "steward_key_id": "pg-ed25519:29088032de37bbef4318392dd94be78d",
+          "signature": "c259ae9b510f9c1a160c11d2ef354d174de109c76a367697002f1024123209302dda63bf1dd004e0ef6f8b92543ada3916867f3af930e127acfd209223ada600"
+        },
+        "min_sequence": 4,
+        "valid": false
+      },
+      {
+        "name": "tampered_keys",
+        "valid": false,
+        "min_sequence": 0,
+        "directory": {
+          "schema": "pregen.registries.v2",
+          "sequence": 3,
+          "issued_at": "2026-10-01T00:00:00Z",
+          "registries": [
+            {
+              "name": "Origin",
+              "prefix": "",
+              "api": "https://origin.example",
+              "keys": "https://origin.example/keys",
+              "key_fingerprints": [
+                "pg-ed25519:225bee029538a6e5bc89f03d83cd45b1"
+              ]
+            },
+            {
+              "name": "Newreg",
+              "prefix": "NWRD",
+              "api": "https://nwrd.example",
+              "keys": "https://nwrd.example/keys",
+              "key_fingerprints": [
+                "pg-ed25519:77183061652862e2a4a41269711125f2",
+                "pg-ed25519:225bee029538a6e5bc89f03d83cd45b1"
+              ]
+            }
+          ],
+          "providers": [],
+          "steward_key_id": "pg-ed25519:29088032de37bbef4318392dd94be78d",
+          "signature": "c259ae9b510f9c1a160c11d2ef354d174de109c76a367697002f1024123209302dda63bf1dd004e0ef6f8b92543ada3916867f3af930e127acfd209223ada600"
+        }
+      },
+      {
+        "name": "two_bare_entries",
+        "valid": false,
+        "min_sequence": 0,
+        "directory": {
+          "schema": "pregen.registries.v2",
+          "sequence": 3,
+          "issued_at": "2026-10-01T00:00:00Z",
+          "registries": [
+            {
+              "name": "Origin",
+              "prefix": "",
+              "api": "https://origin.example",
+              "keys": "https://origin.example/keys",
+              "key_fingerprints": [
+                "pg-ed25519:225bee029538a6e5bc89f03d83cd45b1"
+              ]
+            },
+            {
+              "name": "Newreg",
+              "prefix": "",
+              "api": "https://nwrd.example",
+              "keys": "https://nwrd.example/keys",
+              "key_fingerprints": [
+                "pg-ed25519:77183061652862e2a4a41269711125f2"
+              ]
+            }
+          ],
+          "providers": [],
+          "steward_key_id": "pg-ed25519:29088032de37bbef4318392dd94be78d",
+          "signature": "d676d0756f74dc4246caee0a0ab9bb0a0b7d6b82ab8fe52057352235c9f577d4540af875fc472bc4b4ecd00abadb97773c93726662ad1d7de04c64e34572bb0a"
+        }
+      },
+      {
+        "name": "prefix_twice",
+        "valid": false,
+        "min_sequence": 0,
+        "directory": {
+          "schema": "pregen.registries.v2",
+          "sequence": 3,
+          "issued_at": "2026-10-01T00:00:00Z",
+          "registries": [
+            {
+              "name": "Origin",
+              "prefix": "",
+              "api": "https://origin.example",
+              "keys": "https://origin.example/keys",
+              "key_fingerprints": [
+                "pg-ed25519:225bee029538a6e5bc89f03d83cd45b1"
+              ]
+            },
+            {
+              "name": "Newreg",
+              "prefix": "NWRD",
+              "api": "https://nwrd.example",
+              "keys": "https://nwrd.example/keys",
+              "key_fingerprints": [
+                "pg-ed25519:77183061652862e2a4a41269711125f2"
+              ]
+            },
+            {
+              "name": "Copy",
+              "prefix": "NWRD",
+              "api": "https://nwrd.example",
+              "keys": "https://nwrd.example/keys",
+              "key_fingerprints": [
+                "pg-ed25519:77183061652862e2a4a41269711125f2"
+              ]
+            }
+          ],
+          "providers": [],
+          "steward_key_id": "pg-ed25519:29088032de37bbef4318392dd94be78d",
+          "signature": "ea176a800f588a4ed8cc9b21b77c0b51d72a7d5799566b5f45351ce909748e64580de0eda449dad053feb52830937fe51a011eee8f3accd269625d3169155f05"
+        }
+      }
+    ],
+    "namespace_cases": [
+      {
+        "name": "bare_by_origin",
+        "code": "PG-PRM-000042-K7M2QXV",
+        "signer_key_id": "pg-ed25519:225bee029538a6e5bc89f03d83cd45b1",
+        "result": "valid"
+      },
+      {
+        "name": "bare_by_other_registry",
+        "code": "PG-PRM-000042-K7M2QXV",
+        "signer_key_id": "pg-ed25519:77183061652862e2a4a41269711125f2",
+        "result": "issuer_mismatch"
+      },
+      {
+        "name": "legacy_bare_by_other_registry",
+        "code": "PG-STD-000123",
+        "signer_key_id": "pg-ed25519:77183061652862e2a4a41269711125f2",
+        "result": "issuer_mismatch"
+      },
+      {
+        "name": "prefixed_by_owner",
+        "code": "PG-NWRD-RND-000042-ZZZZZZJ",
+        "signer_key_id": "pg-ed25519:77183061652862e2a4a41269711125f2",
+        "result": "valid"
+      },
+      {
+        "name": "prefixed_by_origin",
+        "code": "PG-NWRD-RND-000042-ZZZZZZJ",
+        "signer_key_id": "pg-ed25519:225bee029538a6e5bc89f03d83cd45b1",
+        "result": "issuer_mismatch"
+      },
+      {
+        "name": "unlisted_prefix",
+        "code": "PG-ZZZZ-000042~",
+        "signer_key_id": "pg-ed25519:77183061652862e2a4a41269711125f2",
+        "result": "unknown_issuer"
+      }
+    ]
   },
   "pg_code": {
     "comment": "PG code format (2026-08-19). Weighted sum mod 37: each body character's alphabet VALUE times its 1-based position, summed, mod 37, indexed into alphabet+check_extra. See spec/PG-CODE.md.",
