@@ -1,6 +1,7 @@
 export const STEWARD_PUBLIC_KEY_HEX: string;
 export const DIRECTORY_URL: string;
 export const ORIGIN_KEY_FINGERPRINTS: readonly string[];
+export const STEWARD_SUCCESSOR_PUBLIC_KEY_HEX: string | null;
 
 export class PregenError extends Error {}
 
@@ -41,7 +42,7 @@ export function verifyLicense(license: {
   operatorPublicKeyHex: string; operatorSignatureHex: string;
 }): Promise<{ subjectValid: boolean; operatorValid: boolean }>;
 export function issuerOf(code: string): string;
-export function verifyDirectory(directory: unknown, options?: { stewardPublicKeyHex?: string; minSequence?: number;
+export function verifyDirectory(directory: unknown, options?: { stewardPublicKeyHex?: string; successorPublicKeyHex?: string | null; minSequence?: number;
   previous?: Directory | Record<string, unknown>; originKeyFingerprints?: string[] | null }): Promise<Directory>;
 export function loadDirectory(options?: { url?: string; minSequence?: number; previous?: Directory | Record<string, unknown>; fetch?: Fetch }): Promise<Directory>;
 export function verifyDecision(decision: Record<string, unknown>, code: string, options?: { directory?: Directory; fetch?: Fetch }): Promise<boolean>;

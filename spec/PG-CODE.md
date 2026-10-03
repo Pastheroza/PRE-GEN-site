@@ -362,7 +362,18 @@ single channel can substitute them. The TXT record reads
     pg-steward=1 fp=pg-ed25519:dcdd244659e6d0e2426f2b504cb11590 pk=5cb949aab04186e3e216ec541b847c912fc3f78138c0ec3cb2560b2dad0d1f1b
 
 and a verifier that checks it compares both values with the ones it pinned.
-A change of steward is announced in a directory signed by the outgoing key. The bare namespace cannot be
+**The successor key.** The steward also keeps a successor key, created in
+advance, stored apart from the steward key and never used until it is needed:
+
+- public key: `658544163d6abd5fef046407980d249817875d87d8cf4b67879a2e265fa5612f`
+- fingerprint: `pg-ed25519:3e5e20729ce8485eea274c4cb33721d6`
+
+A directory signed by the successor key replaces every directory signed by
+the steward key, whatever their `sequence`, and a verifier that has accepted
+one refuses directories signed by the old key from then on. A thief holding
+only the old key cannot win by raising the sequence. Within the successor's
+own line the rules above apply as before. A planned change of steward uses the
+same path, and a new successor is published at once. The bare namespace cannot be
 reassigned by any steward: rule 3 above is part of the standard.
 
 *Reference implementation:* `spec/tools/pregen_directory.py`; the steward's

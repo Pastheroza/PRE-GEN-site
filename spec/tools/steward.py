@@ -8,6 +8,7 @@ added or changes its keys.
 
   python3 steward.py init ~/PRE-GEN-steward.pem
   python3 steward.py sign ~/PRE-GEN-steward.pem registries.json
+  python3 steward.py sign --handover ~/PRE-GEN-steward-successor.pem registries.json   # only if the steward key is lost or stolen
   python3 steward.py verify registries.json [--steward <public key hex>]
 
 Needs the `cryptography` package (pip install cryptography).
@@ -76,8 +77,11 @@ def cmd_sign(args) -> None:
     path = Path(args.directory)
     d = json.loads(path.read_text(encoding="utf-8"))
     me = fingerprint(public_hex(key))
-    if d.get("steward_key_id") and d["steward_key_id"] != me:
-        sys.exit(f"This directory was signed by {d['steward_key_id']}, not by this key ({me}).")
+    if d.get("steward_key_id") and d["steward_key_id"] != me and not args.handover:
+        sys.exit(f"This directory was signed by {d['steward_key_id']}, not by this key ({me}). "
+                 "Use --handover only to take over with the successor key.")
+    if args.handover:
+        print(f"HANDOVER: from now on verifiers refuse directories signed by {d.get('steward_key_id')}.")
     d["sequence"] = int(d.get("sequence") or 0) + 1
     d["issued_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     try:
@@ -110,6 +114,8 @@ def main() -> None:
     s.add_argument("keyfile")
     s.set_defaults(fn=cmd_init)
     s = sub.add_parser("sign", help="sign the registry directory")
+    s.add_argument("--handover", action="store_true",
+                   help="sign with the successor key, replacing the current steward key for good")
     s.add_argument("keyfile")
     s.add_argument("directory")
     s.set_defaults(fn=cmd_sign)

@@ -3,6 +3,9 @@
 // No dependencies: Ed25519 and SHA-256 come from Web Crypto (Node >= 20, browsers).
 
 export const STEWARD_PUBLIC_KEY_HEX = "5cb949aab04186e3e216ec541b847c912fc3f78138c0ec3cb2560b2dad0d1f1b";
+/** The successor steward key, created in advance and kept apart (PG-CODE.md §9.1). A directory
+ * it signs replaces every directory signed by the current steward key, whatever their sequence. */
+export const STEWARD_SUCCESSOR_PUBLIC_KEY_HEX = "658544163d6abd5fef046407980d249817875d87d8cf4b67879a2e265fa5612f"; // pg-ed25519:3e5e20729ce8485eea274c4cb33721d6, created 2026-10-03
 export const DIRECTORY_URL = "https://www.pregen.org/registries.json";
 /** The origin registry's (PRAMPTA's) operator keys, pinned here as well as in the
  * directory: a stolen steward key cannot add its own key to the bare namespace.
@@ -210,14 +213,28 @@ function checkContinuity(next, previous) {
 /** V-12: accept the directory only with the pinned steward's signature, its invariants,
  * a sequence no lower than one already seen and, given the last accepted directory,
  * nothing removed from it. With the built-in steward key the origin keys are pinned too. */
-export async function verifyDirectory(directory, { stewardPublicKeyHex = STEWARD_PUBLIC_KEY_HEX, minSequence = 0,
-  previous, originKeyFingerprints } = {}) {
+export async function verifyDirectory(directory, { stewardPublicKeyHex = STEWARD_PUBLIC_KEY_HEX, successorPublicKeyHex,
+  minSequence = 0, previous, originKeyFingerprints } = {}) {
   if (!Number.isSafeInteger(minSequence) || minSequence < 0) fail("minSequence must be a nonnegative integer");
   checkInvariants(directory);
-  if (directory.steward_key_id !== (await fingerprint(stewardPublicKeyHex))) fail("signed by a different steward key");
-  if (!(await verifySigned(directory, stewardPublicKeyHex, "signature"))) fail("bad steward signature");
-  if (directory.sequence < minSequence) fail(`sequence ${directory.sequence} is older than ${minSequence} already seen`);
-  if (previous) checkContinuity(directory, previous instanceof Directory ? previous.toJSON() : previous);
+  const successor = successorPublicKeyHex !== undefined ? successorPublicKeyHex
+    : stewardPublicKeyHex === STEWARD_PUBLIC_KEY_HEX ? STEWARD_SUCCESSOR_PUBLIC_KEY_HEX : null;
+  const currentId = await fingerprint(stewardPublicKeyHex);
+  const successorId = successor ? await fingerprint(successor) : null;
+  const bySuccessor = successorId !== null && directory.steward_key_id === successorId;
+  if (directory.steward_key_id !== currentId && !bySuccessor) fail("signed by a different steward key");
+  if (!(await verifySigned(directory, bySuccessor ? successor : stewardPublicKeyHex, "signature"))) fail("bad steward signature");
+  const prev = previous instanceof Directory ? previous.toJSON() : previous;
+  if (prev && successorId !== null && prev.steward_key_id === successorId && !bySuccessor) {
+    fail("the steward key was handed over; directories signed by the old key are refused");
+  }
+  // Handover: the successor's first directory replaces the old key's line, whatever its sequence
+  // (a thief holding the old key may have raised it). Within one key's line the usual rules hold.
+  const handover = bySuccessor && (!prev || prev.steward_key_id !== successorId);
+  if (!handover) {
+    if (directory.sequence < minSequence) fail(`sequence ${directory.sequence} is older than ${minSequence} already seen`);
+    if (prev) checkContinuity(directory, prev);
+  }
   const pin = originKeyFingerprints !== undefined ? originKeyFingerprints
     : stewardPublicKeyHex === STEWARD_PUBLIC_KEY_HEX ? ORIGIN_KEY_FINGERPRINTS : null;
   return Directory._make(directory, pin && [...pin]);

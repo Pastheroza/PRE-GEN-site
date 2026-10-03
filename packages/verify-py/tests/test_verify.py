@@ -139,3 +139,21 @@ def test_check_decision_covers_everything_before_generating():
     tampered = {**origin.sign(base, "operator_signature"), "model": "other"}
     with pytest.raises(PregenError, match="bad signature"):
         check_decision(tampered, {**request, "model": "other"}, dir_, KEY_SETS.__getitem__, now)
+
+
+def test_successor_steward_takes_over_whatever_the_thiefs_sequence():
+    successor = Key()
+    thief_dir = directory(50)
+    body = {k: v for k, v in directory(3).items() if k != "signature"}
+    body["steward_key_id"] = successor.id
+    handover = successor.sign(body, "signature")
+    taken = verify_directory(handover, steward.pub, min_sequence=50, previous=thief_dir,
+                             successor_public_key_hex=successor.pub)
+    assert taken.sequence == 3
+    with pytest.raises(PregenError, match="handed over"):
+        verify_directory(thief_dir, steward.pub, previous=taken, successor_public_key_hex=successor.pub)
+    shrunk = successor.sign({**body, "sequence": 4, "registries": body["registries"][:1]}, "signature")
+    with pytest.raises(PregenError, match="removed"):
+        verify_directory(shrunk, steward.pub, previous=taken, successor_public_key_hex=successor.pub)
+    with pytest.raises(PregenError, match="different steward"):
+        verify_directory(handover, steward.pub)

@@ -13,14 +13,17 @@ from urllib.parse import urlsplit
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-__version__ = "0.2.2"
+__version__ = "0.3.0"
 __all__ = [
     "STEWARD_PUBLIC_KEY_HEX", "DIRECTORY_URL", "PregenError", "Directory", "canonical_json",
     "fingerprint", "verify_bytes", "verify_signed", "verify_license", "issuer_of",
-    "verify_directory", "load_directory", "verify_decision", "check_decision", "ORIGIN_KEY_FINGERPRINTS",
+    "verify_directory", "load_directory", "verify_decision", "check_decision", "ORIGIN_KEY_FINGERPRINTS", "STEWARD_SUCCESSOR_PUBLIC_KEY_HEX",
 ]
 
 STEWARD_PUBLIC_KEY_HEX = "5cb949aab04186e3e216ec541b847c912fc3f78138c0ec3cb2560b2dad0d1f1b"
+# The successor steward key, created in advance and kept apart (PG-CODE.md §9.1). A directory it
+# signs replaces every directory signed by the current steward key, whatever their sequence.
+STEWARD_SUCCESSOR_PUBLIC_KEY_HEX = "658544163d6abd5fef046407980d249817875d87d8cf4b67879a2e265fa5612f"  # pg-ed25519:3e5e20729ce8485eea274c4cb33721d6, created 2026-10-03
 DIRECTORY_URL = "https://www.pregen.org/registries.json"
 # The origin registry's (PRAMPTA's) operator keys, pinned here as well as in the
 # directory: a stolen steward key cannot add its own key to the bare namespace.
@@ -256,21 +259,35 @@ _DEFAULT = object()
 
 
 def verify_directory(directory: dict, steward_public_key_hex: str = STEWARD_PUBLIC_KEY_HEX,
-                     min_sequence: int = 0, previous=None, origin_key_fingerprints=_DEFAULT) -> Directory:
+                     min_sequence: int = 0, previous=None, origin_key_fingerprints=_DEFAULT,
+                     successor_public_key_hex=_DEFAULT) -> Directory:
     """V-12: accept the directory only with the pinned steward's signature, its invariants,
     a sequence no lower than one already seen and, given the last accepted directory,
     nothing removed from it. With the built-in steward key the origin keys are pinned too."""
     if type(min_sequence) is not int or not 0 <= min_sequence <= _MAX_INT:
         raise PregenError("min_sequence must be a nonnegative integer")
     _check_invariants(directory)
-    if directory["steward_key_id"] != fingerprint(steward_public_key_hex):
+    if successor_public_key_hex is _DEFAULT:
+        successor_public_key_hex = (STEWARD_SUCCESSOR_PUBLIC_KEY_HEX
+                                    if steward_public_key_hex == STEWARD_PUBLIC_KEY_HEX else None)
+    successor_id = fingerprint(successor_public_key_hex) if successor_public_key_hex else None
+    by_successor = successor_id is not None and directory["steward_key_id"] == successor_id
+    if directory["steward_key_id"] != fingerprint(steward_public_key_hex) and not by_successor:
         raise PregenError("signed by a different steward key")
-    if not verify_signed(directory, steward_public_key_hex, "signature"):
+    signer = successor_public_key_hex if by_successor else steward_public_key_hex
+    if not verify_signed(directory, signer, "signature"):
         raise PregenError("bad steward signature")
-    if directory["sequence"] < min_sequence:
-        raise PregenError(f"sequence {directory['sequence']} is older than {min_sequence} already seen")
-    if previous is not None:
-        _check_continuity(directory, previous.to_json() if isinstance(previous, Directory) else previous)
+    prev = previous.to_json() if isinstance(previous, Directory) else previous
+    if prev is not None and successor_id is not None and prev["steward_key_id"] == successor_id and not by_successor:
+        raise PregenError("the steward key was handed over; directories signed by the old key are refused")
+    # Handover: the successor's first directory replaces the old key's line, whatever its sequence
+    # (a thief holding the old key may have raised it). Within one key's line the usual rules hold.
+    handover = by_successor and (prev is None or prev["steward_key_id"] != successor_id)
+    if not handover:
+        if directory["sequence"] < min_sequence:
+            raise PregenError(f"sequence {directory['sequence']} is older than {min_sequence} already seen")
+        if prev is not None:
+            _check_continuity(directory, prev)
     if origin_key_fingerprints is _DEFAULT:
         origin_key_fingerprints = ORIGIN_KEY_FINGERPRINTS if steward_public_key_hex == STEWARD_PUBLIC_KEY_HEX else None
     return Directory(directory, _TOKEN, origin_key_fingerprints)

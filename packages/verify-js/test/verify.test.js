@@ -136,3 +136,18 @@ test("checkDecision: everything a provider must check before generating", async 
   const tampered = { ...(await signed({})), model: "other" };
   await assert.rejects(checkDecision(tampered, { ...request, model: "other" }, opts), /bad signature/);
 });
+
+test("a successor steward key takes over from a stolen one, whatever the thief's sequence", async () => {
+  const successor = await keypair();
+  const opts = { stewardPublicKeyHex: steward.pub, successorPublicKeyHex: successor.pub };
+  const thiefDir = await directory(50);                       // old key, sequence raised by a thief
+  const handover = await successor.sign({ ...(await directory(51)), steward_key_id: successor.id }, "signature");
+  delete handover.signature;
+  const signedHandover = await successor.sign({ ...handover, sequence: 3 }, "signature");
+  const taken = await verifyDirectory(signedHandover, { ...opts, previous: thiefDir, minSequence: 50 });
+  assert.equal(taken.sequence, 3);
+  await assert.rejects(verifyDirectory(thiefDir, { ...opts, previous: taken }), /handed over/);
+  const shrunk = await successor.sign({ ...handover, sequence: 4, registries: handover.registries.slice(0, 1) }, "signature");
+  await assert.rejects(verifyDirectory(shrunk, { ...opts, previous: taken }), /removed/); // usual rules within the new line
+  await assert.rejects(verifyDirectory(signedHandover, { stewardPublicKeyHex: steward.pub }), /different steward/); // no successor pinned
+});

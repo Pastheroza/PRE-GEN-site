@@ -10,6 +10,11 @@ See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
 
 ## v5 — draft of 2026-10-03
 
+- Successor steward key (2026-10-03, `PG-CODE.md` §9.1): published and
+  pinned in `@pregen/verify` / `pregen` 0.3.0; a directory it signs replaces
+  the steward key's line whatever its sequence. Replaces "a change of
+  steward is announced by the outgoing key", which a thief holding that key
+  could also do.
 - Known limits stated exactly (2026-10-03, §10, after an external review):
   self custody prevents a forged license but not a false allow (provable
   afterwards only); an opt-out or pause stops new decisions, not issued

@@ -33,7 +33,10 @@ The directory check also refuses an older directory, a newer one that removes
 a registry or key, and a different one with the same sequence. The origin
 registry's keys are pinned in the library as well, so a stolen steward key
 cannot add its own key to bare `PG-…` codes; a new origin key comes with a
-new release.
+new release. A successor steward key
+(`pg-ed25519:3e5e20729ce8485eea274c4cb33721d6`) is pinned too: a directory it
+signs replaces those of the current steward key whatever their sequence, so a
+thief holding the old key cannot outbid it.
 
 A listing in the directory proves which registry may issue a code, not that
 it holds any right over a person or a work. A signed decision proves what the
