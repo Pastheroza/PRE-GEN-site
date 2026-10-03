@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pregen"
+version = "0.1.0"
+description = "Verify PRE-GEN signatures against the signed registry directory, with the PRE-GEN steward key built in"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.9"
+dependencies = ["cryptography>=42"]
+authors = [{ name = "Valerii Egorov (Pastheroza)" }]
+keywords = ["pre-gen", "pregen", "pre-generation authorization", "ed25519", "verification"]
+
+[project.urls]
+Homepage = "https://www.pregen.org"
+Source = "https://github.com/Pastheroza/PRE-GEN-site/tree/main/packages/verify-py"
+
+[tool.setuptools]
+packages = ["pregen"]
