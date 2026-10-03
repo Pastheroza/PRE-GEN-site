@@ -1094,17 +1094,24 @@ before hitting one in production.
   effective time every new decision for the subject refuses. A decision
   issued earlier stays usable until its `expires_at` (reference:
   `DECISION_TTL_SECONDS` = 300) and a cached plain allow up to
-  `max_cache_age_seconds` (P-7); a provider learns a new `revocation_epoch`
+  `max_cache_age_seconds` (P-7), never past its `expires_at` (V-3); a provider learns a new `revocation_epoch`
   only from its next decision. Another registry holding the same person is
   not bound by it.
 - **Self custody prevents a forged license, not a false allow.** A provider
   verifies the decision (V-2), not the license it names. A compromised
   registry can sign an `allow` naming a license that does not exist or that
-  the subject never signed. Under self custody this is provable afterwards —
-  the evidence bundle (§1.4) for that decision has no license carrying the
-  subject's signature — but not prevented: prevention would need providers
-  to verify the license against a subject key established by someone other
-  than the registry, which v5 does not specify.
+  the subject never signed. Without a verifiable license and a trusted
+  binding of the subject's key, such an allow cannot be independently
+  confirmed. An evidence bundle (§1.4) without a subject-signed license shows
+  only that the bundle does not support the allow, not that no license ever
+  existed; a compromised registry may withhold the bundle, and the subject
+  key's binding is the registry's own statement. Preventing or proving such
+  an allow needs mechanisms v5 does not specify.
+- **A stolen key cannot be revoked.** A stolen operator or steward key keeps
+  producing valid signatures. Announcing the next key (`PG-CODE.md` §9.1)
+  prepares a planned rotation; it does not stop the old key, v5 defines no
+  revoked status for a listed key, and an object's own `issued_at` does not
+  show that it was signed before a theft.
 - **Legal overrides have no format.** A court may order generation despite
   an opt-out; v5 defines no record, decision, refusal code or conformance
   status for such an override, and the reference registry implements none.
