@@ -1028,8 +1028,10 @@ document is read as a claim about it:
   auto-discover a root. This is not yet a published SDK rollout. Python
   clients still rely on per-registry operator pins. The steward key is
   published (`PG-CODE.md` §9.1, 2026-10-03) and the directory on pregen.org
-  is signed (`sequence` 1); no published SDK checks it yet, and v2 does not
-  define freshness or key revocation. Namespace membership is not evidence of rights-holder authority.
+  is signed (`sequence` 1). The verification libraries `@pregen/verify`
+  (npm) and `pregen` (PyPI) 0.1.0 check it with the steward key built in;
+  `@prampta/sdk` does not use them yet. v2 does not define freshness or key
+  revocation. Namespace membership is not evidence of rights-holder authority.
 - **Anchoring.** Audit roots are submitted about hourly to public
   OpenTimestamps calendars, best effort (§10).
 - **Opt-out cooling.** 14 days (`COOLING_PERIOD_DAYS`); a subject pause

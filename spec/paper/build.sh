@@ -3,6 +3,7 @@
 # (A4, Times/Courier from macOS — the same fonts as versions 1–4).
 #   spec/paper/build.sh 5                          -> draft (concept DOI, "Draft")
 #   DOI=10.5281/zenodo.NNN spec/paper/build.sh 5   -> the version as published
+#   FINAL=1 spec/paper/build.sh 5                  -> as published, concept DOI only
 set -eu
 V=${1:?version number}
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -10,6 +11,8 @@ CHROME=${CHROME:-"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"}
 DATE=$(sed -n 's/.*data-date="\([^"]*\)".*/\1/p' "$HERE/pre-gen-v$V.html" | head -1)
 if [ -n "${DOI:-}" ]; then
   DOI_LINE="DOI: $DOI"; VER_LINE="Version $V · $DATE"
+elif [ -n "${FINAL:-}" ]; then   # for upload when the version DOI is not known yet
+  DOI_LINE="Concept DOI: 10.5281/zenodo.20129901"; VER_LINE="Version $V · $DATE"
 else
   DOI_LINE="Concept DOI: 10.5281/zenodo.20129901"; VER_LINE="Version $V · DRAFT, not yet published · $DATE"
 fi
