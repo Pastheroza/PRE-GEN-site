@@ -778,7 +778,12 @@ and human review (`PG_HELD_FOR_REVIEW`, disposition `review`).
 - **P-5** A provider MUST generate on the registry's authority only when
   `disposition` is `allow`. On `not_blocked` it MAY generate under its own
   policy but MUST NOT present the output as licensed. On `review` and `deny`
-  it MUST NOT generate for this request.
+  it MUST NOT generate for this request, with one exception: `PG_NO_SUBJECT`
+  says only that this registry holds no such subject. It is not a
+  prohibition — the user may hold rights the registry does not record (a
+  direct contract, their own work, another registry) — so the provider MAY
+  proceed under its own policy, as for `not_blocked`, and MUST NOT present
+  the output as licensed by this registry.
 - **P-6** A reason code absent from `REFUSAL-CODES.md` MUST be treated as
   hard.
 - **P-7** A decision MAY be reused only for the identical request, only

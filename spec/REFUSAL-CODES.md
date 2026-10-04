@@ -35,7 +35,7 @@ answer, not on retryable-by-default.
 | `PG_MISSING_PROMPT_HASH` | request | Soft | 2025-01-01 | The request did not include a prompt_hash to bind the decision to. |
 | `PG_NO_LICENSE` | license | Soft | 2025-01-01 | No valid, live license authorizes this licensee for this subject. |
 | `PG_NO_PAIR` | identity | Soft | 2025-01-01 | No live provider↔licensee pair authorizes this caller. |
-| `PG_NO_SUBJECT` | subject_trust | Soft | 2025-01-01 | No registered subject matches subject_id. |
+| `PG_NO_SUBJECT` | subject_trust | Soft | 2025-01-01 | No registered subject matches subject_id. Not a prohibition: this registry knows nothing about the subject, so the provider decides under its own policy and must not present the output as licensed (spec P-5). |
 | `PG_ORG_INTERNAL_USE` | grant | Soft | 2026-09-25 | ALLOWED without a licence: the connected user is an owner, admin or creator of the organization that itself holds this character, brand or work (never a person's likeness or voice). Ends when they leave the organization or lose the role. core/authz.py::org_internal_user. |
 | `PG_OWNER_NOT_VERIFIED` | subject_trust | Soft | 2026-08-19 | Commercial use also requires the subject's owning account itself to be verified (identity-verified user, or domain/kyc-tier organization) — the subject alone reaching commercial_enabled is not sufficient. |
 | `PG_PRODUCT_MISMATCH` | license | Soft | 2025-04-01 | The license is bound to a specific product and this request names a different one. |

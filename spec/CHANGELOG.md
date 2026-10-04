@@ -10,6 +10,11 @@ See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
 
 ## v5 — draft of 2026-10-03
 
+- `PG_NO_SUBJECT` is not a prohibition (2026-10-04, §5.4 P-5, after an
+  external review): it says only that this registry holds no such subject; the
+  provider may proceed under its own policy, as for `not_blocked`, without
+  presenting the output as licensed. Before, P-5 forbade generating on any
+  `deny`, which turned "unknown here" into "forbidden".
 - Maximum code body 36 characters (2026-10-03, `PG-CODE.md` §4.2, after an
   external review): at position 37 the weight is 0 mod 37, so the
   single-substitution guarantee did not hold for longer bodies. No issued
