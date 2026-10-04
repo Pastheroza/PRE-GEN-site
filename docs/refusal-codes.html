@@ -28,7 +28,7 @@
 </div>
 </div></header>
 <main><div class="wrap">
-<div class="doc"><aside><ul><li><a href="/docs">Overview</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versioning</a></li><li><a href="/docs/refusal-codes" aria-current="page">Refusal codes</a></li><li><a href="/docs/sdk">Integrate</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Implement</a></li></ul></aside><article><h1>Refusal codes</h1>
+<div class="doc"><aside><ul><li><a href="/docs">Overview</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versioning</a></li><li><a href="/docs/refusal-codes" aria-current="page">Refusal codes</a></li><li><a href="/docs/sdk">Integrate</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Implement</a></li></ul></aside><article><h1>Refusal codes</h1>
 <p class="meta">38 codes · policy version <span class="mono">2026-09-22</span> · generated from the specification</p>
 <p>Every decision from <code>POST /v1/verify/</code> carries a <code>reason</code>. A <b>hard</b> code means no retry, reshaped request or new licence changes the answer. A soft code means a different request, a valid licence or a different provider might succeed. An unknown code must be treated as hard.</p>
 <p>Two codes are not refusals: <code>PG_STD_TRACKING_ONLY</code> comes with <code>not_blocked</code> (personal use, nothing granted) and <code>PG_ORG_INTERNAL_USE</code> with <code>allow</code>.</p>

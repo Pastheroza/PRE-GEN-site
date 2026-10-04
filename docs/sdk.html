@@ -28,9 +28,18 @@
 </div>
 </div></header>
 <main><div class="wrap">
-<div class="doc"><aside><ul><li><a href="/docs">Overview</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versioning</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk" aria-current="page">Integrate</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Implement</a></li></ul></aside><article><h1>Integrate</h1>
+<div class="doc"><aside><ul><li><a href="/docs">Overview</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versioning</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk" aria-current="page">Integrate</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Implement</a></li></ul></aside><article><h1>Integrate</h1>
 <p class="meta">HTTP · verification: <span class="mono">@pregen/verify</span> (npm) and <span class="mono">pregen</span> (PyPI) 0.3.0 or later · reference TypeScript SDK <span class="mono">@prampta/sdk</span> 0.4.0 on npm (Apache-2.0); 0.7.0, with the stricter checks of PRE-GEN v5, is prepared but not yet published</p>
 <p>A provider needs credentials from a <a href="/registries">registry</a>. The first registry, PRAMPTA, issues a sandbox key after a verified company email and a production key after a DNS record on the company domain. The sandbox reaches synthetic test subjects only.</p>
+<h2>Minimum safe versions</h2>
+<div class="table"><table>
+<thead><tr><th>Package</th><th>Use at least</th><th>Why</th></tr></thead>
+<tbody>
+<tr><td class="mono">@pregen/verify</td><td class="mono">0.3.0</td><td><code>checkDecision</code>, directory continuity, pinned PRAMPTA keys including the announced next key, successor steward key</td></tr>
+<tr><td class="mono">pregen</td><td class="mono">0.3.0</td><td>the same, for Python</td></tr>
+<tr><td class="mono">@prampta/sdk</td><td class="mono">0.4.0 (published)</td><td>0.4.0 does not run the v5 checks. Until 0.7.0 is published, call <code>/v1/verify</code> over HTTP and pass the JSON it returns to <code>checkDecision</code>. 0.7.0 runs them itself through its <code>pregenDirectory</code> option.</td></tr>
+</tbody></table></div>
+<p>The shortest safe path: install → sandbox secret → <code>/v1/verify</code> → <code>checkDecision</code> → generate → receipt → store the decision, the directory <code>sequence</code> and the receipt id.</p>
 <p class="note">Two libraries, two jobs: <span class="mono">@prampta/sdk</span> asks the PRAMPTA registry for a decision; <span class="mono">@pregen/verify</span> (on PyPI: <span class="mono">pregen</span>) checks that any registry's answer is genuine.</p>
 <p class="note">Keep the provider secret on your server. It never goes to a browser, a URL or client code. Send a hash of the prompt, never the prompt.</p>
 
@@ -75,6 +84,14 @@ saved = directory.to_json()
 pregen.check_decision(decision, request, directory)           # raises with the reason</code></pre>
 <p><code>checkDecision</code> runs every check of <a href="/spec/PRE-GEN-SPEC.md">PRE-GEN-SPEC.md</a> §5.4 before you generate: a license-backed <code>allow</code>, every echoed field equal to what you sent, a valid lifetime, a verified user binding when you named a user, and the signature chain. It refuses an older or shrunk directory, and the origin registry's keys are pinned in the library. Source and tests: <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/packages">packages/</a>, Apache-2.0.</p>
 
+<h2>Receipts, volume and caching</h2>
+<ul>
+<li><strong>One receipt per allow.</strong> A second receipt for the same decision is refused. The receipt is your evidence of what you produced under the decision.</li>
+<li><strong>One decision is not one output.</strong> The protocol cannot stop several generations under one allow; report each output you deliver and ask again for a new request. Lifecycle events after the receipt follow one output.</li>
+<li><strong>Caching.</strong> Only a plain allow with <code>cache_scope</code> <code>exact_request</code> may be reused, only for the identical request, only within <code>max_cache_age_seconds</code>, and never past its <code>expires_at</code> (300 seconds at PRAMPTA).</li>
+<li><strong>Usage limits at PRAMPTA.</strong> On a licence with <code>max_uses</code> or <code>concurrency_limit</code>, every allow reserves one use for 24 hours. A receipt makes it permanent. Without a receipt the reservation expires after 24 hours and the use is not counted, and until then it holds a concurrency slot.</li>
+<li><strong>Without receipts</strong> you keep only the decisions: proof of what you asked, not of what you made. A provider becomes available to users outside its own team only after one production allow followed by its receipt.</li>
+</ul>
 <h2>TypeScript SDK</h2>
 <pre><code>npm install @prampta/sdk</code></pre>
 <pre><code>import { Prampta } from "@prampta/sdk";
@@ -104,7 +121,7 @@ if (d.allowed) generate({ obligations: d.obligations });</code></pre>
 <tr><td class="mono">sbx-unknown</td><td><code>PG_NO_SUBJECT</code></td></tr>
 </tbody></table></div>
 <p>Full step-by-step guide for providers: <a href="https://prampta.com/get-started.md">prampta.com/get-started.md</a>. Wire contract: <a href="https://api2.prampta.com/openapi.json">OpenAPI</a>.</p>
-<nav class="pager" aria-label="Pages"><a href="/docs/refusal-codes">← Refusal codes</a><a href="/docs/c2pa">C2PA →</a></nav></article></div>
+<nav class="pager" aria-label="Pages"><a href="/docs/refusal-codes">← Refusal codes</a><a href="/docs/proves">What it proves →</a></nav></article></div>
 </div></main>
 <footer class="foot"><div class="wrap">
 <p>PRE-GEN is an open standard by Valerii Egorov, Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
