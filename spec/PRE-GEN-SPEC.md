@@ -931,7 +931,8 @@ confused:
   previous receipt shape during an announced window; `pg.receipt.v2` and
   `pg.receipt.v3` currently coexist with no sunset date.
 - **Security.** A vulnerability in the standard itself is reported
-  privately to the editor (Pastheroza@gmail.com) before public disclosure;
+  privately to the editor through GitHub private vulnerability reporting
+  (`github.com/Pastheroza/PRE-GEN-site/security/advisories/new`) before public disclosure;
   a vulnerability in a registry's implementation is reported to that
   registry (PRAMPTA: security@prampta.com).
 
