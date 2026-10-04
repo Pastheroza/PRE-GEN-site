@@ -10,6 +10,12 @@ See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
 
 ## v5 — draft of 2026-10-03
 
+- Vectors for the 36-character limit (2026-10-04, after an external review
+  noted the published vectors had not changed): `pg_code.length_accepts`
+  (a 36-character body verifies) and `pg_code.length_rejects` (two
+  37-character bodies with the formula's check character must fail). The
+  reference registry now rejects them too. Additive; no existing vector
+  changed.
 - `PG_NO_SUBJECT` is not a prohibition (2026-10-04, §5.4 P-5, after an
   external review): it says only that this registry holds no such subject; the
   provider may proceed under its own policy, as for `not_blocked`, without

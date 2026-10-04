@@ -809,6 +809,26 @@
         "license_id": "PG-ABCD-PRM-1234567-A1B2C3A"
       }
     ],
+    "max_body_length": 36,
+    "length_accepts": [
+      {
+        "kind": "body_of_36",
+        "body": "100000000000000000000000000000000000",
+        "check_char": "1"
+      }
+    ],
+    "length_rejects": [
+      {
+        "kind": "body_of_37",
+        "body": "1000000000000000000000000000000000000",
+        "check_char": "1"
+      },
+      {
+        "kind": "body_of_37_last_digit_changed",
+        "body": "1000000000000000000000000000000000001",
+        "check_char": "1"
+      }
+    ],
     "issuer_rejects": [
       {
         "kind": "issuer_letter_substitution",

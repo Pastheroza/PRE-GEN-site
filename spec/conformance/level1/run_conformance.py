@@ -216,6 +216,18 @@ def run(adapter_cmd: str, cwd: str | None, extra_env: dict | None = None,
             ok = resp.get("valid") is False
             _check(name, ok, "" if ok else f"expected a corrupted prefix to fail verification, got {resp}", results)
 
+    # Maximum body length (PG-CODE.md §4.2): 36 passes, 37 fails even with the formula's check.
+    for want, key in ((True, "length_accepts"), (False, "length_rejects")):
+        for case in pg.get(key, []):
+            resp = _call(adapter_cmd, cwd, extra_env, {
+                "op": "pg_verify_check_char", "body": case["body"], "check_char": case["check_char"]})
+            name = f"pg_{key}:{case['kind']}"
+            if resp.get("unsupported"):
+                _check(name, True, "skipped (unsupported)", results)
+            else:
+                ok = resp.get("valid") is want
+                _check(name, ok, "" if ok else f"expected valid={want}, got {resp}", results)
+
     # Probe each explicitly required operation using an existing valid vector.
     probes = {
         "canonical_json": {"op": "canonical_json", "input": {}},
