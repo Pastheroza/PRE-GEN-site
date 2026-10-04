@@ -214,6 +214,24 @@ check = CHECK_ALPHABET[ sum mod 37 ]</code></pre>
     </ol>
     <p>A registry that receives a code with a prefix it doesn't hold answers that the code belongs to another registry, not "not found". Longer serials stay free as well: the pad width is a minimum.</p>
 
+    <h3>The signed registry directory</h3>
+    <p>A prefix by itself protects nothing: anyone can print one. What decides which codes software <strong>accepts</strong> is the directory at <a href="/registries.json">registries.json</a>, signed by the PRE-GEN steward key (<a href="/spec/PG-CODE.md">PG-CODE.md</a> §9.1). It lists each registry with its namespace (bare for the origin registry, four letters for every other), its API and key-set addresses (HTTPS only) and the fingerprints of every operator key it may sign with. A code is valid only when a key listed for its namespace signed it — the same rule for every registry, the origin one included.</p>
+    <ul>
+      <li>A client checks the signature with a steward key it already holds, never with a key taken from the directory, and refuses a directory older than one it has seen, one that removes a registry or key, or a different one with the same <code>sequence</code>.</li>
+      <li>A registry announces its next operator key in the directory before using it, so a planned rotation changes nothing for clients.</li>
+      <li>A listing proves which registry may issue a code, not that it holds any right over a person or a work.</li>
+      <li>v5 does not define how fresh a directory must be or how a stolen key is revoked.</li>
+    </ul>
+    <h3>Steward keys</h3>
+    <div class="table"><table>
+      <thead><tr><th>Key</th><th>Fingerprint</th><th>Public key</th></tr></thead>
+      <tbody>
+        <tr><td>Steward</td><td class="mono">pg-ed25519:dcdd244659e6d0e2426f2b504cb11590</td><td class="mono">5cb949aab04186e3e216ec541b847c912fc3f78138c0ec3cb2560b2dad0d1f1b</td></tr>
+        <tr><td>Successor (unused until a handover)</td><td class="mono">pg-ed25519:3e5e20729ce8485eea274c4cb33721d6</td><td class="mono">658544163d6abd5fef046407980d249817875d87d8cf4b67879a2e265fa5612f</td></tr>
+      </tbody>
+    </table></div>
+    <p>Both keys are held offline by the editor of the standard, not by any registry. The same values are in the specification, the v5 paper, the <a href="https://github.com/Pastheroza/PRE-GEN-site">repository README</a> and the DNS TXT record <code>_pregen-steward.pregen.org</code>. A directory signed by the successor replaces those of the steward key whatever their sequence. <a href="/docs/sdk"><span class="mono">@pregen/verify</span> and <span class="mono">pregen</span></a> have both keys built in.</p>
+
     <h2>9 · Conformance</h2>
     <p>An implementation conforms if it reproduces every case in the <code>pg_code</code>
     section of the test vectors:</p>

@@ -9,17 +9,19 @@
 
 ## Docs
 
-- Version: PRE-GEN v5 draft (2026-09-28), awaiting publication on Zenodo; last published: v4. Versions match Zenodo, concept DOI 10.5281/zenodo.20129901: [versions](https://www.pregen.org/docs/versions), [PDF](https://www.pregen.org/spec/PRE-GEN-v5.pdf)
+- Version: PRE-GEN v5 (2026-10-03), awaiting publication on Zenodo; last published: v4. Versions match Zenodo, concept DOI 10.5281/zenodo.20129901: [versions](https://www.pregen.org/docs/versions), [PDF](https://www.pregen.org/spec/PRE-GEN-v5.pdf)
 
 - [Protocol overview](https://www.pregen.org/docs): crypto invariant, signed objects, flow
 - [PG codes](https://www.pregen.org/docs/pg-code): identifier format and check character
 - [Refusal codes](https://www.pregen.org/docs/refusal-codes): every reason code, hard or soft
-- [Integrate](https://www.pregen.org/docs/sdk): HTTP requests, TypeScript SDK, sandbox subjects
+- [Integrate](https://www.pregen.org/docs/sdk): HTTP requests, verification libraries `@pregen/verify` (npm) and `pregen` (PyPI), TypeScript SDK, sandbox subjects
+- [Implement](https://www.pregen.org/docs/implement): kit for an independent implementation, checked with the conformance runner
+- [FAQ](https://www.pregen.org/faq): including what a signed decision proves
 - [Versioning](https://www.pregen.org/docs/versions) and [C2PA](https://www.pregen.org/docs/c2pa)
 
 ## Registries
 
-- [Registries](https://www.pregen.org/registries) and [registries.json](https://www.pregen.org/registries.json): who runs PRE-GEN. Today one registry is in production: PRAMPTA (https://prampta.com, API https://api2.prampta.com). Issuer prefixes are specified; wider discovery is proposed.
-- PG codes: bare `PG-000042*` codes belong to the origin registry; other registries use a four-letter prefix, `PG-NWRD-000042=` (PG codes §8). The prefix is the only part of a code software may read — to find the registry.
+- [Registries](https://www.pregen.org/registries) and [registries.json](https://www.pregen.org/registries.json): who runs PRE-GEN. Today one registry is in production: PRAMPTA (https://prampta.com, API https://api2.prampta.com). registries.json is signed by the PRE-GEN steward key (fingerprint pg-ed25519:dcdd244659e6d0e2426f2b504cb11590; also in DNS TXT `_pregen-steward.pregen.org`). Verify it with that key, never with one taken from the file.
+- PG codes: bare `PG-000042*` codes belong to the origin registry; other registries use a four-letter prefix, `PG-NWRD-000042=` (PG codes §8; which keys may sign in which namespace: the signed directory). The prefix is the only part of a code software may read — to find the registry.
 - [Specification source](https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec): Markdown spec, test vectors, conformance runner
 - [Look up a PG code](https://www.pregen.org/lookup)
