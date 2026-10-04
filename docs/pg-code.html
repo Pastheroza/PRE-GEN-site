@@ -111,9 +111,13 @@ check = CHECK_ALPHABET[ sum mod 37 ]</code></pre>
       roughly <strong>4% of substitutions undetected</strong> — collisions by construction, not
       bad luck. 37 is the next prime at or above the alphabet size: the difference any
       substitution makes is <code>weight × delta mod 37</code>, which can only be 0 if the
-      weight itself is 0 mod 37 — no position weight here ever is.
+      weight itself is 0 mod 37. Weights 1 to 36 never are; weight 37 is.
     </p>
-    <p><strong>Guarantees</strong> (verified by exhaustive brute force, not asserted):</p>
+    <p>
+      <strong>So a body is at most 36 characters</strong>; a longer one is invalid. Every code
+      issued so far is far shorter (the longest today is 19).
+    </p>
+    <p><strong>Guarantees</strong> (verified by exhaustive brute force, not asserted), for bodies of at most 36 characters:</p>
     <ul>
       <li>every single-character substitution changes the check character;</li>
       <li>every adjacent transposition of two <em>different</em> characters changes it.</li>

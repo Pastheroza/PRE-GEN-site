@@ -10,6 +10,10 @@ See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
 
 ## v5 — draft of 2026-10-03
 
+- Maximum code body 36 characters (2026-10-03, `PG-CODE.md` §4.2, after an
+  external review): at position 37 the weight is 0 mod 37, so the
+  single-substitution guarantee did not hold for longer bodies. No issued
+  code is affected; the longest body is 19 characters.
 - Successor steward key (2026-10-03, `PG-CODE.md` §9.1): published and
   pinned in `@pregen/verify` / `pregen` 0.3.0; a directory it signs replaces
   the steward key's line whatever its sequence. Replaces "a change of

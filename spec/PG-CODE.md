@@ -138,10 +138,17 @@ construction.
 37 is the next prime at or above the alphabet size. The difference any
 single substitution makes to the sum is `weight × delta mod 37`; since 37 is
 prime and `delta < 32 < 37`, that difference can only be 0 mod 37 if the
-weight itself is 0 mod 37 — which no position weight here ever is. The same
-argument gives adjacent-transposition detection.
+weight itself is 0 mod 37. Weights 1 to 36 never are; weight 37 is. The
+same argument gives adjacent-transposition detection.
 
-**Guarantees** (verified by exhaustive brute force, not asserted):
+**Maximum body length: 36 characters.** A body longer than 36 characters is
+invalid, and a verifier must reject it. At position 37 the weight is 0 mod 37,
+so a typo there would not change the check character (found by an external
+review, 2026-10-03). Every code issued so far is far shorter; the longest
+body today, a licence id, is 19 characters.
+
+**Guarantees** (verified by exhaustive brute force, not asserted), for bodies
+of at most 36 characters:
 - every single-character substitution changes the check character;
 - every adjacent transposition of two *different* characters changes it.
 
@@ -174,6 +181,7 @@ The serial is a positive integer from a registry-wide counter, formatted
 with **zero-padding to a minimum of 6 digits**. Six is a minimum, not a
 maximum: serial 1 234 567 renders as `1234567` (7 digits), and the format
 stays valid. Implementations **must not** assume a fixed length.
+The only upper bound is the 36-character body limit of §4.2.
 
 | Serial | Code |
 |---|---|
@@ -286,7 +294,8 @@ report it as "not found" or "invalid": it answers that the code belongs to
 another registry and points to the registry list.
 
 Longer serials remain free as well: the pad width is a minimum, and nothing
-breaks at a million subjects.
+breaks at a million subjects. The body, prefix included, still stays within
+36 characters (§4.2).
 
 ### 9.1 The registry directory: who may issue which codes
 

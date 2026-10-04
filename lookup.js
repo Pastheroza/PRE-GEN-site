@@ -21,6 +21,8 @@
     if (code.indexOf("PG") !== 0 && code.indexOf("PG-") !== 0)
       return { error: "Codes start with the literal prefix “PG-”.", hint: "" };
     var rest = code.slice(3);
+    if (rest.replace(/-/g, "").length > 37)
+      return { error: "Too long: a PG code body is at most 36 characters plus the check character.", hint: "See PG-CODE.md §4.2." };
     if (/[ILOU]/.test(rest))
       return { error: "“" + (/./.exec(rest.split("").find(function (ch) { return "ILOU".indexOf(ch) >= 0; })) || ["?"])[0] + "” is never used in a PG body — Crockford base32 excludes I, L, O, U.", hint: "I and L are usually mistyped 1; O is usually a zero “0”." };
     var m;

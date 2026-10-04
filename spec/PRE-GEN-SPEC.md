@@ -1023,17 +1023,17 @@ document is read as a claim about it:
 - **C2PA.** PRAMPTA issues `pg.assertion.v1` (§1.5). No end-to-end
   integration with a C2PA manifest has been tested.
 - **Namespace.** PRAMPTA is the directory's origin entry and issues bare
-  codes. The TypeScript SDK source now provides an opt-in verified directory
-  snapshot and namespace/endpoint checks (V-10 to V-12). It requires pinned
-  operator keys plus an independently obtained steward key; it does not
-  auto-discover a root. This is not yet a published SDK rollout. Python
-  clients still rely on per-registry operator pins. The steward key is
-  published (`PG-CODE.md` §9.1, 2026-10-03) and the directory on pregen.org
-  is signed (`sequence` 1). The verification libraries `@pregen/verify`
-  (npm) and `pregen` (PyPI) 0.1.0 check it with the steward key built in;
-  `@prampta/sdk` 0.7.0 uses them through its opt-in `pregenDirectory`
-  option. v2 does not define freshness or key
-  revocation. Namespace membership is not evidence of rights-holder authority.
+  codes. The steward key is published (`PG-CODE.md` §9.1, 2026-10-03) and
+  the directory on pregen.org is signed; at the time of writing it is at
+  `sequence` 2, which adds the next PRAMPTA operator key and the successor
+  steward key. The verification libraries `@pregen/verify` (npm) and
+  `pregen` (PyPI) check it with the steward key built in (0.3.0 or later;
+  0.4.0 adds the offline simulator). `@prampta/sdk` 0.7.0, published, uses
+  them through its opt-in `pregenDirectory` option (V-10 to V-12); it
+  requires pinned operator keys and does not auto-discover a root. Current
+  versions are listed on pregen.org/docs/sdk. v2 does not define freshness
+  or key revocation. Namespace membership is not evidence of rights-holder
+  authority.
 - **Anchoring.** Audit roots are submitted about hourly to public
   OpenTimestamps calendars, best effort (§10).
 - **Opt-out cooling.** 14 days (`COOLING_PERIOD_DAYS`); a subject pause
