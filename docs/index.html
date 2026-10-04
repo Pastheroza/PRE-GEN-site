@@ -30,7 +30,17 @@
 <main><div class="wrap">
 <div class="doc"><aside><ul><li><a href="/docs" aria-current="page">Overview</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versioning</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Integrate</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Implement</a></li></ul></aside><article><h1>Protocol overview</h1>
 <p class="meta">PRE-GEN v5 draft · Copyright Valerii Egorov · Apache-2.0 · <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">source</a> · Test vectors v2 · Policy version <span class="mono">2026-09-22</span> · The text is normative; the vectors test it, and a disagreement is an erratum.</p>
-<p>PRE-GEN is a protocol for <strong>pre-generation authorization</strong>. Before a model produces content depicting a registered person, brand, voice or work, the provider asks a registry whether the use is permitted and receives a signed decision it can store and anyone can verify.</p>
+<p>PRE-GEN is a protocol for <strong>pre-generation authorization</strong>. Before a model produces content depicting a registered person, brand, voice or work, the provider asks an authorization registry whether the use is permitted and receives a signed decision it can store and anyone can verify.</p>
+
+<h2>A small core, and room for each registry</h2>
+<p>The <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/PRE-GEN-SPEC.md">core</a> is what every registry, provider and verifier implements: the decision, the licence envelope, the receipt, 17 core <a href="/docs/refusal-codes">refusal codes</a>, PG codes and the signed registry directory. It also fixes a floor of protections no registry may lower: an opt-out beats any licence, a refused subject status beats any licence, minors stay protected, and an unknown subject is not a prohibition.</p>
+<ul>
+<li><strong>Floors only go up.</strong> A registry may refuse more than the core, never allow more.</li>
+<li><strong>Own members and codes.</strong> A registry may add signed members, which verifiers ignore unless marked <code>critical</code>, and its own refusal codes, prefixed with its issuer: <code>PG_&lt;ISSUER&gt;_…</code>.</li>
+<li><strong>Published policy.</strong> Each registry publishes its floors, codes, extensions, decision lifetime and opt-out waiting period.</li>
+<li><strong>Several subjects.</strong> One output with a person, a voice and a brand needs an allow for each, under one <code>generation_id</code>.</li>
+</ul>
+<p>What the origin registry, PRAMPTA, adds — end-user binding, decision caching, evidence bundles, C2PA assertions, observations — is in <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/PRE-GEN-EXTENSIONS.md">PRE-GEN-EXTENSIONS.md</a>.</p>
 
 <h2>The crypto invariant</h2>
 <ul>
@@ -48,11 +58,11 @@ key_fingerprint     = "pg-ed25519:" + hex(SHA256(raw 32-byte public key))[0:32]<
 <div class="table"><table>
 <thead><tr><th>Object</th><th>Marker</th><th>Signed by</th><th>Proves</th></tr></thead>
 <tbody>
-<tr><td>Decision</td><td class="mono">pg.decision.v1</td><td>Registry</td><td>The answer to one request, its policy version and cache scope</td></tr>
+<tr><td>Decision</td><td class="mono">pg.decision.v1</td><td>Registry</td><td>The answer to one request and its policy version</td></tr>
 <tr><td>Licence</td><td class="mono">pg.license.v2</td><td>Rights holder, countersigned by the registry</td><td>A scoped permission: use, modality, channel, territory, time, project</td></tr>
 <tr><td>Receipt</td><td class="mono">pg.receipt.v2 · v3</td><td>Provider (v3 signs the event type)</td><td>That a generation under a decision was reported</td></tr>
-<tr><td>Evidence bundle</td><td class="mono">pg.evidence.v1</td><td>Registry</td><td>Decision, licence and audit chain, verifiable offline</td></tr>
-<tr><td>Assertion</td><td class="mono">pg.assertion.v1</td><td>Registry</td><td>A pointer to the decision, embeddable in a C2PA manifest</td></tr>
+<tr><td>Evidence bundle (extension)</td><td class="mono">pg.evidence.v1</td><td>Registry</td><td>Decision, licence and audit chain, verifiable offline</td></tr>
+<tr><td>Assertion (extension)</td><td class="mono">pg.assertion.v1</td><td>Registry</td><td>A pointer to the decision, embeddable in a C2PA manifest</td></tr>
 </tbody></table></div>
 
 <h2>The flow</h2>

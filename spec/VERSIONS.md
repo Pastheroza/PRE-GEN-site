@@ -29,7 +29,7 @@ as its own Zenodo version; everything it added is part of v5.
    never stop *recognizing* it.
 3. **Object markers are separate.** `pg.decision.v1`, `pg.license.v2`,
    `pg.receipt.v3` and the other markers version one signed object each and
-   move on their own rules (`PRE-GEN-SPEC.md` §5). A new PRE-GEN version does
+   move on their own rules (`PRE-GEN-SPEC.md` §6). A new PRE-GEN version does
    not bump them, and bumping one does not by itself make a new PRE-GEN version.
 4. **Each version lists what changed** against the previous one, here and in
    `CHANGELOG.md`, so an implementer of the old one knows what to update.
@@ -38,6 +38,12 @@ as its own Zenodo version; everything it added is part of v5.
 
 What an implementation of v4 must change:
 
+- **A small core and extensions.** `PRE-GEN-SPEC.md` is the core every
+  authorization registry, provider and verifier implements: the decision, the
+  licence envelope, the receipt, 17 core refusal codes, the fixed floor of
+  protections and the rule for several subjects in one output. A registry may
+  add members, codes and stricter rules (E-1 to E-6), never allow more than
+  the core. The origin registry's additions are in `PRE-GEN-EXTENSIONS.md`.
 - **Identifiers.** Subject codes are `PG-<serial><check>` (`PG-000042*`);
   licence ids are `PG-<CLASS>-<subject serial>-<tail><check>`. The mod-37 check
   character catches every single-character typo and adjacent transposition.

@@ -9,17 +9,19 @@ it without asking permission.
 
 | File | What it is |
 |---|---|
-| `PRE-GEN-SPEC.md` | The protocol: signed objects, canonicalization, grammar, versioning |
+| `PRE-GEN-SPEC.md` | The core every registry, provider and verifier implements |
+| `PRE-GEN-EXTENSIONS.md` | What a registry adds; the origin registry's (PRAMPTA) extensions |
 | `PG-CODE.md` | Identifier format, check character, issuer prefixes (§9) |
-| `REFUSAL-CODES.md` | Every `PG_*` reason code, hard or soft |
+| `REFUSAL-CODES.md` | The origin registry's reason codes, core codes marked |
 | `VERSIONS.md` | Every version, numbered as on Zenodo, and what changed |
 | `PRE-GEN-v5.pdf` | Version 5 as a paper (source: `paper/`) |
 | `CHANGELOG.md` | Protocol changes |
 | `test-vectors/vectors.json` | Byte-level vectors every implementation must reproduce |
 | `conformance/` | The level-1 runner that replays the vectors against an implementation |
 
-**Normative:** the text of `PRE-GEN-SPEC.md`, `PG-CODE.md` and
-`REFUSAL-CODES.md`, and the test vectors. The text defines the requirements
+**Normative:** the text of `PRE-GEN-SPEC.md` and `PG-CODE.md`, and the
+test vectors; `PRE-GEN-EXTENSIONS.md` and `REFUSAL-CODES.md` for an
+implementation that claims an extension. The text defines the requirements
 (written in BCP 14 language, `PRE-GEN-SPEC.md` §0); the vectors are its
 conformance test, and a disagreement between them is an erratum, never a
 rule (§0.3). References to paths such as `backend/app/...` name files in

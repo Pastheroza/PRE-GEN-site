@@ -10,6 +10,24 @@ See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
 
 ## v5 — draft of 2026-10-03
 
+- **Core and extensions** (2026-10-04, founder; NMP P20). `PRE-GEN-SPEC.md`
+  is now the core; what the origin registry adds moved, unchanged in
+  meaning, to the new `PRE-GEN-EXTENSIONS.md`: origin decision and request
+  members (X.2), decision reuse with R-9 and the cache form of P-7 (X.3),
+  end-user binding with V-13 (X.4), how the origin registry builds a licence
+  body (X.5), evidence bundles (X.6, was §1.4), C2PA assertions (X.7, was
+  §1.5), observations (X.8, was §1.6), lifecycle events (X.9). New in the
+  core: §0.5 with E-1 (floors only go up; a later version may decide on
+  relaxing them), E-2 extra members, E-3 `critical`, E-4 own codes with the
+  issuer prefix, E-5 published policy, E-6 shared extensions; the licence
+  envelope (§1.2: verified from `signed_body`, without knowing the
+  registry's fields; the steward decides which registries are trusted); 17
+  core refusal codes (§3; `REFUSAL-CODES.md` is the origin registry's
+  table with core rows marked); P-7 is now "one generation, reuse only as an
+  extension permits"; P-9 several subjects in one output; a decision lives
+  at most 900 seconds. Roles: authorization registry and registry operator.
+  Requirement identifiers are unchanged. Nothing on the wire changes for the
+  origin registry or its clients.
 - Vectors for the 36-character limit (2026-10-04, after an external review
   noted the published vectors had not changed): `pg_code.length_accepts`
   (a 36-character body verifies) and `pg_code.length_rejects` (two

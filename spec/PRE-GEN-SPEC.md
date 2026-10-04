@@ -1,6 +1,6 @@
 # PRE-GEN Protocol Specification
 
-**Version:** PRE-GEN v5 draft (2026-10-03, becomes v5 when published on Zenodo) · Zenodo concept DOI
+**Version:** PRE-GEN v5 draft (2026-10-04, becomes v5 when published on Zenodo) · Zenodo concept DOI
 [10.5281/zenodo.20129901](https://doi.org/10.5281/zenodo.20129901) ·
 **Vectors:** `spec/test-vectors/vectors.json`
 · **License:** Apache License 2.0 — see [`spec/LICENSE`](LICENSE); licensed
@@ -14,14 +14,18 @@ header "v6 draft" until then. [`spec/CHANGELOG.md`](CHANGELOG.md) is the
 entry-by-entry record; its dated `Spec-Version` entries up to 2026-09-28 are
 the history of v5's drafts.
 
-This document, with [`PG-CODE.md`](PG-CODE.md),
-[`REFUSAL-CODES.md`](REFUSAL-CODES.md) and the test vectors, specifies the
-PRE-GEN core — signed objects, canonical bytes, identifiers, verification,
-decisions, receipts and key publication — completely enough that a
-registry, a provider, or an independent verifier can be built **without
-reading any registry's source code**. How a registry registers subjects,
-issues licenses, accepts opt-outs and connects end users is registry policy
-in v5, outside this core (§5.1, §8.2).
+This document is the PRE-GEN **core**: what every authorization registry,
+provider and verifier implements. With [`PG-CODE.md`](PG-CODE.md), the core
+refusal codes (§3) and the test vectors it specifies signed objects,
+canonical bytes, identifiers, verification, decisions, receipts and key
+publication completely enough that a registry, a provider, or an independent
+verifier can be built **without reading any registry's source code**.
+
+What a registry adds — its own fields, refusal codes, stricter rules and
+services — is an **extension** (§0.5). Extensions used by the origin
+registry are in [`PRE-GEN-EXTENSIONS.md`](PRE-GEN-EXTENSIONS.md). How a
+registry registers subjects, issues licenses, accepts opt-outs and connects
+end users is registry policy, outside the core (§5.1, §8.2).
 
 ## 0. Conventions and authority
 
@@ -38,9 +42,11 @@ with the check that covers each one.
 
 ### 0.2 What is normative
 
-PRE-GEN v5 consists of four normative parts: this document; `PG-CODE.md`
-(identifiers); `REFUSAL-CODES.md` (reason codes); and
-`test-vectors/vectors.json` (byte-level examples). The paper
+PRE-GEN v5 consists of four normative parts: this document (the core);
+`PG-CODE.md` (identifiers); `test-vectors/vectors.json` (byte-level
+examples); and, for an implementation that claims an extension,
+`PRE-GEN-EXTENSIONS.md` and the origin registry's code table
+`REFUSAL-CODES.md`. The paper
 `PRE-GEN-v5.pdf` explains the design and is informative.
 
 Also informative, wherever they appear: rationale, examples, and every
@@ -71,9 +77,15 @@ evidence of what the text means, not a source of meaning.
 
 ### 0.4 Roles and terms
 
-- **Registry** — holds subjects, licenses and opt-outs, answers
-  verification requests with signed decisions, and keeps the audit log.
-  **Operator** is the registry's signing identity (its Ed25519 key set, §2.3).
+- **Authorization registry** (in this text, **registry**) — holds
+  subjects, licenses and opt-outs, answers verification requests with
+  signed decisions, and keeps the audit log.
+- **Registry operator** (**operator**) — the organization that runs a
+  registry, and its signing identity: the operator key set (§2.3).
+- **Origin registry** — the directory's origin entry, which issues bare PG
+  codes (`PG-CODE.md` §9). Today: PRAMPTA.
+- **Steward** — the holder of the key that signs the registry directory
+  (`PG-CODE.md` §9.1) and so decides which registries are listed.
 - **Provider** — an AI service that asks a registry before generating and
   reports afterwards. It authenticates with a credential the registry issued.
 - **Licensee** — the party a license is issued to; typically the provider's
@@ -81,25 +93,57 @@ evidence of what the text means, not a source of meaning.
 - **Verifier** — anyone checking a signed object offline: a provider, a
   rights-holder, an auditor, a court. A provider is always also a verifier.
 
+### 0.5 Core and extensions
+
+A rule is in the core only if two parties that have never met need it to
+work together, every kind of registry needs it, and a verifier can check it.
+Everything else a registry does is an extension. The core is deliberately
+small; registries differ in their rights holders, how they verify them,
+their own rules and their services, not in the core.
+
+- **E-1 Floors only go up.** A registry MAY refuse more than the core
+  requires — its own floors, published under E-5 — but no extension may
+  turn a decision the core requires to be a refusal (R-1 to R-4, R-7) into
+  an allow. *Informative:* whether a later version lets a registry relax a
+  floor, and with what safeguards, is left open on purpose (§7).
+- **E-2 Extra members.** A registry MAY add members to a decision (§1.1) and
+  to a licence body (§1.2). They are inside the signature; a verifier that
+  does not use them ignores them. Receipts (§1.3) have a fixed shape.
+- **E-3 Critical members.** A decision MAY carry `critical`: an array of
+  the names of members a provider must understand to use the decision
+  safely. A verifier that does not understand every listed member MUST
+  treat the decision as unusable for generation. An obligation (P-8) a
+  provider cannot apply has the same effect.
+- **E-4 Own refusal codes.** A registry that is not the origin registry
+  names its own codes `PG_<ISSUER>_<NAME>`, with its issuer prefix
+  (`PG-CODE.md` §9). The origin registry's codes are listed in
+  `REFUSAL-CODES.md`. A code a provider does not know is hard (P-6).
+- **E-5 Published policy.** A registry SHOULD publish, at a stable URL in
+  its documentation: its own floors and refusal codes, the extensions it
+  implements, the lifetime of its decisions, its opt-out waiting period,
+  its usage-limit rules, and the custody modes it offers (§1.2).
+- **E-6 Shared extensions.** An extension that more than one registry
+  implements is described in `PRE-GEN-EXTENSIONS.md` under a name, so that
+  an implementation can claim it (§8.1).
+
 ---
 
 ## 1. Protocol objects
 
-Five kinds of object are cryptographically signed in PRE-GEN. All five
-share one canonicalization rule (§2) and one primitive (Ed25519, RFC 8032)
-— what differs between them is *who* signs, *what's excluded* from the
-signed bytes, and how strictly each is versioned.
+Three kinds of object make up the core: the decision, the licence and the
+receipt. They share one canonicalization rule (§2) and one primitive
+(Ed25519, RFC 8032); what differs is *who* signs, *what's excluded* from the
+signed bytes, and how strictly each is versioned. The evidence bundle, the
+C2PA assertion and the observation are extensions
+(`PRE-GEN-EXTENSIONS.md` X.6 to X.8).
 
 | Object | Version marker field | Current value | Who signs | Additive-safe? |
 |---|---|---|---|---|
 | §1.1 Decision | `schema_version` | `pg.decision.v1` | Operator | Yes (new optional fields never bump it) |
 | §1.2 License | `v` | `pg.license.v2` | Subject, countersigned by Operator | Partially — see §1.2 |
 | §1.3 Receipt | `v` | `pg.receipt.v2` (default), `pg.receipt.v3` (opt-in) | Provider (optional), hashed by Operator | No |
-| §1.4 Evidence bundle | `schema_version` | `pg.evidence.v1` | Operator | Not addressed |
-| §1.5 Assertion | `schema_version` | `pg.assertion.v1` | Operator | Not addressed |
-
-§1.6 Observation (`pg.observation.v1`) is a sixth, unsigned request object: the
-registry signs only its own audit record of it.
+| Evidence bundle (extension X.6) | `schema_version` | `pg.evidence.v1` | Operator | Not addressed |
+| Assertion (extension X.7) | `schema_version` | `pg.assertion.v1` | Operator | Not addressed |
 
 ### 1.1 SignedDecision (`pg.decision.v1`)
 
@@ -117,17 +161,18 @@ verifier MUST NOT drop unrecognized members before checking the signature
 *Reference implementation:* `backend/app/api/verify.py` (`SignedDecision`,
 `_build_signed_decision`).
 
-**Field table:**
+**Core members.** A registry MAY add others (E-2); the origin registry's
+are in `PRE-GEN-EXTENSIONS.md` X.2.
 
 | Field | Type | Notes |
 |---|---|---|
 | `schema_version` | string | `pg.decision.v1` |
 | `decision_id` | string | unique per decision |
 | `nonce` | string | one-time-use token; a consumer must not reuse it |
-| `allowed` | boolean | `true` only when `disposition == "allow"` |
-| `disposition` | string | `"allow"` \| `"not_blocked"` \| `"review"` \| `"deny"` — `not_blocked` (with `PG_STD_TRACKING_ONLY`) is personal use that nothing prohibits and nothing grants; `allowed` stays a boolean, `true` only on `allow`, so an older client that only reads `allowed` treats the other three as not-allowed (fail-closed) |
-| `policy_version` | string | which entry of the refusal-code registry (§6.2) produced this decision — independent of `schema_version`: the *rules* can change without the *envelope shape* changing |
-| `reason` | string \| null | a `PG_*` code from §3, or null on allow |
+| `disposition` | string | `"allow"` \| `"not_blocked"` \| `"review"` \| `"deny"` — `not_blocked` (with `PG_STD_TRACKING_ONLY`) is personal use that nothing prohibits and nothing grants |
+| `allowed` | boolean | `true` only when `disposition == "allow"`; kept so that a client reading only `allowed` treats the other three as not-allowed (fail-closed) |
+| `reason` | string \| null | a refusal code (§3, E-4), or null on allow |
+| `policy_version` | string | which version of the registry's rules produced this decision — independent of `schema_version`: the *rules* can change without the *envelope shape* changing |
 | `subject_id` | string | |
 | `licensee_id` | string | |
 | `provider_id` | string | |
@@ -135,29 +180,18 @@ verifier MUST NOT drop unrecognized members before checking the signature
 | `prompt_hash` | string | |
 | `model` | string | |
 | `modality` | string | |
-| `intended_use` | object | echoes the request's `IntendedUse` |
+| `intended_use` | object | echoes the request's `intended_use` |
 | `obligations` | object | obligations the licensee must satisfy (watermarking, disclosure, …) |
-| `rules_text` | string | display-only rights-holder text (never itself enforced — see `README.md`'s "Security notes") |
-| `rules_text_hash` | string | SHA-256 hex of `rules_text`, empty string when `rules_text` is empty |
-| `subject_authority` | string | `self` \| `agency_asserted` \| `consented` \| `verified` — how well the subject's real-world rights are proven, distinct from whether a license exists at all |
-| `watermark_payload` | string \| null | |
-| `is_hard_refusal` | boolean | from the refusal-code registry (§3) — `false` on allow |
-| `issued_at` | integer | Unix seconds |
-| `expires_at` | integer | Unix seconds; hard signature lifetime |
-| `revocation_epoch` | integer | the subject's revocation counter at issuance; `0` on subject-less refusals |
-| `max_cache_age_seconds` | integer | `0` for anything not a plain allow; shorter for a high-risk commercial allow than a routine one |
-| `cache_scope` | string | `"exact_request"` (only a plain allow) \| `"not_cacheable"` |
-| `provider_user_binding` | string | `"unbound"` \| `"verified"` \| `"invalid"` |
-| `provider_identity_link_id` | string | |
 | `generation_id` | string | echoed from the request |
-| `detection_id` | string | echoed from the request |
+| `issued_at` | integer | Unix seconds |
+| `expires_at` | integer | Unix seconds; hard signature lifetime, at most 900 seconds after `issued_at` |
+| `critical` | array of strings \| absent | E-3 |
 | `operator_key_id` | string | the operator key fingerprint (§2.1) used to sign |
 | `operator_signature` | string | Ed25519 signature, hex — **excluded from the signed bytes** |
-| `remediation` | object \| null | populated only on `PG_NO_LICENSE`: where and how to fix exactly this refusal |
 
 **Additive safety.** New *optional* fields never bump `schema_version` —
 `generation_id`, `detection_id`, `provider_user_binding`, and `remediation`
-were all added this way. A consumer MUST ignore the meaning of members it
+were all added this way, and every extension member (E-2) is added this way. A consumer MUST ignore the meaning of members it
 does not recognize (while still signing over them, above) and treat an
 expected optional member that is absent as its default. `schema_version`
 changes only if a member is removed or its *meaning* changes.
@@ -186,61 +220,35 @@ signature proves depends on custody — see "Custody and consent" below.
 
 The vector `license_countersignature` fixes these bytes.
 
-**Not in the body.** The signatures themselves, the subject public key, the
-operator key fingerprint, the license status, the issue time, and the
-license id are carried beside the body and never inside it.
+**The licence envelope.** A licence travels as an object with these
+members, and a verifier checks it from them alone, without knowing the
+registry's licence fields:
 
-*Reference implementation:* `backend/app/core/license_body.py`
-(`license_model_dump_for_signature`), `backend/app/core/license_mint.py`
-(`finalize_license_signatures`).
+| Member | Type | Notes |
+|---|---|---|
+| `license_id` | string | the PG licence id (`PG-CODE.md`) |
+| `signed_body` | object | the body exactly as signed: `B` is its canonical JSON |
+| `subject_public_key_hex` | string | the subject key the subject signature is checked against |
+| `subject_signature` | string | hex |
+| `operator_signature` | string | the countersignature, hex |
+| `signing_key_fingerprint` | string | the operator key that countersigned (§2.1) |
 
-**Always-present fields:**
+**Core body members.** Every body carries `v` (the licence marker,
+`pg.license.v2` today), `subject_id`, `licensee_id`, `contract_start`,
+`expires_at` and `scope`. Everything else in the body — classes, territories,
+channels, usage limits, prices — is the registry's (E-2); the origin
+registry's body is described in `PRE-GEN-EXTENSIONS.md` X.5, including the
+licences minted before markers existed, which carry no `v` and stay valid.
+A verifier MUST refuse (`PG_INVALID_SIGNATURE`) a licence whose marker it
+does not recognize. A marker that changes what a member *means* is a new
+value of `v`, never a silent change to v2.
 
-| Field | Type |
-|---|---|
-| `subject_id` | string |
-| `licensee_id` | string |
-| `license_class` | string |
-| `scope` | array of strings |
-| `deny_categories` | array of strings |
-| `immutable_denials` | array of strings |
-| `required_obligations` | object |
-| `expires_at` | integer |
-| `contract_start` | integer |
-| `product_name` | string |
-| `project_name` | string |
-| `purpose` | object |
-| `extensions` | array of objects |
-| `rules_text` | string |
-
-**Conditionally-present fields** — included only when the underlying value
-is not `None` (an additive-safe convention: a license row minted before a
-field existed keeps verifying byte-for-byte, because the field is simply
-absent from its signed body, not present-as-null):
-`asset_visual_description` (only if non-empty after trimming to 4000
-characters), `allowed_channels`, `allowed_territories`, `billing_terms`,
-`entitlement_id`, `provider_identity_link_id`, `allowed_providers`,
-`blocked_providers`, `allowed_modalities`, `allowed_regions_v2`,
-`max_uses`, `concurrency_limit`, `transferability`, `sublicensing`,
-`attribution_required`, `granted_rights`, `output_survives_termination`.
-
-**The version marker is the body member `"v"`**, distinct from the
-`schema_version` member of the API response that carries the license, so
-the marker inside the signed bytes is never confused with response metadata.
-It is the one exception to the conditional-inclusion rule above:
-
-- A license signed before version markers existed has **no** `"v"` member,
-  permanently. A verifier MUST reconstruct it without one.
-- A current license has `"v": "pg.license.v2"`.
-- A verifier MUST refuse (`PG_INVALID_SIGNATURE`) a license whose marker it
-  does not recognize, rather than reconstructing it as either of the above.
-
-A future marker that changes what a member *means* is a new value of `"v"`
-with its own reconstruction rule, never a silent addition to v2.
-
-**Version marker on the API response** is a different member,
-`schema_version`, on the license detail response. It reports the same value
-as `v` but is not signed; it describes the response, not the license.
+**Who answers for the rights.** The licence format proves who signed what.
+Whether the subject's rights holder is real is the responsibility of the
+registry that registered it; whether a registry is trusted at all is decided
+by the steward, who lists it in the directory and can remove it
+(`PG-CODE.md` §9.1). A licence from a registry the directory does not list
+for its namespace is invalid (V-10).
 
 **Custody and consent.** A subject's key is held by the subject (`self`)
 or encrypted by the registry and used on the subject's behalf (`managed`);
@@ -318,132 +326,15 @@ v3 signature attests a provider's claim, not output existence, reporting
 completeness, legal compliance, or settlement. The `output_hash` is a file
 identifier/commitment, not independent proof of generation.
 
-**This object is NOT additive-safe today.** Unlike License, there is no
-`if value is not None` inclusion convention here — every field is
-unconditional, and a field that changes this dict's shape still ships live
-the moment the change merges. What §7 now provides is not additive safety
-itself, but a **migration mechanism** for when the shape does change: a
-bounded dual-accept window (`backend/app/core/receipt_body.py`) during
-which the server verifies a provider's signature against either the
-current shape or a recent prior one, marking a fallback match with
-`Deprecation`/`Sunset` headers — see §7 for the policy and
-`docs/PROTOCOL-GOVERNANCE.md` for why Receipt gets a temporary window where
-License gets a permanent per-row rule instead. *Informative:* a test worth
-naming for any implementer building a receipt client:
-`backend/tests/test_receipts.py::test_receipt_provider_signature_verified`
-constructs its own independent copy of `receipt_body` (simulating a real
-external provider, not sharing PRAMPTA's own construction code) — if your
-client's `receipt_body` shape ever silently disagrees with the server's,
-this is the kind of test that catches it, and is exactly why PRAMPTA keeps
-its own copy of that test independent rather than importing a shared
-helper.
+**Fixed shape.** Every member is always present, so any change of shape is
+a new marker, introduced with the window of §7. `pg.receipt.v3` is
+RECOMMENDED for new integrations; `pg.receipt.v2` stays accepted.
 
-### 1.4 EvidenceBundle (`pg.evidence.v1`)
+### 1.4 – 1.6 Evidence bundle, assertion, observation
 
-**Purpose.** A self-contained, signed archive for one decision — everything
-needed to independently verify it offline, for litigation or compliance
-review: the decision itself, the license it resolved against (if any),
-every audit event tied to it, a Merkle inclusion proof when one exists, and
-the operator key material to check every signature.
-
-Served at `GET /v1/audit/evidence/{decision_id}`. *Reference
-implementation:* `backend/app/api/audit.py` (`get_decision_evidence`).
-
-**What's excluded from the signed bytes.** `evidence_hash`,
-`operator_signature`, and `operator_key_id` — these are computed from
-`canonical_json(evidence)` and only added to the dict *afterward*, so
-the signed bytes are the canonical JSON of the bundle without those three
-members.
-
-**Field table:**
-
-| Field | Type | Notes |
-|---|---|---|
-| `schema_version` | string | `pg.evidence.v1` — genuinely signed, since this whole object is minted fresh at read time, not a pre-existing signed body being re-served |
-| `decision_id` | string | |
-| `policy_version` | string | from the decision's own audit metadata |
-| `decision_event` | object | `event_id`, `action`, `metadata`, `timestamp`, `signature`, `signing_key_id` |
-| `license` | object \| null | present only if the decision resolved against one; `null` on a subject-less or license-less refusal. When present it MUST carry `license_id`, `signed_body` (the exact license body of §1.2, or `null` for a license whose marker cannot be reconstructed), `subject_public_key_hex`, `subject_signature`, `operator_signature` and `signing_key_fingerprint`, so that both license signatures verify offline (V-9) |
-| `related_events` | array of objects | every audit event tied to this decision, chronological |
-| `inclusion_proof` | object \| null | Merkle inclusion proof when the audit anchor exists and is intact; degrades to `null` on a corrupted anchor chain **without** invalidating the rest of the bundle — the license/event evidence is independently useful even without a Merkle proof attached |
-| `operator_keys` | object | the full signed key set (§2.3), so every signature in the bundle can be checked entirely offline |
-| `evidence_hash` | string | SHA-256 hex of the canonicalized bundle — **excluded from the signed bytes** |
-| `operator_signature` | string | **excluded from the signed bytes** |
-| `operator_key_id` | string | **excluded from the signed bytes** |
-
-### 1.5 Assertion (`pg.assertion.v1`)
-
-**Purpose.** A signed statement a provider embeds inside its own C2PA
-manifest. The registry produces only this statement; building and signing
-the C2PA manifest is the provider's job, and PRE-GEN v5 does not specify
-how the statement is placed in it. Deliberately bound to an
-*existing* `GenerationReceipt` rather than a bare provider-submitted
-output hash, so an assertion and its receipt can never disagree about what
-was actually produced.
-
-Issued at `POST /v1/assertions` for a decision that has a receipt. It is
-idempotent: a repeated request MUST return the byte-identical original,
-never a re-signed copy with a new `issued_at`. *Reference implementation:*
-`backend/app/api/assertions.py` (`create_assertion`).
-
-**Signed bytes.** The canonical JSON of the assertion without `signature`
-and `signing_key_id`.
-
-**All fields are always present:**
-
-| Field | Type |
-|---|---|
-| `schema_version` | string, constant `"pg.assertion.v1"` |
-| `assertion_id` | string |
-| `decision_id` | string |
-| `subject_id` | string |
-| `license_id` | string \| null |
-| `provider_id` | string |
-| `model_id` | string |
-| `decision` | string, hardcoded literal `"allow"` — only an allowed decision can ever have a receipt to bind to |
-| `purpose` | string, derived from the bound decision's `intended_use.use_case` |
-| `rules_snapshot_hash` | string, the hash of the exact rule inputs that produced the bound decision |
-| `output_hash` | string, from the bound receipt |
-| `issued_at` | string, ISO 8601 |
-
----
-
-### 1.6 Observation (`pg.observation.v1`)
-
-A usage report for an output that needs no license — personal use answered
-`not_blocked` (`PG_STD_TRACKING_ONLY`), or an output the provider's own
-detectors link to a subject. `POST /v1/observations`, with the provider's
-credential (§5.1). **An observation never authorizes anything** and is not a
-receipt. *Reference implementation:* `backend/app/api/observations.py`.
-
-| Field | Type | Rule |
-|---|---|---|
-| `schema_version` | string | `"pg.observation.v1"` |
-| `event_id` | string | `[A-Za-z0-9_.:-]{1,100}`, provider-unique; idempotency key |
-| `output_id` | string | same charset; shared by every event of one output |
-| `subject_id` | string | PG code or subject id |
-| `event_type` | string | `output.created` \| `output.modified` \| `output.published` \| `publication.removed` |
-| `output_hash` | string | 64 lowercase hex (SHA-256 of the output bytes) |
-| `occurred_at` | RFC 3339 with offset | not more than 5 minutes in the future |
-| `declared_purpose` | string | `personal` \| `commercial` \| `educational` \| `research` \| `editorial` \| `unknown` (default) |
-| `parent_output_hash` | string \| absent | required on `output.modified`, differs from `output_hash`; forbidden otherwise |
-| `publication_url` | string \| absent | required on the two publication events, forbidden otherwise; `https`, no credentials, query or fragment; never fetched by the registry |
-| `decision_id` | string \| absent | accepted only if that decision already has this provider's receipt |
-| `visual_match` | object \| absent | the provider's own look-alike finding: `method`, `confidence` 0–1, `basis`, `reference_ids` |
-
-Unknown fields are rejected. Resending an `event_id` with the same payload
-returns the existing record; with a different payload, `409`. The lifecycle
-of one output is the set of its events sharing `output_id`, ordered by
-`occurred_at`; `output.modified` links versions by hash.
-
-The provider does not sign observations. The registry appends an
-`observation_received` audit event, signed with its operator key, over the
-SHA-256 of the canonical payload (§2), with `record_kind:
-"usage_observation"` and `authorization: "not_granted_by_this_record"`. A
-record whose audit event does not verify is reported as an integrity failure
-(`PG_OBSERVATION_INTEGRITY_FAILED`), never shown as evidence. An observation
-proves what the provider reported and when the registry received it, not that
-the output exists or matches.
+Moved to `PRE-GEN-EXTENSIONS.md` (X.6 evidence bundle, X.7 C2PA assertion,
+X.8 observation). They are extensions: a registry or provider that offers
+one MUST implement it as specified there.
 
 ## 2. Canonicalization
 
@@ -548,25 +439,36 @@ operational procedure in `docs/Operator-Key-Rotation-Runbook.md`.
 
 ## 3. Refusal codes
 
-Every `PG_*` code `POST /v1/verify` can return as a `SignedDecision`'s
-`reason` is documented in a companion, **generated** file:
-**[`spec/REFUSAL-CODES.md`](REFUSAL-CODES.md)**.
+A refusal carries a reason code. These are the **core codes**: every
+registry that refuses for one of these reasons MUST use the code with this
+meaning. **Hard** means no retry, reshaped request or licence fixes it;
+**soft** means a different request, licence or provider might succeed.
 
-The table is normative. A registry MUST use each code only with the
-meaning the table gives it, and MUST add a new code to the table (§7)
-before issuing it. No code count is stated here; count from the table.
+| Code | Kind | Meaning |
+|---|---|---|
+| `PG_MISSING_PROMPT_HASH` | soft | the request has no `prompt_hash` (R-1) |
+| `PG_NO_PAIR` | soft | the caller is not authenticated for this provider and licensee (§5.1) |
+| `PG_NO_SUBJECT` | soft | this registry holds no such subject — not a prohibition (P-5) |
+| `PG_SUBJECT_OPTED_OUT` | hard | an opt-out in effect refuses this use (R-2) |
+| `PG_SUBJECT_PENDING` | soft | the subject awaits the registry's review (R-3) |
+| `PG_SUBJECT_PAUSED` | soft | the subject's owner paused licensing (R-3) |
+| `PG_SUBJECT_DISPUTED` | hard | a dispute is open on the subject (R-3) |
+| `PG_SUBJECT_WITHDRAWN` | hard | the subject was withdrawn (R-3) |
+| `PG_PROHIBITED_USE` | hard | a fixed protection, such as for minors, forbids this use (R-4) |
+| `PG_NO_LICENSE` | soft | no valid, live licence covers this licensee and use |
+| `PG_INVALID_SIGNATURE` | hard | the licence found does not verify (R-7) |
+| `PG_LICENSE_REVOKED` | hard | the licence was revoked |
+| `PG_SCOPE_VIOLATION` | soft | the request falls outside the licence's scope |
+| `PG_IMMUTABLE_DENIAL` | hard | the use matches a denial the licence can never grant |
+| `PG_USAGE_LIMIT` | soft | the licence's usage limit is spent |
+| `PG_STD_TRACKING_ONLY` | soft | personal use: not blocked, nothing granted (R-6) |
+| `PG_HELD_FOR_REVIEW` | soft | held for a human; disposition `review` |
 
-*Reference implementation:* the table is generated from
-`backend/app/core/policy_registry.py` (`RULES`) by
-`spec/generate_refusal_table.py`, and a test fails if the two diverge.
-
-Each entry carries: the code, its category (`request` / `identity` /
-`subject_trust` / `license` / `review`), whether it's a **hard** refusal
-(no retry, reshaped request, or license change fixes it) or **soft** (a
-different request, license, or provider might succeed), the policy version
-it was introduced in, and a plain-language description. A provider MUST
-treat a code it does not find in the table as hard (P-6): failing closed is
-the safer wrong answer.
+A registry MAY refuse for other reasons with its own codes (E-4). The
+origin registry's full table, generated from its policy registry, is
+[`REFUSAL-CODES.md`](REFUSAL-CODES.md); its core rows match this table.
+A provider MUST treat a code it does not know as hard (P-6): failing closed
+is the safer wrong answer.
 
 ---
 
@@ -579,20 +481,10 @@ on top of that prose: an ABNF (RFC 5234) definition of the two current
 shapes plus the two permanently-valid legacy shapes, and one canonical
 regular expression meant to accept the same strings.
 
-**Scope, stated precisely so as not to overclaim:** this grammar describes
-*shape* — which strings look like a well-formed PG code. It does **not**,
-and by construction **cannot**, capture check-character *validity* — the
-check character is a weighted sum modulo 37 (`PG-CODE.md` §4), an
-arithmetic property no regular expression can test. A string can be
-shape-valid and still carry a wrong check character (a mistyped digit, a
-transposed pair) — telling those two failure modes apart (`PG-CODE.md` §7:
-"mistyped", distinctly from "not found") is exactly why resolution is a
-two-step process: shape first, then a separate arithmetic check
-(`app/core/pg_code.py::verify_check_char`). `backend/tests/
-test_pg_code_grammar_matches_implementation.py` demonstrates precisely this
-split — every vector in `vectors.json`'s `pg_code.rejects` section is
-shape-valid (the regex matches it) *and* checksum-invalid (`verify_check_char`
-returns `false` for it), on purpose.
+**Scope.** The grammar describes *shape* only. Whether the check character
+is right is a separate arithmetic check (`PG-CODE.md` §4), so a mistyped
+code can be told apart from an unknown one (`PG-CODE.md` §7). Every vector
+in `pg_code.rejects` is shape-valid and checksum-invalid on purpose.
 
 ### 4.1 ABNF (RFC 5234)
 
@@ -701,21 +593,16 @@ requirement. *Reference implementation:* `docs/licensing-integration.md`.
 | `prompt_hash` | string | SHA-256 hex of the prompt; REQUIRED. The prompt text MUST NOT be sent |
 | `model` | string | the provider's model identifier |
 | `modality` | string | `image`, `video`, `audio`, `voice`, `text`, … |
-| `intended_use` | object | `use_case` (`personal` \| `educational` \| `research` \| `editorial` \| `commercial`), `channel`, `product_name`, `project_name`, `territory`, `categories` (array), `modality`, `rights` (array; empty means output generation only), `campaign_id` — all optional strings unless stated |
-| `generation_id` | string | the provider's own id for this attempt; echoed |
-| `provider_user_id` / `provider_identity_link_id` | string | which connected user the provider acts for; if given, MUST resolve to a link the registry verified, and a license bound to another user is refused (`PG_IDENTITY_MISMATCH`) |
+| `intended_use` | object | `use_case` (`personal` \| `educational` \| `research` \| `editorial` \| `commercial`), `channel`, `territory`, `categories` (array), `modality`, `rights` (array; empty means output generation only) — all optional unless stated; a registry MAY accept more (E-2) |
+| `generation_id` | string | the provider's own id for this attempt; echoed. The same id across the decisions for one output (P-9) |
 | `license_id` | string | optional hint; narrows candidate licenses, never widens them |
-| `detection_id` | string | optional link to an earlier detection record; echoed, never used to decide |
-| `idempotency_key` | string | echoed |
-| `return_url` | string | where a `PG_NO_LICENSE` remediation link returns the user |
+
+A registry MAY accept further members (E-2); the origin registry's are in
+`PRE-GEN-EXTENSIONS.md` X.2.
 
 The response is always HTTP 200 with a signed decision (§1.1), whether the
 answer is allow or a refusal; HTTP errors mean the request itself could not
-be processed (malformed body, rate limit). A caller MAY send
-`X-Prampta-Expected-Schema-Version: pg.decision.v1`; a registry that signs a
-different decision schema MUST then answer HTTP 409 instead of a decision.
-(The header name carries the origin registry's name for compatibility with
-existing clients.)
+be processed (malformed body, rate limit).
 
 ### 5.3 Evaluation — registry requirements
 
@@ -736,8 +623,8 @@ existing clients.)
   which is not revoked, and whose scope covers the request, applies to the
   licensee; or (b) the registry's published policy grants the use without a
   license, and the decision says so by its reason code
-  (`PG_ORG_INTERNAL_USE`: a member of the organization that itself holds a
-  non-person subject). An allow MUST carry `allowed: true` and
+  (the origin registry's example: `PG_ORG_INTERNAL_USE`, extension X.2).
+  An allow MUST carry `allowed: true` and
   `disposition: "allow"`.
 - **R-6** `not_blocked` MAY be answered only when no license applies,
   `intended_use.use_case` is `personal`, and nothing prohibits the use; it
@@ -748,8 +635,10 @@ existing clients.)
   carry a fresh `nonce` and an `expires_at`, MUST echo `subject_id`,
   `provider_id`, `licensee_id`, `prompt_hash`, `model`, `modality` and
   `intended_use` as received, and MUST be recorded in the audit log (§2.2).
-- **R-9** `cache_scope` MUST be `not_cacheable` and `max_cache_age_seconds`
-  `0` on anything other than a plain allow.
+- **R-9** (extension, `PRE-GEN-EXTENSIONS.md` X.3.)
+
+R-1 to R-4 and R-7 are the **fixed floor**: no extension may answer `allow`
+where they require a refusal (E-1).
 
 The remaining order of checks is registry policy. A registry SHOULD follow
 the reference order: caller and sandbox limits; subject status, provider
@@ -784,11 +673,11 @@ and human review (`PG_HELD_FOR_REVIEW`, disposition `review`).
   direct contract, their own work, another registry) — so the provider MAY
   proceed under its own policy, as for `not_blocked`, and MUST NOT present
   the output as licensed by this registry.
-- **P-6** A reason code absent from `REFUSAL-CODES.md` MUST be treated as
-  hard.
-- **P-7** A decision MAY be reused only for the identical request, only
-  when `cache_scope` is `exact_request`, and only within
-  `max_cache_age_seconds`.
+- **P-6** A reason code the provider does not know (§3, E-4) MUST be
+  treated as hard.
+- **P-7** A decision authorizes the one generation it answers. It MAY be
+  reused only as the registry's extension permits (origin: X.3), and never
+  after `expires_at`.
 - **P-8** Obligations returned in `obligations` (watermark, disclosure, …)
   MUST be applied to an output generated under an allow, and reported in the
   receipt (§5.5).
@@ -808,10 +697,13 @@ and human review (`PG_HELD_FOR_REVIEW`, disposition `review`).
 - **V-12** The registry directory MUST be accepted only as `PG-CODE.md`
   §9.1 states: the published steward key's signature, its invariants, and a
   `sequence` no lower than one already accepted.
-- **V-13** If the provider sent `provider_user_id` or
-  `provider_identity_link_id`, an `allow` is valid only when
-  `provider_user_binding` is `"verified"` and `provider_identity_link_id`
-  is a non-empty string. Otherwise the decision MUST be rejected.
+- **V-13** (extension, `PRE-GEN-EXTENSIONS.md` X.4.)
+- **P-9** When one output involves several subjects — a person, a voice, a
+  brand, a work — the provider MUST ask for each subject, with one
+  `generation_id` for all of them, MUST NOT generate on the registries'
+  authority unless every decision is an `allow`, and SHOULD file one receipt
+  per decision. A subject answered `PG_NO_SUBJECT` is handled as P-5
+  states.
 
 ### 5.5 Receipts — `POST /v1/receipts`
 
@@ -831,17 +723,12 @@ the output; REQUIRED), `model`, `obligations_applied` (object),
   the selected version (§1.3), and the registry MUST verify it; for v3 a v2
   signature MUST NOT be accepted.
 
-**Later lifecycle events.** `POST /v1/receipts/{decision_id}/events` with
-`event_type` (one of `preview`, `output_accepted`, `output_delivered`,
-`output_published`) and optionally `output_hash` records a later stage of
-the same receipted output. A registry MUST treat a repeated event as
-already recorded, MUST refuse an `output_hash` that differs from the
-receipt's (HTTP 409), and records the event in its audit log. Lifecycle
-events are not signed by the provider.
+Later stages of a receipted output (lifecycle events) are an extension
+(`PRE-GEN-EXTENSIONS.md` X.9).
 
-### 5.6 Observations — `POST /v1/observations`
+### 5.6 Observations
 
-Uses that need no license are reported as observations (§1.6).
+An extension (`PRE-GEN-EXTENSIONS.md` X.8).
 
 ### 5.7 Registry publication
 
@@ -879,7 +766,7 @@ changes on the rules below and independently of the PRE-GEN version.
 - **Receipt (`v`).** Every member is always present (§1.3), so any change
   of shape is a new marker (`pg.receipt.v3` was added that way), handled by
   the window of §7.
-- **Evidence bundle / Assertion (`schema_version`).** Both are minted fresh
+- **Evidence bundle / Assertion (`schema_version`, extensions X.6, X.7).** Both are minted fresh
   at read/issue time rather than re-serving a pre-existing signed body, so
   neither carries the same retroactive-invalidation risk License does — no
   additive-safety convention has been needed yet.
@@ -954,20 +841,23 @@ confused:
 An implementation claims conformance to one or more profiles of
 **PRE-GEN v5**, by name:
 
-- **PRE-GEN v5 Verifier** — V-1, V-2, V-3, V-4, V-9 to V-13; §2 and §2.1 exactly;
-  PG codes parsed and checked as `PG-CODE.md` states.
-- **PRE-GEN v5 Provider** — everything in Verifier, plus P-5, P-6, P-7,
-  P-8, and §5.1–§5.2 on the wire. Receipts (§5.5) are RECOMMENDED;
-  `pg.receipt.v3`, lifecycle events, observations (§1.6) and assertions
-  (§1.5) are OPTIONAL features, each claimed by name.
-- **PRE-GEN v5 Registry** — R-1 to R-14; decisions (§1.1), licenses
-  (§1.2), the audit chain (§2.2), the key set (§2.3) and receipts (§5.5)
-  exactly. Evidence bundles (§1.4), assertions (§1.5), observations (§1.6)
-  and external anchoring are OPTIONAL features, each claimed by name; a
-  registry that offers one MUST implement it as specified.
+- **PRE-GEN v5 Verifier** — V-1 to V-4, V-9 to V-12, E-3; §2 and §2.1
+  exactly; PG codes parsed and checked as `PG-CODE.md` states.
+- **PRE-GEN v5 Provider** — everything in Verifier, plus P-5 to P-9 and
+  §5.1–§5.2 on the wire. Receipts (§5.5) are RECOMMENDED.
+- **PRE-GEN v5 Registry** — R-1 to R-8, R-10 to R-14, E-1, E-4; decisions
+  (§1.1), licences (§1.2), the audit chain (§2.2), the key set (§2.3) and
+  receipts (§5.5) exactly; the core refusal codes (§3).
 
-A claim names the profile and the optional features, e.g. "PRE-GEN v5
-Registry, with evidence bundles and observations".
+**Extensions** (`PRE-GEN-EXTENSIONS.md`) are claimed by name on top of a
+profile: the origin decision members and request members (X.2), decision
+reuse (X.3, with R-9 and the origin P-7), end-user binding (X.4, with V-13),
+evidence bundles (X.6), C2PA assertions (X.7), observations (X.8),
+lifecycle events (X.9), `pg.receipt.v3`. An implementation that offers an
+extension MUST implement it as specified.
+
+A claim names the profile and the extensions, e.g. "PRE-GEN v5 Registry,
+with evidence bundles and observations".
 
 A conformance run that claims a profile MUST NOT skip an operation required
 by that profile. An unsupported or skipped required operation is a failure,
@@ -994,10 +884,10 @@ runner, and the Level 2 HTTP scenarios (`conformance/`). Everything marked
 | R-3 (withdrawn only) | Level 2: `05_refusal_subject_withdrawn` |
 | R-5 (allow with a license), scope | Level 2: `01_happy_path_verify`, `06_refusal_no_license`, `07_refusal_immutable_denial`, `08_refusal_scope_violation` |
 | R-10 (accepting a receipt) | Level 2: `09_receipt_recorded` |
-| R-2 opt-out priority; R-3 other statuses; R-4; R-6; R-7; R-8 echo; R-9; R-11; R-12; R-13; R-14 | **not checked** |
-| V-1, V-3, V-4, V-11, V-13; P-5 to P-8 | **not checked** by the published Level 1/2 checks (client behaviour; local SDK regression tests are not a portable conformance operation) |
+| R-2 opt-out priority; R-3 other statuses; R-4; R-6; R-7; R-8 echo; R-11; R-12; R-13; R-14; E-1; E-4 | **not checked** |
+| V-1, V-3, V-4, V-11, E-3; P-5 to P-9; extension V-13 | **not checked** by the published Level 1/2 checks (client behaviour; local SDK regression tests are not a portable conformance operation) |
 | §8.1 no skipped required operation | Runner `--require-op`; unsupported required operations fail, optional skips are counted separately |
-| §1.4, §1.5, §1.6, lifecycle events, `pg.receipt.v3` | **not checked** |
+| Extensions X.6 to X.9, `pg.receipt.v3` | **not checked** |
 
 Level 2 sets up its subjects, licenses and connections through the origin
 registry's own management endpoints, which v5 does not standardize. Against
@@ -1020,12 +910,13 @@ four implementations in this repository.
 ## 9. Reference implementation status (informative)
 
 What the origin registry, PRAMPTA, offers today — so that nothing in this
-document is read as a claim about it:
+document is read as a claim about it. PRAMPTA implements the core and every
+extension in `PRE-GEN-EXTENSIONS.md`; its policy (E-5) is summarised in X.1.
 
 - **Custody.** Both custody modes are specified (§1.2). PRAMPTA registers
   new subjects in `managed` custody only; `self` custody registration is
   retired, and licenses signed under `self` custody earlier still verify.
-- **C2PA.** PRAMPTA issues `pg.assertion.v1` (§1.5). No end-to-end
+- **C2PA.** PRAMPTA issues `pg.assertion.v1` (extension X.7). No end-to-end
   integration with a C2PA manifest has been tested.
 - **Namespace.** PRAMPTA is the directory's origin entry and issues bare
   codes. The steward key is published (`PG-CODE.md` §9.1, 2026-10-03) and
@@ -1033,9 +924,11 @@ document is read as a claim about it:
   `sequence` 2, which adds the next PRAMPTA operator key and the successor
   steward key. The verification libraries `@pregen/verify` (npm) and
   `pregen` (PyPI) check it with the steward key built in (0.3.0 or later;
-  0.4.0 adds the offline simulator). `@prampta/sdk` 0.7.0, published, uses
+  0.4.0 adds the offline simulator). `@prampta/sdk` 0.7.0 and later uses
   them through its opt-in `pregenDirectory` option (V-10 to V-12); it
-  requires pinned operator keys and does not auto-discover a root. Current
+  requires pinned operator keys and does not auto-discover a root. 0.8.0
+  adds `generateAuthorized`, which follows P-9 for several subjects. The
+  libraries do not yet check `critical` (E-3); no registry sends it. Current
   versions are listed on pregen.org/docs/sdk. v2 does not define freshness
   or key revocation. Namespace membership is not evidence of rights-holder
   authority.
@@ -1059,11 +952,11 @@ before hitting one in production.
 
 **Current limitations of the signed objects in §1:**
 
-- **One subject per decision.** `SignedDecision.subject_id` (§1.1),
-  `ReceiptBody.subject_id` (§1.3), and `Assertion.subject_id` (§1.5) are
-  each a single string. An output derived from more than one registered
-  subject cannot be represented — not as a split, not as a fact. Any
-  implementation that needs this today must model it outside the protocol.
+- **One subject per decision.** `SignedDecision.subject_id` (§1.1) and
+  `ReceiptBody.subject_id` (§1.3) are each a single string. An output with
+  several subjects is handled by several decisions sharing one
+  `generation_id` (P-9); no single signed object states the whole set, and
+  nothing splits rights or revenue between the subjects.
 - **`output_hash` does not survive re-encoding.** It is a SHA-256 (§1.3),
   which is correct for proving a specific byte sequence was produced and
   useless for recognizing the same work after a transcode, crop, or
@@ -1081,7 +974,7 @@ before hitting one in production.
   (§5.5) record later stages of the same output, but they are not signed by
   the provider, and there is no chain across several outputs or edits from
   one decision, which video and multi-step workflows need. Observations
-  (§1.6) chain events by `output_id` but are unsigned by the provider and
+  (extension X.8) chain events by `output_id` but are unsigned by the provider and
   carry no authorization.
 - **Several registries may disagree.** Issuer prefixes (`PG-CODE.md` §9)
   prevent code collisions, not rights conflicts: two registries can hold
@@ -1108,7 +1001,7 @@ before hitting one in production.
   registry can sign an `allow` naming a license that does not exist or that
   the subject never signed. Without a verifiable license and a trusted
   binding of the subject's key, such an allow cannot be independently
-  confirmed. An evidence bundle (§1.4) without a subject-signed license shows
+  confirmed. An evidence bundle (extension X.6) without a subject-signed license shows
   only that the bundle does not support the allow, not that no license ever
   existed; a compromised registry may withhold the bundle, and the subject
   key's binding is the registry's own statement. Preventing or proving such
@@ -1123,7 +1016,7 @@ before hitting one in production.
   status for such an override, and the reference registry implements none.
 - **Personal use is not linked to its decision.** A `not_blocked` decision
   has no receipt, and an observation may name a decision only if that
-  decision has the provider's receipt (§1.6), so an observation of personal
+  decision has the provider's receipt (extension X.8), so an observation of personal
   use cannot point at the decision that answered it.
 - **External anchoring is best effort.** Signed roots are submitted to
   OpenTimestamps calendars about hourly (`backend/app/core/anchor_publish.py`);
@@ -1132,7 +1025,7 @@ before hitting one in production.
 - **Managed custody proves key use, not consent** (§1.2, "Custody and
   consent").
 - **Settlement has no signed object.** A decision dispute resolves against
-  `pg.evidence.v1` (§1.4). A disagreement about what was *owed* has no
+  `pg.evidence.v1` (extension X.6). A disagreement about what was *owed* has no
   equivalent artifact.
 
 **Proposed extensions.** A draft design addressing all four —

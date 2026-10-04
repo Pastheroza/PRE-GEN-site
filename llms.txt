@@ -4,16 +4,17 @@
 
 - A provider asks `POST /v1/verify/` before generating and gets a `disposition`: `allow` (a licence covers it), `not_blocked` (personal use, nothing granted), `review` (wait for the rights holder) or `deny` (a `PG_*` reason code says why).
 - After an `allow`, the provider files a receipt. A decision proves what the registry answered to a declared request, not that the output matched it or that a use is lawful.
+- The core is small and the same for every authorization registry: decision, licence envelope, receipt, 17 core refusal codes, PG codes, the signed directory, and a fixed floor (an opt-out beats any licence; minors stay protected; an unknown subject is not a prohibition). A registry may refuse more (its own floors, codes `PG_<ISSUER>_…`, signed extra members), never allow more. Several subjects in one output: an allow for each, one `generation_id`. The origin registry's additions: [PRE-GEN-EXTENSIONS.md](https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/PRE-GEN-EXTENSIONS.md).
 - PRE-GEN does not stop systems that never ask. It is authorization, not provenance; it complements C2PA.
 - Never send prompt text: send `prompt_hash` (SHA-256 hex). Keep provider secrets server-side.
 
 ## Docs
 
-- Version: PRE-GEN v5 (2026-10-03), awaiting publication on Zenodo; last published: v4. Versions match Zenodo, concept DOI 10.5281/zenodo.20129901: [versions](https://www.pregen.org/docs/versions), [PDF](https://www.pregen.org/spec/PRE-GEN-v5.pdf)
+- Version: PRE-GEN v5 (2026-10-04), awaiting publication on Zenodo; last published: v4. Versions match Zenodo, concept DOI 10.5281/zenodo.20129901: [versions](https://www.pregen.org/docs/versions), [PDF](https://www.pregen.org/spec/PRE-GEN-v5.pdf)
 
 - [Protocol overview](https://www.pregen.org/docs): crypto invariant, signed objects, flow
 - [PG codes](https://www.pregen.org/docs/pg-code): identifier format and check character
-- [Refusal codes](https://www.pregen.org/docs/refusal-codes): every reason code, hard or soft
+- [Refusal codes](https://www.pregen.org/docs/refusal-codes): core codes and the origin registry's own, hard or soft
 - [Integrate](https://www.pregen.org/docs/sdk): HTTP requests, verification libraries `@pregen/verify` (npm) and `pregen` (PyPI), TypeScript SDK, sandbox subjects
 - [Implement](https://www.pregen.org/docs/implement): kit for an independent implementation, checked with the conformance runner
 - [FAQ](https://www.pregen.org/faq): including what a signed decision proves
