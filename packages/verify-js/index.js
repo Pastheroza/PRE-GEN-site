@@ -300,3 +300,62 @@ export async function checkDecision(decision, request, { directory, fetch: fetch
   if (!(await verifyDecision(decision, decision.license_id, { directory, fetch: fetchFn }))) fail("bad signature");
   return decision;
 }
+
+/** An offline sandbox registry for tests and CI: no network, no secret, its own throwaway keys.
+ * Its directory is signed by a throwaway steward key, so nothing it signs is ever accepted by
+ * the real directory. Answers the documented sandbox subjects:
+ *   sbx-allowed → allow · sbx-revoked, sbx-expired → PG_NO_LICENSE · sbx-exhausted → PG_USAGE_LIMIT
+ *   sbx-optedout → PG_SUBJECT_OPTED_OUT · anything else → PG_NO_SUBJECT
+ * Use `sim.fetch` in place of fetch and `sim.directory` in checkDecision. */
+export async function createSimulator({ baseUrl = "https://simulator.pregen.invalid" } = {}) {
+  const keygen = async () => {
+    const k = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
+    const pub = toHex(await crypto.subtle.exportKey("raw", k.publicKey));
+    const sign = async (body) => toHex(await crypto.subtle.sign({ name: "Ed25519" }, k.privateKey, utf8.encode(canonicalJson(body))));
+    return { pub, id: await fingerprint(pub), sign };
+  };
+  const steward = await keygen(), operator = await keygen();
+  const dirBody = { schema: SCHEMA, sequence: 1, steward_key_id: steward.id, simulator: true,
+    registries: [{ name: "PRE-GEN simulator (not a registry)", prefix: "", api: baseUrl, keys: baseUrl + "/keys",
+      key_fingerprints: [operator.id] }] };
+  const directory = await verifyDirectory({ ...dirBody, signature: await steward.sign(dirBody) },
+    { stewardPublicKeyHex: steward.pub, successorPublicKeyHex: null, originKeyFingerprints: [operator.id] });
+  const answers = { "sbx-allowed": ["allow", null], "sbx-revoked": ["deny", "PG_NO_LICENSE"], "sbx-expired": ["deny", "PG_NO_LICENSE"],
+    "sbx-exhausted": ["deny", "PG_USAGE_LIMIT"], "sbx-optedout": ["deny", "PG_SUBJECT_OPTED_OUT"] };
+  const receipts = new Set();
+  let n = 0;
+  const reply = (status, body) => ({ ok: status < 400, status, json: async () => structuredClone(body) });
+  const header = (init, name) => {
+    const h = init && init.headers; if (!h) return "";
+    return (typeof h.get === "function" ? h.get(name) : h[name] ?? h[name.toLowerCase()]) || "";
+  };
+  async function simFetch(url, init = {}) {
+    const path = new URL(String(url)).pathname;
+    if (path === "/keys") return reply(200, { current_key_id: operator.id, keys: [{ key_id: operator.id, public_key_hex: operator.pub, status: "active" }] });
+    const req = init.body ? JSON.parse(init.body) : {};
+    if (path.replace(/\/$/, "") === "/v1/verify") {
+      const [disposition, reason] = answers[req.subject_id] || ["deny", "PG_NO_SUBJECT"];
+      const now = Math.floor(Date.now() / 1000);
+      const named = !isEmpty(req.provider_user_id) || !isEmpty(req.provider_identity_link_id);
+      const body = { schema_version: "pg.decision.v1", decision_id: `sim-${++n}`, simulator: true,
+        allowed: disposition === "allow", disposition, reason, is_hard_refusal: reason === "PG_SUBJECT_OPTED_OUT",
+        subject_id: req.subject_id ?? "", provider_id: header(init, "X-Provider-ID"), licensee_id: header(init, "X-Licensee-ID"),
+        license_id: disposition === "allow" ? "PG-RND-000001-SIMULAT" : null,
+        prompt_hash: req.prompt_hash ?? "", model: req.model ?? "", modality: req.modality ?? "",
+        intended_use: req.intended_use ?? {}, generation_id: req.generation_id ?? "",
+        provider_user_binding: named ? "verified" : "unbound",
+        provider_identity_link_id: req.provider_identity_link_id || (named ? "sim-link" : ""),
+        issued_at: now, expires_at: now + 300, cache_scope: "not_cacheable", max_cache_age_seconds: 0,
+        operator_key_id: operator.id };
+      return reply(200, { ...body, operator_signature: await operator.sign(body) });
+    }
+    if (path.replace(/\/$/, "") === "/v1/receipts") {
+      if (!String(req.decision_id || "").startsWith("sim-")) return reply(404, { error: "unknown decision" });
+      if (receipts.has(req.decision_id)) return reply(409, { error: "receipt already filed for this decision" });
+      receipts.add(req.decision_id);
+      return reply(201, { receipt_id: `sim-receipt-${req.decision_id}`, decision_id: req.decision_id, simulator: true });
+    }
+    return reply(404, { error: "not simulated" });
+  }
+  return { baseUrl, directory, fetch: simFetch, operatorPublicKeyHex: operator.pub };
+}

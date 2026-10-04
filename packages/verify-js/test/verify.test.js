@@ -151,3 +151,22 @@ test("a successor steward key takes over from a stolen one, whatever the thief's
   await assert.rejects(verifyDirectory(shrunk, { ...opts, previous: taken }), /removed/); // usual rules within the new line
   await assert.rejects(verifyDirectory(signedHandover, { stewardPublicKeyHex: steward.pub }), /different steward/); // no successor pinned
 });
+
+test("simulator: the whole provider pipeline runs offline, and nothing it signs passes the real directory", async () => {
+  const { createSimulator, verifyDirectory: vd } = await import("../index.js");
+  const sim = await createSimulator();
+  const send = async (path, body, h = {}) => (await sim.fetch(sim.baseUrl + path, { method: "POST",
+    headers: { "Content-Type": "application/json", "X-Provider-ID": "acme", "X-Licensee-ID": "lic-1", ...h }, body: JSON.stringify(body) })).json();
+  const request = { subject_id: "sbx-allowed", prompt_hash: "a".repeat(64), model: "m", modality: "image", intended_use: { use_case: "research" } };
+  const decision = await send("/v1/verify/", request);
+  await checkDecision(decision, { ...request, provider_id: "acme", licensee_id: "lic-1" }, { directory: sim.directory, fetch: sim.fetch });
+  const r1 = await sim.fetch(sim.baseUrl + "/v1/receipts/", { method: "POST", body: JSON.stringify({ decision_id: decision.decision_id }) });
+  const r2 = await sim.fetch(sim.baseUrl + "/v1/receipts/", { method: "POST", body: JSON.stringify({ decision_id: decision.decision_id }) });
+  assert.deepEqual([r1.status, r2.status], [201, 409]);
+  for (const [subject, reason] of [["sbx-revoked", "PG_NO_LICENSE"], ["sbx-exhausted", "PG_USAGE_LIMIT"], ["sbx-optedout", "PG_SUBJECT_OPTED_OUT"], ["sbx-unknown", "PG_NO_SUBJECT"]]) {
+    const d = await send("/v1/verify/", { ...request, subject_id: subject });
+    assert.equal(d.reason, reason);
+    await assert.rejects(checkDecision(d, { ...request, subject_id: subject, provider_id: "acme", licensee_id: "lic-1" }, { directory: sim.directory, fetch: sim.fetch }), /not an allow/);
+  }
+  await assert.rejects(vd(sim.directory.toJSON()), /different steward/); // the real pin refuses it
+});

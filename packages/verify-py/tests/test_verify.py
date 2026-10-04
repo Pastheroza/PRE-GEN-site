@@ -157,3 +157,24 @@ def test_successor_steward_takes_over_whatever_the_thiefs_sequence():
         verify_directory(shrunk, steward.pub, previous=taken, successor_public_key_hex=successor.pub)
     with pytest.raises(PregenError, match="different steward"):
         verify_directory(handover, steward.pub)
+
+
+def test_simulator_runs_the_whole_pipeline_offline_and_is_never_trusted_for_real():
+    from pregen import Simulator
+    sim = Simulator()
+    request = {"subject_id": "sbx-allowed", "prompt_hash": "a" * 64, "model": "m", "modality": "image",
+               "intended_use": {"use_case": "research"}}
+    decision = sim.verify(request, "acme", "lic-1")
+    check_decision(decision, {**request, "provider_id": "acme", "licensee_id": "lic-1"}, sim.directory, sim.get_json)
+    assert sim.receipt(decision["decision_id"])["simulator"] is True
+    with pytest.raises(PregenError, match="already"):
+        sim.receipt(decision["decision_id"])
+    for subject, reason in [("sbx-revoked", "PG_NO_LICENSE"), ("sbx-exhausted", "PG_USAGE_LIMIT"),
+                            ("sbx-optedout", "PG_SUBJECT_OPTED_OUT"), ("sbx-unknown", "PG_NO_SUBJECT")]:
+        d = sim.verify({**request, "subject_id": subject}, "acme", "lic-1")
+        assert d["reason"] == reason
+        with pytest.raises(PregenError, match="not an allow"):
+            check_decision(d, {**request, "subject_id": subject, "provider_id": "acme", "licensee_id": "lic-1"},
+                           sim.directory, sim.get_json)
+    with pytest.raises(PregenError, match="different steward"):
+        verify_directory(sim.directory.to_json())

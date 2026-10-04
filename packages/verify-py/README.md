@@ -42,6 +42,19 @@ A listing in the directory proves which registry may issue a code, not that
 it holds any right over a person or a work. A signed decision proves what the
 registry answered, not that the output was lawful.
 
+## Test without a secret: the simulator
+
+```python
+sim = pregen.Simulator()                        # offline registry, throwaway keys
+decision = sim.verify(request, provider_id="acme", licensee_id="lic-1")
+pregen.check_decision(decision, {**request, "provider_id": "acme", "licensee_id": "lic-1"},
+                      sim.directory, sim.get_json)
+sim.receipt(decision["decision_id"])            # one per decision; a second raises
+```
+
+Same sandbox answers as the npm package. Nothing it signs is ever accepted by the
+real directory.
+
 Also: `verify_decision` (signatures only), `verify_directory`,
 `Directory.check_signer` / `registry_for` / `public_key`, `verify_license`
 (subject signature plus operator countersignature), `verify_signed`,

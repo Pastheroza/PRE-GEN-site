@@ -13,11 +13,11 @@ from urllib.parse import urlsplit
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __all__ = [
     "STEWARD_PUBLIC_KEY_HEX", "DIRECTORY_URL", "PregenError", "Directory", "canonical_json",
     "fingerprint", "verify_bytes", "verify_signed", "verify_license", "issuer_of",
-    "verify_directory", "load_directory", "verify_decision", "check_decision", "ORIGIN_KEY_FINGERPRINTS", "STEWARD_SUCCESSOR_PUBLIC_KEY_HEX",
+    "verify_directory", "load_directory", "verify_decision", "check_decision", "ORIGIN_KEY_FINGERPRINTS", "STEWARD_SUCCESSOR_PUBLIC_KEY_HEX", "Simulator",
 ]
 
 STEWARD_PUBLIC_KEY_HEX = "5cb949aab04186e3e216ec541b847c912fc3f78138c0ec3cb2560b2dad0d1f1b"
@@ -358,3 +358,69 @@ def check_decision(decision: dict, request: dict, directory: Directory = None, g
     if not verify_decision(decision, decision["license_id"], directory, get_json):
         raise PregenError("bad signature")
     return decision
+
+
+class Simulator:
+    """An offline sandbox registry for tests and CI: no network, no secret, throwaway keys.
+    Its directory is signed by a throwaway steward key, so nothing it signs is ever accepted
+    by the real directory. Answers the documented sandbox subjects:
+    sbx-allowed -> allow; sbx-revoked, sbx-expired -> PG_NO_LICENSE; sbx-exhausted ->
+    PG_USAGE_LIMIT; sbx-optedout -> PG_SUBJECT_OPTED_OUT; anything else -> PG_NO_SUBJECT.
+    Pass `sim.directory` and `sim.get_json` to check_decision."""
+
+    _ANSWERS = {"sbx-allowed": ("allow", None), "sbx-revoked": ("deny", "PG_NO_LICENSE"),
+                "sbx-expired": ("deny", "PG_NO_LICENSE"), "sbx-exhausted": ("deny", "PG_USAGE_LIMIT"),
+                "sbx-optedout": ("deny", "PG_SUBJECT_OPTED_OUT")}
+
+    def __init__(self, base_url: str = "https://simulator.pregen.invalid"):
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+        from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+        self.base_url = base_url
+        self._steward, self._operator = Ed25519PrivateKey.generate(), Ed25519PrivateKey.generate()
+        pub = lambda k: k.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw).hex()
+        self.operator_public_key_hex = pub(self._operator)
+        self._operator_id = fingerprint(self.operator_public_key_hex)
+        steward_pub = pub(self._steward)
+        body = {"schema": SCHEMA, "sequence": 1, "steward_key_id": fingerprint(steward_pub), "simulator": True,
+                "registries": [{"name": "PRE-GEN simulator (not a registry)", "prefix": "", "api": base_url,
+                                "keys": base_url + "/keys", "key_fingerprints": [self._operator_id]}]}
+        body["signature"] = self._steward.sign(canonical_json(body)).hex()
+        self.directory = verify_directory(body, steward_pub, successor_public_key_hex=None,
+                                          origin_key_fingerprints=[self._operator_id])
+        self._receipts, self._n = set(), 0
+
+    def get_json(self, url: str) -> dict:
+        if url == self.base_url + "/keys":
+            return {"current_key_id": self._operator_id,
+                    "keys": [{"key_id": self._operator_id, "public_key_hex": self.operator_public_key_hex, "status": "active"}]}
+        raise PregenError(f"not simulated: {url}")
+
+    def verify(self, request: dict, provider_id: str, licensee_id: str = "") -> dict:
+        """What POST /v1/verify/ returns, signed by the simulator's throwaway key."""
+        import time
+        disposition, reason = self._ANSWERS.get(request.get("subject_id"), ("deny", "PG_NO_SUBJECT"))
+        self._n += 1
+        now = int(time.time())
+        named = not _empty(request.get("provider_user_id")) or not _empty(request.get("provider_identity_link_id"))
+        body = {"schema_version": "pg.decision.v1", "decision_id": f"sim-{self._n}", "simulator": True,
+                "allowed": disposition == "allow", "disposition": disposition, "reason": reason,
+                "is_hard_refusal": reason == "PG_SUBJECT_OPTED_OUT",
+                "subject_id": request.get("subject_id", ""), "provider_id": provider_id, "licensee_id": licensee_id,
+                "license_id": "PG-RND-000001-SIMULAT" if disposition == "allow" else None,
+                "prompt_hash": request.get("prompt_hash", ""), "model": request.get("model", ""),
+                "modality": request.get("modality", ""), "intended_use": request.get("intended_use", {}),
+                "generation_id": request.get("generation_id", ""),
+                "provider_user_binding": "verified" if named else "unbound",
+                "provider_identity_link_id": request.get("provider_identity_link_id") or ("sim-link" if named else ""),
+                "issued_at": now, "expires_at": now + 300, "cache_scope": "not_cacheable",
+                "max_cache_age_seconds": 0, "operator_key_id": self._operator_id}
+        return {**body, "operator_signature": self._operator.sign(canonical_json(body)).hex()}
+
+    def receipt(self, decision_id: str) -> dict:
+        """What POST /v1/receipts/ returns: one receipt per decision, a second is refused."""
+        if not str(decision_id).startswith("sim-"):
+            raise PregenError("unknown decision")
+        if decision_id in self._receipts:
+            raise PregenError("receipt already filed for this decision")
+        self._receipts.add(decision_id)
+        return {"receipt_id": f"sim-receipt-{decision_id}", "decision_id": decision_id, "simulator": True}

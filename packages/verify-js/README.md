@@ -42,6 +42,24 @@ A listing in the directory proves which registry may issue a code, not that
 it holds any right over a person or a work. A signed decision proves what the
 registry answered, not that the output was lawful.
 
+## Test without a secret: the simulator
+
+```js
+import { createSimulator, checkDecision } from "@pregen/verify";
+const sim = await createSimulator();           // offline registry, throwaway keys
+globalThis.fetch = sim.fetch;                   // or pass sim.fetch to your HTTP client
+// …your normal code: POST sim.baseUrl + "/v1/verify/", then:
+await checkDecision(decision, request, { directory: sim.directory, fetch: sim.fetch });
+```
+
+`sbx-allowed` → `allow`; `sbx-revoked`, `sbx-expired` → `PG_NO_LICENSE`;
+`sbx-exhausted` → `PG_USAGE_LIMIT`; `sbx-optedout` → `PG_SUBJECT_OPTED_OUT`;
+anything else → `PG_NO_SUBJECT`. Receipts: one per decision, a second is refused.
+With `@prampta/sdk` 0.7.0 pass `baseUrl: sim.baseUrl`, `operatorPublicKeyHex:
+sim.operatorPublicKeyHex` and `pregenDirectory: sim.directory`. The simulator's
+keys are new on every run and its directory is signed by a throwaway steward,
+so nothing it signs is ever accepted by the real directory.
+
 Also exported: `verifyDecision` (signatures only), `verifyDirectory`,
 `Directory.checkSigner` / `registryFor` / `publicKey`, `verifyLicense` (subject
 signature plus operator countersignature), `verifySigned`, `canonicalJson`,

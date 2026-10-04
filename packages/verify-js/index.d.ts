@@ -50,3 +50,5 @@ export function verifyDecision(decision: Record<string, unknown>, code: string, 
  * reason; returns the decision when you may generate. `request`: the /v1/verify body plus provider_id and licensee_id. */
 export function checkDecision<T extends Record<string, unknown>>(decision: T, request: Record<string, unknown>,
   options?: { directory?: Directory; fetch?: Fetch; now?: number }): Promise<T>;
+/** Offline sandbox registry for tests and CI. Never accepted by the real directory. */
+export function createSimulator(options?: { baseUrl?: string }): Promise<{ baseUrl: string; directory: Directory; operatorPublicKeyHex: string; fetch: Fetch & ((url: string, init?: { method?: string; headers?: Record<string, string>; body?: string }) => Promise<{ ok: boolean; status: number; json(): Promise<any> }>) }>;

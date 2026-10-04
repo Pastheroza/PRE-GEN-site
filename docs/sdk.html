@@ -36,7 +36,7 @@
 <thead><tr><th>Package</th><th>Use at least</th><th>Why</th></tr></thead>
 <tbody>
 <tr><td class="mono">@pregen/verify</td><td class="mono">0.3.0</td><td><code>checkDecision</code>, directory continuity, pinned PRAMPTA keys including the announced next key, successor steward key</td></tr>
-<tr><td class="mono">pregen</td><td class="mono">0.3.0</td><td>the same, for Python</td></tr>
+<tr><td class="mono">pregen</td><td class="mono">0.3.0</td><td>the same, for Python. 0.4.0 adds the offline simulator in both</td></tr>
 <tr><td class="mono">@prampta/sdk</td><td class="mono">0.4.0 (published)</td><td>0.4.0 does not run the v5 checks. Until 0.7.0 is published, call <code>/v1/verify</code> over HTTP and pass the JSON it returns to <code>checkDecision</code>. 0.7.0 runs them itself through its <code>pregenDirectory</code> option.</td></tr>
 </tbody></table></div>
 <p>The shortest safe path: install → sandbox secret → <code>/v1/verify</code> → <code>checkDecision</code> → generate → receipt → store the decision, the directory <code>sequence</code> and the receipt id.</p>
@@ -83,6 +83,18 @@ directory = pregen.load_directory(previous=saved)
 saved = directory.to_json()
 pregen.check_decision(decision, request, directory)           # raises with the reason</code></pre>
 <p><code>checkDecision</code> runs every check of <a href="/spec/PRE-GEN-SPEC.md">PRE-GEN-SPEC.md</a> §5.4 before you generate: a license-backed <code>allow</code>, every echoed field equal to what you sent, a valid lifetime, a verified user binding when you named a user, and the signature chain. It refuses an older or shrunk directory, and the origin registry's keys are pinned in the library. Source and tests: <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/packages">packages/</a>, Apache-2.0.</p>
+
+<h2>Test without a secret</h2>
+<p>The verification libraries include an offline <strong>simulator</strong>: a stand-in registry with throwaway keys that answers the sandbox subjects below and accepts one receipt per decision. Your CI and coding agents can run the whole pipeline — ask, <code>checkDecision</code>, generate, receipt — without a provider secret. Nothing the simulator signs is ever accepted by the real directory.</p>
+<pre><code>import { createSimulator, checkDecision } from "@pregen/verify";   // 0.4.0 or later
+
+const sim = await createSimulator();
+globalThis.fetch = sim.fetch;               // your code calls sim.baseUrl + "/v1/verify/"
+await checkDecision(decision, request, { directory: sim.directory, fetch: sim.fetch });</code></pre>
+<pre><code>sim = pregen.Simulator()                    # pip install "pregen>=0.4.0"
+decision = sim.verify(request, provider_id="acme", licensee_id="lic-1")
+pregen.check_decision(decision, {**request, "provider_id": "acme", "licensee_id": "lic-1"}, sim.directory, sim.get_json)</code></pre>
+<p>Then switch to the real sandbox with a secret, and to production. The simulator proves your client handles every answer; only the real registry proves your credentials and connections.</p>
 
 <h2>Receipts, volume and caching</h2>
 <ul>
