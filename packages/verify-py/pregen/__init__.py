@@ -13,7 +13,7 @@ from urllib.parse import urlsplit
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 __all__ = [
     "STEWARD_PUBLIC_KEY_HEX", "DIRECTORY_URL", "PregenError", "Directory", "canonical_json",
     "fingerprint", "verify_bytes", "verify_signed", "verify_license", "issuer_of",
@@ -258,6 +258,10 @@ def _check_continuity(new: dict, previous: dict) -> None:
         if canonical_json(new) != canonical_json(previous):
             raise PregenError("a different directory with the same sequence")
         return
+    _keeps_history(new, previous)
+
+
+def _keeps_history(new: dict, previous: dict) -> None:
     for old in previous["registries"]:
         now = next((r for r in new["registries"] if r["prefix"] == old["prefix"]), None)
         if now is None:
@@ -305,6 +309,8 @@ def verify_directory(directory: dict, steward_public_key_hex: str = STEWARD_PUBL
             raise PregenError(f"sequence {directory['sequence']} is older than {min_sequence} already seen")
         if prev is not None:
             _check_continuity(directory, prev)
+    elif prev is not None:
+        _keeps_history(directory, prev)  # a handover may restart the sequence, never drop a listing or a revocation
     if origin_key_fingerprints is _DEFAULT:
         origin_key_fingerprints = ORIGIN_KEY_FINGERPRINTS if steward_public_key_hex == STEWARD_PUBLIC_KEY_HEX else None
     return Directory(directory, _TOKEN, origin_key_fingerprints)
@@ -324,6 +330,9 @@ def verify_decision(decision: dict, code: str, directory: Directory = None, get_
 
 
 _ECHOED = ("subject_id", "provider_id", "licensee_id", "prompt_hash", "model", "modality")
+
+
+_MAX_DECISION_LIFETIME = 900
 
 
 def _empty(v) -> bool:
@@ -368,11 +377,15 @@ def check_decision(decision: dict, request: dict, directory: Directory = None, g
     if require_verified_authority and decision.get("subject_authority") != "verified":
         raise PregenError(f"the subject's authority is {decision.get('subject_authority') or 'not stated'}, not verified")
 
+    if decision.get("schema_version") != "pg.decision.v1":
+        raise PregenError(f"unsupported schema_version: {decision.get('schema_version')}")
     exp, iat = decision.get("expires_at"), decision.get("issued_at")
     if type(exp) is not int or exp <= 0:
         raise PregenError("expires_at must be a positive integer")
-    if iat is not None and (type(iat) is not int or iat <= 0 or iat >= exp or iat > now + 60):
+    if type(iat) is not int or iat <= 0 or iat >= exp or iat > now + 60:
         raise PregenError("issued_at must be a positive integer before expires_at and not in the future")
+    if exp - iat > _MAX_DECISION_LIFETIME:  # PRE-GEN §1.1
+        raise PregenError(f"a decision lives at most {_MAX_DECISION_LIFETIME} seconds")
     if exp <= now:
         raise PregenError("decision expired")
 

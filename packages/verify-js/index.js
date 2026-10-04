@@ -214,6 +214,10 @@ function checkContinuity(next, previous) {
     if (canonicalJson(next) !== canonicalJson(previous)) fail("a different directory with the same sequence");
     return;
   }
+  keepsHistory(next, previous);
+}
+
+function keepsHistory(next, previous) {
   for (const old of previous.registries) {
     const now = next.registries.find((r) => r.prefix === old.prefix);
     if (!now) fail(`namespace ${old.prefix || "(bare)"} was removed`);
@@ -249,6 +253,8 @@ export async function verifyDirectory(directory, { stewardPublicKeyHex = STEWARD
   if (!handover) {
     if (directory.sequence < minSequence) fail(`sequence ${directory.sequence} is older than ${minSequence} already seen`);
     if (prev) checkContinuity(directory, prev);
+  } else if (prev) {
+    keepsHistory(directory, prev); // a handover may restart the sequence, never drop a listing or a revocation
   }
   const pin = originKeyFingerprints !== undefined ? originKeyFingerprints
     : stewardPublicKeyHex === STEWARD_PUBLIC_KEY_HEX ? ORIGIN_KEY_FINGERPRINTS : null;
@@ -278,6 +284,7 @@ const UNDERSTOOD = new Set(["schema_version", "decision_id", "nonce", "dispositi
   "operator_signature", "subject_authority", "rules_text", "rules_text_hash", "watermark_payload", "is_hard_refusal",
   "revocation_epoch", "max_cache_age_seconds", "cache_scope", "provider_user_binding", "provider_identity_link_id",
   "detection_id", "remediation"]);
+const MAX_DECISION_LIFETIME = 900;
 const ECHOED = ["subject_id", "provider_id", "licensee_id", "prompt_hash", "model", "modality"];
 const isEmpty = (v) => v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0);
 const same = (a, b) => canonicalJson(a) === canonicalJson(b);
@@ -305,11 +312,13 @@ export async function checkDecision(decision, request, { directory, fetch: fetch
     fail(`the subject's authority is ${decision.subject_authority ?? "not stated"}, not verified`);
   }
 
+  if (decision.schema_version !== "pg.decision.v1") fail(`unsupported schema_version: ${decision.schema_version}`);
   const exp = decision.expires_at, iat = decision.issued_at;
   if (!Number.isSafeInteger(exp) || exp <= 0) fail("expires_at must be a positive integer");
-  if (iat !== undefined && iat !== null && (!Number.isSafeInteger(iat) || iat <= 0 || iat >= exp || iat > now + 60)) {
+  if (!Number.isSafeInteger(iat) || iat <= 0 || iat >= exp || iat > now + 60) {
     fail("issued_at must be a positive integer before expires_at and not in the future");
   }
+  if (exp - iat > MAX_DECISION_LIFETIME) fail(`a decision lives at most ${MAX_DECISION_LIFETIME} seconds`); // PRE-GEN §1.1
   if (exp <= now) fail("decision expired");
 
   for (const f of ECHOED) {

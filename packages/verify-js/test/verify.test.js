@@ -111,7 +111,7 @@ test("checkDecision: everything a provider must check before generating", async 
   const now = 1_800_000_000;
   const request = { subject_id: "sub_1", provider_id: "acme", licensee_id: "lic-1", prompt_hash: "a".repeat(64),
     model: "m", modality: "image", intended_use: { use_case: "commercial", categories: ["ads"] }, provider_user_id: "u1" };
-  const base = { decision_id: "d1", allowed: true, disposition: "allow", license_id: "PG-RND-000042-ZZZZZZ1",
+  const base = { schema_version: "pg.decision.v1", decision_id: "d1", allowed: true, disposition: "allow", license_id: "PG-RND-000042-ZZZZZZ1",
     subject_id: "sub_1", provider_id: "acme", licensee_id: "lic-1", prompt_hash: "a".repeat(64), model: "m", modality: "image",
     intended_use: { use_case: "commercial", categories: ["ads"], channel: "", territory: "" },
     provider_user_binding: "verified", provider_identity_link_id: "link-1",
@@ -133,6 +133,9 @@ test("checkDecision: everything a provider must check before generating", async 
   await refuse({ provider_user_binding: "unbound" }, /binding/);
   await refuse({ provider_identity_link_id: "" }, /binding/);
   await refuse({ license_id: null }, /license/);
+  await refuse({ schema_version: "pg.decision.v999" }, /schema_version/);
+  await refuse({ issued_at: null }, /issued_at/);
+  await refuse({ issued_at: now - 10, expires_at: now + 3590 }, /at most 900/);
   const tampered = { ...(await signed({})), model: "other" };
   await assert.rejects(checkDecision(tampered, { ...request, model: "other" }, opts), /bad signature/);
 });
@@ -159,7 +162,7 @@ test("checkDecision refuses critical members it does not understand, and unverif
   const dir = await load(directory());
   const now = 1_800_000_000;
   const request = { subject_id: "s", provider_id: "p", licensee_id: "l", prompt_hash: "h", model: "m", modality: "image" };
-  const base = { ...request, decision_id: "d1", allowed: true, disposition: "allow", license_id: "PG-RND-000042-ZZZZZZ1",
+  const base = { ...request, schema_version: "pg.decision.v1", decision_id: "d1", allowed: true, disposition: "allow", license_id: "PG-RND-000042-ZZZZZZ1",
     subject_authority: "self", issued_at: now - 1, expires_at: now + 60, operator_key_id: origin.id };
   const opts = { directory: dir, fetch: keysFetch(keySets), now };
   const signed = (patch) => origin.sign({ ...base, ...patch }, "operator_signature");
@@ -182,6 +185,14 @@ test("a successor steward key takes over from a stolen one, whatever the thief's
   const shrunk = await successor.sign({ ...handover, sequence: 4, registries: handover.registries.slice(0, 1) }, "signature");
   await assert.rejects(verifyDirectory(shrunk, { ...opts, previous: taken }), /removed/); // usual rules within the new line
   await assert.rejects(verifyDirectory(signedHandover, { stewardPublicKeyHex: steward.pub }), /different steward/); // no successor pinned
+
+  // A handover restarts the sequence but keeps every listing and revocation.
+  const revoked = await steward.sign({ ...(await directory(5)), signature: undefined,
+    revoked_keys: [{ key_id: other.id, at: "2026-10-04T00:00:00Z" }] }, "signature");
+  const dropsRevocation = await successor.sign({ ...handover, sequence: 1 }, "signature");
+  await assert.rejects(verifyDirectory(dropsRevocation, { ...opts, previous: revoked }), /undone/);
+  const keeps = await successor.sign({ ...handover, sequence: 1, revoked_keys: revoked.revoked_keys }, "signature");
+  assert.equal((await verifyDirectory(keeps, { ...opts, previous: revoked })).checkSigner("PG-NWRD-000042-K", other.id), "revoked");
 });
 
 test("simulator: the whole provider pipeline runs offline, and nothing it signs passes the real directory", async () => {

@@ -412,7 +412,10 @@ advance, stored apart from the steward key and never used until it is needed:
 
 A directory signed by the successor key replaces every directory signed by
 the steward key, whatever their `sequence`, and a verifier that has accepted
-one refuses directories signed by the old key from then on. A thief holding
+one refuses directories signed by the old key from then on. The handover may
+restart the sequence, but the successor's directory MUST keep every listing
+and revocation of the directory it replaces; a verifier refuses one that
+drops any. A thief holding
 only the old key cannot win by raising the sequence. Within the successor's
 own line the rules above apply as before. A planned change of steward uses the
 same path, and a new successor is published at once. The bare namespace cannot be

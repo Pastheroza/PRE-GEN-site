@@ -29,17 +29,17 @@
 </div></header>
 <main><div class="wrap">
 <div class="doc"><aside><ul><li><a href="/docs">Overview</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versioning</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk" aria-current="page">Integrate</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Implement</a></li></ul></aside><article><h1>Integrate</h1>
-<p class="meta">HTTP · verification: <span class="mono">@pregen/verify</span> (npm) and <span class="mono">pregen</span> (PyPI) 0.3.0 or later · reference TypeScript SDK <span class="mono">@prampta/sdk</span> 0.8.0 (Apache-2.0)</p>
+<p class="meta">HTTP · verification: <span class="mono">@pregen/verify</span> (npm) and <span class="mono">pregen</span> (PyPI) 0.6.0 or later · reference TypeScript SDK <span class="mono">@prampta/sdk</span> 0.9.0 (Apache-2.0)</p>
 <p>A provider needs credentials from a <a href="/registries">registry</a>. The first registry, PRAMPTA, issues a sandbox key after a verified company email and a production key after a DNS record on the company domain. The sandbox reaches synthetic test subjects only.</p>
 <h2>Minimum safe versions</h2>
 <div class="table"><table>
 <thead><tr><th>Package</th><th>Use at least</th><th>Why</th></tr></thead>
 <tbody>
-<tr><td class="mono">@pregen/verify</td><td class="mono">0.3.0</td><td><code>checkDecision</code>, directory continuity, pinned PRAMPTA keys including the announced next key, successor steward key</td></tr>
-<tr><td class="mono">pregen</td><td class="mono">0.3.0</td><td>the same, for Python. 0.4.0 adds the offline simulator in both. <b>0.5.0, recommended</b>, refuses revoked registries and keys (V-14) and <code>critical</code> members it does not understand (E-3), and can require a verified rights holder (<code>requireVerifiedAuthority</code> / <code>require_verified_authority</code>)</td></tr>
-<tr><td class="mono">@prampta/sdk</td><td class="mono">0.8.0</td><td>Runs the v5 checks itself when you pass <code>pregenDirectory</code> (from <code>loadPregenDirectory()</code>); 0.7.0 and later. 0.8.0 adds <code>generateAuthorized</code>: every subject in one output must allow, one receipt each, allows given back on failure, no second generation after a crash. Before 0.7.0: with them, or over raw HTTP, pass the JSON <code>/v1/verify</code> returns to <code>checkDecision</code>. Needs Node 20.19+ or 22.12+.</td></tr>
+<tr><td class="mono">@pregen/verify</td><td class="mono">0.6.0</td><td><code>checkDecision</code>: signature by a key the directory lists for the namespace, not revoked (V-14); exact request match; supported <code>schema_version</code>; <code>issued_at</code> and <code>expires_at</code> at most 900 seconds apart; no unknown <code>critical</code> member (E-3); optional <code>requireVerifiedAuthority</code>. Directory: continuity, revocations kept across a steward handover, pinned PRAMPTA keys, successor steward key. Offline simulator.</td></tr>
+<tr><td class="mono">pregen</td><td class="mono">0.6.0</td><td>the same, for Python</td></tr>
+<tr><td class="mono">@prampta/sdk</td><td class="mono">0.9.0</td><td><code>generateAuthorized</code> with a required journal: one worker per job through an atomic <code>claim</code>, one request per <code>generationId</code>, a re-check right before generating, the output hash stored before receipts, a receipt counted as filed only when the registry accepted exactly it. Strict decision checks with or without <code>pregenDirectory</code>. Needs Node 20.19+ or 22.12+.</td></tr>
 </tbody></table></div>
-<p>The shortest safe path: install → sandbox secret → <code>/v1/verify</code> → <code>checkDecision</code> → generate → receipt → store the decision, the directory <code>sequence</code> and the receipt id.</p>
+<p>The shortest safe path: install the SDK → sandbox secret → the setup below, which turns on every check → <code>generateAuthorized</code>. Over raw HTTP: <code>/v1/verify</code> → <code>checkDecision</code> → generate → receipt, and you build the job rules yourself.</p>
 <p class="note">Two libraries, two jobs: <span class="mono">@prampta/sdk</span> asks the PRAMPTA registry for a decision; <span class="mono">@pregen/verify</span> (on PyPI: <span class="mono">pregen</span>) checks that any registry's answer is genuine.</p>
 <p class="note">Keep the provider secret on your server. It never goes to a browser, a URL or client code. Send a hash of the prompt, never the prompt.</p>
 
@@ -64,7 +64,7 @@ X-Licensee-ID: lic-…
 
 {"decision_id": "dec_…", "prompt_hash": "…", "output_hash": "&lt;sha256 of the file&gt;",
  "event_type": "output_accepted", "obligations_applied": {}}</code></pre>
-<p>One receipt per <code>allow</code> decision. A second receipt for the same decision is refused.</p>
+<p>One receipt per <code>allow</code> decision. The identical receipt sent again returns <code>already_recorded</code>; a different one is refused (<code>receipt_conflict</code>).</p>
 
 <h2>Check the signature against PRE-GEN</h2>
 <p>A signed <code>allow</code> is worth something only if the key that signed it belongs to the registry that owns the code. The verification library checks that chain with the PRE-GEN steward key built in: the <a href="/registries">registry directory</a> is signed by the steward, the code's namespace belongs to one listed registry, the decision's key is one of that registry's keys, and the signature verifies.</p>
@@ -86,40 +86,52 @@ pregen.check_decision(decision, request, directory)           # raises with the 
 
 <h2>Test without a secret</h2>
 <p>The verification libraries include an offline <strong>simulator</strong>: a stand-in registry with throwaway keys that answers the sandbox subjects below and accepts one receipt per decision. Your CI and coding agents can run the whole pipeline — ask, <code>checkDecision</code>, generate, receipt — without a provider secret. Nothing the simulator signs is ever accepted by the real directory.</p>
-<pre><code>import { createSimulator, checkDecision } from "@pregen/verify";   // 0.4.0 or later
+<pre><code>import { createSimulator, checkDecision } from "@pregen/verify";   // 0.6.0 or later
 
 const sim = await createSimulator();
 globalThis.fetch = sim.fetch;               // your code calls sim.baseUrl + "/v1/verify/"
 await checkDecision(decision, request, { directory: sim.directory, fetch: sim.fetch });</code></pre>
-<pre><code>sim = pregen.Simulator()                    # pip install "pregen>=0.4.0"
+<pre><code>sim = pregen.Simulator()                    # pip install "pregen>=0.6.0"
 decision = sim.verify(request, provider_id="acme", licensee_id="lic-1")
 pregen.check_decision(decision, {**request, "provider_id": "acme", "licensee_id": "lic-1"}, sim.directory, sim.get_json)</code></pre>
 <p>Then switch to the real sandbox with a secret, and to production. The simulator proves your client handles every answer; only the real registry proves your credentials and connections.</p>
 
 <h2>Receipts, volume and caching</h2>
 <ul>
-<li><strong>One receipt per allow.</strong> A second receipt for the same decision is refused. The receipt is your evidence of what you produced under the decision.</li>
+<li><strong>One receipt per allow.</strong> Sending the identical receipt again (after a lost response) returns <code>already_recorded</code>; a different receipt for the same decision is refused with <code>receipt_conflict</code>. Never read "a receipt exists" as "mine was accepted".</li>
 <li><strong>One decision is not one output.</strong> The protocol cannot stop several generations under one allow; report each output you deliver and ask again for a new request. Lifecycle events after the receipt follow one output.</li>
 <li><strong>Caching.</strong> Only a plain allow with <code>cache_scope</code> <code>exact_request</code> may be reused, only for the identical request, only within <code>max_cache_age_seconds</code>, and never past its <code>expires_at</code> (300 seconds at PRAMPTA).</li>
 <li><strong>Usage limits at PRAMPTA.</strong> On a licence with <code>max_uses</code>, every allow uses up one use, receipt or not. If you did not generate, give it back before any receipt and within 24 hours with <code>POST /v1/receipts/{decision_id}/release</code>; the statement is kept in the signed audit log. An allow on a licence with <code>concurrency_limit</code> holds a slot until its receipt, its release, or 24 hours.</li>
 <li><strong>Without receipts</strong> you keep only the decisions: proof of what you asked, not of what you made. A provider becomes available to users outside its own team only after one production allow followed by its receipt.</li>
 </ul>
 <h2>TypeScript SDK</h2>
-<pre><code>npm install @prampta/sdk@^0.8.0</code></pre>
-<pre><code>import { Prampta } from "@prampta/sdk";
+<pre><code>npm install @prampta/sdk@^0.9.0</code></pre>
+<p>The main setup: the signed PRE-GEN directory, your independently pinned operator key, and a journal in your own database whose <code>claim</code> is atomic across all your servers.</p>
+<pre><code>import { Prampta, loadPregenDirectory } from "@prampta/sdk";
 
+const pregenDirectory = await loadPregenDirectory({ previous: saved }); // steward key built in
 const pg = new Prampta({
-  baseUrl: "https://api2.prampta.com",
-  providerId: "your-provider-id",
-  licenseeId: "lic-sandbox",            // synthetic fixture
-  token: process.env.PRAMPTA_TOKEN,     // provider secret, server-side only
+  baseUrl: "https://api2.prampta.com", providerId, licenseeId,
+  token: process.env.PRAMPTA_TOKEN,                              // server-side only
+  operatorPublicKeyHex: process.env.PRAMPTA_OPERATOR_PUBLIC_KEY, // obtained independently
+  pregenDirectory,
 });
 
-const d = await pg.verify("sbx-allowed", {
-  prompt: "A sandbox portrait", modality: "image", intendedUse: { useCase: "research" },
-});
-if (d.allowed) generate({ obligations: d.obligations });</code></pre>
-<p>The SDK verifies the registry's signature on every decision. <code>assertAllowed()</code> throws on any refusal.</p>
+// claim: INSERT ... ON CONFLICT DO NOTHING; if no row was inserted, return the stored entry
+const journal = {
+  claim: async (e) => (await db.insertIfAbsent(e.generationId, e)) ? null : db.get(e.generationId),
+  put: async (e) => db.update(e.generationId, e),
+};
+
+const result = await pg.generateAuthorized(
+  { subjectIds: [subjectCode], generationId: jobId, promptHash, model, modality: "image",
+    intendedUse: { useCase: "commercial" } },
+  async (decisions) => { const image = await render(prompt); return { output: image, outputBytes: image.bytes }; },
+  { journal },
+);
+// result.unreported: call again with the same jobId and request. result.conflicts: investigate.</code></pre>
+<p class="note">A journal is not a lock unless its <code>claim</code> is atomic in storage every worker shares. <code>singleProcessJournal()</code> is for tests and one process only.</p>
+<p><code>verify()</code>, <code>assertAllowed()</code> and <code>assertLicensed()</code> are lower-level: they check one decision and leave claiming, retries and receipts to you. Without <code>pregenDirectory</code> they check the signature against your pinned key but not the directory (namespace, revocation).</p>
 
 <h2>Sandbox test subjects</h2>
 <div class="table"><table>

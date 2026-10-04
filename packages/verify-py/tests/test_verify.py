@@ -138,7 +138,7 @@ def test_check_decision_refuses_unknown_critical_members_and_unverified_authorit
     now = 1_800_000_000
     request = {"subject_id": "s", "provider_id": "p", "licensee_id": "l", "prompt_hash": "h", "model": "m",
                "modality": "image"}
-    base = {**request, "decision_id": "d1", "allowed": True, "disposition": "allow",
+    base = {**request, "schema_version": "pg.decision.v1", "decision_id": "d1", "allowed": True, "disposition": "allow",
             "license_id": "PG-RND-000042-ZZZZZZ1", "subject_authority": "self", "issued_at": now - 1,
             "expires_at": now + 60, "operator_key_id": origin.id}
     signed = lambda **patch: origin.sign({**base, **patch}, "operator_signature")  # noqa: E731
@@ -157,7 +157,7 @@ def test_check_decision_covers_everything_before_generating():
     request = {"subject_id": "sub_1", "provider_id": "acme", "licensee_id": "lic-1", "prompt_hash": "a" * 64,
                "model": "m", "modality": "image", "intended_use": {"use_case": "commercial", "categories": ["ads"]},
                "provider_user_id": "u1"}
-    base = {"decision_id": "d1", "allowed": True, "disposition": "allow", "license_id": "PG-RND-000042-ZZZZZZ1",
+    base = {"schema_version": "pg.decision.v1", "decision_id": "d1", "allowed": True, "disposition": "allow", "license_id": "PG-RND-000042-ZZZZZZ1",
             "subject_id": "sub_1", "provider_id": "acme", "licensee_id": "lic-1", "prompt_hash": "a" * 64,
             "model": "m", "modality": "image",
             "intended_use": {"use_case": "commercial", "categories": ["ads"], "channel": "", "territory": ""},
@@ -175,7 +175,10 @@ def test_check_decision_covers_everything_before_generating():
                           ({"provider_id": ""}, "provider_id"), ({"prompt_hash": "b" * 64}, "prompt_hash"),
                           ({"intended_use": {**base["intended_use"], "channel": "tv"}}, "intended_use.channel"),
                           ({"provider_user_binding": "unbound"}, "binding"),
-                          ({"provider_identity_link_id": ""}, "binding"), ({"license_id": None}, "license")]:
+                          ({"provider_identity_link_id": ""}, "binding"), ({"license_id": None}, "license"),
+                          ({"schema_version": "pg.decision.v999"}, "schema_version"),
+                          ({"issued_at": None}, "issued_at"),
+                          ({"issued_at": now - 10, "expires_at": now + 3590}, "at most 900")]:
         with pytest.raises(PregenError, match=reason):
             check(patch)
     tampered = {**origin.sign(base, "operator_signature"), "model": "other"}
@@ -199,6 +202,16 @@ def test_successor_steward_takes_over_whatever_the_thiefs_sequence():
         verify_directory(shrunk, steward.pub, previous=taken, successor_public_key_hex=successor.pub)
     with pytest.raises(PregenError, match="different steward"):
         verify_directory(handover, steward.pub)
+
+    # A handover restarts the sequence but keeps every listing and revocation.
+    rk = [{"key_id": other.id, "at": "2026-10-04T00:00:00Z"}]
+    revoked = steward.sign({**{k: v for k, v in directory(5).items() if k != "signature"}, "revoked_keys": rk}, "signature")
+    with pytest.raises(PregenError, match="undone"):
+        verify_directory(successor.sign({**body, "sequence": 1}, "signature"), steward.pub, previous=revoked,
+                         successor_public_key_hex=successor.pub)
+    keeps = successor.sign({**body, "sequence": 1, "revoked_keys": rk}, "signature")
+    assert verify_directory(keeps, steward.pub, previous=revoked, successor_public_key_hex=successor.pub) \
+        .check_signer("PG-NWRD-000042-K", other.id) == "revoked"
 
 
 def test_simulator_runs_the_whole_pipeline_offline_and_is_never_trusted_for_real():

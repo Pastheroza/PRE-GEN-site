@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pregen"
-version = "0.5.0"
+version = "0.6.0"
 description = "Verify PRE-GEN signatures against the signed registry directory, with the PRE-GEN steward key built in"
 readme = "README.md"
 license = "Apache-2.0"

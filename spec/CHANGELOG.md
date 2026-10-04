@@ -10,6 +10,12 @@ See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
 
 ## v5 — draft of 2026-10-03
 
+- **Fixes after the re-check of the published packages** (2026-10-04). R-10:
+  the identical receipt again gets the original answer, a different one is
+  refused, so a provider can tell its own receipt from someone else's.
+  `PG-CODE.md` §9.1: a steward handover may restart the sequence but keeps
+  every listing and revocation. Libraries 0.6.0 enforce `schema_version`,
+  required `issued_at`, the 900-second lifetime and the handover rule.
 - **P-10 and R-15 replaced** (2026-10-04, founder; after an external
   review: "why is that registry entitled to answer for this subject? A
   matching name is not enough"). The earlier text let any listed registry

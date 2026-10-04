@@ -22,8 +22,10 @@ function checkChar(body) {
 function classify(raw) {
   const code = String(raw || "").trim().toUpperCase().replace(/\s+/g, "");
   if (!code) return { error: "missing_code", detail: "Provide ?code=PG-…", status: 400 };
-  if (code.length > 40 || !/^PG-[0-9A-Z*~$=!-]+$/.test(code))
-    return { error: "invalid_code", detail: "Not a PG code shape.", status: 422 };
+  // PG-CODE.md §4.2: at most 36 body characters plus the check character, counted
+  // without "PG-" and dashes — the same rule as the browser (lookup.js).
+  if (code.length > 64 || code.slice(3).replace(/-/g, "").length > 37 || !/^PG-[0-9A-Z*~$=!-]+$/.test(code))
+    return { error: "invalid_code", detail: "Not a PG code shape: at most 36 characters plus the check character.", status: 422 };
   const rest = code.slice(3);
   if (/[ILOU]/.test(rest))
     return { error: "invalid_code", detail: "I, L, O, U are excluded from the PG alphabet (Crockford base32).", status: 422 };

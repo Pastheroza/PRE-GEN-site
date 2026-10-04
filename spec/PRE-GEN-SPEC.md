@@ -729,8 +729,10 @@ the output; REQUIRED), `model`, `obligations_applied` (object),
 `schema_version` / `v` (`pg.receipt.v2` default, `pg.receipt.v3`) and
 `event_type` (v3), and `provider_signature` (hex).
 
-- **R-10** A registry MUST accept at most one receipt per decision (HTTP 409
-  for a second), MUST refuse a receipt whose decision was not an allow issued
+- **R-10** A registry MUST accept at most one receipt per decision: the
+  identical receipt sent again MUST get the original answer (the origin
+  registry: `already_recorded`), and a different one MUST be refused (HTTP 409),
+  so that "a receipt exists" never reads as "mine was accepted"; it MUST refuse a receipt whose decision was not an allow issued
   to the same provider and licensee (HTTP 400 / 403), and MUST refuse a
   `prompt_hash` that differs from the decision's (HTTP 400).
 - **R-11** If the provider has registered a signing key, the receipt MUST

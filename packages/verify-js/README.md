@@ -22,7 +22,8 @@ await checkDecision(decision, request, { directory });   // throws with the reas
 1. the decision is a license-backed `allow` (P-5);
 2. every echoed member equals what you sent, empty ones included, and
    intended-use members you did not send are empty (V-4);
-3. `expires_at` is a positive integer, later than `issued_at`, not yet passed (V-3);
+3. `schema_version` is `pg.decision.v1`; `issued_at` and `expires_at` are present,
+   at most 900 seconds apart, and `expires_at` has not passed (V-3);
 4. if you named a user, the binding is `verified` with a link id (V-13);
 5. the signature chain: the directory is signed by the PRE-GEN steward key
    (`pg-ed25519:dcdd244659e6d0e2426f2b504cb11590`), the license's namespace
@@ -41,7 +42,8 @@ cannot add its own key to bare `PG-…` codes; a new origin key comes with a
 new release. A successor steward key
 (`pg-ed25519:3e5e20729ce8485eea274c4cb33721d6`) is pinned too: a directory it
 signs replaces those of the current steward key whatever their sequence, so a
-thief holding the old key cannot outbid it.
+thief holding the old key cannot outbid it; it must keep every listing and
+revocation of the directory it replaces.
 
 A listing in the directory proves which registry may issue a code, not that
 it holds any right over a person or a work. A signed decision proves what the
