@@ -10,6 +10,15 @@ See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
 
 ## v5 — draft of 2026-10-03
 
+- **P-10 and R-15 replaced** (2026-10-04, founder; after an external
+  review: "why is that registry entitled to answer for this subject? A
+  matching name is not enough"). The earlier text let any listed registry
+  stop another's subject by claiming a duplicate. Now another registry's
+  refusal binds a provider only when its `subject_authority` is `verified`
+  and the allowing decision's is not; both `verified` means hold until the
+  registries resolve it; otherwise the refusal is a recorded signal. R-15:
+  a duplicate claim needs evidence and is examined between the registries;
+  a forwarded opt-out applies once its filer's authority is verified.
 - **Trust in registries** (2026-10-04, founder; NMP P21, after the question
   "what stops a fake registry from selling licences for a celebrity?").
   `PG-CODE.md` §9.1: admission conditions for a listing; revocation of a

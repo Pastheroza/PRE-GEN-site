@@ -704,11 +704,15 @@ and human review (`PG_HELD_FOR_REVIEW`, disposition `review`).
   NOT be used to authorize a generation, whatever its `issued_at`. As
   evidence it is reported as signed by a revoked key; its own `issued_at`
   does not show that it was signed before the revocation.
-- **P-10** When the provider learns that the same person, brand or work is
-  held by more than one listed registry — it asked several, or found the
-  subject in several subject indexes — it MUST NOT generate on the
-  registries' authority unless every registry it asked answers `allow`. A
-  hard refusal from any of them prevails over an allow from another.
+- **P-10** When the provider learns that another listed registry holds what
+  it believes is the same person, brand or work, and that registry refuses
+  while this one allows, the refusal binds the provider only when it rests on
+  stronger authority: its `subject_authority` is `verified` and the allowing
+  decision's is not. If both are `verified`, the provider MUST NOT generate on
+  the registries' authority until they resolve it, and SHOULD tell both. In
+  every other case the refusal is a signal, not a stop: the provider MUST
+  keep both decisions and MAY generate under the allow. A matching name is
+  not evidence that two registries hold the same subject.
 - **P-9** When one output involves several subjects — a person, a voice, a
   brand, a work — the provider MUST ask for each subject, with one
   `generation_id` for all of them, MUST NOT generate on the registries'
@@ -754,11 +758,12 @@ An extension (`PRE-GEN-EXTENSIONS.md` X.8).
   directory assigns to it, and MUST NOT issue codes before it is listed.
   Only the directory's origin entry may issue bare codes. Every key it signs
   with MUST be listed in its entry's `key_fingerprints` before first use.
-- **R-15** A registry that learns that another listed registry holds the
-  same person, brand or work SHOULD tell that registry and the steward, and
-  SHOULD stop issuing new licences for the subject, answering
-  `PG_SUBJECT_DISPUTED`, until the two agree who holds the rights. An
-  opt-out filed at either applies to the subject at both.
+- **R-15** A registry that receives a claim, with evidence, that another
+  listed registry holds the same person, brand or work SHOULD examine it with
+  that registry, MAY stop issuing new licences for the subject while it does
+  (`PG_SUBJECT_DISPUTED`), and SHOULD tell the steward if they cannot agree.
+  It SHOULD apply an opt-out forwarded by the other registry once it has
+  verified the authority of the person who filed it.
 
 ---
 
@@ -994,12 +999,13 @@ before hitting one in production.
   (extension X.8) chain events by `output_id` but are unsigned by the provider and
   carry no authorization.
 - **Several registries may disagree.** Issuer prefixes (`PG-CODE.md` §9)
-  prevent code collisions, not rights conflicts. When a provider knows that
-  two registries hold the same person, a refusal from either prevails
-  (P-10), and registries that find out SHOULD freeze new licences (R-15).
-  But nothing tells a provider that two registries hold the same person:
-  there is no shared identifier across registries, so the rule applies only
-  when the provider finds it out.
+  prevent code collisions, not rights conflicts. Another registry's refusal
+  binds a provider only when it rests on stronger, `verified` authority
+  (P-10); registries examine duplicate claims between themselves (R-15).
+  `subject_authority` is each registry's own statement: a listed registry
+  that misstates it is a ground for revocation, not something a provider
+  can check. Nothing tells a provider that two registries hold the same
+  person: there is no shared identifier across registries.
 - **An opt-out waits before it takes effect.** A new opt-out is `pending`
   for the registry's cooling period (reference: `COOLING_PERIOD_DAYS` = 14)
   and has no effect on decisions until `effective_from`
