@@ -137,6 +137,38 @@ test("checkDecision: everything a provider must check before generating", async 
   await assert.rejects(checkDecision(tampered, { ...request, model: "other" }, opts), /bad signature/);
 });
 
+test("a revoked registry or key signs nothing valid, and a revocation cannot be undone", async () => {
+  const prev = await directory(2);
+  const revokedReg = await directory(3, [prev.registries[0], { ...prev.registries[1], revoked: { at: "2026-10-04T00:00:00Z", reason: "fake rights holders" } }]);
+  const dir = await verifyDirectory(revokedReg, { stewardPublicKeyHex: steward.pub, previous: prev });
+  assert.equal(dir.checkSigner("PG-NWRD-000042-K", other.id), "revoked");
+  assert.equal(dir.checkSigner("PG-000042*", origin.id), "valid");
+  const decision = await other.sign({ decision_id: "d9", operator_key_id: other.id }, "operator_signature");
+  await assert.rejects(verifyDecision(decision, "PG-NWRD-000042-K", { directory: dir, fetch: keysFetch(keySets) }), /revoked/);
+  const unrevoked = await directory(4, prev.registries);
+  await assert.rejects(verifyDirectory(unrevoked, { stewardPublicKeyHex: steward.pub, previous: revokedReg }), /undone/);
+
+  const stolen = steward.sign({ ...(await directory(3)), signature: undefined, revoked_keys: [{ key_id: origin.id, at: "2026-10-04T00:00:00Z" }] }, "signature");
+  const withKey = await verifyDirectory(await stolen, { stewardPublicKeyHex: steward.pub, previous: prev });
+  assert.equal(withKey.checkSigner("PG-000042*", origin.id), "revoked");
+  await assert.rejects(verifyDirectory(await directory(4), { stewardPublicKeyHex: steward.pub, previous: await stolen }), /undone/);
+  await assert.rejects(load(steward.sign({ ...(await directory(3)), signature: undefined, revoked_keys: [{ key_id: "x" }] }, "signature")), /revoked_keys/);
+});
+
+test("checkDecision refuses critical members it does not understand, and unverified authority on request", async () => {
+  const dir = await load(directory());
+  const now = 1_800_000_000;
+  const request = { subject_id: "s", provider_id: "p", licensee_id: "l", prompt_hash: "h", model: "m", modality: "image" };
+  const base = { ...request, decision_id: "d1", allowed: true, disposition: "allow", license_id: "PG-RND-000042-ZZZZZZ1",
+    subject_authority: "self", issued_at: now - 1, expires_at: now + 60, operator_key_id: origin.id };
+  const opts = { directory: dir, fetch: keysFetch(keySets), now };
+  const signed = (patch) => origin.sign({ ...base, ...patch }, "operator_signature");
+  assert.ok(await checkDecision(await signed({ critical: ["obligations"] }), request, opts));
+  await assert.rejects(checkDecision(await signed({ critical: ["x_nwrd_geofence"] }), request, opts), /critical/);
+  await assert.rejects(checkDecision(await signed({}), request, { ...opts, requireVerifiedAuthority: true }), /not verified/);
+  assert.ok(await checkDecision(await signed({ subject_authority: "verified" }), request, { ...opts, requireVerifiedAuthority: true }));
+});
+
 test("a successor steward key takes over from a stolen one, whatever the thief's sequence", async () => {
   const successor = await keypair();
   const opts = { stewardPublicKeyHex: steward.pub, successorPublicKeyHex: successor.pub };

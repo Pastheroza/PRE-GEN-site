@@ -10,6 +10,19 @@ See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
 
 ## v5 — draft of 2026-10-03
 
+- **Trust in registries** (2026-10-04, founder; NMP P21, after the question
+  "what stops a fake registry from selling licences for a celebrity?").
+  `PG-CODE.md` §9.1: admission conditions for a listing; revocation of a
+  registry (`revoked` in its entry) or of one key (`revoked_keys`), never
+  undone, the entry and prefix kept forever. Core: V-14 (nothing signed by a
+  revoked registry or key authorizes a generation), P-10 (several registries
+  holding the same subject: every one asked must allow; a hard refusal
+  prevails), R-15 (a registry that finds a duplicate SHOULD freeze new
+  licences with `PG_SUBJECT_DISPUTED`; an opt-out at either applies at
+  both), `subject_authority` moved from the origin extension into the core
+  decision (a provider MAY require `verified` for commercial use). Vectors:
+  `namespace.revocation_cases` (additive). Libraries 0.5.0 check revocation,
+  `critical` (E-3) and, on request, verified authority.
 - **Core and extensions** (2026-10-04, founder; NMP P20). `PRE-GEN-SPEC.md`
   is now the core; what the origin registry adds moved, unchanged in
   meaning, to the new `PRE-GEN-EXTENSIONS.md`: origin decision and request

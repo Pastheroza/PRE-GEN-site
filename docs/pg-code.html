@@ -221,10 +221,11 @@ check = CHECK_ALPHABET[ sum mod 37 ]</code></pre>
     <h3>The signed registry directory</h3>
     <p>A prefix by itself protects nothing: anyone can print one. What decides which codes software <strong>accepts</strong> is the directory at <a href="/registries.json">registries.json</a>, signed by the PRE-GEN steward key (<a href="/spec/PG-CODE.md">PG-CODE.md</a> §9.1). It lists each registry with its namespace (bare for the origin registry, four letters for every other), its API and key-set addresses (HTTPS only) and the fingerprints of every operator key it may sign with. A code is valid only when a key listed for its namespace signed it — the same rule for every registry, the origin one included.</p>
     <ul>
-      <li>A client checks the signature with a steward key it already holds, never with a key taken from the directory, and refuses a directory older than one it has seen, one that removes a registry or key, or a different one with the same <code>sequence</code>.</li>
+      <li>A client checks the signature with a steward key it already holds, never with a key taken from the directory, and refuses a directory older than one it has seen, one that removes a registry or key or undoes a revocation, or a different one with the same <code>sequence</code>.</li>
       <li>A registry announces its next operator key in the directory before using it, so a planned rotation changes nothing for clients.</li>
+      <li>The steward lists a registry only after <a href="/registries">admission conditions</a>, and can revoke a registry (<code>revoked</code> in its entry) or a single stolen key (<code>revoked_keys</code>). Nothing signed by a revoked registry or key authorizes a generation again (V-14); a revocation is never undone.</li>
       <li>A listing proves which registry may issue a code, not that it holds any right over a person or a work.</li>
-      <li>v5 does not define how fresh a directory must be or how a stolen key is revoked.</li>
+      <li>v5 does not define how fresh a directory must be, so a verifier learns of a revocation only when it fetches the directory again.</li>
     </ul>
     <h3>Steward keys</h3>
     <div class="table"><table>

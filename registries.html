@@ -40,7 +40,8 @@
 <tr><td>Signed directory</td><td>Yes — <a href="/registries.json">registries.json</a>, signed by the steward key</td></tr>
 <tr><td>Second registry</td><td>None yet</td></tr>
 <tr><td>Independent implementation passing conformance</td><td>None yet — <a href="/docs/implement">implement one</a></td></tr>
-<tr><td>Opt-outs shared across registries</td><td>Not in v5</td></tr>
+<tr><td>Revoked registries or keys</td><td>None</td></tr>
+<tr><td>Same person in two registries</td><td>A refusal from either prevails for a provider that asked both; new licences freeze until resolved</td></tr>
 <tr><td>C2PA bridge</td><td>Assertion issued; not tested end to end</td></tr>
 </tbody></table></div>
 
@@ -57,22 +58,27 @@
 <tbody><tr><td colspan="3" class="muted">None yet. A provider appears here once it completes a production check and receipt with a listed registry.</td></tr></tbody></table></div>
 
 <h2>Getting listed</h2>
-<p><b>Registries</b> open an issue in the <a href="https://github.com/Pastheroza/PRE-GEN-site/issues">specification repository</a> and receive a four-letter prefix (<a href="/docs/pg-code">PG codes §8</a>). Bring:</p>
+<p>A listing is the one place where PRE-GEN keeps a fake registry out: verification libraries accept a registry's signatures only when the steward-signed directory lists it for that namespace. <strong>A listing is the steward's statement that a registry met these conditions, not a certificate that its rights holders are genuine</strong> — that stays the registry's responsibility.</p>
+<p><b>Registries</b> open an issue in the <a href="https://github.com/Pastheroza/PRE-GEN-site/issues">specification repository</a> and receive a four-letter prefix (<a href="/docs/pg-code">PG codes</a>). Bring:</p>
 <ol>
-<li>a public API with <code>/v1/verify/</code>, <code>/v1/subjects/index</code> and a rotation-aware key set at <code>/keys</code>;</li>
-<li>a passing run of the published test vectors;</li>
-<li>a contact for rights holders and a contact for security reports.</li>
+<li>a named operator — a company or a person — with a public address and a contact for complaints and disputes;</li>
+<li>a published policy: how you verify that a rights holder is who they claim and may license the subject, your own floors and refusal codes, decision lifetime, opt-out waiting period;</li>
+<li>acceptance of the core: its floor of protections, and the rule for a person held by two registries;</li>
+<li>a public API with <code>/v1/verify/</code> and a key set at <code>/keys</code>, your key fingerprints given out of band, your next key announced;</li>
+<li>a passing run of the published test vectors.</li>
 </ol>
 <p><b>Providers</b> are listed by the registry they integrate with, after a production decision and matching receipt.</p>
 
+<h2>Revocation</h2>
+<p>The steward can revoke a registry that licenses people or works it has no authority over, ignores proven complaints, breaks the core floor, or is compromised. A revoked registry stays in the directory forever, its prefix is never reused, and <strong>nothing signed by its keys authorizes a generation again</strong>. A single stolen key can be revoked the same way while the registry keeps its other keys. A revocation can never be undone, and each one is announced here with its reason. Verification libraries from version 0.5.0 enforce it; a verifier learns of it the next time it fetches the directory.</p>
+
 <h2>Working together</h2>
 <p><strong>Specified:</strong> every code belongs to exactly one registry. Bare <code>PG-…</code> codes are the origin registry's; every other registry prefixes its codes with its four letters, so codes never collide. A registry asked about another registry's code points to this list.</p>
-<p class="note">Proposed, not yet part of the specification. Discussed in the open before anything changes on the wire.</p>
 <ul>
-<li><strong>Discovery.</strong> Each registry publishes the same machine-readable description of its endpoints and keys, so one provider integration can reach every listed registry.</li>
-<li><strong>A no is shared.</strong> An opt-out or a protection for a minor at one registry should be honoured by every registry holding the same person.</li>
-<li><strong>Disputes.</strong> When two registries claim the same person or work, neither issues new licences for it until the claim is resolved.</li>
+<li><strong>A no wins.</strong> A provider that knows two registries hold the same person, brand or work generates only if every registry it asked allows; a hard refusal from either prevails.</li>
+<li><strong>Disputes.</strong> A registry that finds another listed registry holding the same subject tells it and the steward and stops issuing new licences for it until they agree; an opt-out at either applies at both.</li>
 </ul>
+<p class="note">Not yet specified: a shared identifier telling a provider that two registries hold the same person, and one discovery format for every registry's endpoints.</p>
 
 </div></main>
 <footer class="foot"><div class="wrap">

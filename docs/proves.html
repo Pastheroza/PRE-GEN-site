@@ -63,7 +63,8 @@
 <li><strong>Recognition is the provider's job.</strong> Authorization is asked for a named subject; resemblance, style or composites without a name are not caught by PRE-GEN.</li>
 <li><strong>Managed custody</strong> (the reference registry today): consent rests on the registry's records, not on a key the subject holds.</li>
 <li><strong>A false allow</strong> from a compromised registry cannot be independently confirmed or ruled out without a verifiable licence and a trusted subject key.</li>
-<li><strong>One registry in production</strong> today (PRAMPTA). Codes from several registries never collide; their rights and opt-outs are not reconciled in v5.</li>
+<li><strong>One registry in production</strong> today (PRAMPTA). Codes from several registries never collide. When a provider knows two registries hold the same person, a refusal from either prevails, but nothing yet tells a provider that they do.</li>
+<li><strong>A listing is not a rights check.</strong> The steward admits and can revoke registries; whether each rights holder is genuine is the registry's responsibility. The decision's <code>subject_authority</code> says how well the registry established it: only <code>verified</code> means the registry checked identity and authority.</li>
 <li><strong>C2PA</strong>: the signed assertion exists, but an end-to-end C2PA integration has not been tested.</li>
 <li><strong>Licence sales are paused at PRAMPTA</strong>: requests go to the rights-holder and nothing is charged. Decisions and receipts work the same.</li>
 </ul>

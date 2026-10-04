@@ -31,7 +31,6 @@ E-2). Each is signed; a verifier that does not use one ignores it.
 
 | Field | Type | Notes |
 |---|---|---|
-| `subject_authority` | string | `self` \| `agency_asserted` \| `consented` \| `verified` — how well the subject's real-world rights are proven, distinct from whether a license exists at all |
 | `rules_text` | string | display-only rights-holder text, never itself enforced |
 | `rules_text_hash` | string | SHA-256 hex of `rules_text`, empty string when `rules_text` is empty |
 | `watermark_payload` | string \| null | |

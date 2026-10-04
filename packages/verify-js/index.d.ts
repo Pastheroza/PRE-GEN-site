@@ -26,7 +26,7 @@ export class Directory {
   /** The registry that owns a code's namespace (resolve codes only there), or null. */
   registryFor(code: string): RegistryEntry | null;
   /** V-10: may this operator key sign objects carrying this code? */
-  checkSigner(code: string, signerKeyId: string): "valid" | "unknown_issuer" | "issuer_mismatch";
+  checkSigner(code: string, signerKeyId: string): "valid" | "unknown_issuer" | "issuer_mismatch" | "revoked";
   /** The owner's public key for `keyId`, fetched from its key set and checked against the listed fingerprint. */
   publicKey(code: string, keyId: string, options?: { fetch?: Fetch }): Promise<string>;
 }
@@ -49,6 +49,6 @@ export function verifyDecision(decision: Record<string, unknown>, code: string, 
 /** Everything to check before generating (V-1 to V-4, V-10, V-13, P-5). Throws PregenError with the
  * reason; returns the decision when you may generate. `request`: the /v1/verify body plus provider_id and licensee_id. */
 export function checkDecision<T extends Record<string, unknown>>(decision: T, request: Record<string, unknown>,
-  options?: { directory?: Directory; fetch?: Fetch; now?: number }): Promise<T>;
+  options?: { directory?: Directory; fetch?: Fetch; now?: number; requireVerifiedAuthority?: boolean }): Promise<T>;
 /** Offline sandbox registry for tests and CI. Never accepted by the real directory. */
 export function createSimulator(options?: { baseUrl?: string }): Promise<{ baseUrl: string; directory: Directory; operatorPublicKeyHex: string; fetch: Fetch & ((url: string, init?: { method?: string; headers?: Record<string, string>; body?: string }) => Promise<{ ok: boolean; status: number; json(): Promise<any> }>) }>;

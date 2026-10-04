@@ -537,6 +537,124 @@
         "signer_key_id": "pg-ed25519:77183061652862e2a4a41269711125f2",
         "result": "unknown_issuer"
       }
+    ],
+    "revocation_cases": [
+      {
+        "name": "revoked_registry",
+        "code": "PG-NWRD-RND-000042-ZZZZZZJ",
+        "signer_key_id": "pg-ed25519:77183061652862e2a4a41269711125f2",
+        "result": "revoked",
+        "directory": {
+          "schema": "pregen.registries.v2",
+          "sequence": 3,
+          "issued_at": "2026-10-01T00:00:00Z",
+          "registries": [
+            {
+              "name": "Origin",
+              "prefix": "",
+              "api": "https://origin.example",
+              "keys": "https://origin.example/keys",
+              "key_fingerprints": [
+                "pg-ed25519:225bee029538a6e5bc89f03d83cd45b1"
+              ]
+            },
+            {
+              "name": "Newreg",
+              "prefix": "NWRD",
+              "api": "https://nwrd.example",
+              "keys": "https://nwrd.example/keys",
+              "key_fingerprints": [
+                "pg-ed25519:77183061652862e2a4a41269711125f2"
+              ],
+              "revoked": {
+                "at": "2026-10-04T00:00:00Z",
+                "reason": "test"
+              }
+            }
+          ],
+          "providers": [],
+          "steward_key_id": "pg-ed25519:29088032de37bbef4318392dd94be78d",
+          "signature": "f981796300a7d66cd6b4ada9002f83ea57b234da0b2f4504aa669caab0f24abee9aba995944e9a1ee854e98933e48adbaed4506860b69cee1f78d5c3e2a05409"
+        }
+      },
+      {
+        "name": "other_registry_unaffected",
+        "code": "PG-PRM-000042-K7M2QXV",
+        "signer_key_id": "pg-ed25519:225bee029538a6e5bc89f03d83cd45b1",
+        "result": "valid",
+        "directory": {
+          "schema": "pregen.registries.v2",
+          "sequence": 3,
+          "issued_at": "2026-10-01T00:00:00Z",
+          "registries": [
+            {
+              "name": "Origin",
+              "prefix": "",
+              "api": "https://origin.example",
+              "keys": "https://origin.example/keys",
+              "key_fingerprints": [
+                "pg-ed25519:225bee029538a6e5bc89f03d83cd45b1"
+              ]
+            },
+            {
+              "name": "Newreg",
+              "prefix": "NWRD",
+              "api": "https://nwrd.example",
+              "keys": "https://nwrd.example/keys",
+              "key_fingerprints": [
+                "pg-ed25519:77183061652862e2a4a41269711125f2"
+              ],
+              "revoked": {
+                "at": "2026-10-04T00:00:00Z",
+                "reason": "test"
+              }
+            }
+          ],
+          "providers": [],
+          "steward_key_id": "pg-ed25519:29088032de37bbef4318392dd94be78d",
+          "signature": "f981796300a7d66cd6b4ada9002f83ea57b234da0b2f4504aa669caab0f24abee9aba995944e9a1ee854e98933e48adbaed4506860b69cee1f78d5c3e2a05409"
+        }
+      },
+      {
+        "name": "revoked_key",
+        "code": "PG-PRM-000042-K7M2QXV",
+        "signer_key_id": "pg-ed25519:225bee029538a6e5bc89f03d83cd45b1",
+        "result": "revoked",
+        "directory": {
+          "schema": "pregen.registries.v2",
+          "sequence": 3,
+          "issued_at": "2026-10-01T00:00:00Z",
+          "registries": [
+            {
+              "name": "Origin",
+              "prefix": "",
+              "api": "https://origin.example",
+              "keys": "https://origin.example/keys",
+              "key_fingerprints": [
+                "pg-ed25519:225bee029538a6e5bc89f03d83cd45b1"
+              ]
+            },
+            {
+              "name": "Newreg",
+              "prefix": "NWRD",
+              "api": "https://nwrd.example",
+              "keys": "https://nwrd.example/keys",
+              "key_fingerprints": [
+                "pg-ed25519:77183061652862e2a4a41269711125f2"
+              ]
+            }
+          ],
+          "providers": [],
+          "steward_key_id": "pg-ed25519:29088032de37bbef4318392dd94be78d",
+          "revoked_keys": [
+            {
+              "key_id": "pg-ed25519:225bee029538a6e5bc89f03d83cd45b1",
+              "at": "2026-10-04T00:00:00Z"
+            }
+          ],
+          "signature": "251063f2286d056c20cc1dd19616d49b695a0b02f1c44e75ace939c91a7f53dabb25771fce5e99a95447a45dca2fdfb688c69fcd6e3c0ca999ef1ac96a0b5804"
+        }
+      }
     ]
   },
   "pg_code": {

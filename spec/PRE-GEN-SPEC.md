@@ -182,6 +182,7 @@ are in `PRE-GEN-EXTENSIONS.md` X.2.
 | `modality` | string | |
 | `intended_use` | object | echoes the request's `intended_use` |
 | `obligations` | object | obligations the licensee must satisfy (watermarking, disclosure, …) |
+| `subject_authority` | string | how well the registry has established who holds the subject's rights: `self` (the registrant's own claim), `agency_asserted` (an agent's claim), `consented` (the subject's documented consent), `verified` (the registry checked identity and authority). Distinct from whether a licence exists. A provider MAY refuse to generate commercially on anything below `verified` |
 | `generation_id` | string | echoed from the request |
 | `issued_at` | integer | Unix seconds |
 | `expires_at` | integer | Unix seconds; hard signature lifetime, at most 900 seconds after `issued_at` |
@@ -698,6 +699,16 @@ and human review (`PG_HELD_FOR_REVIEW`, disposition `review`).
   §9.1 states: the published steward key's signature, its invariants, and a
   `sequence` no lower than one already accepted.
 - **V-13** (extension, `PRE-GEN-EXTENSIONS.md` X.4.)
+- **V-14** A decision, licence or other object signed by a key of a revoked
+  registry, or by a key listed in `revoked_keys` (`PG-CODE.md` §9.1), MUST
+  NOT be used to authorize a generation, whatever its `issued_at`. As
+  evidence it is reported as signed by a revoked key; its own `issued_at`
+  does not show that it was signed before the revocation.
+- **P-10** When the provider learns that the same person, brand or work is
+  held by more than one listed registry — it asked several, or found the
+  subject in several subject indexes — it MUST NOT generate on the
+  registries' authority unless every registry it asked answers `allow`. A
+  hard refusal from any of them prevails over an allow from another.
 - **P-9** When one output involves several subjects — a person, a voice, a
   brand, a work — the provider MUST ask for each subject, with one
   `generation_id` for all of them, MUST NOT generate on the registries'
@@ -743,6 +754,11 @@ An extension (`PRE-GEN-EXTENSIONS.md` X.8).
   directory assigns to it, and MUST NOT issue codes before it is listed.
   Only the directory's origin entry may issue bare codes. Every key it signs
   with MUST be listed in its entry's `key_fingerprints` before first use.
+- **R-15** A registry that learns that another listed registry holds the
+  same person, brand or work SHOULD tell that registry and the steward, and
+  SHOULD stop issuing new licences for the subject, answering
+  `PG_SUBJECT_DISPUTED`, until the two agree who holds the rights. An
+  opt-out filed at either applies to the subject at both.
 
 ---
 
@@ -841,9 +857,9 @@ confused:
 An implementation claims conformance to one or more profiles of
 **PRE-GEN v5**, by name:
 
-- **PRE-GEN v5 Verifier** — V-1 to V-4, V-9 to V-12, E-3; §2 and §2.1
+- **PRE-GEN v5 Verifier** — V-1 to V-4, V-9 to V-12, V-14, E-3; §2 and §2.1
   exactly; PG codes parsed and checked as `PG-CODE.md` states.
-- **PRE-GEN v5 Provider** — everything in Verifier, plus P-5 to P-9 and
+- **PRE-GEN v5 Provider** — everything in Verifier, plus P-5 to P-10 and
   §5.1–§5.2 on the wire. Receipts (§5.5) are RECOMMENDED.
 - **PRE-GEN v5 Registry** — R-1 to R-8, R-10 to R-14, E-1, E-4; decisions
   (§1.1), licences (§1.2), the audit chain (§2.2), the key set (§2.3) and
@@ -878,14 +894,14 @@ runner, and the Level 2 HTTP scenarios (`conformance/`). Everything marked
 | V-9 / §1.2 license signatures | Level 1: `license_countersignature` (subject + operator, and that the countersignature binds the id) |
 | §2.2 audit event bytes and chaining | Level 1: `audit_event_genesis`, `audit_event_chained`; Level 2: `10_audit_chain_valid` |
 | `PG-CODE.md` formatting and check character | Level 1: `pg_code` vectors |
-| V-10, V-12 (who may issue which codes; the signed directory) | Level 1: `namespace` vectors — both directions of the issuer check, replayed and tampered directories |
+| V-10, V-12, V-14 (who may issue which codes; the signed directory; revocation) | Level 1: `namespace` vectors — both directions of the issuer check, replayed and tampered directories, a revoked registry and a revoked key |
 | R-1 | Level 2: `02_refusal_missing_prompt_hash`, `04_refusal_no_subject` |
 | §5.1 caller authentication | Level 2: `03_refusal_no_pair` |
 | R-3 (withdrawn only) | Level 2: `05_refusal_subject_withdrawn` |
 | R-5 (allow with a license), scope | Level 2: `01_happy_path_verify`, `06_refusal_no_license`, `07_refusal_immutable_denial`, `08_refusal_scope_violation` |
 | R-10 (accepting a receipt) | Level 2: `09_receipt_recorded` |
-| R-2 opt-out priority; R-3 other statuses; R-4; R-6; R-7; R-8 echo; R-11; R-12; R-13; R-14; E-1; E-4 | **not checked** |
-| V-1, V-3, V-4, V-11, E-3; P-5 to P-9; extension V-13 | **not checked** by the published Level 1/2 checks (client behaviour; local SDK regression tests are not a portable conformance operation) |
+| R-2 opt-out priority; R-3 other statuses; R-4; R-6; R-7; R-8 echo; R-11; R-12; R-13; R-14; R-15; E-1; E-4 | **not checked** |
+| V-1, V-3, V-4, V-11, E-3; P-5 to P-10; extension V-13 | **not checked** by the published Level 1/2 checks (client behaviour; local SDK regression tests are not a portable conformance operation) |
 | §8.1 no skipped required operation | Runner `--require-op`; unsupported required operations fail, optional skips are counted separately |
 | Extensions X.6 to X.9, `pg.receipt.v3` | **not checked** |
 
@@ -924,13 +940,14 @@ extension in `PRE-GEN-EXTENSIONS.md`; its policy (E-5) is summarised in X.1.
   `sequence` 2, which adds the next PRAMPTA operator key and the successor
   steward key. The verification libraries `@pregen/verify` (npm) and
   `pregen` (PyPI) check it with the steward key built in (0.3.0 or later;
-  0.4.0 adds the offline simulator). `@prampta/sdk` 0.7.0 and later uses
+  0.4.0 adds the offline simulator; 0.5.0 checks revocation, V-14, and
+  `critical`, E-3). `@prampta/sdk` 0.7.0 and later uses
   them through its opt-in `pregenDirectory` option (V-10 to V-12); it
   requires pinned operator keys and does not auto-discover a root. 0.8.0
-  adds `generateAuthorized`, which follows P-9 for several subjects. The
-  libraries do not yet check `critical` (E-3); no registry sends it. Current
-  versions are listed on pregen.org/docs/sdk. v2 does not define freshness
-  or key revocation. Namespace membership is not evidence of rights-holder
+  adds `generateAuthorized`, which follows P-9 for several subjects.
+  Current versions are listed on pregen.org/docs/sdk. No registry or key is
+  revoked, and no registry sends `critical`. The directory does not define
+  freshness. Namespace membership is not evidence of rights-holder
   authority.
 - **Anchoring.** Audit roots are submitted about hourly to public
   OpenTimestamps calendars, best effort (§10).
@@ -977,9 +994,12 @@ before hitting one in production.
   (extension X.8) chain events by `output_id` but are unsigned by the provider and
   carry no authorization.
 - **Several registries may disagree.** Issuer prefixes (`PG-CODE.md` §9)
-  prevent code collisions, not rights conflicts: two registries can hold
-  the same person and answer differently, and v5 defines no rule for which
-  answer prevails, no shared opt-out, and no dispute freeze.
+  prevent code collisions, not rights conflicts. When a provider knows that
+  two registries hold the same person, a refusal from either prevails
+  (P-10), and registries that find out SHOULD freeze new licences (R-15).
+  But nothing tells a provider that two registries hold the same person:
+  there is no shared identifier across registries, so the rule applies only
+  when the provider finds it out.
 - **An opt-out waits before it takes effect.** A new opt-out is `pending`
   for the registry's cooling period (reference: `COOLING_PERIOD_DAYS` = 14)
   and has no effect on decisions until `effective_from`
@@ -1006,11 +1026,14 @@ before hitting one in production.
   existed; a compromised registry may withhold the bundle, and the subject
   key's binding is the registry's own statement. Preventing or proving such
   an allow needs mechanisms v5 does not specify.
-- **A stolen key cannot be revoked.** A stolen operator or steward key keeps
-  producing valid signatures. Announcing the next key (`PG-CODE.md` §9.1)
-  prepares a planned rotation; it does not stop the old key, v5 defines no
-  revoked status for a listed key, and an object's own `issued_at` does not
-  show that it was signed before a theft.
+- **Revocation reaches only verifiers that refresh.** The steward can
+  revoke a registry or a key (`PG-CODE.md` §9.1, V-14), but a verifier
+  learns of it only from a directory it fetches, and v5 does not say how
+  often. An object's own `issued_at` does not show that it was signed before
+  a theft, so everything a revoked key signed loses its authority, the
+  genuine included; proving "signed before" with external timestamps is
+  future work. Admission is the steward's judgement on the registry, not a
+  check of each rights holder.
 - **Legal overrides have no format.** A court may order generation despite
   an opt-out; v5 defines no record, decision, refusal code or conformance
   status for such an override, and the reference registry implements none.

@@ -36,7 +36,7 @@
 <thead><tr><th>Package</th><th>Use at least</th><th>Why</th></tr></thead>
 <tbody>
 <tr><td class="mono">@pregen/verify</td><td class="mono">0.3.0</td><td><code>checkDecision</code>, directory continuity, pinned PRAMPTA keys including the announced next key, successor steward key</td></tr>
-<tr><td class="mono">pregen</td><td class="mono">0.3.0</td><td>the same, for Python. 0.4.0 adds the offline simulator in both</td></tr>
+<tr><td class="mono">pregen</td><td class="mono">0.3.0</td><td>the same, for Python. 0.4.0 adds the offline simulator in both. <b>0.5.0, recommended</b>, refuses revoked registries and keys (V-14) and <code>critical</code> members it does not understand (E-3), and can require a verified rights holder (<code>requireVerifiedAuthority</code> / <code>require_verified_authority</code>)</td></tr>
 <tr><td class="mono">@prampta/sdk</td><td class="mono">0.8.0</td><td>Runs the v5 checks itself when you pass <code>pregenDirectory</code> (from <code>loadPregenDirectory()</code>); 0.7.0 and later. 0.8.0 adds <code>generateAuthorized</code>: every subject in one output must allow, one receipt each, allows given back on failure, no second generation after a crash. Before 0.7.0: with them, or over raw HTTP, pass the JSON <code>/v1/verify</code> returns to <code>checkDecision</code>. Needs Node 20.19+ or 22.12+.</td></tr>
 </tbody></table></div>
 <p>The shortest safe path: install → sandbox secret → <code>/v1/verify</code> → <code>checkDecision</code> → generate → receipt → store the decision, the directory <code>sequence</code> and the receipt id.</p>

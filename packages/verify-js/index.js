@@ -146,6 +146,16 @@ function checkInvariants(d) {
     }
   }
   if (!seen.has("")) fail("no registry holds the bare namespace");
+  // Revocation (PG-CODE.md §9.1): a revoked registry keeps its entry; a revoked key keeps its listing.
+  for (const r of d.registries) {
+    if (r.revoked !== undefined && !(r.revoked && typeof r.revoked === "object" && typeof r.revoked.at === "string")) {
+      fail(`registry ${r.name}: revoked must be an object with "at"`);
+    }
+  }
+  if (d.revoked_keys !== undefined && !(Array.isArray(d.revoked_keys)
+      && d.revoked_keys.every((k) => k && FINGERPRINT.test(String(k.key_id)) && typeof k.at === "string"))) {
+    fail("revoked_keys must list {key_id, at}");
+  }
 }
 
 /** A directory accepted under V-12. Build one with verifyDirectory() or loadDirectory(). */
@@ -174,10 +184,11 @@ export class Directory {
     return r ? structuredClone(r) : null;
   }
 
-  /** V-10: "valid", "unknown_issuer" or "issuer_mismatch". */
+  /** V-10, V-14: "valid", "unknown_issuer", "issuer_mismatch" or "revoked". */
   checkSigner(code, signerKeyId) {
     const r = this.registryFor(code);
     if (!r) return "unknown_issuer";
+    if (r.revoked || (this.#d.revoked_keys || []).some((k) => k.key_id === signerKeyId)) return "revoked";
     if (!r.key_fingerprints.includes(signerKeyId)) return "issuer_mismatch";
     if (r.prefix === "" && this.#originPin && !this.#originPin.includes(signerKeyId)) return "issuer_mismatch";
     return "valid";
@@ -207,6 +218,10 @@ function checkContinuity(next, previous) {
     const now = next.registries.find((r) => r.prefix === old.prefix);
     if (!now) fail(`namespace ${old.prefix || "(bare)"} was removed`);
     for (const f of old.key_fingerprints) if (!now.key_fingerprints.includes(f)) fail(`key ${f} was removed from ${now.name}`);
+    if (old.revoked && !(now.revoked && same(now.revoked, old.revoked))) fail(`the revocation of ${old.name} was undone`);
+  }
+  for (const k of previous.revoked_keys || []) {
+    if (!(next.revoked_keys || []).some((x) => same(x, k))) fail(`the revocation of key ${k.key_id} was undone`);
   }
 }
 
@@ -255,6 +270,14 @@ export async function verifyDecision(decision, code, { directory, fetch: fetchFn
   return verifySigned(decision, key, "operator_signature");
 }
 
+// Members this library knows how to handle: the core (PRE-GEN-SPEC.md §1.1) and the origin
+// registry's (PRE-GEN-EXTENSIONS.md X.2). A `critical` member outside this set makes an allow unusable.
+const UNDERSTOOD = new Set(["schema_version", "decision_id", "nonce", "disposition", "allowed", "reason",
+  "policy_version", "subject_id", "licensee_id", "provider_id", "license_id", "prompt_hash", "model", "modality",
+  "intended_use", "obligations", "generation_id", "issued_at", "expires_at", "critical", "operator_key_id",
+  "operator_signature", "subject_authority", "rules_text", "rules_text_hash", "watermark_payload", "is_hard_refusal",
+  "revocation_epoch", "max_cache_age_seconds", "cache_scope", "provider_user_binding", "provider_identity_link_id",
+  "detection_id", "remediation"]);
 const ECHOED = ["subject_id", "provider_id", "licensee_id", "prompt_hash", "model", "modality"];
 const isEmpty = (v) => v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0);
 const same = (a, b) => canonicalJson(a) === canonicalJson(b);
@@ -262,15 +285,25 @@ const same = (a, b) => canonicalJson(a) === canonicalJson(b);
 /** Everything a provider must check before generating on a decision (PRE-GEN-SPEC.md §5.4):
  * a genuine signature by the owner of the license's namespace (V-1, V-2, V-10), the decision
  * answers exactly this request (V-4), it is within its validity window (V-3), it carries a
- * verified user binding when a user was named (V-13), and it is a license-backed allow (P-5).
+ * verified user binding when a user was named (V-13), it is a license-backed allow (P-5), its
+ * registry and key are not revoked (V-14) and it lists no `critical` member this library does not
+ * understand (E-3). `requireVerifiedAuthority` also refuses a subject whose authority is not "verified".
  * `request` is what you sent: the /v1/verify body plus provider_id and licensee_id.
  * Throws PregenError with the reason; returns the decision when you may generate. */
 export async function checkDecision(decision, request, { directory, fetch: fetchFn = globalThis.fetch,
-  now = Math.floor(Date.now() / 1000) } = {}) {
+  now = Math.floor(Date.now() / 1000), requireVerifiedAuthority = false } = {}) {
   if (!decision || typeof decision !== "object") fail("decision must be an object");
   if (!request || typeof request !== "object") fail("request must be an object");
   if (decision.allowed !== true || decision.disposition !== "allow") fail(`not an allow: ${decision.disposition}`);
   if (typeof decision.license_id !== "string" || !decision.license_id) fail("an allow must name its license");
+  if (decision.critical !== undefined) {
+    if (!Array.isArray(decision.critical)) fail("critical must be a list");
+    const unknown = decision.critical.filter((m) => !UNDERSTOOD.has(m));
+    if (unknown.length) fail(`critical members this library does not understand: ${unknown.join(", ")}`); // E-3
+  }
+  if (requireVerifiedAuthority && decision.subject_authority !== "verified") {
+    fail(`the subject's authority is ${decision.subject_authority ?? "not stated"}, not verified`);
+  }
 
   const exp = decision.expires_at, iat = decision.issued_at;
   if (!Number.isSafeInteger(exp) || exp <= 0) fail("expires_at must be a positive integer");

@@ -318,6 +318,8 @@ signed by the **steward key**:
 | `sequence` | integer ≥ 1, increased by every signing |
 | `issued_at` | RFC 3339 UTC time of signing (informative) |
 | `registries` | array; each entry has `name`, `prefix` (`""` for the origin registry, otherwise four letters of the PG alphabet), `api`, `keys` (the registry's key set URL, `PRE-GEN-SPEC.md` §2.3) and `key_fingerprints` (every operator key the registry has ever signed with, current and retired, plus keys announced for future use, `PRE-GEN-SPEC.md` §2.1) |
+| `revoked` (in an entry) | optional: `{"at": RFC 3339 time, "reason": text}` — the registry is revoked (below) |
+| `revoked_keys` | optional array of `{"key_id", "at", "reason"}` — single operator keys revoked (below) |
 | `steward_key_id` | fingerprint of the steward key |
 | `signature` | Ed25519 by the steward key over the canonical JSON (`PRE-GEN-SPEC.md` §2) of the object without `signature`, hex |
 
@@ -338,8 +340,8 @@ A verifier accepts the directory only if (`PRE-GEN-SPEC.md` V-12):
 3. its `sequence` is not lower than the highest one the verifier has already
    accepted, so an old copy cannot be replayed to undo a listing.
 
-A listing, once made, is never removed or given to another registry; a
-registry that changes keys gets a new signing that adds the new fingerprint
+A listing, once made, is never removed or given to another registry, and a
+revocation, once made, is never undone; a registry that changes keys gets a new signing that adds the new fingerprint
 and keeps the old ones. A registry SHOULD announce its next operator key
 before it signs anything with it: the key is generated and kept offline, and
 its fingerprint is added to the directory (and to any verifier that pins the
@@ -349,12 +351,43 @@ change. A listed key that has not signed yet is not an error.
 A verifier that keeps the last directory it accepted SHOULD also refuse a
 newer one that removes a listed namespace or fingerprint, and one that
 differs from it at the same `sequence` (two directories signed with one
-number mean the steward key signed twice). A verifier MAY additionally pin
+number mean the steward key signed twice), and one that drops or changes a
+revocation. A verifier MAY additionally pin
 the origin registry's fingerprints and accept a bare code only from a key in
 both the directory and its pin, so that a stolen steward key cannot add a
 key to the bare namespace; a new origin key then needs a new release of that
 verifier. The PRE-GEN verification libraries (`@pregen/verify`, `pregen`)
 do both from version 0.2.
+
+**Admission.** A listing says that conforming software accepts a registry's
+signatures in its namespace; it is the one point where the standard can keep
+a fake registry out, so the steward lists a registry only when it has:
+
+1. a named operator — a legal entity or a person — with a public address and a
+   contact for complaints and disputes;
+2. a published policy (`PRE-GEN-SPEC.md` E-5), including how it verifies that
+   a rights holder is who it claims to be and is entitled to license the
+   subject;
+3. accepted the core, including its fixed floor and the conflict rule
+   (`PRE-GEN-SPEC.md` R-15, P-10);
+4. an operator key set published at its `keys` URL, its fingerprints given to
+   the steward out of band, and its next key announced (above).
+
+A listing is not a certificate that the registry's rights holders are
+genuine; it is the steward's statement that the registry met these
+conditions and can be revoked.
+
+**Revocation.** The steward revokes a registry by adding `revoked` to its
+entry: the entry, its prefix and its keys stay listed forever (the prefix is
+never reassigned), but nothing signed by its keys authorizes anything again
+(`PRE-GEN-SPEC.md` V-14). Grounds: licences for subjects it had no authority
+to license, refusing to act on proven complaints, breaking the core floor, or
+a compromise of its operation. The steward revokes a single stolen key by
+listing it in `revoked_keys`; the registry keeps its other keys. Before
+revoking a registry the steward SHOULD ask its operator to answer, unless
+there is ongoing harm. Every revocation is announced on pregen.org with its
+reason. A verifier learns of a revocation only from a directory it has
+fetched; how fresh that must be is not yet defined.
 
 **The steward key.** Held offline by the editor of the standard, Valerii
 Egorov — not by any registry, including the origin one — and used only to

@@ -39,6 +39,7 @@
 <li><strong>Own members and codes.</strong> A registry may add signed members, which verifiers ignore unless marked <code>critical</code>, and its own refusal codes, prefixed with its issuer: <code>PG_&lt;ISSUER&gt;_…</code>.</li>
 <li><strong>Published policy.</strong> Each registry publishes its floors, codes, extensions, decision lifetime and opt-out waiting period.</li>
 <li><strong>Several subjects.</strong> One output with a person, a voice and a brand needs an allow for each, under one <code>generation_id</code>.</li>
+<li><strong>Trusted registries only.</strong> Signatures count only from registries the steward-signed <a href="/registries">directory</a> lists; the steward admits them on published conditions and can revoke a registry or a key. When two registries hold the same person, a refusal from either prevails.</li>
 </ul>
 <p>What the origin registry, PRAMPTA, adds — end-user binding, decision caching, evidence bundles, C2PA assertions, observations — is in <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/PRE-GEN-EXTENSIONS.md">PRE-GEN-EXTENSIONS.md</a>.</p>
 

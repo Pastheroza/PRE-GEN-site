@@ -27,10 +27,15 @@ pregen.check_decision(decision, request, directory)   # raises with the reason, 
 5. the signature chain: the directory is signed by the PRE-GEN steward key
    (`pg-ed25519:dcdd244659e6d0e2426f2b504cb11590`), the license's namespace
    belongs to one listed registry, the decision's key is one of that
-   registry's keys and hashes to its fingerprint, and the signature verifies.
+   registry's keys and hashes to its fingerprint, and the signature verifies;
+6. neither that registry nor that key is revoked in the directory (V-14);
+7. the decision lists no `critical` member the library does not understand (E-3).
+
+Pass `require_verified_authority=True` to also refuse a subject whose rights holder the
+registry has not verified (`subject_authority` other than `verified`).
 
 The directory check also refuses an older directory, a newer one that removes
-a registry or key, and a different one with the same sequence. The origin
+a registry or key or undoes a revocation, and a different one with the same sequence. The origin
 registry's keys are pinned in the library as well, so a stolen steward key
 cannot add its own key to bare `PG-…` codes; a new origin key comes with a
 new release. A successor steward key

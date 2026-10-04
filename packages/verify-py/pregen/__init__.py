@@ -13,7 +13,7 @@ from urllib.parse import urlsplit
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 __all__ = [
     "STEWARD_PUBLIC_KEY_HEX", "DIRECTORY_URL", "PregenError", "Directory", "canonical_json",
     "fingerprint", "verify_bytes", "verify_signed", "verify_license", "issuer_of",
@@ -169,6 +169,16 @@ def _check_invariants(d):
             raise PregenError(f"registry {r.get('name')!r}: key_fingerprints must list pg-ed25519 fingerprints")
     if "" not in seen:
         raise PregenError("no registry holds the bare namespace")
+    # Revocation (PG-CODE.md §9.1): a revoked registry keeps its entry; a revoked key keeps its listing.
+    for r in regs:
+        rev = r.get("revoked")
+        if rev is not None and not (isinstance(rev, dict) and isinstance(rev.get("at"), str)):
+            raise PregenError(f"registry {r.get('name')!r}: revoked must be an object with 'at'")
+    rk = d.get("revoked_keys")
+    if rk is not None and not (isinstance(rk, list) and all(
+            isinstance(k, dict) and _FINGERPRINT.fullmatch(str(k.get("key_id", ""))) and isinstance(k.get("at"), str)
+            for k in rk)):
+        raise PregenError("revoked_keys must list {key_id, at}")
 
 
 def _get_json(url: str):
@@ -213,10 +223,12 @@ class Directory:
         return deepcopy(r) if r else None
 
     def check_signer(self, code: str, signer_key_id: str) -> str:
-        """V-10: "valid", "unknown_issuer" or "issuer_mismatch"."""
+        """V-10, V-14: "valid", "unknown_issuer", "issuer_mismatch" or "revoked"."""
         r = self.registry_for(code)
         if r is None:
             return "unknown_issuer"
+        if r.get("revoked") or any(k["key_id"] == signer_key_id for k in self._d.get("revoked_keys") or []):
+            return "revoked"
         if signer_key_id not in r["key_fingerprints"]:
             return "issuer_mismatch"
         if r["prefix"] == "" and self._origin_pin is not None and signer_key_id not in self._origin_pin:
@@ -253,6 +265,11 @@ def _check_continuity(new: dict, previous: dict) -> None:
         for f in old["key_fingerprints"]:
             if f not in now["key_fingerprints"]:
                 raise PregenError(f"key {f} was removed from {now['name']}")
+        if old.get("revoked") and now.get("revoked") != old["revoked"]:
+            raise PregenError(f"the revocation of {old['name']} was undone")
+    for k in previous.get("revoked_keys") or []:
+        if k not in (new.get("revoked_keys") or []):
+            raise PregenError(f"the revocation of key {k['key_id']} was undone")
 
 
 _DEFAULT = object()
@@ -313,12 +330,26 @@ def _empty(v) -> bool:
     return v is None or v == "" or v == []
 
 
-def check_decision(decision: dict, request: dict, directory: Directory = None, get_json=_get_json, now=None) -> dict:
+# Members this library knows how to handle: the core (PRE-GEN-SPEC.md §1.1) and the origin
+# registry's (PRE-GEN-EXTENSIONS.md X.2). A `critical` member outside this set makes an allow unusable.
+_UNDERSTOOD = frozenset({
+    "schema_version", "decision_id", "nonce", "disposition", "allowed", "reason", "policy_version", "subject_id",
+    "licensee_id", "provider_id", "license_id", "prompt_hash", "model", "modality", "intended_use", "obligations",
+    "generation_id", "issued_at", "expires_at", "critical", "operator_key_id", "operator_signature",
+    "subject_authority", "rules_text", "rules_text_hash", "watermark_payload", "is_hard_refusal", "revocation_epoch",
+    "max_cache_age_seconds", "cache_scope", "provider_user_binding", "provider_identity_link_id", "detection_id",
+    "remediation"})
+
+
+def check_decision(decision: dict, request: dict, directory: Directory = None, get_json=_get_json, now=None,
+                   require_verified_authority: bool = False) -> dict:
     """Everything a provider must check before generating on a decision (PRE-GEN-SPEC.md §5.4):
     a genuine signature by the owner of the license's namespace (V-1, V-2, V-10), the decision
     answers exactly this request (V-4), it is within its validity window (V-3), it carries a
-    verified user binding when a user was named (V-13), and it is a license-backed allow (P-5).
-    `request` is what you sent: the /v1/verify body plus provider_id and licensee_id.
+    verified user binding when a user was named (V-13), it is a license-backed allow (P-5), its
+    registry and key are not revoked (V-14) and it lists no `critical` member this library does
+    not understand (E-3). `require_verified_authority` also refuses a subject whose authority is
+    not "verified". `request` is what you sent: the /v1/verify body plus provider_id and licensee_id.
     Raises PregenError with the reason; returns the decision when you may generate."""
     import time
     now = int(time.time()) if now is None else now
@@ -328,6 +359,14 @@ def check_decision(decision: dict, request: dict, directory: Directory = None, g
         raise PregenError(f"not an allow: {decision.get('disposition')}")
     if not isinstance(decision.get("license_id"), str) or not decision["license_id"]:
         raise PregenError("an allow must name its license")
+    if "critical" in decision:
+        if not isinstance(decision["critical"], list):
+            raise PregenError("critical must be a list")
+        unknown = [m for m in decision["critical"] if m not in _UNDERSTOOD]
+        if unknown:  # E-3
+            raise PregenError(f"critical members this library does not understand: {', '.join(map(str, unknown))}")
+    if require_verified_authority and decision.get("subject_authority") != "verified":
+        raise PregenError(f"the subject's authority is {decision.get('subject_authority') or 'not stated'}, not verified")
 
     exp, iat = decision.get("expires_at"), decision.get("issued_at")
     if type(exp) is not int or exp <= 0:

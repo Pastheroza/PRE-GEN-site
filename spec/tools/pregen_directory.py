@@ -117,6 +117,16 @@ def check_invariants(directory: dict) -> None:
             raise DirectoryError(f"registry {r.get('name')!r}: key_fingerprints must list pg-ed25519 fingerprints")
     if "" not in seen:
         raise DirectoryError("no registry holds the bare namespace")
+    # Revocation (PG-CODE.md §9.1): a revoked registry keeps its entry; a revoked key keeps its listing.
+    for r in regs:
+        rev = r.get("revoked")
+        if rev is not None and not (isinstance(rev, dict) and isinstance(rev.get("at"), str)):
+            raise DirectoryError(f"registry {r.get('name')!r}: revoked must be an object with 'at'")
+    rk = directory.get("revoked_keys")
+    if rk is not None and not (isinstance(rk, list) and all(
+            isinstance(k, dict) and _FINGERPRINT.fullmatch(str(k.get("key_id", ""))) and isinstance(k.get("at"), str)
+            for k in rk)):
+        raise DirectoryError("revoked_keys must list {key_id, at}")
 
 
 def sign_directory(directory: dict, private_key: Ed25519PrivateKey) -> dict:
@@ -158,9 +168,10 @@ def issuer_of(code: str) -> str:
 
 
 def check_namespace(directory: dict, code: str, signer_key_id: str) -> str:
-    """V-10 for a directory already accepted by verify_directory():
-    "valid", "unknown_issuer" (no registry holds the namespace) or
-    "issuer_mismatch" (the signer is not a key of the namespace's owner)."""
+    """V-10 and V-14 for a directory already accepted by verify_directory():
+    "valid", "unknown_issuer" (no registry holds the namespace),
+    "issuer_mismatch" (the signer is not a key of the namespace's owner) or
+    "revoked" (the owner, or the signing key, is revoked)."""
     try:
         issuer = issuer_of(code)
     except DirectoryError:
@@ -168,4 +179,6 @@ def check_namespace(directory: dict, code: str, signer_key_id: str) -> str:
     owner = next((r for r in directory["registries"] if r["prefix"] == issuer), None)
     if owner is None:
         return "unknown_issuer"
+    if owner.get("revoked") or any(k["key_id"] == signer_key_id for k in directory.get("revoked_keys") or []):
+        return "revoked"
     return "valid" if signer_key_id in owner["key_fingerprints"] else "issuer_mismatch"

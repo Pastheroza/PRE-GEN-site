@@ -140,6 +140,17 @@ def run(adapter_cmd: str, cwd: str | None, extra_env: dict | None = None,
             else:
                 ok = resp.get("result") == case["result"]
                 _check(name, ok, "" if ok else f"got {resp}, want {case['result']!r}", results)
+        for case in ns.get("revocation_cases", []):  # V-14, each with its own signed directory
+            resp = _call(adapter_cmd, cwd, extra_env, {
+                "op": "check_namespace", "directory": case["directory"],
+                "steward_public_key_hex": ns["steward_public_key_hex"],
+                "code": case["code"], "signer_key_id": case["signer_key_id"]})
+            name = f"namespace_issuer:{case['name']}"
+            if resp.get("unsupported"):
+                _check(name, True, "skipped (unsupported)", results)
+            else:
+                ok = resp.get("result") == case["result"]
+                _check(name, ok, "" if ok else f"got {resp}, want {case['result']!r}", results)
 
     # ── pg_code: check_char, subject_code, license_id, rejects ──
     pg = vectors["pg_code"]

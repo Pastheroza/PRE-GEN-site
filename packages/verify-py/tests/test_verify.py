@@ -109,6 +109,48 @@ def test_newer_directory_may_add_but_never_remove_or_fork():
     assert verify_directory(directory(3, prev["registries"] + [extra]), steward.pub, previous=prev).sequence == 3
 
 
+def test_revoked_registry_or_key_signs_nothing_valid_and_cannot_be_unrevoked():
+    prev = directory(2)
+    revoked = directory(3, [prev["registries"][0],
+                            {**prev["registries"][1], "revoked": {"at": "2026-10-04T00:00:00Z", "reason": "fake rights holders"}}])
+    dir_ = verify_directory(revoked, steward.pub, previous=prev)
+    assert dir_.check_signer("PG-NWRD-000042-K", other.id) == "revoked"
+    assert dir_.check_signer("PG-000042*", origin.id) == "valid"
+    decision = other.sign({"decision_id": "d9", "operator_key_id": other.id}, "operator_signature")
+    with pytest.raises(PregenError, match="revoked"):
+        verify_decision(decision, "PG-NWRD-000042-K", dir_, KEY_SETS.__getitem__)
+    with pytest.raises(PregenError, match="undone"):
+        verify_directory(directory(4, prev["registries"]), steward.pub, previous=revoked)
+
+    def with_revoked_keys(seq, keys):
+        body = {k: v for k, v in directory(seq).items() if k != "signature"}
+        return steward.sign({**body, "revoked_keys": keys}, "signature")
+    stolen = with_revoked_keys(3, [{"key_id": origin.id, "at": "2026-10-04T00:00:00Z"}])
+    assert verify_directory(stolen, steward.pub, previous=prev).check_signer("PG-000042*", origin.id) == "revoked"
+    with pytest.raises(PregenError, match="undone"):
+        verify_directory(directory(4), steward.pub, previous=stolen)
+    with pytest.raises(PregenError, match="revoked_keys"):
+        load(with_revoked_keys(3, [{"key_id": "x"}]))
+
+
+def test_check_decision_refuses_unknown_critical_members_and_unverified_authority_on_request():
+    dir_ = load(directory())
+    now = 1_800_000_000
+    request = {"subject_id": "s", "provider_id": "p", "licensee_id": "l", "prompt_hash": "h", "model": "m",
+               "modality": "image"}
+    base = {**request, "decision_id": "d1", "allowed": True, "disposition": "allow",
+            "license_id": "PG-RND-000042-ZZZZZZ1", "subject_authority": "self", "issued_at": now - 1,
+            "expires_at": now + 60, "operator_key_id": origin.id}
+    signed = lambda **patch: origin.sign({**base, **patch}, "operator_signature")  # noqa: E731
+    get = KEY_SETS.__getitem__
+    assert check_decision(signed(critical=["obligations"]), request, dir_, get, now)
+    with pytest.raises(PregenError, match="critical"):
+        check_decision(signed(critical=["x_nwrd_geofence"]), request, dir_, get, now)
+    with pytest.raises(PregenError, match="not verified"):
+        check_decision(signed(), request, dir_, get, now, require_verified_authority=True)
+    assert check_decision(signed(subject_authority="verified"), request, dir_, get, now, require_verified_authority=True)
+
+
 def test_check_decision_covers_everything_before_generating():
     dir_ = load(directory())
     now = 1_800_000_000
