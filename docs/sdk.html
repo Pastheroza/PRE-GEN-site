@@ -29,7 +29,7 @@
 </div></header>
 <main><div class="wrap">
 <div class="doc"><aside><ul><li><a href="/docs">Overview</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versioning</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk" aria-current="page">Integrate</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Implement</a></li></ul></aside><article><h1>Integrate</h1>
-<p class="meta">HTTP · verification: <span class="mono">@pregen/verify</span> (npm) and <span class="mono">pregen</span> (PyPI) 0.1.0 · reference TypeScript SDK <span class="mono">@prampta/sdk</span> 0.4.0 on npm (Apache-2.0); 0.7.0, with the stricter checks of PRE-GEN v5, is prepared but not yet published</p>
+<p class="meta">HTTP · verification: <span class="mono">@pregen/verify</span> (npm) and <span class="mono">pregen</span> (PyPI) 0.3.0 or later · reference TypeScript SDK <span class="mono">@prampta/sdk</span> 0.4.0 on npm (Apache-2.0); 0.7.0, with the stricter checks of PRE-GEN v5, is prepared but not yet published</p>
 <p>A provider needs credentials from a <a href="/registries">registry</a>. The first registry, PRAMPTA, issues a sandbox key after a verified company email and a production key after a DNS record on the company domain. The sandbox reaches synthetic test subjects only.</p>
 <p class="note">Two libraries, two jobs: <span class="mono">@prampta/sdk</span> asks the PRAMPTA registry for a decision; <span class="mono">@pregen/verify</span> (on PyPI: <span class="mono">pregen</span>) checks that any registry's answer is genuine.</p>
 <p class="note">Keep the provider secret on your server. It never goes to a browser, a URL or client code. Send a hash of the prompt, never the prompt.</p>
