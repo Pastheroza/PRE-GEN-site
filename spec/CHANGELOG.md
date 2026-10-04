@@ -10,6 +10,15 @@ See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
 
 ## v5 — draft of 2026-10-03
 
+- **P-10 without a self-declared tie-break; annulling a thief's revocations**
+  (2026-10-04, founder; after the second package re-check). P-10: when two
+  registries disagree about what may be the same subject, neither answer
+  decides by itself — `subject_authority` is a registry's own statement; the
+  provider keeps both, tells both, decides under its own policy and does not
+  call the output licensed while a refusal is unresolved. `PG-CODE.md` §9.1:
+  the successor's first directory may annul, by name and with a reason,
+  revocations the old key signed after `steward_compromised_since`; earlier
+  ones cannot be annulled. Libraries 0.7.0 enforce it.
 - **Fixes after the re-check of the published packages** (2026-10-04). R-10:
   the identical receipt again gets the original answer, a different one is
   refused, so a provider can tell its own receipt from someone else's.

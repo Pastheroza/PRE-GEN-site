@@ -13,7 +13,7 @@ from urllib.parse import urlsplit
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 __all__ = [
     "STEWARD_PUBLIC_KEY_HEX", "DIRECTORY_URL", "PregenError", "Directory", "canonical_json",
     "fingerprint", "verify_bytes", "verify_signed", "verify_license", "issuer_of",
@@ -261,7 +261,32 @@ def _check_continuity(new: dict, previous: dict) -> None:
     _keeps_history(new, previous)
 
 
-def _keeps_history(new: dict, previous: dict) -> None:
+def _when(value) -> float:
+    from datetime import datetime
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        raise PregenError(f"not an RFC 3339 time: {value!r}")
+
+
+def _annulments(d: dict) -> list:
+    """Revocations a successor's first directory may drop (PG-CODE.md §9.1)."""
+    if "annulled" not in d:
+        return []
+    if not isinstance(d["annulled"], list):
+        raise PregenError("annulled needs a list and steward_compromised_since")
+    since = _when(d.get("steward_compromised_since"))
+    return [{**a, "since": since} for a in d["annulled"]]
+
+
+def _annulled_at(annulled: list, field: str, value, at) -> bool:
+    return any(a.get(field) == value and _when(at) >= a["since"] for a in annulled)
+
+
+def _keeps_history(new: dict, previous: dict, annulled=()) -> None:
+    for a in previous.get("annulled") or []:
+        if a not in (new.get("annulled") or []):
+            raise PregenError("an annulment was removed")
     for old in previous["registries"]:
         now = next((r for r in new["registries"] if r["prefix"] == old["prefix"]), None)
         if now is None:
@@ -269,10 +294,11 @@ def _keeps_history(new: dict, previous: dict) -> None:
         for f in old["key_fingerprints"]:
             if f not in now["key_fingerprints"]:
                 raise PregenError(f"key {f} was removed from {now['name']}")
-        if old.get("revoked") and now.get("revoked") != old["revoked"]:
+        if old.get("revoked") and now.get("revoked") != old["revoked"] \
+                and not _annulled_at(annulled, "prefix", old["prefix"], old["revoked"]["at"]):
             raise PregenError(f"the revocation of {old['name']} was undone")
     for k in previous.get("revoked_keys") or []:
-        if k not in (new.get("revoked_keys") or []):
+        if k not in (new.get("revoked_keys") or []) and not _annulled_at(annulled, "key_id", k["key_id"], k["at"]):
             raise PregenError(f"the revocation of key {k['key_id']} was undone")
 
 
@@ -310,7 +336,9 @@ def verify_directory(directory: dict, steward_public_key_hex: str = STEWARD_PUBL
         if prev is not None:
             _check_continuity(directory, prev)
     elif prev is not None:
-        _keeps_history(directory, prev)  # a handover may restart the sequence, never drop a listing or a revocation
+        # A handover may restart the sequence, never drop a listing or a revocation, except
+        # revocations the old key signed after it was compromised, named in `annulled`.
+        _keeps_history(directory, prev, _annulments(directory))
     if origin_key_fingerprints is _DEFAULT:
         origin_key_fingerprints = ORIGIN_KEY_FINGERPRINTS if steward_public_key_hex == STEWARD_PUBLIC_KEY_HEX else None
     return Directory(directory, _TOKEN, origin_key_fingerprints)

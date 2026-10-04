@@ -43,7 +43,8 @@ new release. A successor steward key
 (`pg-ed25519:3e5e20729ce8485eea274c4cb33721d6`) is pinned too: a directory it
 signs replaces those of the current steward key whatever their sequence, so a
 thief holding the old key cannot outbid it; it must keep every listing and
-revocation of the directory it replaces.
+revocation of the directory it replaces, except revocations the old key signed
+after the declared `steward_compromised_since`, which it names in `annulled`.
 
 A listing in the directory proves which registry may issue a code, not that
 it holds any right over a person or a work. A signed decision proves what the

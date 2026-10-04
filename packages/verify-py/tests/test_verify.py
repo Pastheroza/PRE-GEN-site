@@ -213,6 +213,18 @@ def test_successor_steward_takes_over_whatever_the_thiefs_sequence():
     assert verify_directory(keeps, steward.pub, previous=revoked, successor_public_key_hex=successor.pub) \
         .check_signer("PG-NWRD-000042-K", other.id) == "revoked"
 
+    # A thief's revocation, signed after the declared compromise, can be annulled; an earlier one cannot.
+    thief = steward.sign({**{k: v for k, v in directory(6).items() if k != "signature"},
+                          "revoked_keys": [{"key_id": other.id, "at": "2026-10-10T00:00:00Z"}]}, "signature")
+
+    def annul(since):
+        return successor.sign({**body, "sequence": 1, "steward_compromised_since": since,
+                               "annulled": [{"key_id": other.id, "reason": "stolen steward key"}]}, "signature")
+    ok = verify_directory(annul("2026-10-09T00:00:00Z"), steward.pub, previous=thief, successor_public_key_hex=successor.pub)
+    assert ok.check_signer("PG-NWRD-000042-K", other.id) == "valid"
+    with pytest.raises(PregenError, match="undone"):
+        verify_directory(annul("2026-10-11T00:00:00Z"), steward.pub, previous=thief, successor_public_key_hex=successor.pub)
+
 
 def test_simulator_runs_the_whole_pipeline_offline_and_is_never_trusted_for_real():
     from pregen import Simulator

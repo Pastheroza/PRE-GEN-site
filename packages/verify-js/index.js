@@ -217,15 +217,30 @@ function checkContinuity(next, previous) {
   keepsHistory(next, previous);
 }
 
-function keepsHistory(next, previous) {
+/** Revocations a successor's first directory may drop (PG-CODE.md §9.1). */
+function annulments(d) {
+  if (d.annulled === undefined) return [];
+  const since = Date.parse(d.steward_compromised_since);
+  if (!Array.isArray(d.annulled) || Number.isNaN(since)) fail("annulled needs a list and steward_compromised_since");
+  return d.annulled.map((a) => ({ ...a, since }));
+}
+const annulledAt = (list, field, value, at) =>
+  list.some((a) => a[field] === value && Date.parse(at) >= a.since);
+
+function keepsHistory(next, previous, annulled = []) {
+  for (const a of previous.annulled || []) {
+    if (!(next.annulled || []).some((x) => same(x, a))) fail("an annulment was removed");
+  }
   for (const old of previous.registries) {
     const now = next.registries.find((r) => r.prefix === old.prefix);
     if (!now) fail(`namespace ${old.prefix || "(bare)"} was removed`);
     for (const f of old.key_fingerprints) if (!now.key_fingerprints.includes(f)) fail(`key ${f} was removed from ${now.name}`);
-    if (old.revoked && !(now.revoked && same(now.revoked, old.revoked))) fail(`the revocation of ${old.name} was undone`);
+    if (old.revoked && !(now.revoked && same(now.revoked, old.revoked))
+        && !annulledAt(annulled, "prefix", old.prefix, old.revoked.at)) fail(`the revocation of ${old.name} was undone`);
   }
   for (const k of previous.revoked_keys || []) {
-    if (!(next.revoked_keys || []).some((x) => same(x, k))) fail(`the revocation of key ${k.key_id} was undone`);
+    if (!(next.revoked_keys || []).some((x) => same(x, k))
+        && !annulledAt(annulled, "key_id", k.key_id, k.at)) fail(`the revocation of key ${k.key_id} was undone`);
   }
 }
 
@@ -254,7 +269,9 @@ export async function verifyDirectory(directory, { stewardPublicKeyHex = STEWARD
     if (directory.sequence < minSequence) fail(`sequence ${directory.sequence} is older than ${minSequence} already seen`);
     if (prev) checkContinuity(directory, prev);
   } else if (prev) {
-    keepsHistory(directory, prev); // a handover may restart the sequence, never drop a listing or a revocation
+    // A handover may restart the sequence, never drop a listing or a revocation, except
+    // revocations the old key signed after it was compromised, named in `annulled`.
+    keepsHistory(directory, prev, annulments(directory));
   }
   const pin = originKeyFingerprints !== undefined ? originKeyFingerprints
     : stewardPublicKeyHex === STEWARD_PUBLIC_KEY_HEX ? ORIGIN_KEY_FINGERPRINTS : null;

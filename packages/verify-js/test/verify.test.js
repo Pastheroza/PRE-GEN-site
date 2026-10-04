@@ -193,6 +193,15 @@ test("a successor steward key takes over from a stolen one, whatever the thief's
   await assert.rejects(verifyDirectory(dropsRevocation, { ...opts, previous: revoked }), /undone/);
   const keeps = await successor.sign({ ...handover, sequence: 1, revoked_keys: revoked.revoked_keys }, "signature");
   assert.equal((await verifyDirectory(keeps, { ...opts, previous: revoked })).checkSigner("PG-NWRD-000042-K", other.id), "revoked");
+
+  // A thief's revocation, signed after the declared compromise, can be annulled; an earlier one cannot.
+  const thief = await steward.sign({ ...(await directory(6)), signature: undefined,
+    revoked_keys: [{ key_id: other.id, at: "2026-10-10T00:00:00Z" }] }, "signature");
+  const annul = (since) => successor.sign({ ...handover, sequence: 1, steward_compromised_since: since,
+    annulled: [{ key_id: other.id, reason: "signed with the stolen steward key" }] }, "signature");
+  const ok = await verifyDirectory(await annul("2026-10-09T00:00:00Z"), { ...opts, previous: thief });
+  assert.equal(ok.checkSigner("PG-NWRD-000042-K", other.id), "valid");
+  await assert.rejects(verifyDirectory(await annul("2026-10-11T00:00:00Z"), { ...opts, previous: thief }), /undone/);
 });
 
 test("simulator: the whole provider pipeline runs offline, and nothing it signs passes the real directory", async () => {

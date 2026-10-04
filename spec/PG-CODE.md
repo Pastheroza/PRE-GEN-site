@@ -320,6 +320,7 @@ signed by the **steward key**:
 | `registries` | array; each entry has `name`, `prefix` (`""` for the origin registry, otherwise four letters of the PG alphabet), `api`, `keys` (the registry's key set URL, `PRE-GEN-SPEC.md` §2.3) and `key_fingerprints` (every operator key the registry has ever signed with, current and retired, plus keys announced for future use, `PRE-GEN-SPEC.md` §2.1) |
 | `revoked` (in an entry) | optional: `{"at": RFC 3339 time, "reason": text}` — the registry is revoked (below) |
 | `revoked_keys` | optional array of `{"key_id", "at", "reason"}` — single operator keys revoked (below) |
+| `steward_compromised_since`, `annulled` | only after a steward handover (below) |
 | `steward_key_id` | fingerprint of the steward key |
 | `signature` | Ed25519 by the steward key over the canonical JSON (`PRE-GEN-SPEC.md` §2) of the object without `signature`, hex |
 
@@ -415,7 +416,17 @@ the steward key, whatever their `sequence`, and a verifier that has accepted
 one refuses directories signed by the old key from then on. The handover may
 restart the sequence, but the successor's directory MUST keep every listing
 and revocation of the directory it replaces; a verifier refuses one that
-drops any. A thief holding
+drops any, with one exception for a thief's false revocations:
+
+- the successor's first directory states `steward_compromised_since`, the
+  earliest time the old key may have been in other hands;
+- it MAY list in `annulled` revocations of the replaced directory whose `at`
+  is not earlier than that time, each as `{"key_id"}` or `{"prefix"}` with a
+  `reason`;
+- a verifier accepts the omission of exactly those revocations, refuses the
+  omission of any other, and keeps `annulled` forever like every other
+  entry. Revocations dated before the compromise cannot be annulled: the
+  thief could not have signed them. A thief holding
 only the old key cannot win by raising the sequence. Within the successor's
 own line the rules above apply as before. A planned change of steward uses the
 same path, and a new successor is published at once. The bare namespace cannot be

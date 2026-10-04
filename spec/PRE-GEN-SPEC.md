@@ -705,14 +705,13 @@ and human review (`PG_HELD_FOR_REVIEW`, disposition `review`).
   evidence it is reported as signed by a revoked key; its own `issued_at`
   does not show that it was signed before the revocation.
 - **P-10** When the provider learns that another listed registry holds what
-  it believes is the same person, brand or work, and that registry refuses
-  while this one allows, the refusal binds the provider only when it rests on
-  stronger authority: its `subject_authority` is `verified` and the allowing
-  decision's is not. If both are `verified`, the provider MUST NOT generate on
-  the registries' authority until they resolve it, and SHOULD tell both. In
-  every other case the refusal is a signal, not a stop: the provider MUST
-  keep both decisions and MAY generate under the allow. A matching name is
-  not evidence that two registries hold the same subject.
+  it believes is the same person, brand or work and answers differently,
+  neither answer decides by itself: a registry's own `subject_authority` is
+  its statement, not evidence, and a matching name is not evidence that two
+  registries hold the same subject. The provider MUST keep both decisions,
+  SHOULD tell both registries, and decides under its own policy; it MUST NOT
+  present the output as licensed while it knows of an unresolved refusal.
+  The registries resolve the conflict between themselves (R-15).
 - **P-9** When one output involves several subjects — a person, a voice, a
   brand, a work — the provider MUST ask for each subject, with one
   `generation_id` for all of them, MUST NOT generate on the registries'
@@ -1002,11 +1001,10 @@ before hitting one in production.
   carry no authorization.
 - **Several registries may disagree.** Issuer prefixes (`PG-CODE.md` §9)
   prevent code collisions, not rights conflicts. Another registry's refusal
-  binds a provider only when it rests on stronger, `verified` authority
-  (P-10); registries examine duplicate claims between themselves (R-15).
-  `subject_authority` is each registry's own statement: a listed registry
-  that misstates it is a ground for revocation, not something a provider
-  can check. Nothing tells a provider that two registries hold the same
+  decides nothing by itself (P-10); registries examine duplicate claims
+  between themselves (R-15), and the steward revokes a registry that
+  misstates who holds the rights. `subject_authority` is each registry's own
+  statement, not something a provider can check. Nothing tells a provider that two registries hold the same
   person: there is no shared identifier across registries.
 - **An opt-out waits before it takes effect.** A new opt-out is `pending`
   for the registry's cooling period (reference: `COOLING_PERIOD_DAYS` = 14)
@@ -1041,9 +1039,7 @@ before hitting one in production.
   a theft, so everything a revoked key signed loses its authority, the
   genuine included; proving "signed before" with external timestamps is
   future work. Admission is the steward's judgement on the registry, not a
-  check of each rights holder. A steward handover keeps every revocation,
-  including false ones a thief may have signed with the old key; v5 defines
-  no procedure for annulling them (a design is in the v6 draft).
+  check of each rights holder.
 - **Legal overrides have no format.** A court may order generation despite
   an opt-out; v5 defines no record, decision, refusal code or conformance
   status for such an override, and the reference registry implements none.
