@@ -40,3 +40,34 @@
   });
   mark();
 })();
+
+// A Copy button on every code block.
+(function () {
+  document.querySelectorAll("pre").forEach(function (pre) {
+    var box = document.createElement("div");
+    box.className = "code";
+    pre.parentNode.insertBefore(box, pre);
+    box.appendChild(pre);
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "copy";
+    b.textContent = "Copy";
+    b.setAttribute("aria-label", "Copy code");
+    box.appendChild(b);
+    b.addEventListener("click", function () {
+      var text = pre.innerText.replace(/\n$/, "");
+      function done(ok) {
+        b.textContent = ok ? "Copied" : "Select and copy";
+        setTimeout(function () { b.textContent = "Copy"; }, 1600);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+      } else {
+        var r = document.createRange(); r.selectNodeContents(pre);
+        var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+        var ok = false; try { ok = document.execCommand("copy"); } catch (e) {}
+        done(ok);
+      }
+    });
+  });
+})();

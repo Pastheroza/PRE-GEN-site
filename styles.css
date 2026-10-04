@@ -106,6 +106,10 @@ code, pre, .mono { font-family: var(--mono); font-size: 0.9em; }
 code { padding: 0 3px; background: var(--tint); }
 pre { margin: 0 0 16px; padding: 14px 16px; border: 1px solid var(--soft); background: var(--tint); overflow-x: auto; line-height: 1.5; font-size: 13.5px; }
 pre code { padding: 0; background: none; font-size: inherit; }
+.code { position: relative; }
+.code pre { padding-top: 38px; }
+.copy { position: absolute; top: 7px; right: 7px; height: 26px; padding: 0 10px; border: 1px solid var(--soft); background: var(--bg); color: var(--fg); font: 12px var(--sans); cursor: pointer; border-radius: 0; }
+.copy:hover { border-color: var(--fg); }
 
 .table { overflow-x: auto; margin: 0 0 16px; border: 1px solid var(--rule); }
 table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
