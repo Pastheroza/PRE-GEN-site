@@ -1041,7 +1041,9 @@ before hitting one in production.
   a theft, so everything a revoked key signed loses its authority, the
   genuine included; proving "signed before" with external timestamps is
   future work. Admission is the steward's judgement on the registry, not a
-  check of each rights holder.
+  check of each rights holder. A steward handover keeps every revocation,
+  including false ones a thief may have signed with the old key; v5 defines
+  no procedure for annulling them (a design is in the v6 draft).
 - **Legal overrides have no format.** A court may order generation despite
   an opt-out; v5 defines no record, decision, refusal code or conformance
   status for such an override, and the reference registry implements none.

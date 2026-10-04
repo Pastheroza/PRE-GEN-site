@@ -145,7 +145,8 @@ module.exports = async (req, res) => {
   const base = origin ? (process.env.PRAMPTA_API_URL || registry.api) : registry.api;
   /* Other registries answer through the standard resolver (PRE-GEN §12). */
   const path = origin
-    ? (c.kind === "license" ? "/v1/licenses/" : "/v1/subjects/") + encodeURIComponent(c.code)
+    /* A licence through its public proof, which hides confidential terms; never the private licence record. */
+    ? (c.kind === "license" ? "/v1/licenses/" + encodeURIComponent(c.code) + "/proof" : "/v1/subjects/" + encodeURIComponent(c.code))
     : "/v1/pg/" + encodeURIComponent(c.code);
   const headers = { Accept: "application/json" };
   const token = process.env.PRAMPTA_TOKEN;
