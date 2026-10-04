@@ -29,7 +29,7 @@
 </div></header>
 <main><div class="wrap">
 <div class="doc"><aside><ul><li><a href="/docs">Overview</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versioning</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk" aria-current="page">Integrate</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Implement</a></li></ul></aside><article><h1>Integrate</h1>
-<p class="meta">HTTP · verification: <span class="mono">@pregen/verify</span> (npm) and <span class="mono">pregen</span> (PyPI) 0.3.0 or later · reference TypeScript SDK <span class="mono">@prampta/sdk</span> 0.7.0 (Apache-2.0)</p>
+<p class="meta">HTTP · verification: <span class="mono">@pregen/verify</span> (npm) and <span class="mono">pregen</span> (PyPI) 0.3.0 or later · reference TypeScript SDK <span class="mono">@prampta/sdk</span> 0.8.0 (Apache-2.0)</p>
 <p>A provider needs credentials from a <a href="/registries">registry</a>. The first registry, PRAMPTA, issues a sandbox key after a verified company email and a production key after a DNS record on the company domain. The sandbox reaches synthetic test subjects only.</p>
 <h2>Minimum safe versions</h2>
 <div class="table"><table>
@@ -37,7 +37,7 @@
 <tbody>
 <tr><td class="mono">@pregen/verify</td><td class="mono">0.3.0</td><td><code>checkDecision</code>, directory continuity, pinned PRAMPTA keys including the announced next key, successor steward key</td></tr>
 <tr><td class="mono">pregen</td><td class="mono">0.3.0</td><td>the same, for Python. 0.4.0 adds the offline simulator in both</td></tr>
-<tr><td class="mono">@prampta/sdk</td><td class="mono">0.7.0</td><td>Runs the v5 checks itself when you pass <code>pregenDirectory</code> (from <code>loadPregenDirectory()</code>). Earlier versions do not: with them, or over raw HTTP, pass the JSON <code>/v1/verify</code> returns to <code>checkDecision</code>. Needs Node 20.19+ or 22.12+.</td></tr>
+<tr><td class="mono">@prampta/sdk</td><td class="mono">0.8.0</td><td>Runs the v5 checks itself when you pass <code>pregenDirectory</code> (from <code>loadPregenDirectory()</code>); 0.7.0 and later. 0.8.0 adds <code>generateAuthorized</code>: every subject in one output must allow, one receipt each, allows given back on failure, no second generation after a crash. Before 0.7.0: with them, or over raw HTTP, pass the JSON <code>/v1/verify</code> returns to <code>checkDecision</code>. Needs Node 20.19+ or 22.12+.</td></tr>
 </tbody></table></div>
 <p>The shortest safe path: install → sandbox secret → <code>/v1/verify</code> → <code>checkDecision</code> → generate → receipt → store the decision, the directory <code>sequence</code> and the receipt id.</p>
 <p class="note">Two libraries, two jobs: <span class="mono">@prampta/sdk</span> asks the PRAMPTA registry for a decision; <span class="mono">@pregen/verify</span> (on PyPI: <span class="mono">pregen</span>) checks that any registry's answer is genuine.</p>
@@ -105,7 +105,7 @@ pregen.check_decision(decision, {**request, "provider_id": "acme", "licensee_id"
 <li><strong>Without receipts</strong> you keep only the decisions: proof of what you asked, not of what you made. A provider becomes available to users outside its own team only after one production allow followed by its receipt.</li>
 </ul>
 <h2>TypeScript SDK</h2>
-<pre><code>npm install @prampta/sdk@^0.7.0</code></pre>
+<pre><code>npm install @prampta/sdk@^0.8.0</code></pre>
 <pre><code>import { Prampta } from "@prampta/sdk";
 
 const pg = new Prampta({
