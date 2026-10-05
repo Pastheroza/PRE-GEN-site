@@ -62,7 +62,11 @@ await checkDecision(decision, request, { directory: sim.directory, fetch: sim.fe
 
 `sbx-allowed` → `allow`; `sbx-revoked`, `sbx-expired` → `PG_NO_LICENSE`;
 `sbx-exhausted` → `PG_USAGE_LIMIT`; `sbx-optedout` → `PG_SUBJECT_OPTED_OUT`;
-anything else → `PG_NO_SUBJECT`. Receipts: one per decision, a second is refused.
+anything else → `PG_NO_SUBJECT`. Receipts follow PRAMPTA's rules (R-10): a receipt needs an
+allow issued to this provider and licensee for the same `prompt_hash`; the identical receipt
+again returns the first answer (`already_recorded`), a different one is `409 receipt_conflict`;
+`receipt_hash` binds each answer to the bytes sent. Release answers as the sandbox does
+(`nothing_to_release`: the sandbox licences have no usage limit; `already_receipted` after a receipt).
 With `@prampta/sdk` 0.7.0 pass `baseUrl: sim.baseUrl`, `operatorPublicKeyHex:
 sim.operatorPublicKeyHex` and `pregenDirectory: sim.directory`. The simulator's
 keys are new on every run and its directory is signed by a throwaway steward,

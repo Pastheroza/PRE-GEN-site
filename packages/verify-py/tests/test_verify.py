@@ -233,9 +233,25 @@ def test_simulator_runs_the_whole_pipeline_offline_and_is_never_trusted_for_real
                "intended_use": {"use_case": "research"}}
     decision = sim.verify(request, "acme", "lic-1")
     check_decision(decision, {**request, "provider_id": "acme", "licensee_id": "lic-1"}, sim.directory, sim.get_json)
-    assert sim.receipt(decision["decision_id"])["simulator"] is True
-    with pytest.raises(PregenError, match="already"):
-        sim.receipt(decision["decision_id"])
+    import hashlib
+    receipt = {"decision_id": decision["decision_id"], "prompt_hash": "a" * 64, "output_hash": "b" * 64, "model": "m", "generated_at": 1}
+    status, ack = sim.receipt(receipt, "acme", "lic-1")
+    expected = hashlib.sha256(canonical_json({"v": "pg.receipt.v2", "decision_id": decision["decision_id"], "subject_id": "sbx-allowed",
+        "licensee_id": "lic-1", "provider_id": "acme", "prompt_hash": "a" * 64, "output_hash": "b" * 64, "model": "m",
+        "obligations_applied": {}, "watermark_embedded": False, "generated_at": 1})).hexdigest()
+    assert (status, ack["status"], ack["receipt_hash"]) == (200, "recorded", expected)
+    assert sim.receipt(receipt, "acme", "lic-1")[1]["status"] == "already_recorded"     # R-10: the identical receipt again
+    assert sim.receipt({**receipt, "output_hash": "c" * 64}, "acme", "lic-1")[0] == 409
+    assert sim.release(decision["decision_id"], "acme", "lic-1")[1]["detail"]["error"] == "already_receipted"
+    deny, fresh = sim.verify({**request, "subject_id": "sbx-revoked"}, "acme", "lic-1"), sim.verify(request, "acme", "lic-1")
+    for why, body, licensee, status in [("never issued", {**receipt, "decision_id": "sim-never-issued"}, "lic-1", 400),
+                                        ("a deny", {**receipt, "decision_id": deny["decision_id"]}, "lic-1", 400),
+                                        ("another prompt", {**receipt, "decision_id": fresh["decision_id"], "prompt_hash": "f" * 64}, "lic-1", 400),
+                                        ("another pair", {**receipt, "decision_id": fresh["decision_id"]}, "lic-2", 403),
+                                        ("no output hash", {**receipt, "decision_id": fresh["decision_id"], "output_hash": ""}, "lic-1", 400)]:
+        assert sim.receipt(body, "acme", licensee)[0] == status, why
+    assert sim.release(fresh["decision_id"], "acme", "lic-1")[1]["detail"]["error"] == "nothing_to_release"
+    assert sim.release("sim-never-issued", "acme", "lic-1")[0] == 404
     for subject, reason in [("sbx-revoked", "PG_NO_LICENSE"), ("sbx-exhausted", "PG_USAGE_LIMIT"),
                             ("sbx-optedout", "PG_SUBJECT_OPTED_OUT"), ("sbx-unknown", "PG_NO_SUBJECT")]:
         d = sim.verify({**request, "subject_id": subject}, "acme", "lic-1")

@@ -381,9 +381,14 @@ export async function createSimulator({ baseUrl = "https://simulator.pregen.inva
     { stewardPublicKeyHex: steward.pub, successorPublicKeyHex: null, originKeyFingerprints: [operator.id] });
   const answers = { "sbx-allowed": ["allow", null], "sbx-revoked": ["deny", "PG_NO_LICENSE"], "sbx-expired": ["deny", "PG_NO_LICENSE"],
     "sbx-exhausted": ["deny", "PG_USAGE_LIMIT"], "sbx-optedout": ["deny", "PG_SUBJECT_OPTED_OUT"] };
-  const receipts = new Set();
+  // What PRAMPTA's /v1 does with receipts (R-10), so a provider's tests meet the same rules: a receipt
+  // needs an allow issued to this pair for the same prompt_hash; the identical receipt again gets the
+  // first answer, a different one is a conflict; release is refused once a receipt exists, and the
+  // sandbox licences have no usage limit, so there is nothing to release.
+  const decisions = new Map(), receipts = new Map();
   let n = 0;
   const reply = (status, body) => ({ ok: status < 400, status, json: async () => structuredClone(body) });
+  const refuse = (status, detail) => reply(status, { detail });
   const header = (init, name) => {
     const h = init && init.headers; if (!h) return "";
     return (typeof h.get === "function" ? h.get(name) : h[name] ?? h[name.toLowerCase()]) || "";
@@ -406,13 +411,43 @@ export async function createSimulator({ baseUrl = "https://simulator.pregen.inva
         provider_identity_link_id: req.provider_identity_link_id || (named ? "sim-link" : ""),
         issued_at: now, expires_at: now + 300, cache_scope: "not_cacheable", max_cache_age_seconds: 0,
         operator_key_id: operator.id };
+      decisions.set(body.decision_id, body);
       return reply(200, { ...body, operator_signature: await operator.sign(body) });
     }
+    const pair = (d) => d.provider_id === header(init, "X-Provider-ID") && d.licensee_id === header(init, "X-Licensee-ID");
+    const release = path.match(/^\/v1\/receipts\/([^/]+)\/release$/);
+    if (release) {
+      const d = decisions.get(decodeURIComponent(release[1]));
+      if (!d || d.disposition !== "allow") return refuse(404, "No authorized decision found for this decision_id");
+      if (!pair(d)) return refuse(403, "This decision was not issued to your provider/licensee pair");
+      if (receipts.has(d.decision_id)) return refuse(409, { error: "already_receipted", error_description: "A receipt says this decision was used." });
+      return refuse(409, { error: "nothing_to_release", error_description: "This licence has no usage limit; nothing was reserved." });
+    }
     if (path.replace(/\/$/, "") === "/v1/receipts") {
-      if (!String(req.decision_id || "").startsWith("sim-")) return reply(404, { error: "unknown decision" });
-      if (receipts.has(req.decision_id)) return reply(409, { error: "receipt already filed for this decision" });
-      receipts.add(req.decision_id);
-      return reply(201, { receipt_id: `sim-receipt-${req.decision_id}`, decision_id: req.decision_id, simulator: true });
+      const d = decisions.get(req.decision_id);
+      if (!d || d.disposition !== "allow") return refuse(400, "No authorized decision found for this decision_id");
+      if (d.prompt_hash !== req.prompt_hash) return refuse(400, "prompt_hash does not match the authorized decision");
+      if (!pair(d)) return refuse(403, "This decision was not issued to your provider/licensee pair");
+      if (!String(req.output_hash ?? "").trim()) return refuse(400, "output_hash is required to identify the reported output");
+      if (req.schema_version && req.v && req.schema_version !== req.v) return refuse(400, "Conflicting receipt schema versions");
+      const v = req.schema_version || req.v || "pg.receipt.v2";
+      if (v !== "pg.receipt.v2" && v !== "pg.receipt.v3") return refuse(400, "Unsupported receipt schema version");
+      const eventType = req.event_type ?? "output_accepted";
+      // The body PRAMPTA hashes (app/core/receipt_body.py), so receipt_hash binds the answer to these bytes.
+      const body = { v, decision_id: d.decision_id, subject_id: d.subject_id, licensee_id: d.licensee_id, provider_id: d.provider_id,
+        prompt_hash: req.prompt_hash, output_hash: req.output_hash, model: req.model ?? "",
+        obligations_applied: req.obligations_applied ?? {}, watermark_embedded: req.watermark_embedded ?? false,
+        generated_at: req.generated_at ?? 0, ...(v === "pg.receipt.v3" ? { event_type: eventType } : {}) };
+      const receiptHash = await sha256Hex(canonicalJson(body));
+      const stored = receipts.get(d.decision_id);
+      if (stored) {
+        if (stored !== receiptHash) return refuse(409, { error: "receipt_conflict", error_description: "A different receipt for this decision already exists." });
+        return reply(200, { status: "already_recorded", decision_id: d.decision_id, receipt_hash: receiptHash, compliant: true,
+          provider_signature_verified: false });
+      }
+      receipts.set(d.decision_id, receiptHash);
+      return reply(200, { schema_version: v, status: "recorded", decision_id: d.decision_id, receipt_hash: receiptHash,
+        compliant: true, obligation_violations: [], provider_signature_verified: false, provider_signed_event_type: false });
     }
     return reply(404, { error: "not simulated" });
   }

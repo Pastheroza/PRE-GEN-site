@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { canonicalJson, fingerprint, verifyDirectory, verifyDecision, checkDecision, PregenError, issuerOf } from "../index.js";
+import { canonicalJson, fingerprint, verifyDirectory, verifyDecision, checkDecision, PregenError, issuerOf, sha256Hex } from "../index.js";
 
 const hex = (b) => Buffer.from(b).toString("hex");
 async function keypair() {
@@ -212,9 +212,33 @@ test("simulator: the whole provider pipeline runs offline, and nothing it signs 
   const request = { subject_id: "sbx-allowed", prompt_hash: "a".repeat(64), model: "m", modality: "image", intended_use: { use_case: "research" } };
   const decision = await send("/v1/verify/", request);
   await checkDecision(decision, { ...request, provider_id: "acme", licensee_id: "lic-1" }, { directory: sim.directory, fetch: sim.fetch });
-  const r1 = await sim.fetch(sim.baseUrl + "/v1/receipts/", { method: "POST", body: JSON.stringify({ decision_id: decision.decision_id }) });
-  const r2 = await sim.fetch(sim.baseUrl + "/v1/receipts/", { method: "POST", body: JSON.stringify({ decision_id: decision.decision_id }) });
-  assert.deepEqual([r1.status, r2.status], [201, 409]);
+  const post = async (path, body, h = {}) => { const r = await sim.fetch(sim.baseUrl + path, { method: "POST",
+    headers: { "X-Provider-ID": "acme", "X-Licensee-ID": "lic-1", ...h }, body: JSON.stringify(body) }); return [r.status, await r.json()]; };
+  const receipt = { decision_id: decision.decision_id, prompt_hash: request.prompt_hash, output_hash: "b".repeat(64), model: "m", generated_at: 1 };
+  // R-10 as PRAMPTA answers it: the identical receipt again gets the first answer; a different one is a conflict.
+  const [s1, a1] = await post("/v1/receipts/", receipt);
+  assert.equal(s1, 200); assert.equal(a1.status, "recorded"); assert.equal(a1.decision_id, decision.decision_id);
+  const expected = await sha256Hex(canonicalJson({ v: "pg.receipt.v2", decision_id: decision.decision_id, subject_id: "sbx-allowed",
+    licensee_id: "lic-1", provider_id: "acme", prompt_hash: request.prompt_hash, output_hash: "b".repeat(64), model: "m",
+    obligations_applied: {}, watermark_embedded: false, generated_at: 1 }));
+  assert.equal(a1.receipt_hash, expected);                                   // binds the answer to the bytes sent
+  const [s2, a2] = await post("/v1/receipts/", receipt);
+  assert.deepEqual([s2, a2.status, a2.receipt_hash], [200, "already_recorded", expected]);
+  assert.equal((await post("/v1/receipts/", { ...receipt, output_hash: "c".repeat(64) }))[0], 409);
+  assert.equal((await post(`/v1/receipts/${decision.decision_id}/release`, {}))[1].detail.error, "already_receipted");
+  // Refused: a decision never issued, a deny, another prompt, another pair, no output hash.
+  const deny = await send("/v1/verify/", { ...request, subject_id: "sbx-revoked" });
+  const fresh = await send("/v1/verify/", request);
+  for (const [why, body, h, status] of [["never issued", { ...receipt, decision_id: "sim-never-issued" }, {}, 400],
+    ["a deny", { ...receipt, decision_id: deny.decision_id }, {}, 400],
+    ["another prompt", { ...receipt, decision_id: fresh.decision_id, prompt_hash: "f".repeat(64) }, {}, 400],
+    ["another pair", { ...receipt, decision_id: fresh.decision_id }, { "X-Licensee-ID": "lic-2" }, 403],
+    ["no output hash", { ...receipt, decision_id: fresh.decision_id, output_hash: "" }, {}, 400]]) {
+    assert.equal((await post("/v1/receipts/", body, h))[0], status, why);
+  }
+  // Release: the sandbox licences have no usage limit, as on PRAMPTA; an unknown decision is 404.
+  assert.equal((await post(`/v1/receipts/${fresh.decision_id}/release`, {}))[1].detail.error, "nothing_to_release");
+  assert.equal((await post("/v1/receipts/sim-never-issued/release", {}))[0], 404);
   for (const [subject, reason] of [["sbx-revoked", "PG_NO_LICENSE"], ["sbx-exhausted", "PG_USAGE_LIMIT"], ["sbx-optedout", "PG_SUBJECT_OPTED_OUT"], ["sbx-unknown", "PG_NO_SUBJECT"]]) {
     const d = await send("/v1/verify/", { ...request, subject_id: subject });
     assert.equal(d.reason, reason);

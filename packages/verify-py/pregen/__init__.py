@@ -13,7 +13,7 @@ from urllib.parse import urlsplit
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-__version__ = "0.7.0"
+__version__ = "0.8.0"
 __all__ = [
     "STEWARD_PUBLIC_KEY_HEX", "DIRECTORY_URL", "PregenError", "Directory", "canonical_json",
     "fingerprint", "verify_bytes", "verify_signed", "verify_license", "issuer_of",
@@ -467,7 +467,7 @@ class Simulator:
         body["signature"] = self._steward.sign(canonical_json(body)).hex()
         self.directory = verify_directory(body, steward_pub, successor_public_key_hex=None,
                                           origin_key_fingerprints=[self._operator_id])
-        self._receipts, self._n = set(), 0
+        self._decisions, self._receipts, self._n = {}, {}, 0
 
     def get_json(self, url: str) -> dict:
         if url == self.base_url + "/keys":
@@ -494,13 +494,53 @@ class Simulator:
                 "provider_identity_link_id": request.get("provider_identity_link_id") or ("sim-link" if named else ""),
                 "issued_at": now, "expires_at": now + 300, "cache_scope": "not_cacheable",
                 "max_cache_age_seconds": 0, "operator_key_id": self._operator_id}
+        self._decisions[body["decision_id"]] = body
         return {**body, "operator_signature": self._operator.sign(canonical_json(body)).hex()}
 
-    def receipt(self, decision_id: str) -> dict:
-        """What POST /v1/receipts/ returns: one receipt per decision, a second is refused."""
-        if not str(decision_id).startswith("sim-"):
-            raise PregenError("unknown decision")
+    def receipt(self, receipt: dict, provider_id: str, licensee_id: str) -> tuple:
+        """What POST /v1/receipts/ answers, as (HTTP status, body), by PRAMPTA's rules (R-10): a receipt needs an
+        allow issued to this pair for the same prompt_hash; the identical receipt again gets the first answer,
+        a different one is a conflict. receipt_hash binds the answer to the bytes sent."""
+        d = self._decisions.get(receipt.get("decision_id"))
+        if not d or d["disposition"] != "allow":
+            return 400, {"detail": "No authorized decision found for this decision_id"}
+        if d["prompt_hash"] != receipt.get("prompt_hash"):
+            return 400, {"detail": "prompt_hash does not match the authorized decision"}
+        if (d["provider_id"], d["licensee_id"]) != (provider_id, licensee_id):
+            return 403, {"detail": "This decision was not issued to your provider/licensee pair"}
+        if not str(receipt.get("output_hash") or "").strip():
+            return 400, {"detail": "output_hash is required to identify the reported output"}
+        v = receipt.get("schema_version") or receipt.get("v") or "pg.receipt.v2"
+        if v not in ("pg.receipt.v2", "pg.receipt.v3"):
+            return 400, {"detail": "Unsupported receipt schema version"}
+        body = {"v": v, "decision_id": d["decision_id"], "subject_id": d["subject_id"], "licensee_id": licensee_id,
+                "provider_id": provider_id, "prompt_hash": receipt["prompt_hash"], "output_hash": receipt["output_hash"],
+                "model": receipt.get("model", ""), "obligations_applied": receipt.get("obligations_applied", {}),
+                "watermark_embedded": receipt.get("watermark_embedded", False), "generated_at": receipt.get("generated_at", 0)}
+        if v == "pg.receipt.v3":
+            body["event_type"] = receipt.get("event_type", "output_accepted")
+        receipt_hash = hashlib.sha256(canonical_json(body)).hexdigest()
+        stored = self._receipts.get(d["decision_id"])
+        if stored is not None:
+            if stored != receipt_hash:
+                return 409, {"detail": {"error": "receipt_conflict",
+                                        "error_description": "A different receipt for this decision already exists."}}
+            return 200, {"status": "already_recorded", "decision_id": d["decision_id"], "receipt_hash": receipt_hash,
+                         "compliant": True, "provider_signature_verified": False}
+        self._receipts[d["decision_id"]] = receipt_hash
+        return 200, {"schema_version": v, "status": "recorded", "decision_id": d["decision_id"], "receipt_hash": receipt_hash,
+                     "compliant": True, "obligation_violations": [], "provider_signature_verified": False,
+                     "provider_signed_event_type": False}
+
+    def release(self, decision_id: str, provider_id: str, licensee_id: str) -> tuple:
+        """What POST /v1/receipts/{decision_id}/release answers. The sandbox licences have no usage limit, as on
+        PRAMPTA, so there is nothing to release; after a receipt it is refused."""
+        d = self._decisions.get(decision_id)
+        if not d or d["disposition"] != "allow":
+            return 404, {"detail": "No authorized decision found for this decision_id"}
+        if (d["provider_id"], d["licensee_id"]) != (provider_id, licensee_id):
+            return 403, {"detail": "This decision was not issued to your provider/licensee pair"}
         if decision_id in self._receipts:
-            raise PregenError("receipt already filed for this decision")
-        self._receipts.add(decision_id)
-        return {"receipt_id": f"sim-receipt-{decision_id}", "decision_id": decision_id, "simulator": True}
+            return 409, {"detail": {"error": "already_receipted", "error_description": "A receipt says this decision was used."}}
+        return 409, {"detail": {"error": "nothing_to_release",
+                                "error_description": "This licence has no usage limit; nothing was reserved."}}

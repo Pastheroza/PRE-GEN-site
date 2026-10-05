@@ -57,10 +57,13 @@ sim = pregen.Simulator()                        # offline registry, throwaway ke
 decision = sim.verify(request, provider_id="acme", licensee_id="lic-1")
 pregen.check_decision(decision, {**request, "provider_id": "acme", "licensee_id": "lic-1"},
                       sim.directory, sim.get_json)
-sim.receipt(decision["decision_id"])            # one per decision; a second raises
+status, ack = sim.receipt(receipt, provider_id="acme", licensee_id="lic-1")  # PRAMPTA's rules: (200, ...)
+sim.release(decision["decision_id"], "acme", "lic-1")                        # (409, nothing_to_release) in sandbox
 ```
 
-Same sandbox answers as the npm package. Nothing it signs is ever accepted by the
+Same sandbox answers as the npm package, and PRAMPTA's receipt rules: the identical
+receipt again returns the first answer, a different one is 409, a receipt needs an
+allow for this pair and prompt, and `receipt_hash` binds the answer to the bytes sent. Nothing it signs is ever accepted by the
 real directory.
 
 Also: `verify_decision` (signatures only), `verify_directory`,
