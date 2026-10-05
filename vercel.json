@@ -22,6 +22,16 @@
       "source": "/ecosystem",
       "destination": "/registries",
       "permanent": true
+    },
+    {
+      "source": "/for-ai",
+      "destination": "/docs/sdk",
+      "permanent": true
+    },
+    {
+      "source": "/for-brands",
+      "destination": "/registries",
+      "permanent": true
     }
   ],
   "headers": [
