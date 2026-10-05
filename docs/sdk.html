@@ -29,7 +29,7 @@
 </div></header>
 <main><div class="wrap">
 <div class="doc"><aside><ul><li><a href="/docs">Overview</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versioning</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk" aria-current="page">Integrate</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Implement</a></li></ul></aside><article><h1>Integrate</h1>
-<p class="meta">HTTP · verification: <span class="mono">@pregen/verify</span> (npm) and <span class="mono">pregen</span> (PyPI) 0.7.0 or later · reference TypeScript SDK <span class="mono">@prampta/sdk</span> 0.11.0 (Apache-2.0)</p>
+<p class="meta">HTTP · verification: <span class="mono">@pregen/verify</span> (npm) and <span class="mono">pregen</span> (PyPI) 0.7.0 or later · reference TypeScript SDK <span class="mono">@prampta/sdk</span> 0.11.1 (Apache-2.0)</p>
 <p>A provider needs credentials from a <a href="/registries">registry</a>. The first registry, PRAMPTA, issues a sandbox key after a verified company email and a production key after a DNS record on the company domain. The sandbox reaches synthetic test subjects only.</p>
 <h2>Minimum safe versions</h2>
 <div class="table"><table>
@@ -37,7 +37,7 @@
 <tbody>
 <tr><td class="mono">@pregen/verify</td><td class="mono">0.7.0</td><td><code>checkDecision</code>: signature by a key the directory lists for the namespace, not revoked (V-14); exact request match; supported <code>schema_version</code>; <code>issued_at</code> and <code>expires_at</code> at most 900 seconds apart; no unknown <code>critical</code> member (E-3); optional <code>requireVerifiedAuthority</code>. Directory: continuity, revocations kept across a steward handover (0.7.0: a thief's later revocations can be annulled), pinned PRAMPTA keys, successor steward key. Offline simulator.</td></tr>
 <tr><td class="mono">pregen</td><td class="mono">0.7.0</td><td>the same, for Python</td></tr>
-<tr><td class="mono">@prampta/sdk</td><td class="mono">0.11.0</td><td><code>generateAuthorized</code> with a required journal: one worker per job through an atomic <code>claim</code>, one request per <code>generationId</code>, a re-check right before generating, the output hash stored before receipts, a receipt counted as filed only when the registry accepted exactly it. Strict decision checks with or without <code>pregenDirectory</code>. Also <code>createPregen</code> for PRAMPTA's <code>/v2</code> pilot of the simplified formats, which are a draft and not yet part of this specification. Needs Node 20.19+ or 22.12+.</td></tr>
+<tr><td class="mono">@prampta/sdk</td><td class="mono">0.11.1</td><td><code>generateAuthorized</code> with a required journal: one worker per job through an atomic <code>claim</code>, one request per <code>generationId</code>, a re-check right before generating, the output hash stored before receipts, a receipt counted as filed only when the registry accepted exactly it. Strict decision checks with or without <code>pregenDirectory</code>. Also <code>createPregen</code> for PRAMPTA's <code>/v2</code> pilot of the simplified formats, which are a draft and not yet part of this specification. Needs Node 20.19+ or 22.12+.</td></tr>
 </tbody></table></div>
 <p>The shortest safe path: install the SDK → sandbox secret → the setup below, which turns on every check → <code>generateAuthorized</code>. Over raw HTTP: <code>/v1/verify</code> → <code>checkDecision</code> → generate → receipt, and you build the job rules yourself.</p>
 <p class="note">Two libraries, two jobs: <span class="mono">@prampta/sdk</span> asks the PRAMPTA registry for a decision; <span class="mono">@pregen/verify</span> (on PyPI: <span class="mono">pregen</span>) checks that any registry's answer is genuine.</p>
@@ -105,7 +105,7 @@ pregen.check_decision(decision, {**request, "provider_id": "acme", "licensee_id"
 <li><strong>Without receipts</strong> you keep only the decisions: proof of what you asked, not of what you made. A provider becomes available to users outside its own team only after one production allow followed by its receipt.</li>
 </ul>
 <h2>TypeScript SDK</h2>
-<pre><code>npm install @prampta/sdk@^0.11.0</code></pre>
+<pre><code>npm install @prampta/sdk@^0.11.1</code></pre>
 <p>The main setup: the signed PRE-GEN directory, your independently pinned operator key, and a journal in your own database whose <code>claim</code> is atomic across all your servers.</p>
 <pre><code>import { Prampta, loadPregenDirectory } from "@prampta/sdk";
 
