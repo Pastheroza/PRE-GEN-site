@@ -387,7 +387,8 @@ export async function createSimulator({ baseUrl = "https://simulator.pregen.inva
   // sandbox licences have no usage limit, so there is nothing to release.
   const decisions = new Map(), receipts = new Map();
   let n = 0;
-  const reply = (status, body) => ({ ok: status < 400, status, json: async () => structuredClone(body) });
+  // A real Response, as fetch returns: json(), text(), headers — clients read error bodies with text().
+  const reply = (status, body) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
   const refuse = (status, detail) => reply(status, { detail });
   const header = (init, name) => {
     const h = init && init.headers; if (!h) return "";

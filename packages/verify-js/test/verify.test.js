@@ -236,6 +236,11 @@ test("simulator: the whole provider pipeline runs offline, and nothing it signs 
     ["no output hash", { ...receipt, decision_id: fresh.decision_id, output_hash: "" }, {}, 400]]) {
     assert.equal((await post("/v1/receipts/", body, h))[0], status, why);
   }
+  // The simulator answers with real Responses, so a client reading an error body with text() works.
+  const raw = await sim.fetch(sim.baseUrl + "/v1/receipts/", { method: "POST", headers: { "X-Provider-ID": "acme", "X-Licensee-ID": "lic-1" },
+    body: JSON.stringify({ decision_id: "sim-never-issued" }) });
+  assert.ok(raw instanceof Response); assert.equal(raw.ok, false);
+  assert.match(await raw.text(), /No authorized decision/);
   // Release: the sandbox licences have no usage limit, as on PRAMPTA; an unknown decision is 404.
   assert.equal((await post(`/v1/receipts/${fresh.decision_id}/release`, {}))[1].detail.error, "nothing_to_release");
   assert.equal((await post("/v1/receipts/sim-never-issued/release", {}))[0], 404);
