@@ -34,6 +34,19 @@ See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
     least daily, from pregen.org or any mirror, and accepts no answer on an older copy, so a revocation
     reaches everyone within a day (core rule 2, `PG-CODE.md` §9.1). `checkAnswer` / `check_answer` enforce
     it (`DIRECTORY_MAX_AGE`).
+  - **Identity, proof, catalog** (founder: «N1–N8 да, делай»; scenarios in PRAMPTA `nmp/pregen-identity-proof-market.md`).
+    The core is unchanged; three extensions and one profile rule:
+    - `identity`: anchors (Wikidata/ISNI/domain) for public persons, confirmation on the person's own channel,
+      the rule "who proved it, not who came first" (a refusal of the person holds in all their registries; no
+      proof and several claims freeze), 7-day disputes, `false_claims` in the directory.
+    - `proof`: the `pg.proof.v1` bundle carried in C2PA and found from a watermark; checked as of the moment
+      of generation; `bindings` (soft bindings) in reports.
+    - `catalog`: opt-in catalog, resale only with `use.resale`, billing by issued allows minus give-backs.
+    - `likeness/1`: intimate categories need the person's own key, level `verified` and a grant naming them
+      (`PG_PERSONAL_SIGNATURE_REQUIRED`).
+    - Libraries: `verifyAnswer`, `decideIdentity`, `verifyAnchors`, `checkChannelProof`, `wikidataOfficialUrls`,
+      `checkProof` (JS and Python); reference registry: `/v2/anchors`, `/v2/catalog`, `/v2/statement`,
+      `/v2/proofs/{id}`.
 
 - **The principle** (2026-10-12, founder: "защитить и зафиксировать принцип
   пред генерационный механизм"). A short section before §0 states the five

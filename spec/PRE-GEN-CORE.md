@@ -177,6 +177,9 @@ extension may turn a refusal the core or a profile requires into a permission.
 | [`observe`](extensions/observe.md) | Trial mode: generate and record, without blocking |
 | [`sandbox`](extensions/sandbox.md) | Standard test subjects and a test directory |
 | [`lookup`](extensions/lookup.md) | Public lookup of a code |
+| [`identity`](extensions/identity.md) | One person in several registries: anchors, confirmation on the person's own channel, "who proved it, not who came first", disputes |
+| [`proof`](extensions/proof.md) | The signed record travels with the output (C2PA, watermark); platforms check it |
+| [`catalog`](extensions/catalog.md) | Providers sell what registries offer: catalog, resale right, billing by issued allows |
 
 ## The earlier interface
 

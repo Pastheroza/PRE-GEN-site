@@ -63,6 +63,15 @@ the subject's prefix (registry and key not revoked), answers exactly this reques
 same profile, is within its lifetime, is an `allow`, and is not a sandbox answer unless you
 pass `testing: true`.
 
+## One person in several registries, and proof in a video
+
+- `verifyAnchors(list, prefix, { directory })` — a registry's signed anchor list (`extensions/identity.md`).
+- `checkChannelProof(code, proofUrl, await wikidataOfficialUrls(anchor), getText)` — did the person
+  confirm this code on their own channel?
+- `decideIdentity(claims)` — "who proved it, not who came first"; generate only on `allow`.
+- `checkProof(bundle, { directory, outputSha256 })` — a platform's check of the `pg.proof.v1` bundle
+  carried with an output (`extensions/proof.md`).
+
 ## Test without a secret: the simulator
 
 ```js

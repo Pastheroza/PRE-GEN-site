@@ -90,6 +90,28 @@
     },
     "ext": {
       "type": "object"
+    },
+    "bindings": {
+      "type": "array",
+      "description": "extension proof: soft bindings of the output that survive re-encoding (C2PA soft-binding algorithm names)",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "alg",
+          "value"
+        ],
+        "properties": {
+          "alg": {
+            "type": "string",
+            "minLength": 1
+          },
+          "value": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
     }
   },
   "allOf": [

@@ -56,6 +56,22 @@ def create_app(registry: Registry) -> FastAPI:
     def lookup(code: str):
         return registry.lookup(code)
 
+    @app.get("/v2/anchors")
+    def anchors():
+        return registry.anchors()
+
+    @app.get("/v2/catalog")
+    def catalog():
+        return registry.catalog()
+
+    @app.get("/v2/statement")
+    def statement(x_provider_id: str = Header(""), authorization: str | None = Header(None)):
+        return registry.statement(x_provider_id, authorization)
+
+    @app.get("/v2/proofs/{short_id}")
+    def proof(short_id: str):
+        return registry.proof(short_id)
+
     @app.post("/v2/sandbox/access")
     def sandbox_access(request: Request):
         """extensions/sandbox.md: credentials without an account — only in a sandbox, which holds no real people."""

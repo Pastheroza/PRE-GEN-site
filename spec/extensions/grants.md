@@ -10,7 +10,7 @@ signed object that anyone can fetch and check.
 | `subject_ref` | the subject's PG code |
 | `licensee_id` | who the grant is for; `""` = any licensee of the registry |
 | `profile` | e.g. `likeness/1` |
-| `use` | what is granted; schema from the profile |
+| `use` | what is granted; schema from the profile (`likeness/1`: `{purposes, categories?, resale?}`) |
 | `not_before`, `expires_at` | integer times |
 | `max_uses` | integer ≥ 1, or `null` for no limit (counted by [`limits`](limits.md)) |
 

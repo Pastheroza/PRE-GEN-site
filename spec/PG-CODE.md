@@ -323,6 +323,7 @@ signed by the **steward key**:
 | `registries` | array; each entry has `name`, `prefix` (`""` for the origin registry, otherwise four letters of the PG alphabet), `api`, `keys` (the registry's key set URL, `PRE-GEN-SPEC.md` §2.3) and `key_fingerprints` (every operator key the registry has ever signed with, current and retired, plus keys announced for future use, `PRE-GEN-SPEC.md` §2.1) |
 | `revoked` (in an entry) | optional: `{"at": RFC 3339 time, "reason": text}` — the registry is revoked (below) |
 | `revoked_keys` | optional array of `{"key_id", "at", "reason"}` — single operator keys revoked (below) |
+| `false_claims` | optional array of `{anchor, code, at, reason}` — codes the steward found to claim a person the registry cannot prove (`extensions/identity.md`); never removed |
 | `steward_compromised_since`, `annulled` | only after a steward handover (below) |
 | `steward_key_id` | fingerprint of the steward key |
 | `signature` | Ed25519 by the steward key over the canonical JSON (`PRE-GEN-SPEC.md` §2) of the object without `signature`, hex |
@@ -371,7 +372,8 @@ a fake registry out, so the steward lists a registry only when it has:
    contact for complaints and disputes;
 2. a published policy (`PRE-GEN-SPEC.md` E-5), including how it verifies that
    a rights holder is who it claims to be and is entitled to license the
-   subject;
+   subject, and an anchor for every public person it registers
+   (`extensions/identity.md`);
 3. accepted the core, including its fixed floor and the conflict rule
    (`PRE-GEN-SPEC.md` R-15, P-10);
 4. an operator key set published at its `keys` URL, its fingerprints given to
@@ -385,8 +387,9 @@ conditions and can be revoked.
 entry: the entry, its prefix and its keys stay listed forever (the prefix is
 never reassigned), but nothing signed by its keys authorizes anything again
 (`PRE-GEN-SPEC.md` V-14). Grounds: licences for subjects it had no authority
-to license, refusing to act on proven complaints, breaking the core floor, or
-a compromise of its operation. The steward revokes a single stolen key by
+to license, refusing to act on proven complaints within 7 days, repeated false
+claims (`extensions/identity.md`), breaking the core floor, or a compromise of
+its operation. The steward revokes a single stolen key by
 listing it in `revoked_keys`; the registry keeps its other keys. Before
 revoking a registry the steward SHOULD ask its operator to answer, unless
 there is ongoing harm. Every revocation is announced on pregen.org with its

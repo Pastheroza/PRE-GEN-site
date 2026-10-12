@@ -62,6 +62,15 @@ the subject's prefix (registry and key not revoked), answers exactly this reques
 same profile, is within its lifetime, is an `allow`, and is not a sandbox answer unless you
 pass `testing=True`.
 
+## One person in several registries, and proof in a video
+
+- `verify_anchors(list, prefix, directory)` — a registry's signed anchor list (`extensions/identity.md`).
+- `check_channel_proof(code, proof_url, wikidata_official_urls(anchor), get_text)` — did the person
+  confirm this code on their own channel?
+- `decide_identity(claims)` — "who proved it, not who came first"; generate only on `allow`.
+- `check_proof(bundle, directory, output_sha256=...)` — a platform's check of the `pg.proof.v1` bundle
+  carried with an output (`extensions/proof.md`).
+
 ## Test without a secret: the simulator
 
 ```python

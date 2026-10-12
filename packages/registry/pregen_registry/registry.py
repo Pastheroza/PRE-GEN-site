@@ -17,15 +17,19 @@ import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
+from pregen import fingerprint
+
 from .protocol import Key, ProtocolError, canonical, check_body, check_envelope, message_id, mint_code, parse_code, seal
 
 PROFILE = "likeness/1"
-EXTENSIONS = ["reports", "provider-keys", "limits", "jobs", "grants", "licensee", "observe", "lookup"]
+EXTENSIONS = ["reports", "provider-keys", "limits", "jobs", "grants", "licensee", "observe", "lookup", "identity",
+              "proof", "catalog"]
 TTL = 300                       # seconds an answer stays valid (≤ 900)
 GIVE_BACK_WINDOW = 86400        # likeness/1: 24 hours from issued_at
 PURPOSES = {"personal", "educational", "research", "editorial", "commercial"}
 USE_MEMBERS = {"purpose", "rights", "territory", "channel", "categories"}
 PROHIBITED_FOR_MINORS = {"sexual", "adult", "violence"}
+INTIMATE = {"sexual", "adult"}  # likeness/1: only with the person's own signature on the grant
 UNAVAILABLE = {"pending", "paused", "disputed", "withdrawn"}
 
 SCHEMA = """
@@ -35,11 +39,12 @@ CREATE TABLE IF NOT EXISTS subjects (
   status TEXT NOT NULL DEFAULT 'active', level TEXT NOT NULL DEFAULT 'self', published INTEGER NOT NULL DEFAULT 1,
   opted_out INTEGER NOT NULL DEFAULT 0, minor INTEGER NOT NULL DEFAULT 0, review INTEGER NOT NULL DEFAULT 0,
   fixed_refusal TEXT, immutable_denials TEXT NOT NULL DEFAULT '[]', no_grant_status TEXT NOT NULL DEFAULT 'deny',
-  custody TEXT NOT NULL DEFAULT 'managed', key_public TEXT NOT NULL, key_private TEXT);
+  custody TEXT NOT NULL DEFAULT 'managed', key_public TEXT NOT NULL, key_private TEXT,
+  anchor TEXT, proof_url TEXT, offer TEXT);
 CREATE TABLE IF NOT EXISTS grants (
   id TEXT PRIMARY KEY, subject_code TEXT NOT NULL, licensee_id TEXT NOT NULL, purposes TEXT NOT NULL,
   not_before INTEGER NOT NULL, expires_at INTEGER NOT NULL, max_uses INTEGER, uses_offset INTEGER NOT NULL DEFAULT 0,
-  envelope TEXT NOT NULL);
+  envelope TEXT NOT NULL, resale INTEGER NOT NULL DEFAULT 0, categories TEXT NOT NULL DEFAULT '[]');
 CREATE TABLE IF NOT EXISTS providers (provider_id TEXT PRIMARY KEY, token_hash TEXT NOT NULL, created_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS connections (provider_id TEXT NOT NULL, licensee_id TEXT NOT NULL, PRIMARY KEY (provider_id, licensee_id));
 CREATE TABLE IF NOT EXISTS keysets (provider_id TEXT NOT NULL, position INTEGER NOT NULL, id TEXT NOT NULL,
@@ -101,6 +106,10 @@ class Registry:
         with self.lock:
             return self.db.execute(sql, args).fetchone()
 
+    def _q(self, sql, args=()):
+        with self.lock:
+            return self.db.execute(sql, args).fetchall()
+
     def _meta(self, k):
         row = self.db.execute("SELECT v FROM meta WHERE k = ?", (k,)).fetchone()
         return row["v"] if row else None
@@ -110,33 +119,58 @@ class Registry:
         return v
 
     # ── operator actions (CLI) ───────────────────────────────────────────
-    def add_subject(self, name: str, *, serial: int | None = None, level: str = "self", **flags) -> str:
+    def add_subject(self, name: str, *, serial: int | None = None, level: str = "self", holder_public: str | None = None,
+                    **flags) -> str:
+        """`holder_public`: the person holds their own key (custody self); the registry never sees it."""
         with self.tx() as db:
             if serial is None:
                 serial = (db.execute("SELECT COALESCE(MAX(serial), 0) FROM subjects").fetchone()[0] or 0) + 1
-            code, key = mint_code(self.config.prefix, serial), Key()
+            code = mint_code(self.config.prefix, serial)
+            key = None if holder_public else Key()
             flags["immutable_denials"] = json.dumps(flags.get("immutable_denials", []))
+            if holder_public:
+                flags["custody"] = "self"
             cols = ["code", "serial", "name", "level", "key_public", "key_private", *flags]
             db.execute(f"INSERT INTO subjects ({', '.join(cols)}) VALUES ({', '.join('?' * len(cols))})",
-                       (code, serial, name, level, key.public_hex, key.private_hex, *flags.values()))
+                       (code, serial, name, level, holder_public or key.public_hex, key and key.private_hex,
+                        *flags.values()))
             return code
 
     def add_grant(self, subject_code: str, *, licensee_id: str = "", purposes=("research",), days: int = 365,
-                  max_uses: int | None = None, uses_offset: int = 0) -> str:
+                  max_uses: int | None = None, uses_offset: int = 0, resale: bool = False, categories=(),
+                  holder_key: Key | None = None) -> str:
+        """`resale`: licensee_id is a provider that may sell generations to its own users (catalog.md).
+        `categories`: content categories granted explicitly; intimate ones need `holder_key`, the person's own key."""
         with self.tx() as db:
             s = db.execute("SELECT * FROM subjects WHERE code = ?", (subject_code,)).fetchone()
-            if not s or not s["key_private"]:
-                raise ValueError("unknown subject, or its key is not held by this registry (self custody)")
+            if not s:
+                raise ValueError("unknown subject")
+            signer = Key(s["key_private"]) if s["key_private"] else holder_key
+            if signer is None or signer.public_hex != s["key_public"]:
+                raise ValueError("a grant is signed by the subject's own key: this subject holds it (self custody)")
             now = self.clock()
+            use = {"purposes": sorted(purposes)}
+            if categories:
+                use["categories"] = sorted(categories)
+            if resale:
+                use["resale"] = True
             env = seal("pg.grant.v1", {"subject_ref": subject_code, "licensee_id": licensee_id, "profile": PROFILE,
-                                       "use": {"purposes": sorted(purposes)}, "not_before": now,
-                                       "expires_at": now + days * 86400, "max_uses": max_uses},
-                       [("rights_holder", Key(s["key_private"])), ("registry", self.key)])
+                                       "use": use, "not_before": now, "expires_at": now + days * 86400,
+                                       "max_uses": max_uses},
+                       [("rights_holder", signer), ("registry", self.key)])
             gid = message_id(env["type"], env["body"])
-            db.execute("INSERT INTO grants VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            db.execute("INSERT INTO grants VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                        (gid, subject_code, licensee_id, json.dumps(sorted(purposes)), now, now + days * 86400,
-                        max_uses, uses_offset, json.dumps(env)))
+                        max_uses, uses_offset, json.dumps(env), int(resale), json.dumps(sorted(categories))))
             return gid
+
+    def set_identity(self, code: str, *, anchor: str | None = None, proof_url: str | None = None,
+                     offer: dict | None = None):
+        """identity.md: the public anchor and the official-channel confirmation; catalog.md: the offer, only with
+        the person's consent to be listed."""
+        with self.tx() as db:
+            db.execute("UPDATE subjects SET anchor = ?, proof_url = ?, offer = ? WHERE code = ?",
+                       (anchor, proof_url, json.dumps(offer) if offer is not None else None, code))
 
     def add_provider(self, provider_id: str | None = None) -> tuple[str, str]:
         provider_id = provider_id or "sbx-" + secrets.token_hex(4)
@@ -239,13 +273,20 @@ class Registry:
             return "deny", s["fixed_refusal"] or "PG_PROHIBITED_USE", None, level
         if categories & set(json.loads(s["immutable_denials"])):
             return "deny", "PG_IMMUTABLE_DENIAL", None, level
+        intimate = categories & INTIMATE
+        if intimate and (s["custody"] != "self" or level != "verified"):
+            return "deny", "PG_PERSONAL_SIGNATURE_REQUIRED", None, level
         if s["review"]:
             return "review", "PG_REVIEW_REQUIRED", None, level
-        licensee = req.get("licensee_id", "")
-        grants = db.execute("SELECT * FROM grants WHERE subject_code = ? AND (licensee_id = '' OR licensee_id = ?) "
-                            "AND not_before <= ? AND expires_at > ? ORDER BY not_before",
-                            (s["code"], licensee, now, now)).fetchall()
-        fitting = [g for g in grants if use["purpose"] in json.loads(g["purposes"])]
+        licensee, provider = req.get("licensee_id", ""), req["provider_id"]
+        grants = [g for g in db.execute(
+            "SELECT * FROM grants WHERE subject_code = ? AND not_before <= ? AND expires_at > ? ORDER BY not_before",
+            (s["code"], now, now)).fetchall()
+            # catalog.md: an open grant, a grant to this licensee, or the provider's own grant — which covers
+            # its users only with the resale right
+            if g["licensee_id"] in ("", licensee) or (g["licensee_id"] == provider and (not licensee or g["resale"]))]
+        fitting = [g for g in grants if use["purpose"] in json.loads(g["purposes"])
+                   and intimate <= set(json.loads(g["categories"]))]
         if not fitting:
             reason = "PG_SCOPE_VIOLATION" if grants else "PG_NO_LICENSE"
             return s["no_grant_status"], reason, None, level
@@ -269,7 +310,7 @@ class Registry:
         if self.config.sandbox:
             body["ext"] = {"sandbox": True}
         env = seal("pg.answer.v1", body, [("registry", self.key)])
-        use = "reserved" if grant is not None and grant["max_uses"] is not None else None
+        use = "reserved" if status == "allow" else None   # catalog.md: every allow is billed unless given back
         db.execute("INSERT INTO answers VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)",
                    (message_id(env["type"], env["body"]), ask["id"], json.dumps(env), status, now, now + TTL,
                     grant["id"] if grant is not None else None, use))
@@ -415,8 +456,50 @@ class Registry:
         if s is None or not s["published"]:
             return {"code": code, "registry": self.config.prefix, "status": "unknown"}
         return {"code": code, "registry": self.config.prefix, "status": "active", "name": s["name"], "level": s["level"],
-                "subject_key": {"key_id": Key(s["key_private"]).id if s["key_private"] else None,
+                "subject_key": {"key_id": fingerprint(s["key_public"]),
                                 "public_key_hex": s["key_public"], "custody": s["custody"]}}
+
+    def anchors(self) -> dict:
+        """identity.md: every anchored subject, signed, with its status, so a refusal is visible across registries."""
+        rows = self._q("SELECT * FROM subjects WHERE anchor IS NOT NULL ORDER BY serial")
+        status = lambda s: "opted_out" if s["opted_out"] else (s["status"] if s["status"] in UNAVAILABLE else "active")  # noqa: E731
+        return seal("pg.anchors.v1", {"registry": self.config.prefix, "issued_at": self.clock(), "anchors": [
+            {"anchor": s["anchor"], "code": s["code"], "level": s["level"], "proof_url": s["proof_url"] or "",
+             "status": status(s)} for s in rows]}, [("registry", self.key)])
+
+    def catalog(self) -> dict:
+        """catalog.md: subjects who chose to be offered. A listing is not a permission: every generation still asks."""
+        rows = self._q("SELECT * FROM subjects WHERE offer IS NOT NULL AND opted_out = 0 ORDER BY serial")
+        return {"registry": self.config.prefix, "offers": [
+            {"subject_ref": s["code"], "name": s["name"], "anchor": s["anchor"] or "", "level": s["level"],
+             **json.loads(s["offer"])} for s in rows if s["status"] not in UNAVAILABLE]}
+
+    def statement(self, provider_id: str, authorization: str | None) -> dict:
+        """catalog.md: what a provider owes, from the allows the registry issued — not from the provider's reports.
+        An allow given back within the window (limits.md) is not billed."""
+        self.authenticate(provider_id, authorization)
+        rows = self._q("SELECT a.grant_id, a.use, COUNT(*) AS n FROM answers a JOIN asks k ON k.id = a.ask_id "
+                       "WHERE k.provider_id = ? AND a.status = 'allow' GROUP BY a.grant_id, a.use ORDER BY a.grant_id",
+                       (provider_id,))
+        out: dict = {}
+        for r in rows:
+            g = out.setdefault(r["grant_id"], {"grant": r["grant_id"], "billed": 0, "given_back": 0})
+            g["given_back" if r["use"] == "released" else "billed"] += r["n"]
+        return {"provider_id": provider_id, "grants": list(out.values())}
+
+    def proof(self, short_id: str) -> dict:
+        """proof.md: the part of a proof this registry holds, found from the id a watermark carries."""
+        if not re.fullmatch(r"[0-9a-f]{16}", short_id):
+            raise ProtocolError("PG_MALFORMED", "a proof id is 16 hex characters")
+        rows = self._q("SELECT r.envelope AS report, r.ack, k.request, a.envelope AS answer FROM reports r "
+                       "JOIN asks k ON k.id = r.ask_id JOIN answers a ON a.report_id = r.id "
+                       "WHERE r.id LIKE ? AND k.closing_ack IS NOT NULL", (short_id + "%",))
+        if len(rows) != 1:
+            raise ProtocolError("PG_NOT_FOUND", "no such proof", status=404)
+        r = rows[0]
+        return {"format": "pg.proof.v1", "subjects": [{
+            "request": {"type": "pg.request.v1", "body": json.loads(r["request"]), "signatures": []},
+            "answer": json.loads(r["answer"]), "report": json.loads(r["report"]), "ack": json.loads(r["ack"])}]}
 
     def document(self) -> dict:
         api = self.config.api.rstrip("/")

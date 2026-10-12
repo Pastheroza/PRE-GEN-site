@@ -48,7 +48,10 @@
           "licensee",
           "observe",
           "sandbox",
-          "lookup"
+          "lookup",
+          "identity",
+          "proof",
+          "catalog"
         ]
       }
     },
