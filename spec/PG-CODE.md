@@ -391,7 +391,10 @@ listing it in `revoked_keys`; the registry keeps its other keys. Before
 revoking a registry the steward SHOULD ask its operator to answer, unless
 there is ongoing harm. Every revocation is announced on pregen.org with its
 reason. A verifier learns of a revocation only from a directory it has
-fetched; how fresh that must be is not yet defined.
+fetched, so it MUST NOT accept an answer on a directory it loaded more than
+24 hours earlier (`PRE-GEN-CORE.md` rule 2); a revocation reaches every
+verifier within a day. The directory may be served by any mirror: the steward
+signature, not the server, makes it authentic.
 
 **The steward key.** Held offline by the editor of the standard, Valerii
 Egorov — not by any registry, including the origin one — and used only to

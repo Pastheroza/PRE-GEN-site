@@ -30,6 +30,10 @@ See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
     (0.9.0) accept an answer only through the signed directory; tests show an unlisted registry, a copy
     of a listed registry with its own key and a revoked registry are refused. The sandbox extension
     defines the test directory.
+  - **A directory is used for at most 24 hours** (founder: «Да, добавляй»). A verifier loads it again at
+    least daily, from pregen.org or any mirror, and accepts no answer on an older copy, so a revocation
+    reaches everyone within a day (core rule 2, `PG-CODE.md` §9.1). `checkAnswer` / `check_answer` enforce
+    it (`DIRECTORY_MAX_AGE`).
 
 - **The principle** (2026-10-12, founder: "защитить и зафиксировать принцип
   пред генерационный механизм"). A short section before §0 states the five

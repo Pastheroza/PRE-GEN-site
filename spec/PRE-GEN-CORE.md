@@ -38,6 +38,9 @@ a prefix to a registry: `name`, `prefix`, `api`, `keys` (its key set URL) and
 - accepts the directory only if its `signature` verifies with the **published steward
   key** (below), never with a key from the directory itself, and its `sequence` is not lower
   than one it already accepted;
+- loads it again **at least once every 24 hours**, from pregen.org or any mirror (the
+  signature is what counts), and accepts no answer on an older copy — so a revocation
+  reaches every verifier within a day;
 - accepts a registry's signature only for the **prefix** the directory gives that registry;
 - refuses a registry marked `revoked` and a key listed in `revoked_keys`;
 - takes the public key from the registry's key set (`GET {api}/keys`) and checks that it

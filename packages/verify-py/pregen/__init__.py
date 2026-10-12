@@ -17,7 +17,7 @@ __version__ = "0.9.0"
 __all__ = [
     "STEWARD_PUBLIC_KEY_HEX", "DIRECTORY_URL", "PregenError", "Directory", "canonical_json",
     "fingerprint", "verify_bytes", "verify_signed", "verify_license", "issuer_of",
-    "verify_directory", "load_directory", "verify_decision", "check_decision", "check_answer", "message_id", "ORIGIN_KEY_FINGERPRINTS", "STEWARD_SUCCESSOR_PUBLIC_KEY_HEX", "Simulator",
+    "verify_directory", "load_directory", "verify_decision", "check_decision", "check_answer", "message_id", "DIRECTORY_MAX_AGE", "ORIGIN_KEY_FINGERPRINTS", "STEWARD_SUCCESSOR_PUBLIC_KEY_HEX", "Simulator",
 ]
 
 STEWARD_PUBLIC_KEY_HEX = "5cb949aab04186e3e216ec541b847c912fc3f78138c0ec3cb2560b2dad0d1f1b"
@@ -192,10 +192,11 @@ def _get_json(url: str):
 class Directory:
     """A directory accepted under V-12. Get one from verify_directory() or load_directory()."""
 
-    def __init__(self, directory: dict, _token=None, _origin_pin=None):
+    def __init__(self, directory: dict, _token=None, _origin_pin=None, _loaded_at=0):
         if _token is not _TOKEN:
             raise PregenError("use verify_directory() or load_directory()")
         self._d = deepcopy(directory)
+        self.loaded_at = _loaded_at  # Unix seconds when it was accepted; check_answer wants it under a day old
         self._origin_pin = tuple(_origin_pin) if _origin_pin is not None else None
 
     @property
@@ -305,7 +306,7 @@ _DEFAULT = object()
 
 def verify_directory(directory: dict, steward_public_key_hex: str = STEWARD_PUBLIC_KEY_HEX,
                      min_sequence: int = 0, previous=None, origin_key_fingerprints=_DEFAULT,
-                     successor_public_key_hex=_DEFAULT) -> Directory:
+                     successor_public_key_hex=_DEFAULT, now=None) -> Directory:
     """V-12: accept the directory only with the pinned steward's signature, its invariants,
     a sequence no lower than one already seen and, given the last accepted directory,
     nothing removed from it. With the built-in steward key the origin keys are pinned too."""
@@ -339,11 +340,13 @@ def verify_directory(directory: dict, steward_public_key_hex: str = STEWARD_PUBL
         _keeps_history(directory, prev, _annulments(directory))
     if origin_key_fingerprints is _DEFAULT:
         origin_key_fingerprints = ORIGIN_KEY_FINGERPRINTS if steward_public_key_hex == STEWARD_PUBLIC_KEY_HEX else None
-    return Directory(directory, _TOKEN, origin_key_fingerprints)
+    import time
+    return Directory(directory, _TOKEN, origin_key_fingerprints, int(time.time()) if now is None else now)
 
 
 def load_directory(url: str = DIRECTORY_URL, min_sequence: int = 0, get_json=_get_json, previous=None) -> Directory:
-    """Download and verify the directory from pregen.org. Pass the last accepted one as `previous`."""
+    """Download and verify the directory from pregen.org, or from any mirror: the steward's signature is what
+    counts. Pass the last accepted one as `previous`. Load it again at least once a day (DIRECTORY_MAX_AGE)."""
     return verify_directory(get_json(url), min_sequence=min_sequence, previous=previous)
 
 
@@ -359,6 +362,8 @@ _ECHOED = ("subject_id", "provider_id", "licensee_id", "prompt_hash", "model", "
 
 
 _MAX_DECISION_LIFETIME = 900
+# PRE-GEN-CORE.md rule 2: a revocation reaches every verifier within a day.
+DIRECTORY_MAX_AGE = 86_400
 
 
 def _empty(v) -> bool:
@@ -462,6 +467,8 @@ def check_answer(answer: dict, request: dict, directory: Directory = None, get_j
             or signers[0].get("role") != "registry" or not isinstance(sigs, list) or len(sigs) != 1:
         raise PregenError("an answer is signed by exactly one registry key")
     directory = directory or load_directory(get_json=get_json)
+    if now - directory.loaded_at > DIRECTORY_MAX_AGE:
+        raise PregenError("the directory was loaded more than 24 hours ago: load it again")
     code = asked.get("subject_ref")
     key = directory.public_key(code, signers[0].get("key_id"), get_json=get_json)  # rules 1-2: whose prefix, which keys
     if not verify_bytes(key, sigs[0], b"PREGEN-V5\x00pg.answer.v1\x00" + canonical_json(body)):

@@ -1,5 +1,7 @@
 export const STEWARD_PUBLIC_KEY_HEX: string;
 export const DIRECTORY_URL: string;
+/** Load the directory again at least this often (seconds): PRE-GEN-CORE.md rule 2. */
+export const DIRECTORY_MAX_AGE: number;
 export const ORIGIN_KEY_FINGERPRINTS: readonly string[];
 export const STEWARD_SUCCESSOR_PUBLIC_KEY_HEX: string | null;
 
@@ -20,6 +22,8 @@ export class Directory {
   private constructor();
   /** Store it and pass it back as `minSequence`, so an older directory is refused. */
   readonly sequence: number;
+  /** Unix seconds when it was accepted. checkAnswer refuses a directory older than DIRECTORY_MAX_AGE. */
+  readonly loadedAt: number;
   readonly registries: RegistryEntry[];
   /** The signed directory itself: persist it and pass it back as `previous`. */
   toJSON(): Record<string, unknown>;
@@ -43,7 +47,7 @@ export function verifyLicense(license: {
 }): Promise<{ subjectValid: boolean; operatorValid: boolean }>;
 export function issuerOf(code: string): string;
 export function verifyDirectory(directory: unknown, options?: { stewardPublicKeyHex?: string; successorPublicKeyHex?: string | null; minSequence?: number;
-  previous?: Directory | Record<string, unknown>; originKeyFingerprints?: string[] | null }): Promise<Directory>;
+  previous?: Directory | Record<string, unknown>; originKeyFingerprints?: string[] | null; now?: number }): Promise<Directory>;
 export function loadDirectory(options?: { url?: string; minSequence?: number; previous?: Directory | Record<string, unknown>; fetch?: Fetch }): Promise<Directory>;
 export function verifyDecision(decision: Record<string, unknown>, code: string, options?: { directory?: Directory; fetch?: Fetch }): Promise<boolean>;
 /** Everything to check before generating (V-1 to V-4, V-10, V-13, P-5). Throws PregenError with the

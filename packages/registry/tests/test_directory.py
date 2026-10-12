@@ -30,7 +30,7 @@ def directory(revoked=False):
     if revoked:
         entry["revoked"] = {"at": "2027-01-01T00:00:00Z", "reason": "licensed subjects it had no authority over"}
     d = {"schema": "pregen.registries.v2", "sequence": 1, "steward_key_id": steward.id, "registries": [entry]}
-    return verify_directory({**d, "signature": steward.sign(canonical_json(d))}, steward.public_hex)
+    return verify_directory({**d, "signature": steward.sign(canonical_json(d))}, steward.public_hex, now=NOW)
 
 
 def get_json(url):
@@ -91,6 +91,14 @@ def test_an_answer_cannot_be_reused_changed_or_kept_past_its_life():
         check(request, edited, testing=True)
     with pytest.raises(PregenError, match="expired"):
         check_answer(answer, request, directory(), get_json=get_json, now=NOW + 901, testing=True)
+
+
+def test_a_directory_older_than_a_day_is_not_used():
+    # It might miss a revocation made since: load it again (PRE-GEN-CORE.md rule 2).
+    request, answer = ask(real, real_http, mint_code("TEST", 1))
+    stale = directory()
+    with pytest.raises(PregenError, match="24 hours"):
+        check_answer(answer, request, stale, get_json=get_json, now=NOW + 86_401, testing=True)
 
 
 def test_a_refusal_is_genuine_but_never_permits():

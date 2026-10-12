@@ -263,7 +263,7 @@ test("checkAnswer trusts an answer only through the directory (PRE-GEN-CORE.md r
   const real = await v5key(), fake = await v5key();
   const dir = await verifyDirectory(await steward.sign({ schema: "pregen.registries.v2", sequence: 1, steward_key_id: steward.id,
     registries: [{ name: "Test", prefix: "TEST", api: "https://test.example", keys: "https://test.example/keys",
-      key_fingerprints: [real.id] }] }, "signature"), { stewardPublicKeyHex: steward.pub }); // a test directory: no bare namespace
+      key_fingerprints: [real.id] }] }, "signature"), { stewardPublicKeyHex: steward.pub, now: 1000 }); // a test directory: no bare namespace
   const fetch = keysFetch({ "https://test.example/keys": [{ key_id: real.id, public_key_hex: real.pub }] });
   const ask = (code, job = "job-1") => ({ type: "pg.request.v1", signatures: [], body: { subject_ref: code, provider_id: "p",
     profile: "likeness/1", use: { purpose: "research" }, job_id: job, job_hash: "a".repeat(64) } });
@@ -285,6 +285,8 @@ test("checkAnswer trusts an answer only through the directory (PRE-GEN-CORE.md r
   const sandbox = await answer(real, req, { ext: { sandbox: true } });
   await assert.rejects(check(sandbox, req), /sandbox/);
   assert.equal((await check(sandbox, req, { testing: true })).status, "allow");
+  // A directory loaded more than a day ago: a revocation might be missing from it.
+  await assert.rejects(check(await answer(real, req, { issued_at: 87500, expires_at: 87800 }), req, { now: 87501 }), /24 hours/);
   await assert.rejects(check(await answer(real, req, { status: "deny", reason: "PG_SUBJECT_OPTED_OUT" }), req),
     /not an allow: deny PG_SUBJECT_OPTED_OUT/);
 });

@@ -161,13 +161,14 @@ function checkInvariants(d) {
 export class Directory {
   #d;
   #originPin;
-  constructor(token, directory, originPin) {
+  constructor(token, directory, originPin, loadedAt) {
     if (token !== Directory.#token) fail("use verifyDirectory() or loadDirectory()");
     this.#d = structuredClone(directory);
     this.#originPin = originPin;
+    this.loadedAt = loadedAt; // Unix seconds when it was accepted; checkAnswer wants it under a day old
   }
   static #token = Symbol();
-  static _make(directory, originPin) { return new Directory(Directory.#token, directory, originPin); }
+  static _make(directory, originPin, loadedAt) { return new Directory(Directory.#token, directory, originPin, loadedAt); }
 
   /** Store this and pass it as minSequence next time, so an older copy is refused. */
   get sequence() { return this.#d.sequence; }
@@ -247,7 +248,7 @@ function keepsHistory(next, previous, annulled = []) {
  * a sequence no lower than one already seen and, given the last accepted directory,
  * nothing removed from it. With the built-in steward key the origin keys are pinned too. */
 export async function verifyDirectory(directory, { stewardPublicKeyHex = STEWARD_PUBLIC_KEY_HEX, successorPublicKeyHex,
-  minSequence = 0, previous, originKeyFingerprints } = {}) {
+  minSequence = 0, previous, originKeyFingerprints, now = Math.floor(Date.now() / 1000) } = {}) {
   if (!Number.isSafeInteger(minSequence) || minSequence < 0) fail("minSequence must be a nonnegative integer");
   checkInvariants(directory);
   const successor = successorPublicKeyHex !== undefined ? successorPublicKeyHex
@@ -274,7 +275,7 @@ export async function verifyDirectory(directory, { stewardPublicKeyHex = STEWARD
   }
   const pin = originKeyFingerprints !== undefined ? originKeyFingerprints
     : stewardPublicKeyHex === STEWARD_PUBLIC_KEY_HEX ? ORIGIN_KEY_FINGERPRINTS : null;
-  return Directory._make(directory, pin && [...pin]);
+  return Directory._make(directory, pin && [...pin], now);
 }
 
 /** Download and verify the directory from pregen.org. Pass the last accepted one as `previous`. */
@@ -301,6 +302,8 @@ const UNDERSTOOD = new Set(["schema_version", "decision_id", "nonce", "dispositi
   "revocation_epoch", "max_cache_age_seconds", "cache_scope", "provider_user_binding", "provider_identity_link_id",
   "detection_id", "remediation"]);
 const MAX_DECISION_LIFETIME = 900;
+/** PRE-GEN-CORE.md rule 2: a revocation reaches every verifier within a day. */
+export const DIRECTORY_MAX_AGE = 86_400;
 const ECHOED = ["subject_id", "provider_id", "licensee_id", "prompt_hash", "model", "modality"];
 const isEmpty = (v) => v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0);
 const same = (a, b) => canonicalJson(a) === canonicalJson(b);
@@ -381,6 +384,7 @@ export async function checkAnswer(answer, request, { directory, fetch: fetchFn =
   if (!Array.isArray(signers) || signers.length !== 1 || signers[0]?.role !== "registry"
       || !Array.isArray(sigs) || sigs.length !== 1) fail("an answer is signed by exactly one registry key");
   directory ??= await loadDirectory({ fetch: fetchFn });
+  if (now - directory.loadedAt > DIRECTORY_MAX_AGE) fail("the directory was loaded more than 24 hours ago: load it again");
   const key = await directory.publicKey(asked.subject_ref, signers[0].key_id, { fetch: fetchFn }); // rules 1-2
   if (!(await verifyBytes(key, sigs[0], utf8.encode("PREGEN-V5\0pg.answer.v1\0" + canonicalJson(body))))) fail("bad signature");
   if (body.request_id !== (await messageId("pg.request.v1", asked))) fail("the answer is for another request");
