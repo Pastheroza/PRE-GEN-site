@@ -236,3 +236,23 @@ details p { margin: 10px 0 0; }
   .go { flex-direction: column; gap: 0; }
   .go a { display: block; padding: 12px 0; border-top: 1px solid var(--soft); }
 }
+
+/* Homepage diagrams: monochrome SVG drawn with the theme's own colors. */
+.dg { margin: 40px 0 0; }
+.dg:first-of-type { margin-top: 8px; }
+.dg h3 { font-size: 19px; line-height: 1.3; margin: 0 0 14px; letter-spacing: -0.01em; }
+.dg-art { overflow-x: auto; padding: 16px 0 4px; border-top: 1px solid var(--soft); }
+.dg-art svg { display: block; width: 100%; height: auto; min-width: 680px; }
+.dg figcaption { margin: 10px 0 0; color: var(--muted); max-width: 42em; }
+.dg text { font-family: var(--sans); }
+.dg .ink { fill: var(--fg); }
+.dg .inv { fill: var(--bg); }
+.dg .mute { fill: var(--muted); }
+.dg .paper { fill: var(--bg); }
+.dg .tint { fill: var(--tint); }
+.dg .line { stroke: var(--fg); stroke-width: 1.5; }
+.dg line.line, .dg path.line { fill: none; }
+.dg .soft { stroke: var(--soft); stroke-width: 1.5; }
+.dg .dash { stroke-dasharray: 6 5; }
+.dg-hint { display: none; margin: 0; color: var(--muted); font-size: 14px; }
+@media (max-width: 720px) { .dg-hint { display: block; } }
