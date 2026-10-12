@@ -37,7 +37,7 @@ See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
     revocation (corrected after external review; a signed freshness statement is future work).
   - **An allow must name its basis** (external review). The libraries now refuse a signed answer that breaks
     core rule 4: an `allow` without a policy or grant basis, an `allow` with a reason, or a refusal without a
-    reason.
+    reason (`@pregen/verify` and `pregen` 0.9.1).
   - **Identity, proof, catalog** (founder: «N1–N8 да, делай»; scenarios in PRAMPTA `nmp/pregen-identity-proof-market.md`).
     The core is unchanged; three extensions and one profile rule:
     - `identity`: anchors (Wikidata/ISNI/domain) for public persons, confirmation on the person's own channel,
