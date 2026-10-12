@@ -13,7 +13,7 @@ always resolves to the latest one. (Founder, 2026-09-28: "синхронизир
 | v2 | 2026-05-12 | Prompt Protocol | [10.5281/zenodo.20132247](https://doi.org/10.5281/zenodo.20132247) | historical |
 | v3 | 2026-05-20 | Prompt Protocol | [10.5281/zenodo.20319842](https://doi.org/10.5281/zenodo.20319842) | historical |
 | v4 | 2026-06-01 | PRE-GEN — Technical Specification | [10.5281/zenodo.20500208](https://doi.org/10.5281/zenodo.20500208) | historical |
-| **v5** | 2026-10-03 (draft) | PRE-GEN — Technical Specification | assigned when published on Zenodo | **draft** — current once published |
+| **v5** | 2026-10-12 | PRE-GEN — Technical Specification | Zenodo record follows the pregen.org publication | **current** |
 
 The "Technical Specification v1.1" addendum (August 2026) was never published
 as its own Zenodo version; everything it added is part of v5.
@@ -21,8 +21,9 @@ as its own Zenodo version; everything it added is part of v5.
 ## Rules
 
 1. **A version is a published snapshot.** The number changes only when a new
-   Zenodo version is published. Between releases, this text is the draft of the
-   next version and says so in the header of `PRE-GEN-SPEC.md`.
+   version is published on pregen.org and on Zenodo (v5: pregen.org on
+   2026-10-12, the Zenodo record follows). Between releases, changes are
+   collected for the next version and marked so in `CHANGELOG.md`.
 2. **Nothing issued ever changes meaning.** A PG code, a signed object or a
    vector valid under one version stays valid under every later one. A later
    version may stop *issuing* something (as v5 stopped issuing STD licences),
@@ -36,7 +37,19 @@ as its own Zenodo version; everything it added is part of v5.
 
 ## v5 against v4
 
-What an implementation of v4 must change:
+**The v5 message interface (2026-10-12).** A one-page core,
+`PRE-GEN-CORE.md`: a code names the subject and its registry; the signed
+directory says whom to trust (reloaded at least every 24 hours); the provider
+asks (`POST /v2/requests`); the registry answers with a signed `allow`,
+`deny`, `review` or `not_blocked`; the provider generates only on a valid
+`allow` and keeps it. Everything else is an optional extension (`extensions/`:
+reports, provider-keys, limits, jobs, grants, licensee, observe, sandbox,
+lookup, identity, proof, catalog) or a profile (`profiles/likeness-1.md`).
+JSON Schemas in `schemas/`, byte vectors in `test-vectors/messages.json`, a
+reference registry in `packages/registry`. No registry issues new codes
+without a prefix. The earlier interface below stays valid.
+
+What an implementation of v4 must change in the earlier interface:
 
 - **A small core and extensions.** `PRE-GEN-SPEC.md` is the core every
   authorization registry, provider and verifier implements: the decision, the

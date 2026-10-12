@@ -8,7 +8,7 @@ comments cited throughout `spec/PRE-GEN-SPEC.md`.
 
 See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
 
-## v5 — draft of 2026-10-03
+## v5 — 2026-10-12
 
 - **Core and extensions** (2026-10-12, founder: «все гениальное просто… ядро отличное даже идеальное для
   индустрии»). The message interface of v5 is now a one-page core plus optional extensions.

@@ -2,14 +2,20 @@
 
 PRE-GEN is an open standard for asking permission before an AI system
 generates a real person, brand, voice or work, and for proving the answer
-afterwards. Current version: **v5** (28 September 2026, `VERSIONS.md`).
+afterwards. Current version: **v5** (12 October 2026, `VERSIONS.md`).
+
+**Start here: [`PRE-GEN-CORE.md`](PRE-GEN-CORE.md)** — the whole core on one page.
 Copyright 2026 Valerii Egorov, licensed under the Apache License
 2.0 (`LICENSE`, `NOTICE`). Anyone may implement it, run a registry or build on
 it without asking permission.
 
 | File | What it is |
 |---|---|
-| `PRE-GEN-SPEC.md` | The core every registry, provider and verifier implements |
+| `PRE-GEN-CORE.md` | **The core**: codes, directory, ask, signed answer, generate only on allow — one page |
+| `extensions/` | Optional extensions, one page each: reports, provider-keys, limits, jobs, grants, licensee, observe, sandbox, lookup, identity, proof, catalog |
+| `profiles/likeness-1.md` | The first profile: a person's likeness and voice |
+| `schemas/`, `test-vectors/messages.json` | JSON Schemas and byte vectors for the v5 messages |
+| `PRE-GEN-SPEC.md` | Foundations the core builds on (canonical bytes, keys, refusal codes) and the earlier interface (`/v1/verify`, receipts), still valid |
 | `PRE-GEN-EXTENSIONS.md` | What a registry adds; the origin registry's (PRAMPTA) extensions |
 | `PG-CODE.md` | Identifier format, check character, issuer prefixes (§9) |
 | `REFUSAL-CODES.md` | The origin registry's reason codes, core codes marked |
@@ -19,8 +25,9 @@ it without asking permission.
 | `test-vectors/vectors.json` | Byte-level vectors every implementation must reproduce |
 | `conformance/` | The level-1 runner that replays the vectors against an implementation |
 
-**Normative:** the text of `PRE-GEN-SPEC.md` and `PG-CODE.md`, and the
-test vectors; `PRE-GEN-EXTENSIONS.md` and `REFUSAL-CODES.md` for an
+**Normative:** the text of `PRE-GEN-CORE.md`, `PRE-GEN-SPEC.md` and
+`PG-CODE.md`, the extensions a party declares, the profile it answers under,
+and the test vectors; `PRE-GEN-EXTENSIONS.md` and `REFUSAL-CODES.md` for an
 implementation that claims an extension. The text defines the requirements
 (written in BCP 14 language, `PRE-GEN-SPEC.md` §0); the vectors are its
 conformance test, and a disagreement between them is an erratum, never a
@@ -47,7 +54,8 @@ sufficient (`PRE-GEN-SPEC.md` §8.2).
 ## Running a registry
 
 Ask for a four-letter issuer prefix (`PG-CODE.md` §9) by opening an issue in
-this repository. Listed registries: https://www.pregen.org/registries
+this repository. The open reference registry (`packages/registry`, Apache-2.0)
+runs a complete registry with `init` and `serve`. Listed registries: https://www.pregen.org/registries
 (machine-readable: `/registries.json`).
 
 ## Changing the standard

@@ -3,6 +3,7 @@
 The PRE-GEN standard and its website, [pregen.org](https://www.pregen.org):
 static HTML/CSS/JS, no build step. The standard is in [`spec/`](spec/)
 (Apache-2.0, `spec/LICENSE`); the website itself is not (`NOTICE`).
+Start with the one-page core: [`spec/PRE-GEN-CORE.md`](spec/PRE-GEN-CORE.md).
 
 ## Steward key
 
@@ -19,7 +20,7 @@ stolen; a directory it signs replaces the current line):
 - public key: `658544163d6abd5fef046407980d249817875d87d8cf4b67879a2e265fa5612f`
 - fingerprint: `pg-ed25519:3e5e20729ce8485eea274c4cb33721d6`
 
-The same values are in `spec/PG-CODE.md` §9.1, in the PRE-GEN v5 paper (§11)
+The same values are in `spec/PG-CODE.md` §9.1, in the PRE-GEN v5 paper (§5)
 and in the DNS TXT record `_pregen-steward.pregen.org`.
 
 ```sh

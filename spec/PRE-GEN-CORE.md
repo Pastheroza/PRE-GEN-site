@@ -2,8 +2,8 @@
 
 **Ask before you generate. Get a signed answer anyone can check.**
 
-Draft, part of PRE-GEN v5 (2026-10-12). Normative once v5 is published on Zenodo.
-Apache License 2.0.
+PRE-GEN v5 · 12 October 2026 · Apache License 2.0.
+The one page every provider, registry and verifier starts from.
 
 ---
 

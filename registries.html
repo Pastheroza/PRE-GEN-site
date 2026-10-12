@@ -30,26 +30,27 @@
 <main><div class="wrap">
 <h1>Registries</h1>
 <p class="lede">Who runs PRE-GEN today. Registries and providers are listed so they can find each other and give consistent answers about the same people and works.</p>
-<p class="meta">Updated 2026-10-03 · machine-readable: <a href="/registries.json">registries.json</a>, signed by the <a href="/docs/pg-code">steward key</a></p>
+<p class="meta">Updated 2026-10-12 · machine-readable: <a href="/registries.json">registries.json</a>, signed by the <a href="/docs/pg-code">steward key</a></p>
 
 <h2>Status</h2>
 <div class="table"><table>
 <thead><tr><th></th><th>Today</th></tr></thead>
 <tbody>
-<tr><td>Reference registry in production</td><td>Yes — PRAMPTA</td></tr>
-<tr><td>Signed directory</td><td>Yes — <a href="/registries.json">registries.json</a>, signed by the steward key</td></tr>
+<tr><td>Registry in production</td><td>Yes — PRAMPTA</td></tr>
+<tr><td>Open reference registry</td><td>Yes — <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/packages/registry">pregen-registry</a>, Apache-2.0, with a sandbox</td></tr>
+<tr><td>Signed directory</td><td>Yes — <a href="/registries.json">registries.json</a>, signed by the steward key; verifiers reload it at least every 24 hours</td></tr>
 <tr><td>Second registry</td><td>None yet</td></tr>
 <tr><td>Independent implementation passing conformance</td><td>None yet — <a href="/docs/implement">implement one</a></td></tr>
 <tr><td>Revoked registries or keys</td><td>None</td></tr>
-<tr><td>Same person in two registries</td><td>Neither answer decides by itself; the registries resolve it, duplicate claims need evidence</td></tr>
-<tr><td>C2PA bridge</td><td>Assertion issued; not tested end to end</td></tr>
+<tr><td>Same person in two registries</td><td>The claim the person confirmed on their own channel decides; unproven conflicts freeze (<a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/identity.md">identity</a>)</td></tr>
+<tr><td>Proof carried with the output</td><td>Specified (<a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/proof.md">proof</a>); not yet tested end to end with a platform</td></tr>
 </tbody></table></div>
 
 <h2>Registries</h2>
 <p>A registry holds subjects, issues licences and signs decisions.</p>
 <div class="table"><table>
 <thead><tr><th>Name</th><th>Role</th><th>Prefix</th><th>API</th><th>Status</th><th>Since</th></tr></thead>
-<tbody><tr><td><a href="https://prampta.com">PRAMPTA</a></td><td>Registry operator, origin issuer</td><td class="mono">none — bare PG-… codes</td><td class="mono">https://api2.prampta.com</td><td>Production</td><td class="mono">2026</td></tr></tbody></table></div>
+<tbody><tr><td><a href="https://prampta.com">PRAMPTA</a></td><td>Registry operator, origin issuer</td><td>bare codes so far; <span class="mono">PRAM</span> next</td><td class="mono">https://api2.prampta.com</td><td>Production</td><td class="mono">2026</td></tr></tbody></table></div>
 
 <h2>Providers</h2>
 <p>AI systems that ask a listed registry before generating.</p>
@@ -62,23 +63,24 @@
 <p><b>Registries</b> open an issue in the <a href="https://github.com/Pastheroza/PRE-GEN-site/issues">specification repository</a> and receive a four-letter prefix (<a href="/docs/pg-code">PG codes</a>). Bring:</p>
 <ol>
 <li>a named operator — a company or a person — with a public address and a contact for complaints and disputes;</li>
-<li>a published policy: how you verify that a rights holder is who they claim and may license the subject, your own floors and refusal codes, decision lifetime, opt-out waiting period;</li>
-<li>acceptance of the core: its floor of protections, and the rule for a person held by two registries;</li>
-<li>a public API with <code>/v1/verify/</code> and a key set at <code>/keys</code>, your key fingerprints given out of band, your next key announced;</li>
-<li>a passing run of the published test vectors.</li>
+<li>a published policy: how you verify that a rights holder is who they claim and may license the subject, your own floors and refusal codes, answer lifetime, opt-out waiting period — and an anchor (Wikidata, ISNI or a domain) for every public person you register;</li>
+<li>acceptance of the core: its floor of protections, the rule for a person held by several registries, and an answer to every complaint within seven days;</li>
+<li>a public API following <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/PRE-GEN-CORE.md">the core</a> (<code>POST /v2/requests</code>), a key set at <code>/keys</code> and a document at <code>/.well-known/pregen-registry.json</code>, your key fingerprints given out of band, your next key announced;</li>
+<li>a passing run of the published test vectors and schemas.</li>
 </ol>
 <p><b>Providers</b> are listed by the registry they integrate with, after a production decision and matching receipt.</p>
 
 <h2>Revocation</h2>
-<p>The steward can revoke a registry that licenses people or works it has no authority over, ignores proven complaints, breaks the core floor, or is compromised. A revoked registry stays in the directory forever, its prefix is never reused, and <strong>nothing signed by its keys authorizes a generation again</strong>. A single stolen key can be revoked the same way while the registry keeps its other keys. A revocation can never be undone, and each one is announced here with its reason. Verification libraries from version 0.5.0 enforce it; a verifier learns of it the next time it fetches the directory.</p>
+<p>The steward can revoke a registry that licenses people or works it has no authority over, ignores proven complaints, breaks the core floor, or is compromised. A revoked registry stays in the directory forever, its prefix is never reused, and <strong>nothing signed by its keys authorizes a generation again</strong> — and verifiers learn of it within a day. A single stolen key can be revoked the same way while the registry keeps its other keys. A revocation can never be undone, and each one is announced here with its reason. Verification libraries from version 0.5.0 enforce it; a verifier learns of it the next time it fetches the directory.</p>
 
 <h2>Working together</h2>
-<p><strong>Specified:</strong> every code belongs to exactly one registry. Bare <code>PG-…</code> codes are the origin registry's; every other registry prefixes its codes with its four letters, so codes never collide. A registry asked about another registry's code points to this list.</p>
+<p><strong>Every code belongs to exactly one registry.</strong> Each registry issues codes under its own four-letter prefix, so codes never collide. Bare <code>PG-…</code> codes issued before version 5 keep their meaning; no registry issues new ones. A registry asked about another registry's code points to this list.</p>
 <ul>
-<li><strong>No registry decides for another.</strong> When a provider knows two registries hold the same person, brand or work and they answer differently, neither answer decides by itself: <code>subject_authority</code> is each registry's own statement, not evidence. The provider keeps both decisions, tells both registries, decides under its own policy, and does not present the output as licensed while a refusal is unresolved. A matching name is not evidence of the same subject.</li>
-<li><strong>Disputes.</strong> A claim that another listed registry holds the same subject needs evidence. The two registries examine it, may pause new licences meanwhile, and tell the steward if they cannot agree. An opt-out forwarded by the other registry applies once the authority of the person who filed it is verified.</li>
+<li><strong>Who proved it, not who came first.</strong> When several registries claim the same public person, a claim the person confirmed on their own official channel silences unconfirmed claims. A refusal of the person in any of their registries holds in all of them. Several unconfirmed claims freeze: nobody permits until someone proves it. A matching name is never evidence.</li>
+<li><strong>Disputes.</strong> A registry answers a complaint within seven days — a first response and protective measures such as a freeze, not necessarily a final decision. The steward can record an established false claim in the directory; clients drop it within a day. Repeated false claims are ground for revocation.</li>
+<li><strong>No intermediary required.</strong> Providers and registries exchange requests and answers directly. Services that make it easier are optional and open to anyone.</li>
 </ul>
-<p class="note">Not yet specified: a shared identifier telling a provider that two registries hold the same person, and one discovery format for every registry's endpoints.</p>
+<p class="note">Not yet specified: settlement between registries, and profiles for works and characters.</p>
 
 </div></main>
 <footer class="foot"><div class="wrap">

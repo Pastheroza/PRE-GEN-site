@@ -1,6 +1,6 @@
 # PRE-GEN Protocol Specification
 
-**Version:** PRE-GEN v5 draft (2026-10-04, becomes v5 when published on Zenodo) · Zenodo concept DOI
+**Version:** PRE-GEN v5 (2026-10-12) · Zenodo concept DOI
 [10.5281/zenodo.20129901](https://doi.org/10.5281/zenodo.20129901) ·
 **Vectors:** `spec/test-vectors/vectors.json`
 · **License:** Apache License 2.0 — see [`spec/LICENSE`](LICENSE); licensed
@@ -14,8 +14,15 @@ header "v6 draft" until then. [`spec/CHANGELOG.md`](CHANGELOG.md) is the
 entry-by-entry record; its dated `Spec-Version` entries up to 2026-09-28 are
 the history of v5's drafts.
 
-This document is the PRE-GEN **core**: what every authorization registry,
-provider and verifier implements. With [`PG-CODE.md`](PG-CODE.md), the core
+**Start with [`PRE-GEN-CORE.md`](PRE-GEN-CORE.md)** — the one-page core of
+the v5 message interface, its extensions (`extensions/`) and the profile
+`profiles/likeness-1.md`. This document keeps what the core builds on —
+canonical bytes (§2), keys, the refusal codes — and the **earlier interface**
+(`pg.decision.v1`, `/v1/verify`, receipts), which stays valid and verifiable
+for everything issued under it.
+
+This document was the PRE-GEN core before v5's message interface: what every authorization registry,
+provider and verifier implemented. With [`PG-CODE.md`](PG-CODE.md), the core
 refusal codes (§3) and the test vectors it specifies signed objects,
 canonical bytes, identifiers, verification, decisions, receipts and key
 publication completely enough that a registry, a provider, or an independent

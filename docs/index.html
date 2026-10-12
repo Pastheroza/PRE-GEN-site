@@ -29,52 +29,60 @@
 </div></header>
 <main><div class="wrap">
 <div class="doc"><aside><ul><li><a href="/docs" aria-current="page">Overview</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versioning</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Integrate</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Implement</a></li></ul></aside><article><h1>Protocol overview</h1>
-<p class="meta">PRE-GEN v5 draft · Copyright Valerii Egorov · Apache-2.0 · <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">source</a> · Test vectors v2 · Policy version <span class="mono">2026-09-22</span> · The text is normative; the vectors test it, and a disagreement is an erratum.</p>
-<p>PRE-GEN is a protocol for <strong>pre-generation authorization</strong>. Before a model produces content depicting a registered person, brand, voice or work, the provider asks an authorization registry whether the use is permitted and receives a signed decision it can store and anyone can verify.</p>
+<p class="meta">PRE-GEN v5 · 12 October 2026 · Copyright Valerii Egorov · Apache-2.0 · <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/PRE-GEN-CORE.md">the core</a> · <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">source</a> · The text is normative; the JSON Schemas and byte vectors test it, and a disagreement is an erratum.</p>
+<p>PRE-GEN is a protocol for <strong>pre-generation authorization</strong>. Before a generative system produces an output that uses a protected subject — a person's likeness or voice — it asks the registry that speaks for the subject. The registry answers and signs the answer. Anyone can check that answer later, offline, without trusting whoever shows it.</p>
 
-<h2>A small core, and room for each registry</h2>
-<p>The <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/PRE-GEN-SPEC.md">core</a> is what every registry, provider and verifier implements: the decision, the licence envelope, the receipt, 17 core <a href="/docs/refusal-codes">refusal codes</a>, PG codes and the signed registry directory. It also fixes a floor of protections no registry may lower: an opt-out beats any licence, a refused subject status beats any licence, minors stay protected, and an unknown subject is not a prohibition.</p>
-<ul>
-<li><strong>Floors only go up.</strong> A registry may refuse more than the core, never allow more.</li>
-<li><strong>Own members and codes.</strong> A registry may add signed members, which verifiers ignore unless marked <code>critical</code>, and its own refusal codes, prefixed with its issuer: <code>PG_&lt;ISSUER&gt;_…</code>.</li>
-<li><strong>Published policy.</strong> Each registry publishes its floors, codes, extensions, decision lifetime and opt-out waiting period.</li>
-<li><strong>Several subjects.</strong> One output with a person, a voice and a brand needs an allow for each, under one <code>generation_id</code>.</li>
-<li><strong>Trusted registries only.</strong> Signatures count only from registries the steward-signed <a href="/registries">directory</a> lists; the steward admits them on published conditions and can revoke a registry or a key. When two registries hold the same person, neither registry's answer decides by itself: the provider keeps both, tells both, decides under its own policy and does not call the output licensed; the registries resolve it, and the steward revokes one that misstates who holds the rights. A matching name is not evidence of the same subject.</li>
-</ul>
-<p>What the origin registry, PRAMPTA, adds — end-user binding, decision caching, evidence bundles, C2PA assertions, observations — is in <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/PRE-GEN-EXTENSIONS.md">PRE-GEN-EXTENSIONS.md</a>.</p>
-
-<h2>The crypto invariant</h2>
-<ul>
-<li><strong>Canonical JSON.</strong> Keys sorted by code point, no whitespace, non-ASCII emitted as raw UTF-8, integers only (no floats).</li>
-<li><strong>Hashing.</strong> SHA-256, lowercase hex.</li>
-<li><strong>Signatures.</strong> Ed25519 (RFC 8032), hex, over the canonical bytes of the body without its signature field.</li>
-<li><strong>Audit chain.</strong> Each event's <code>prev_hash</code> is the SHA-256 of the previous event's canonical bytes; the first uses <code>genesis</code>.</li>
-</ul>
-<pre><code>canonical_json(obj) = UTF8(json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False))
-signature           = Ed25519.sign(canonical_json(body minus signature))
-key_fingerprint     = "pg-ed25519:" + hex(SHA256(raw 32-byte public key))[0:32]</code></pre>
-<p class="note">Never Unicode-normalize a signed body before verifying. NFC and NFD strings that look the same produce different signatures. Verify the bytes you received.</p>
-
-<h2>Signed objects</h2>
-<div class="table"><table>
-<thead><tr><th>Object</th><th>Marker</th><th>Signed by</th><th>Proves</th></tr></thead>
-<tbody>
-<tr><td>Decision</td><td class="mono">pg.decision.v1</td><td>Registry</td><td>The answer to one request and its policy version</td></tr>
-<tr><td>Licence</td><td class="mono">pg.license.v2</td><td>Rights holder, countersigned by the registry</td><td>A scoped permission: use, modality, channel, territory, time, project</td></tr>
-<tr><td>Receipt</td><td class="mono">pg.receipt.v2 · v3</td><td>Provider (v3 signs the event type)</td><td>That a generation under a decision was reported</td></tr>
-<tr><td>Evidence bundle (extension)</td><td class="mono">pg.evidence.v1</td><td>Registry</td><td>Decision, licence and audit chain, verifiable offline</td></tr>
-<tr><td>Assertion (extension)</td><td class="mono">pg.assertion.v1</td><td>Registry</td><td>A pointer to the decision, embeddable in a C2PA manifest</td></tr>
-</tbody></table></div>
-
-<h2>The flow</h2>
+<h2>The core, in five rules</h2>
+<p>The whole core fits on one page: <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/PRE-GEN-CORE.md">PRE-GEN-CORE.md</a>. A provider that does exactly this, and nothing more, implements PRE-GEN.</p>
 <ol>
-<li><strong>Detect.</strong> Poll <code>GET /v1/subjects/index</code> (ETag-cached) and match prompts against registered names and aliases. Matching yields candidates, not proof.</li>
-<li><strong>Verify.</strong> <code>POST /v1/verify/</code> returns a decision with a <code>disposition</code>: <code>allow</code>, <code>not_blocked</code>, <code>review</code> or <code>deny</code>, plus a <a href="/docs/refusal-codes">reason code</a>.</li>
-<li><strong>Prove.</strong> Check the signature against the registry's key set (<code>GET /keys</code>, rotation-aware), store the decision, and after an <code>allow</code> file a receipt.</li>
+<li><strong>A code names the subject and its registry.</strong> <code>PG-&lt;prefix&gt;-&lt;number&gt;&lt;check&gt;</code>, for example <code>PG-TEST-000001N</code>. The four-letter prefix names the registry. Codes without a prefix were issued before v5; they keep their meaning, and no registry issues new ones.</li>
+<li><strong>The directory says whom to trust.</strong> One <a href="/registries">directory</a>, signed by the steward key, lists each registry's prefix and keys. A verifier accepts a registry's signature only for its own prefix, and loads the directory again at least every 24 hours.</li>
+<li><strong>Ask.</strong> <code>POST {api}/v2/requests</code> with one <code>pg.request.v1</code> about one subject: <code>subject_ref</code>, <code>provider_id</code>, <code>profile</code>, <code>use</code>, <code>job_id</code>, <code>job_hash</code>. The prompt and the output never leave the provider.</li>
+<li><strong>A signed answer.</strong> <code>allow</code>, <code>deny</code>, <code>review</code> or <code>not_blocked</code>, signed by the registry, bound to the exact request, valid for at most 900 seconds. <strong>Only <code>allow</code> permits.</strong></li>
+<li><strong>Generate only on a valid allow, and keep it.</strong> Every subject of the job needs a valid <code>allow</code>. The kept answers are the provider's proof.</li>
 </ol>
 
+<h2>Messages</h2>
+<pre><code>envelope       = { type, body, signatures }      body.signers = [{ role, key_id }, …]
+signing input  = "PREGEN-V5" 0x00 type 0x00 canonical(body)      → Ed25519 (RFC 8032), hex
+message id     = SHA-256("PREGEN-V5-ID" 0x00 type 0x00 canonical(body))   signatures not included
+key id         = "pg-ed25519:" + hex(SHA-256(raw public key))[0:32]
+canonical      = UTF-8, keys in code-point order, no whitespace, integers only, no normalization</code></pre>
+<p class="note">Never Unicode-normalize a signed body before verifying. Verify the bytes you received.</p>
+
+<h2>Extensions — optional, and they only add</h2>
+<div class="table"><table>
+<thead><tr><th>Extension</th><th>Solves</th></tr></thead>
+<tbody>
+<tr><td class="mono"><a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/reports.md">reports</a></td><td>What happened: a report signed by the provider, an acknowledgement signed by the registry</td></tr>
+<tr><td class="mono"><a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/provider-keys.md">provider-keys</a></td><td>Provider signing keys: first key, rotation, recovery</td></tr>
+<tr><td class="mono"><a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/limits.md">limits</a></td><td>Licences with a number of uses: reserve, count, give back</td></tr>
+<tr><td class="mono"><a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/jobs.md">jobs</a></td><td>One generation with several subjects; never generating twice</td></tr>
+<tr><td class="mono"><a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/grants.md">grants</a></td><td>Licences as signed objects (<code>pg.grant.v1</code>)</td></tr>
+<tr><td class="mono"><a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/licensee.md">licensee</a></td><td>Answers for a connected end user</td></tr>
+<tr><td class="mono"><a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/observe.md">observe</a></td><td>Trial mode: ask and record without blocking</td></tr>
+<tr><td class="mono"><a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/sandbox.md">sandbox</a></td><td>The same eight test subjects in every sandbox, and a test directory</td></tr>
+<tr><td class="mono"><a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/lookup.md">lookup</a></td><td>Public lookup of a code</td></tr>
+<tr><td class="mono"><a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/identity.md">identity</a></td><td>One person in several registries: who proved it, not who came first</td></tr>
+<tr><td class="mono"><a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/proof.md">proof</a></td><td>The signed record travels with the output; platforms check it</td></tr>
+<tr><td class="mono"><a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/catalog.md">catalog</a></td><td>Subjects who chose to be offered; resale only with an explicit right</td></tr>
+</tbody></table></div>
+<p>No extension may turn a refusal the core or a profile requires into a permission. A client sends members of an extension only to a registry that declares it.</p>
+
+<h2>The profile likeness/1</h2>
+<p><a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/profiles/likeness-1.md">likeness/1</a> says what <code>use</code> contains for a person's likeness and voice, and which refusals nothing overrides: an opt-out, an unavailable subject, a minor's likeness in a prohibited category, an immutable denial, and an intimate category without the person's own signature.</p>
+
+<h2>One person, several registries</h2>
+<p>A claim the person confirmed on their own official channel silences unconfirmed claims. A refusal of the person in any of their registries holds in all of them. Several unconfirmed claims freeze: nobody permits until someone proves it. A registry answers a complaint within seven days, and the steward can mark a false claim in the directory. See <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/identity.md">identity</a>.</p>
+
+<h2>No intermediary required</h2>
+<p>A provider and a registry exchange requests and answers directly, free. Services that make this easier — checking a representative's authority, running a sale, reporting, settlement — are optional, and anyone may offer them.</p>
+
+<h2>The earlier interface</h2>
+<p><code>pg.decision.v1</code>, <code>POST /v1/verify/</code>, licences <code>pg.license.v2</code> and receipts stay valid and verifiable for everything issued under them, and get no new features. Their text, and the foundations the core builds on, are in <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/PRE-GEN-SPEC.md">PRE-GEN-SPEC.md</a>; the origin registry's additions are in <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/PRE-GEN-EXTENSIONS.md">PRE-GEN-EXTENSIONS.md</a>.</p>
+
 <h2>Conformance</h2>
-<p>An implementation conforms when it reproduces every case in the published <a href="/spec/test-vectors/vectors.json">test vectors</a>: canonicalization, signatures, audit chain and PG codes. The vectors use a fixed public test key — never use it in a deployment.</p>
+<p>JSON Schemas for every v5 message are in <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec/schemas">spec/schemas</a>; byte vectors in <a href="/spec/test-vectors/messages.json">messages.json</a> and <a href="/spec/test-vectors/vectors.json">vectors.json</a>. The vectors use fixed public test keys — never use them in a deployment. An open reference registry and the verification libraries are described under <a href="/docs/implement">Implement</a>.</p>
 <nav class="pager" aria-label="Pages"><span></span><a href="/docs/pg-code">PG codes →</a></nav></article></div>
 </div></main>
 <footer class="foot"><div class="wrap">

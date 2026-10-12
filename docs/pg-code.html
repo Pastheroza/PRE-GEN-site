@@ -212,7 +212,7 @@ check = CHECK_ALPHABET[ sum mod 37 ]</code></pre>
     <ol>
       <li><strong>Exactly four letters</strong> from the PG alphabet, <code>ABCDEFGHJKMNPQRSTVWXYZ</code> — no digits, no I, L, O, U. Four, never three, so a prefix can't be mistaken for a licence class or a legacy <code>PG-STD-</code> code. 234 256 possible prefixes.</li>
       <li><strong>The prefix is checked.</strong> The check character covers <code>ISSUER + serial</code> (subject) or <code>ISSUER + CLASS + serial + tail</code> (licence), so a mistyped prefix is reported as mistyped.</li>
-      <li><strong>Bare codes mean the origin registry, forever.</strong> Every code issued without a prefix keeps its meaning.</li>
+      <li><strong>Bare codes mean the origin registry, forever — and no new ones are issued.</strong> Every code issued without a prefix keeps its meaning. From version 5 every registry, the origin registry included, issues new codes under its own four-letter prefix.</li>
       <li><strong>Prefixes are assigned in public</strong>, through the <a href="/registries">registry list</a>, and never reassigned.</li>
       <li><strong>The issuer is the one thing software may read from a code</strong> — to know which registry to ask. Everything else is resolved, never parsed.</li>
     </ol>

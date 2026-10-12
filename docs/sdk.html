@@ -29,8 +29,29 @@
 </div></header>
 <main><div class="wrap">
 <div class="doc"><aside><ul><li><a href="/docs">Overview</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versioning</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk" aria-current="page">Integrate</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Implement</a></li></ul></aside><article><h1>Integrate</h1>
-<p class="meta">HTTP · verification: <span class="mono">@pregen/verify</span> (npm) and <span class="mono">pregen</span> (PyPI) 0.8.0 or later · reference TypeScript SDK <span class="mono">@prampta/sdk</span> 0.11.3 (Apache-2.0)</p>
+<p class="meta">HTTP · v5: <span class="mono">POST /v2/requests</span> and <span class="mono">checkAnswer</span> in <span class="mono">@pregen/verify</span> / <span class="mono">check_answer</span> in <span class="mono">pregen</span> 0.9.0 · earlier interface: <span class="mono">/v1/verify</span> and the reference TypeScript SDK <span class="mono">@prampta/sdk</span></p>
 <p>A provider needs credentials from a <a href="/registries">registry</a>. The first registry, PRAMPTA, issues a sandbox key after a verified company email and a production key after a DNS record on the company domain. The sandbox reaches synthetic test subjects only.</p>
+<h2>Version 5: ask, check, generate</h2>
+<pre><code>POST {api}/v2/requests
+Authorization: Bearer $PROVIDER_SECRET          # from that registry; never in a browser
+X-Provider-ID: your-provider-id
+Content-Type: application/json
+
+{"type": "pg.request.v1", "signatures": [],
+ "body": {"subject_ref": "PG-TEST-000001N", "provider_id": "your-provider-id",
+          "profile": "likeness/1", "use": {"purpose": "commercial"},
+          "job_id": "job-8841", "job_hash": "&lt;sha256 hex of your job manifest&gt;"}}</code></pre>
+<pre><code>import { loadDirectory, checkAnswer } from "@pregen/verify";
+
+const directory = await loadDirectory({ previous: saved });   // reload at least every 24 hours
+const { answer } = await res.json();
+await checkAnswer(answer, request, { directory });              // throws with the reason, or you may generate</code></pre>
+<pre><code>import pregen
+directory = pregen.load_directory(previous=saved)
+pregen.check_answer(answer, request, directory)                 # raises with the reason, or you may generate</code></pre>
+<p>Generate only when every subject of the job has a valid <code>allow</code>, and keep the answers with the output. The prompt and the output never leave your servers. Test against the open reference registry's sandbox (<a href="/docs/implement">Implement</a>) before asking a registry for production credentials.</p>
+<p class="note">The sections below describe the earlier interface, <code>/v1/verify</code>, which the first registry serves today and which stays valid for everything issued under it.</p>
+
 <h2>Minimum safe versions</h2>
 <div class="table"><table>
 <thead><tr><th>Package</th><th>Use at least</th><th>Why</th></tr></thead>

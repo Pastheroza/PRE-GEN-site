@@ -29,7 +29,8 @@
 </div></header>
 <main><div class="wrap">
 <div class="doc"><aside><ul><li><a href="/docs">Overview</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versioning</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Integrate</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa" aria-current="page">C2PA</a></li><li><a href="/docs/implement">Implement</a></li></ul></aside><article><h1>PRE-GEN assertions in C2PA manifests</h1>
-    <p class="meta">Status: <span class="mono">spec draft</span> · Assertion marker: <span class="mono">pg.assertion.v1</span> · C2PA: <span class="mono">1.x</span></p>
+    <p class="meta">PRE-GEN v5 · v5 bundle: <span class="mono">pg.proof.v1</span> (assertion label <span class="mono">org.pregen.proof</span>) · earlier assertion: <span class="mono">pg.assertion.v1</span> · not yet tested end to end with a platform</p>
+    <p><strong>Version 5.</strong> The <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/proof.md">proof</a> extension carries the whole signed record in a C2PA manifest: for every subject of the job, the request, the registry's answer, the provider's report naming the output's SHA-256 (and soft bindings that survive re-encoding), and the registry's acknowledgement. A watermark payload <code>&lt;prefix&gt;:&lt;16 hex&gt;</code> lets a platform fetch the registry's part when metadata was stripped. A platform checks it as of the moment the output was made, and against the file. The rest of this page describes the earlier assertion, which stays valid.</p>
 
     <p>
       C2PA answers <strong>“who made this and when”</strong>. It does not answer

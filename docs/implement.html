@@ -29,10 +29,20 @@
 </div></header>
 <main><div class="wrap">
 <div class="doc"><aside><ul><li><a href="/docs">Overview</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versioning</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Integrate</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement" aria-current="page">Implement</a></li></ul></aside><article><h1>Implement</h1>
-<p class="meta">Independent implementation kit · edition <span class="mono">pre-gen-v5-rc1</span>, 3 October 2026</p>
+<p class="meta">PRE-GEN v5 · 12 October 2026 · implementation kit</p>
 <p>No team other than the author has yet implemented PRE-GEN from the text alone. That is the main thing standing between a careful specification and a standard, and no amount of writing by the author can close it. This page is everything you need to do it.</p>
 
-<h2>What to build</h2>
+<h2>Version 5: implement the core</h2>
+<ol>
+<li><strong>Read one page:</strong> <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/PRE-GEN-CORE.md">PRE-GEN-CORE.md</a>, then the profile <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/profiles/likeness-1.md">likeness/1</a> and only the <a href="/docs">extensions</a> you need.</li>
+<li><strong>Reproduce the bytes.</strong> <a href="/spec/test-vectors/messages.json">messages.json</a> gives eight messages — request, grant, answer (allow and deny), key sets, report and acknowledgement — with their canonical body, signing input, message id and signatures from fixed test keys. Match every one.</li>
+<li><strong>Validate the shapes</strong> against the JSON Schemas in <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec/schemas">spec/schemas</a>.</li>
+<li><strong>Talk to a real registry.</strong> The open reference registry (<a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/packages/registry">pregen-registry</a>) runs a sandbox with the eight standard test subjects: <code>pregen-registry init --dir data --prefix TEST --name "Test" --api https://… --sandbox</code>, then <code>serve</code>; <code>POST /v2/sandbox/access</code> issues test credentials. Your provider should get the documented answer for each subject and generate only on subject 1.</li>
+<li><strong>Report</strong> what took long or was unclear, as an <a href="https://github.com/Pastheroza/PRE-GEN-site/issues">issue</a>.</li>
+</ol>
+<p class="note">The level-1 kit below (edition <span class="mono">pre-gen-v5-rc1</span>) checks the foundations every v5 implementation shares — canonical JSON, signatures, the signed directory — and stays valid.</p>
+
+<h2>What to build (level-1 kit)</h2>
 <p>The offline checks of the <strong>PRE-GEN v5 Verifier</strong> profile (<a href="/spec/PRE-GEN-SPEC.md">PRE-GEN-SPEC.md</a> §8.1), in any language:</p>
 <ul>
 <li>canonical JSON and key fingerprints (§2, §2.1);</li>
