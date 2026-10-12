@@ -791,7 +791,8 @@ An extension (`PRE-GEN-EXTENSIONS.md` X.8).
   was not found (`PG-CODE.md` §9).
 - **R-14** A registry MUST issue PG codes only in the namespace the registry
   directory assigns to it, and MUST NOT issue codes before it is listed.
-  Only the directory's origin entry may issue bare codes. Every key it signs
+  Only the directory's origin entry may hold bare codes, and from v5 it
+  issues no new ones (`PG-CODE.md` §9 rule 3). Every key it signs
   with MUST be listed in its entry's `key_fingerprints` before first use.
 - **R-15** A registry that receives a claim, with evidence, that another
   listed registry holds the same person, brand or work SHOULD examine it with

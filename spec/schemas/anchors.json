@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.pregen.org/spec/schemas/anchors.json",
+  "title": "pg.anchors.v1 body",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "signers",
+    "registry",
+    "issued_at",
+    "anchors"
+  ],
+  "properties": {
+    "signers": {
+      "$ref": "answer.json#/properties/signers"
+    },
+    "registry": {
+      "type": "string",
+      "pattern": "^[ABCDEFGHJKMNPQRSTVWXYZ]{4}$"
+    },
+    "issued_at": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "anchors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "anchor",
+          "code",
+          "level",
+          "proof_url",
+          "status"
+        ],
+        "properties": {
+          "anchor": {
+            "type": "string",
+            "pattern": "^(wikidata:Q[0-9]+|isni:[0-9X]{16}|domain:[a-z0-9.-]+)$"
+          },
+          "code": {
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              "self",
+              "asserted",
+              "consented",
+              "verified"
+            ]
+          },
+          "proof_url": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "opted_out",
+              "pending",
+              "paused",
+              "disputed",
+              "withdrawn"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

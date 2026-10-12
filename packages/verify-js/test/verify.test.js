@@ -251,3 +251,63 @@ test("simulator: the whole provider pipeline runs offline, and nothing it signs 
   }
   await assert.rejects(vd(sim.directory.toJSON()), /different steward/); // the real pin refuses it
 });
+
+test("checkAnswer trusts an answer only through the directory (PRE-GEN-CORE.md rules 2 and 5)", async () => {
+  const { checkAnswer, messageId } = await import("../index.js");
+  const v5key = async () => {
+    const k = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
+    const pub = hex(await crypto.subtle.exportKey("raw", k.publicKey));
+    const sign = async (s) => hex(await crypto.subtle.sign({ name: "Ed25519" }, k.privateKey, new TextEncoder().encode(s)));
+    return { pub, id: await fingerprint(pub), sign };
+  };
+  const real = await v5key(), fake = await v5key();
+  const dir = await verifyDirectory(await steward.sign({ schema: "pregen.registries.v2", sequence: 1, steward_key_id: steward.id,
+    registries: [{ name: "Test", prefix: "TEST", api: "https://test.example", keys: "https://test.example/keys",
+      key_fingerprints: [real.id] }] }, "signature"), { stewardPublicKeyHex: steward.pub, now: 1000 }); // a test directory: no bare namespace
+  const fetch = keysFetch({ "https://test.example/keys": [{ key_id: real.id, public_key_hex: real.pub }] });
+  const ask = (code, job = "job-1") => ({ type: "pg.request.v1", signatures: [], body: { subject_ref: code, provider_id: "p",
+    profile: "likeness/1", use: { purpose: "research" }, job_id: job, job_hash: "a".repeat(64) } });
+  const answer = async (key, request, extra = {}) => {
+    const body = { signers: [{ role: "registry", key_id: key.id }], request_id: await messageId(request.type, request.body),
+      profile: "likeness/1", status: "allow", basis: { kind: "policy", rule: "r" }, issued_at: 1000, expires_at: 1300, ...extra };
+    if (body.status !== "allow") delete body.basis;
+    return { type: "pg.answer.v1", body, signatures: [await key.sign("PREGEN-V5\0pg.answer.v1\0" + canonicalJson(body))] };
+  };
+  const check = (a, r, o = {}) => checkAnswer(a, r, { directory: dir, fetch, now: 1010, ...o });
+  const req = ask("PG-TEST-000001N");
+
+  assert.equal((await check(await answer(real, req), req)).status, "allow");
+  const fakeReq = ask("PG-AFRK-000001X"); // a registry the steward never listed
+  await assert.rejects(check(await answer(fake, fakeReq), fakeReq), /unknown_issuer/);
+  await assert.rejects(check(await answer(fake, req), req), /issuer_mismatch/); // a copy with its own key
+  await assert.rejects(check(await answer(real, req), ask("PG-TEST-000001N", "job-2")), /another request/);
+  await assert.rejects(check(await answer(real, req), req, { now: 1300 }), /expired/);
+  const sandbox = await answer(real, req, { ext: { sandbox: true } });
+  await assert.rejects(check(sandbox, req), /sandbox/);
+  assert.equal((await check(sandbox, req, { testing: true })).status, "allow");
+  // A directory loaded more than a day ago: a revocation might be missing from it.
+  await assert.rejects(check(await answer(real, req, { issued_at: 87500, expires_at: 87800 }), req, { now: 87501 }), /24 hours/);
+  await assert.rejects(check(await answer(real, req, { status: "deny", reason: "PG_SUBJECT_OPTED_OUT" }), req),
+    /not an allow: deny PG_SUBJECT_OPTED_OUT/);
+});
+
+test("decideIdentity: not who came first, but who proved it (identity.md I1–I5)", async () => {
+  const { decideIdentity } = await import("../index.js");
+  const allow = { status: "allow" }, out = { status: "deny", reason: "PG_SUBJECT_OPTED_OUT" };
+  const noLicence = { status: "deny", reason: "PG_NO_LICENSE" };
+  assert.equal(decideIdentity([{ code: "A", confirmed: true, answer: allow }]).status, "allow");
+  assert.equal(decideIdentity([{ code: "X", confirmed: false, answer: allow }]).reason, "PG_IDENTITY_UNCONFIRMED");
+  assert.deepEqual(decideIdentity([{ code: "A", confirmed: true, answer: noLicence }, { code: "X", confirmed: false, answer: allow },
+    { code: "Y", confirmed: false, answer: out }]), { status: "deny", reason: "PG_NO_LICENSE", code: "A" });
+  assert.equal(decideIdentity([{ code: "A", confirmed: true, answer: allow }, { code: "B", confirmed: true, answer: out }]).code, "B");
+  assert.equal(decideIdentity([{ code: "X", confirmed: false, answer: allow }, { code: "Y", confirmed: false, answer: allow }],
+    { allowUnconfirmed: true }).reason, "PG_IDENTITY_CONFLICT");
+});
+
+test("checkChannelProof: only the person's own channel counts", async () => {
+  const { checkChannelProof } = await import("../index.js");
+  const official = ["https://www.instagram.com/cristiano"], text = () => "PRE-GEN: PG-XXXX-000001V";
+  assert.equal(await checkChannelProof("PG-XXXX-000001V", "https://www.instagram.com/cristiano/p/1", official, text), true);
+  assert.equal(await checkChannelProof("PG-XXXX-000001V", "https://www.instagram.com/cristiano_fan/p/1", official, text), false);
+  assert.equal(await checkChannelProof("PG-AAAA-000001V", "https://www.instagram.com/cristiano/p/1", official, text), false);
+});

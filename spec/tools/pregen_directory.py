@@ -115,8 +115,6 @@ def check_invariants(directory: dict) -> None:
         fps = r.get("key_fingerprints")
         if not isinstance(fps, list) or not fps or not all(_FINGERPRINT.fullmatch(str(f)) for f in fps):
             raise DirectoryError(f"registry {r.get('name')!r}: key_fingerprints must list pg-ed25519 fingerprints")
-    if "" not in seen:
-        raise DirectoryError("no registry holds the bare namespace")
     # Revocation (PG-CODE.md §9.1): a revoked registry keeps its entry; a revoked key keeps its listing.
     for r in regs:
         rev = r.get("revoked")

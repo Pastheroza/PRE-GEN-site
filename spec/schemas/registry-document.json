@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.pregen.org/spec/schemas/registry-document.json",
+  "title": "GET /.well-known/pregen-registry.json",
+  "type": "object",
+  "required": [
+    "prefix",
+    "name",
+    "api",
+    "keys",
+    "profiles",
+    "extensions",
+    "policy",
+    "complaints",
+    "sandbox",
+    "spec"
+  ],
+  "properties": {
+    "prefix": {
+      "type": "string",
+      "pattern": "^([ABCDEFGHJKMNPQRSTVWXYZ]{4})?$"
+    },
+    "name": {
+      "type": "string"
+    },
+    "api": {
+      "type": "string",
+      "pattern": "^https?://"
+    },
+    "keys": {
+      "type": "string"
+    },
+    "profiles": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "extensions": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "reports",
+          "provider-keys",
+          "limits",
+          "jobs",
+          "grants",
+          "licensee",
+          "observe",
+          "sandbox",
+          "lookup",
+          "identity",
+          "proof",
+          "catalog"
+        ]
+      }
+    },
+    "policy": {
+      "type": "string"
+    },
+    "complaints": {
+      "type": "string"
+    },
+    "sandbox": {
+      "type": "boolean"
+    },
+    "spec": {
+      "type": "string"
+    }
+  }
+}

@@ -13,11 +13,12 @@ from urllib.parse import urlsplit
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-__version__ = "0.8.0"
+__version__ = "0.9.0"
 __all__ = [
     "STEWARD_PUBLIC_KEY_HEX", "DIRECTORY_URL", "PregenError", "Directory", "canonical_json",
     "fingerprint", "verify_bytes", "verify_signed", "verify_license", "issuer_of",
-    "verify_directory", "load_directory", "verify_decision", "check_decision", "ORIGIN_KEY_FINGERPRINTS", "STEWARD_SUCCESSOR_PUBLIC_KEY_HEX", "Simulator",
+    "verify_directory", "load_directory", "verify_decision", "check_decision", "check_answer", "verify_answer", "message_id", "DIRECTORY_MAX_AGE", "decide_identity",
+    "verify_anchors", "check_channel_proof", "wikidata_official_urls", "check_proof", "FLOOR_REASONS", "ORIGIN_KEY_FINGERPRINTS", "STEWARD_SUCCESSOR_PUBLIC_KEY_HEX", "Simulator",
 ]
 
 STEWARD_PUBLIC_KEY_HEX = "5cb949aab04186e3e216ec541b847c912fc3f78138c0ec3cb2560b2dad0d1f1b"
@@ -167,8 +168,6 @@ def _check_invariants(d):
         fps = r.get("key_fingerprints")
         if not isinstance(fps, list) or not fps or not all(_FINGERPRINT.fullmatch(str(f)) for f in fps):
             raise PregenError(f"registry {r.get('name')!r}: key_fingerprints must list pg-ed25519 fingerprints")
-    if "" not in seen:
-        raise PregenError("no registry holds the bare namespace")
     # Revocation (PG-CODE.md §9.1): a revoked registry keeps its entry; a revoked key keeps its listing.
     for r in regs:
         rev = r.get("revoked")
@@ -179,6 +178,10 @@ def _check_invariants(d):
             isinstance(k, dict) and _FINGERPRINT.fullmatch(str(k.get("key_id", ""))) and isinstance(k.get("at"), str)
             for k in rk)):
         raise PregenError("revoked_keys must list {key_id, at}")
+    fc = d.get("false_claims")
+    if fc is not None and not (isinstance(fc, list) and all(
+            isinstance(f, dict) and isinstance(f.get("code"), str) and isinstance(f.get("at"), str) for f in fc)):
+        raise PregenError("false_claims must list {anchor, code, at, reason}")
 
 
 def _get_json(url: str):
@@ -194,10 +197,11 @@ def _get_json(url: str):
 class Directory:
     """A directory accepted under V-12. Get one from verify_directory() or load_directory()."""
 
-    def __init__(self, directory: dict, _token=None, _origin_pin=None):
+    def __init__(self, directory: dict, _token=None, _origin_pin=None, _loaded_at=0):
         if _token is not _TOKEN:
             raise PregenError("use verify_directory() or load_directory()")
         self._d = deepcopy(directory)
+        self.loaded_at = _loaded_at  # Unix seconds when it was accepted; check_answer wants it under a day old
         self._origin_pin = tuple(_origin_pin) if _origin_pin is not None else None
 
     @property
@@ -221,6 +225,10 @@ class Directory:
             return None
         r = next((x for x in self._d["registries"] if x["prefix"] == issuer), None)
         return deepcopy(r) if r else None
+
+    def is_false_claim(self, code: str) -> bool:
+        """The steward marked this code a false claim (identity.md): ignore it."""
+        return any(f.get("code") == code for f in self._d.get("false_claims") or [])
 
     def check_signer(self, code: str, signer_key_id: str) -> str:
         """V-10, V-14: "valid", "unknown_issuer", "issuer_mismatch" or "revoked"."""
@@ -297,6 +305,9 @@ def _keeps_history(new: dict, previous: dict, annulled=()) -> None:
         if old.get("revoked") and now.get("revoked") != old["revoked"] \
                 and not _annulled_at(annulled, "prefix", old["prefix"], old["revoked"]["at"]):
             raise PregenError(f"the revocation of {old['name']} was undone")
+    for f in previous.get("false_claims") or []:
+        if f not in (new.get("false_claims") or []):
+            raise PregenError(f"the false claim {f.get('code')} was removed")
     for k in previous.get("revoked_keys") or []:
         if k not in (new.get("revoked_keys") or []) and not _annulled_at(annulled, "key_id", k["key_id"], k["at"]):
             raise PregenError(f"the revocation of key {k['key_id']} was undone")
@@ -307,7 +318,7 @@ _DEFAULT = object()
 
 def verify_directory(directory: dict, steward_public_key_hex: str = STEWARD_PUBLIC_KEY_HEX,
                      min_sequence: int = 0, previous=None, origin_key_fingerprints=_DEFAULT,
-                     successor_public_key_hex=_DEFAULT) -> Directory:
+                     successor_public_key_hex=_DEFAULT, now=None) -> Directory:
     """V-12: accept the directory only with the pinned steward's signature, its invariants,
     a sequence no lower than one already seen and, given the last accepted directory,
     nothing removed from it. With the built-in steward key the origin keys are pinned too."""
@@ -341,11 +352,13 @@ def verify_directory(directory: dict, steward_public_key_hex: str = STEWARD_PUBL
         _keeps_history(directory, prev, _annulments(directory))
     if origin_key_fingerprints is _DEFAULT:
         origin_key_fingerprints = ORIGIN_KEY_FINGERPRINTS if steward_public_key_hex == STEWARD_PUBLIC_KEY_HEX else None
-    return Directory(directory, _TOKEN, origin_key_fingerprints)
+    import time
+    return Directory(directory, _TOKEN, origin_key_fingerprints, int(time.time()) if now is None else now)
 
 
 def load_directory(url: str = DIRECTORY_URL, min_sequence: int = 0, get_json=_get_json, previous=None) -> Directory:
-    """Download and verify the directory from pregen.org. Pass the last accepted one as `previous`."""
+    """Download and verify the directory from pregen.org, or from any mirror: the steward's signature is what
+    counts. Pass the last accepted one as `previous`. Load it again at least once a day (DIRECTORY_MAX_AGE)."""
     return verify_directory(get_json(url), min_sequence=min_sequence, previous=previous)
 
 
@@ -361,6 +374,8 @@ _ECHOED = ("subject_id", "provider_id", "licensee_id", "prompt_hash", "model", "
 
 
 _MAX_DECISION_LIFETIME = 900
+# PRE-GEN-CORE.md rule 2: a revocation reaches every verifier within a day.
+DIRECTORY_MAX_AGE = 86_400
 
 
 def _empty(v) -> bool:
@@ -438,6 +453,190 @@ def check_decision(decision: dict, request: dict, directory: Directory = None, g
     if not verify_decision(decision, decision["license_id"], directory, get_json):
         raise PregenError("bad signature")
     return decision
+
+
+def message_id(type_: str, body: dict) -> str:
+    """A PRE-GEN v5 message id (PRE-GEN-CORE.md, Messages). Signatures are not part of it."""
+    return hashlib.sha256(b"PREGEN-V5-ID\x00" + type_.encode() + b"\x00" + canonical_json(body)).hexdigest()
+
+
+def _registry_signed(env: dict, type_: str, code: str, directory: Directory, get_json) -> dict:
+    """A message signed by exactly one registry key that the directory lists for `code`'s prefix
+    (core rules 1-2). Returns its body."""
+    if not isinstance(env, dict) or env.get("type") != type_ or set(env) != {"type", "body", "signatures"} \
+            or not isinstance(env["body"], dict):
+        raise PregenError(f"not a {type_} envelope")
+    body, sigs = env["body"], env["signatures"]
+    signers = body.get("signers")
+    if not isinstance(signers, list) or len(signers) != 1 or not isinstance(signers[0], dict) \
+            or signers[0].get("role") != "registry" or not isinstance(sigs, list) or len(sigs) != 1:
+        raise PregenError(f"a {type_} is signed by exactly one registry key")
+    key = directory.public_key(code, signers[0].get("key_id"), get_json=get_json)
+    if not verify_bytes(key, sigs[0], b"PREGEN-V5\x00" + type_.encode() + b"\x00" + canonical_json(body)):
+        raise PregenError("bad signature")
+    return body
+
+
+def verify_answer(answer: dict, request: dict, directory: Directory = None, get_json=_get_json, now=None,
+                  testing: bool = False) -> dict:
+    """Is this a genuine, current answer to this request, whatever its status? Everything check_answer()
+    checks except that it is an allow: use it to weigh refusals from several registries (decide_identity)."""
+    import time
+    now = int(time.time()) if now is None else now
+    if not isinstance(request, dict) or request.get("type") != "pg.request.v1" or not isinstance(request.get("body"), dict):
+        raise PregenError("request must be the pg.request.v1 envelope you sent")
+    asked = request["body"]
+    directory = directory or load_directory(get_json=get_json)
+    if now - directory.loaded_at > DIRECTORY_MAX_AGE:
+        raise PregenError("the directory was loaded more than 24 hours ago: load it again")
+    body = _registry_signed(answer, "pg.answer.v1", asked.get("subject_ref"), directory, get_json)
+    if body.get("request_id") != message_id("pg.request.v1", asked):
+        raise PregenError("the answer is for another request")
+    if body.get("profile") != asked.get("profile"):
+        raise PregenError("the answer is under another profile")
+    iat, exp = body.get("issued_at"), body.get("expires_at")
+    if type(iat) is not int or type(exp) is not int or not 1 <= exp - iat <= _MAX_DECISION_LIFETIME:
+        raise PregenError(f"an answer lives 1 to {_MAX_DECISION_LIFETIME} seconds")
+    if iat > now + 60:
+        raise PregenError("issued in the future")
+    if exp <= now:
+        raise PregenError("answer expired")
+    ext = body.get("ext") or {}
+    if isinstance(ext, dict) and ext.get("sandbox") and not testing:
+        raise PregenError("a sandbox answer is accepted only when testing")
+    if body.get("critical"):
+        raise PregenError(f"critical extensions this library does not understand: {body['critical']}")
+    return body
+
+
+def check_answer(answer: dict, request: dict, directory: Directory = None, get_json=_get_json, now=None,
+                 testing: bool = False) -> dict:
+    """PRE-GEN-CORE.md rule 5: may I generate on this answer? `request` is the pg.request.v1 envelope you
+    sent. Checks that a key the directory lists for the subject's prefix signed it (and is not revoked),
+    that it answers exactly this request under the same profile, that it is within its lifetime, that it
+    is not a sandbox answer outside testing, and that it is an `allow`. Raises PregenError with the
+    reason; returns the answer body when you may generate. Keep the answer with the output."""
+    body = verify_answer(answer, request, directory, get_json, now, testing)
+    if body.get("status") != "allow":
+        raise PregenError(f"not an allow: {body.get('status')} {body.get('reason') or ''}".strip())
+    return body
+
+
+# ── extension identity (spec/extensions/identity.md) ─────────────────────────────
+
+# likeness/1 refusals that come from the person, not from a missing licence: across one person's
+# registries, any of them refuses for all.
+FLOOR_REASONS = frozenset({"PG_SUBJECT_OPTED_OUT", "PG_SUBJECT_UNAVAILABLE", "PG_PROHIBITED_USE",
+                           "PG_IMMUTABLE_DENIAL", "PG_PERSONAL_SIGNATURE_REQUIRED"})
+
+
+def verify_anchors(envelope: dict, prefix: str, directory: Directory, get_json=_get_json, now=None) -> list:
+    """A registry's signed anchor list (pg.anchors.v1), checked through the directory and at most a day old, so
+    an old copy cannot hide a new opt-out. Returns its entries, without the codes the steward marked false."""
+    import time
+    now = int(time.time()) if now is None else now
+    body = _registry_signed(envelope, "pg.anchors.v1", f"PG-{prefix}-000000", directory, get_json)
+    entries = body.get("anchors")
+    if body.get("registry") != prefix or not isinstance(entries, list) or type(body.get("issued_at")) is not int:
+        raise PregenError("not an anchor list of this registry")
+    if not -60 <= now - body["issued_at"] <= DIRECTORY_MAX_AGE:
+        raise PregenError("the anchor list is more than 24 hours old")
+    for e in entries:
+        if not isinstance(e, dict) or issuer_of(e.get("code", "")) != prefix:
+            raise PregenError("an anchor list names only its own registry's codes")
+    return [e for e in entries if not directory.is_false_claim(e["code"])]
+
+
+def decide_identity(claims: list, allow_unconfirmed: bool = False) -> dict:
+    """One public person, held by several registries (spec/extensions/identity.md). `claims` lists, for every
+    code the anchor lists name (false claims already removed), {"code", "confirmed", "answer"}: `confirmed` is
+    whether the person confirmed this code on their own official channel; `answer` is the body
+    verify_answer() returned for this generation. Rule: not who came first, but who proved it.
+    Returns {"status": "allow" | "deny" | "review", "reason", "code"}: generate only on "allow"."""
+    if not claims:
+        return {"status": "deny", "reason": "PG_UNKNOWN_SUBJECT", "code": None}
+    confirmed = [c for c in claims if c["confirmed"]]
+    group = confirmed or claims          # proven claims silence unproven ones (I3, I11)
+    for c in group:                      # one person: a refusal of the person in any registry holds everywhere
+        if c["answer"].get("status") != "allow" and c["answer"].get("reason") in FLOOR_REASONS:
+            return {"status": "deny", "reason": c["answer"]["reason"], "code": c["code"]}
+    if not confirmed and len(claims) > 1:
+        return {"status": "review", "reason": "PG_IDENTITY_CONFLICT", "code": None}   # freeze until someone proves it
+    if not confirmed and not allow_unconfirmed:
+        return {"status": "review", "reason": "PG_IDENTITY_UNCONFIRMED", "code": claims[0]["code"]}
+    allowed = next((c for c in group if c["answer"].get("status") == "allow"), None)
+    if allowed:
+        return {"status": "allow", "reason": None, "code": allowed["code"]}
+    first = group[0]["answer"]
+    return {"status": first.get("status"), "reason": first.get("reason"), "code": group[0]["code"]}
+
+
+def check_channel_proof(code: str, proof_url: str, official_urls: list, get_text) -> bool:
+    """Did the person confirm `code` on an official channel? `proof_url` must lie on one of `official_urls`
+    (for example from wikidata_official_urls()) and its text must contain "PRE-GEN: <code>"."""
+    from urllib.parse import urlsplit
+    p = urlsplit(proof_url or "")
+    def under(o):  # same host, and the official path itself or below it ("/cristiano", not "/cristiano_fan")
+        base = o.path.rstrip("/")
+        return p.hostname == o.hostname and (p.path.rstrip("/") == base or p.path.startswith(base + "/"))
+    on_official = p.scheme == "https" and any(under(urlsplit(u)) for u in official_urls)
+    return on_official and f"PRE-GEN: {code}" in (get_text(proof_url) or "")
+
+
+# Wikidata properties naming a person's own channels: official website, X, Instagram, YouTube channel, TikTok.
+_OFFICIAL = {"P856": "{}", "P2002": "https://x.com/{}", "P2003": "https://www.instagram.com/{}",
+             "P2397": "https://www.youtube.com/channel/{}", "P7085": "https://www.tiktok.com/@{}"}
+
+
+def wikidata_official_urls(anchor: str, get_json=_get_json) -> list:
+    """The official channels Wikidata lists for an anchor "wikidata:Q…"."""
+    qid = anchor.removeprefix("wikidata:")
+    if not re.fullmatch(r"Q[0-9]+", qid):
+        raise PregenError("not a wikidata anchor")
+    claims = get_json(f"https://www.wikidata.org/wiki/Special:EntityData/{qid}.json")["entities"][qid]["claims"]
+    return [fmt.format(c["mainsnak"]["datavalue"]["value"]) for prop, fmt in _OFFICIAL.items()
+            for c in claims.get(prop, []) if c.get("mainsnak", {}).get("datavalue")]
+
+
+# ── extension proof (spec/extensions/proof.md) ──────────────────────────────────
+
+def check_proof(bundle: dict, directory: Directory = None, get_json=_get_json, output_sha256: str = None,
+                now=None) -> dict:
+    """A pg.proof.v1 bundle carried with an output: was every subject of the job allowed at the moment it was
+    generated, did each registry acknowledge the provider's report of this output, and (given its SHA-256)
+    is it this file? Raises PregenError with the reason; returns {"output_hash", "job_id", "subjects"}."""
+    import time
+    now = int(time.time()) if now is None else now
+    directory = directory or load_directory(get_json=get_json)
+    if now - directory.loaded_at > DIRECTORY_MAX_AGE:
+        raise PregenError("the directory was loaded more than 24 hours ago: load it again")
+    items = bundle.get("subjects") if isinstance(bundle, dict) and bundle.get("format") == "pg.proof.v1" else None
+    if not isinstance(items, list) or not items:
+        raise PregenError("not a pg.proof.v1 bundle")
+    outputs, jobs, subjects = set(), set(), []
+    for it in items:
+        req, report = it.get("request"), it.get("report")
+        code = (req or {}).get("body", {}).get("subject_ref")
+        rbody = (report or {}).get("body")
+        if not isinstance(rbody, dict) or report.get("type") != "pg.report.v1":
+            raise PregenError("each subject needs its report")
+        # The answer had to be valid when the output was made, not today.
+        answer = verify_answer(it.get("answer"), req, directory, get_json, now=rbody.get("occurred_at"))
+        if answer.get("status") != "allow":
+            raise PregenError(f"{code}: not an allow: {answer.get('status')} {answer.get('reason') or ''}".strip())
+        ack = _registry_signed(it.get("ack"), "pg.report_ack.v1", code, directory, get_json)
+        if ack.get("report") != message_id("pg.report.v1", rbody) or ack.get("answer") != message_id("pg.answer.v1", answer) \
+                or rbody.get("answer") != ack.get("answer") or rbody.get("outcome") != "generated":
+            raise PregenError(f"{code}: the registry did not acknowledge this generation")
+        outputs.add(rbody.get("output_hash"))
+        jobs.add(rbody.get("job_id"))
+        subjects.append({"code": code, "level": answer.get("level"), "basis": answer.get("basis")})
+    if len(outputs) != 1 or len(jobs) != 1:
+        raise PregenError("the reports are about different outputs")
+    output_hash = outputs.pop()
+    if output_sha256 is not None and output_sha256 != output_hash:
+        raise PregenError("the proof belongs to another file")
+    return {"output_hash": output_hash, "job_id": jobs.pop(), "subjects": subjects}
 
 
 class Simulator:

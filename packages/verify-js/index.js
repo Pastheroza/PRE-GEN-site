@@ -145,7 +145,6 @@ function checkInvariants(d) {
       fail(`registry ${r.name}: key_fingerprints must list pg-ed25519 fingerprints`);
     }
   }
-  if (!seen.has("")) fail("no registry holds the bare namespace");
   // Revocation (PG-CODE.md §9.1): a revoked registry keeps its entry; a revoked key keeps its listing.
   for (const r of d.registries) {
     if (r.revoked !== undefined && !(r.revoked && typeof r.revoked === "object" && typeof r.revoked.at === "string")) {
@@ -156,19 +155,24 @@ function checkInvariants(d) {
       && d.revoked_keys.every((k) => k && FINGERPRINT.test(String(k.key_id)) && typeof k.at === "string"))) {
     fail("revoked_keys must list {key_id, at}");
   }
+  const fc = d.false_claims;
+  if (fc !== undefined && !(Array.isArray(fc) && fc.every((f) => f && typeof f.code === "string" && typeof f.at === "string"))) {
+    fail("false_claims must list {anchor, code, at, reason}");
+  }
 }
 
 /** A directory accepted under V-12. Build one with verifyDirectory() or loadDirectory(). */
 export class Directory {
   #d;
   #originPin;
-  constructor(token, directory, originPin) {
+  constructor(token, directory, originPin, loadedAt) {
     if (token !== Directory.#token) fail("use verifyDirectory() or loadDirectory()");
     this.#d = structuredClone(directory);
     this.#originPin = originPin;
+    this.loadedAt = loadedAt; // Unix seconds when it was accepted; checkAnswer wants it under a day old
   }
   static #token = Symbol();
-  static _make(directory, originPin) { return new Directory(Directory.#token, directory, originPin); }
+  static _make(directory, originPin, loadedAt) { return new Directory(Directory.#token, directory, originPin, loadedAt); }
 
   /** Store this and pass it as minSequence next time, so an older copy is refused. */
   get sequence() { return this.#d.sequence; }
@@ -183,6 +187,9 @@ export class Directory {
     const r = this.#d.registries.find((x) => x.prefix === issuer);
     return r ? structuredClone(r) : null;
   }
+
+  /** The steward marked this code a false claim (identity.md): ignore it. */
+  isFalseClaim(code) { return (this.#d.false_claims || []).some((f) => f.code === code); }
 
   /** V-10, V-14: "valid", "unknown_issuer", "issuer_mismatch" or "revoked". */
   checkSigner(code, signerKeyId) {
@@ -238,6 +245,9 @@ function keepsHistory(next, previous, annulled = []) {
     if (old.revoked && !(now.revoked && same(now.revoked, old.revoked))
         && !annulledAt(annulled, "prefix", old.prefix, old.revoked.at)) fail(`the revocation of ${old.name} was undone`);
   }
+  for (const f of previous.false_claims || []) {
+    if (!(next.false_claims || []).some((x) => same(x, f))) fail(`the false claim ${f.code} was removed`);
+  }
   for (const k of previous.revoked_keys || []) {
     if (!(next.revoked_keys || []).some((x) => same(x, k))
         && !annulledAt(annulled, "key_id", k.key_id, k.at)) fail(`the revocation of key ${k.key_id} was undone`);
@@ -248,7 +258,7 @@ function keepsHistory(next, previous, annulled = []) {
  * a sequence no lower than one already seen and, given the last accepted directory,
  * nothing removed from it. With the built-in steward key the origin keys are pinned too. */
 export async function verifyDirectory(directory, { stewardPublicKeyHex = STEWARD_PUBLIC_KEY_HEX, successorPublicKeyHex,
-  minSequence = 0, previous, originKeyFingerprints } = {}) {
+  minSequence = 0, previous, originKeyFingerprints, now = Math.floor(Date.now() / 1000) } = {}) {
   if (!Number.isSafeInteger(minSequence) || minSequence < 0) fail("minSequence must be a nonnegative integer");
   checkInvariants(directory);
   const successor = successorPublicKeyHex !== undefined ? successorPublicKeyHex
@@ -275,7 +285,7 @@ export async function verifyDirectory(directory, { stewardPublicKeyHex = STEWARD
   }
   const pin = originKeyFingerprints !== undefined ? originKeyFingerprints
     : stewardPublicKeyHex === STEWARD_PUBLIC_KEY_HEX ? ORIGIN_KEY_FINGERPRINTS : null;
-  return Directory._make(directory, pin && [...pin]);
+  return Directory._make(directory, pin && [...pin], now);
 }
 
 /** Download and verify the directory from pregen.org. Pass the last accepted one as `previous`. */
@@ -302,6 +312,8 @@ const UNDERSTOOD = new Set(["schema_version", "decision_id", "nonce", "dispositi
   "revocation_epoch", "max_cache_age_seconds", "cache_scope", "provider_user_binding", "provider_identity_link_id",
   "detection_id", "remediation"]);
 const MAX_DECISION_LIFETIME = 900;
+/** PRE-GEN-CORE.md rule 2: a revocation reaches every verifier within a day. */
+export const DIRECTORY_MAX_AGE = 86_400;
 const ECHOED = ["subject_id", "provider_id", "licensee_id", "prompt_hash", "model", "modality"];
 const isEmpty = (v) => v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0);
 const same = (a, b) => canonicalJson(a) === canonicalJson(b);
@@ -358,6 +370,169 @@ export async function checkDecision(decision, request, { directory, fetch: fetch
 
   if (!(await verifyDecision(decision, decision.license_id, { directory, fetch: fetchFn }))) fail("bad signature");
   return decision;
+}
+
+/** A PRE-GEN v5 message id (PRE-GEN-CORE.md, Messages). Signatures are not part of it. */
+export async function messageId(type, body) {
+  return sha256Hex("PREGEN-V5-ID\0" + type + "\0" + canonicalJson(body));
+}
+
+/** PRE-GEN-CORE.md rule 5: may I generate on this answer? `request` is the pg.request.v1 envelope you
+ * sent. Checks that a key the directory lists for the subject's prefix signed it (and is not revoked),
+ * that it answers exactly this request under the same profile, that it is within its lifetime, that it
+ * is not a sandbox answer outside testing, and that it is an `allow`. Throws PregenError with the
+ * reason; returns the answer body when you may generate. Keep the answer with the output. */
+/** A message signed by exactly one registry key the directory lists for `code`'s prefix (core rules 1-2). */
+async function registrySigned(env, type, code, directory, fetchFn) {
+  if (!env || env.type !== type || !same(Object.keys(env).sort(), ["body", "signatures", "type"])
+      || !env.body || typeof env.body !== "object") fail(`not a ${type} envelope`);
+  const body = env.body, signers = body.signers, sigs = env.signatures;
+  if (!Array.isArray(signers) || signers.length !== 1 || signers[0]?.role !== "registry"
+      || !Array.isArray(sigs) || sigs.length !== 1) fail(`a ${type} is signed by exactly one registry key`);
+  const key = await directory.publicKey(code, signers[0].key_id, { fetch: fetchFn });
+  if (!(await verifyBytes(key, sigs[0], utf8.encode(`PREGEN-V5\0${type}\0` + canonicalJson(body))))) fail("bad signature");
+  return body;
+}
+
+/** Is this a genuine, current answer to this request, whatever its status? Everything checkAnswer checks
+ * except that it is an allow: use it to weigh refusals from several registries (decideIdentity). */
+export async function verifyAnswer(answer, request, { directory, fetch: fetchFn = globalThis.fetch,
+  now = Math.floor(Date.now() / 1000), testing = false } = {}) {
+  if (!request || request.type !== "pg.request.v1" || !request.body || typeof request.body !== "object") {
+    fail("request must be the pg.request.v1 envelope you sent");
+  }
+  const asked = request.body;
+  directory ??= await loadDirectory({ fetch: fetchFn });
+  if (now - directory.loadedAt > DIRECTORY_MAX_AGE) fail("the directory was loaded more than 24 hours ago: load it again");
+  const body = await registrySigned(answer, "pg.answer.v1", asked.subject_ref, directory, fetchFn);
+  if (body.request_id !== (await messageId("pg.request.v1", asked))) fail("the answer is for another request");
+  if (body.profile !== asked.profile) fail("the answer is under another profile");
+  const iat = body.issued_at, exp = body.expires_at;
+  if (!Number.isSafeInteger(iat) || !Number.isSafeInteger(exp) || exp - iat < 1 || exp - iat > MAX_DECISION_LIFETIME) {
+    fail(`an answer lives 1 to ${MAX_DECISION_LIFETIME} seconds`);
+  }
+  if (iat > now + 60) fail("issued in the future");
+  if (exp <= now) fail("answer expired");
+  if (body.ext?.sandbox && !testing) fail("a sandbox answer is accepted only when testing");
+  if (body.critical?.length) fail(`critical extensions this library does not understand: ${body.critical}`);
+  return body;
+}
+
+/** PRE-GEN-CORE.md rule 5: may I generate on this answer? `request` is the pg.request.v1 envelope you
+ * sent. Checks that a key the directory lists for the subject's prefix signed it (and is not revoked),
+ * that it answers exactly this request under the same profile, that it is within its lifetime, that it
+ * is not a sandbox answer outside testing, and that it is an `allow`. Throws PregenError with the
+ * reason; returns the answer body when you may generate. Keep the answer with the output. */
+export async function checkAnswer(answer, request, options = {}) {
+  const body = await verifyAnswer(answer, request, options);
+  if (body.status !== "allow") fail(`not an allow: ${body.status} ${body.reason ?? ""}`.trim());
+  return body;
+}
+
+// ── extension identity (spec/extensions/identity.md) ──
+
+/** likeness/1 refusals that come from the person, not from a missing licence: across one person's
+ * registries, any of them refuses for all. */
+export const FLOOR_REASONS = Object.freeze(["PG_SUBJECT_OPTED_OUT", "PG_SUBJECT_UNAVAILABLE", "PG_PROHIBITED_USE",
+  "PG_IMMUTABLE_DENIAL", "PG_PERSONAL_SIGNATURE_REQUIRED"]);
+
+/** A registry's signed anchor list (pg.anchors.v1), checked through the directory and at most a day old, so an
+ * old copy cannot hide a new opt-out. Returns its entries, without the codes the steward marked false. */
+export async function verifyAnchors(envelope, prefix, { directory, fetch: fetchFn = globalThis.fetch,
+  now = Math.floor(Date.now() / 1000) } = {}) {
+  const body = await registrySigned(envelope, "pg.anchors.v1", `PG-${prefix}-000000`, directory, fetchFn);
+  if (body.registry !== prefix || !Array.isArray(body.anchors) || !Number.isSafeInteger(body.issued_at)) {
+    fail("not an anchor list of this registry");
+  }
+  if (now - body.issued_at < -60 || now - body.issued_at > DIRECTORY_MAX_AGE) fail("the anchor list is more than 24 hours old");
+  for (const e of body.anchors) {
+    if (!e || typeof e !== "object" || issuerOf(String(e.code ?? "")) !== prefix) {
+      fail("an anchor list names only its own registry's codes");
+    }
+  }
+  return body.anchors.filter((e) => !directory.isFalseClaim(e.code));
+}
+
+/** One public person, held by several registries (spec/extensions/identity.md). `claims` lists, for every code
+ * the anchor lists name, {code, confirmed, answer}: `confirmed` is whether the person confirmed this code on their
+ * own official channel; `answer` is the body verifyAnswer returned. Rule: not who came first, but who proved it.
+ * Returns {status: "allow" | "deny" | "review", reason, code}: generate only on "allow". */
+export function decideIdentity(claims, { allowUnconfirmed = false } = {}) {
+  if (!claims.length) return { status: "deny", reason: "PG_UNKNOWN_SUBJECT", code: null };
+  const confirmed = claims.filter((c) => c.confirmed);
+  const group = confirmed.length ? confirmed : claims; // proven claims silence unproven ones
+  for (const c of group) {
+    if (c.answer.status !== "allow" && FLOOR_REASONS.includes(c.answer.reason)) {
+      return { status: "deny", reason: c.answer.reason, code: c.code };
+    }
+  }
+  if (!confirmed.length && claims.length > 1) return { status: "review", reason: "PG_IDENTITY_CONFLICT", code: null };
+  if (!confirmed.length && !allowUnconfirmed) return { status: "review", reason: "PG_IDENTITY_UNCONFIRMED", code: claims[0].code };
+  const allowed = group.find((c) => c.answer.status === "allow");
+  if (allowed) return { status: "allow", reason: null, code: allowed.code };
+  return { status: group[0].answer.status, reason: group[0].answer.reason ?? null, code: group[0].code };
+}
+
+/** Did the person confirm `code` on an official channel? `proofUrl` must lie on one of `officialUrls`
+ * (for example from wikidataOfficialUrls) and its text must contain "PRE-GEN: <code>". */
+export async function checkChannelProof(code, proofUrl, officialUrls, getText) {
+  let p;
+  try { p = new URL(proofUrl); } catch { return false; }
+  const under = (u) => { // same host, and the official path itself or below it ("/cristiano", not "/cristiano_fan")
+    let o;
+    try { o = new URL(u); } catch { return false; }
+    const base = o.pathname.replace(/\/+$/, "");
+    return p.hostname === o.hostname && (p.pathname.replace(/\/+$/, "") === base || p.pathname.startsWith(base + "/"));
+  };
+  return p.protocol === "https:" && officialUrls.some(under) && String((await getText(proofUrl)) ?? "").includes(`PRE-GEN: ${code}`);
+}
+
+// Wikidata properties naming a person's own channels: official website, X, Instagram, YouTube channel, TikTok.
+const OFFICIAL = { P856: (v) => v, P2002: (v) => `https://x.com/${v}`, P2003: (v) => `https://www.instagram.com/${v}`,
+  P2397: (v) => `https://www.youtube.com/channel/${v}`, P7085: (v) => `https://www.tiktok.com/@${v}` };
+
+/** The official channels Wikidata lists for an anchor "wikidata:Q…". */
+export async function wikidataOfficialUrls(anchor, { fetch: fetchFn = globalThis.fetch } = {}) {
+  const qid = anchor.replace(/^wikidata:/, "");
+  if (!/^Q[0-9]+$/.test(qid)) fail("not a wikidata anchor");
+  const res = await fetchFn(`https://www.wikidata.org/wiki/Special:EntityData/${qid}.json`, { redirect: "error" });
+  if (!res.ok) fail(`wikidata: HTTP ${res.status}`);
+  const claims = (await res.json()).entities[qid].claims;
+  return Object.entries(OFFICIAL).flatMap(([prop, fmt]) =>
+    (claims[prop] || []).filter((c) => c.mainsnak?.datavalue).map((c) => fmt(c.mainsnak.datavalue.value)));
+}
+
+// ── extension proof (spec/extensions/proof.md) ──
+
+/** A pg.proof.v1 bundle carried with an output: was every subject of the job allowed at the moment it was
+ * generated, did each registry acknowledge the provider's report of this output, and (given its SHA-256) is it
+ * this file? Throws PregenError with the reason; returns {outputHash, jobId, subjects}. */
+export async function checkProof(bundle, { directory, fetch: fetchFn = globalThis.fetch, outputSha256,
+  now = Math.floor(Date.now() / 1000) } = {}) {
+  directory ??= await loadDirectory({ fetch: fetchFn });
+  if (now - directory.loadedAt > DIRECTORY_MAX_AGE) fail("the directory was loaded more than 24 hours ago: load it again");
+  const items = bundle?.format === "pg.proof.v1" ? bundle.subjects : null;
+  if (!Array.isArray(items) || !items.length) fail("not a pg.proof.v1 bundle");
+  const outputs = new Set(), jobs = new Set(), subjects = [];
+  for (const it of items) {
+    const code = it.request?.body?.subject_ref, rbody = it.report?.body;
+    if (!rbody || typeof rbody !== "object" || it.report.type !== "pg.report.v1") fail("each subject needs its report");
+    // The answer had to be valid when the output was made, not today.
+    const answer = await verifyAnswer(it.answer, it.request, { directory, fetch: fetchFn, now: rbody.occurred_at });
+    if (answer.status !== "allow") fail(`${code}: not an allow: ${answer.status} ${answer.reason ?? ""}`.trim());
+    const ack = await registrySigned(it.ack, "pg.report_ack.v1", code, directory, fetchFn);
+    if (ack.report !== (await messageId("pg.report.v1", rbody)) || ack.answer !== (await messageId("pg.answer.v1", answer))
+        || rbody.answer !== ack.answer || rbody.outcome !== "generated") {
+      fail(`${code}: the registry did not acknowledge this generation`);
+    }
+    outputs.add(rbody.output_hash);
+    jobs.add(rbody.job_id);
+    subjects.push({ code, level: answer.level, basis: answer.basis });
+  }
+  if (outputs.size !== 1 || jobs.size !== 1) fail("the reports are about different outputs");
+  const [outputHash] = outputs, [jobId] = jobs;
+  if (outputSha256 !== undefined && outputSha256 !== outputHash) fail("the proof belongs to another file");
+  return { outputHash, jobId, subjects };
 }
 
 /** An offline sandbox registry for tests and CI: no network, no secret, its own throwaway keys.

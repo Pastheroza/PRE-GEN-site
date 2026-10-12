@@ -50,6 +50,27 @@ A listing in the directory proves which registry may issue a code, not that
 it holds any right over a person or a work. A signed decision proves what the
 registry answered, not that the output was lawful.
 
+## PRE-GEN v5 answers (`PRE-GEN-CORE.md`)
+
+```python
+# request: the pg.request.v1 envelope you sent to POST /v2/requests; answer: the registry's reply
+pregen.check_answer(answer, request, directory)   # raises with the reason, or you may generate
+```
+
+`check_answer` does core rules 2 and 5: the answer is signed by a key the directory lists for
+the subject's prefix (registry and key not revoked), answers exactly this request under the
+same profile, is within its lifetime, is an `allow`, and is not a sandbox answer unless you
+pass `testing=True`.
+
+## One person in several registries, and proof in a video
+
+- `verify_anchors(list, prefix, directory)` — a registry's signed anchor list (`extensions/identity.md`).
+- `check_channel_proof(code, proof_url, wikidata_official_urls(anchor), get_text)` — did the person
+  confirm this code on their own channel?
+- `decide_identity(claims)` — "who proved it, not who came first"; generate only on `allow`.
+- `check_proof(bundle, directory, output_sha256=...)` — a platform's check of the `pg.proof.v1` bundle
+  carried with an output (`extensions/proof.md`).
+
 ## Test without a secret: the simulator
 
 ```python

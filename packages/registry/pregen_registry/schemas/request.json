@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.pregen.org/spec/schemas/request.json",
+  "title": "pg.request.v1 body (core; optional members from extensions)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "subject_ref",
+    "provider_id",
+    "profile",
+    "use",
+    "job_id",
+    "job_hash"
+  ],
+  "properties": {
+    "subject_ref": {
+      "type": "string",
+      "pattern": "^PG-[0-9A-Z*~$=!-]{3,48}$"
+    },
+    "provider_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "profile": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+/[0-9]+$"
+    },
+    "use": {
+      "type": "object"
+    },
+    "job_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]{1,100}$"
+    },
+    "job_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "licensee_id": {
+      "type": "string",
+      "maxLength": 255,
+      "description": "extension licensee"
+    },
+    "prompt_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "model": {
+      "type": "string"
+    },
+    "modality": {
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "enforce",
+        "observe"
+      ],
+      "description": "extension observe"
+    },
+    "ext": {
+      "type": "object"
+    }
+  }
+}

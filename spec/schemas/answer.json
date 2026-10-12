@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.pregen.org/spec/schemas/answer.json",
+  "title": "pg.answer.v1 body",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "signers",
+    "request_id",
+    "profile",
+    "status",
+    "issued_at",
+    "expires_at"
+  ],
+  "properties": {
+    "signers": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "prefixItems": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "role",
+            "key_id"
+          ],
+          "properties": {
+            "role": {
+              "const": "registry"
+            },
+            "key_id": {
+              "type": "string",
+              "pattern": "^pg-ed25519:[0-9a-f]{32}$"
+            }
+          }
+        }
+      ],
+      "items": false
+    },
+    "request_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "profile": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "allow",
+        "deny",
+        "review",
+        "not_blocked"
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "basis": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "rule"
+          ],
+          "properties": {
+            "kind": {
+              "const": "policy"
+            },
+            "rule": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "grant"
+          ],
+          "properties": {
+            "kind": {
+              "const": "grant"
+            },
+            "grant": {
+              "type": "object",
+              "required": [
+                "format",
+                "id"
+              ],
+              "properties": {
+                "format": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "license_id": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      ]
+    },
+    "issued_at": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "expires_at": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "level": {
+      "enum": [
+        "self",
+        "asserted",
+        "consented",
+        "verified"
+      ],
+      "description": "profile likeness/1"
+    },
+    "obligations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "params"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "params": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "ext": {
+      "type": "object"
+    },
+    "critical": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "if": {
+    "properties": {
+      "status": {
+        "const": "allow"
+      }
+    }
+  },
+  "then": {
+    "required": [
+      "basis"
+    ],
+    "not": {
+      "required": [
+        "reason"
+      ]
+    }
+  },
+  "else": {
+    "required": [
+      "reason"
+    ],
+    "not": {
+      "required": [
+        "basis"
+      ]
+    }
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.pregen.org/spec/schemas/proof.json",
+  "title": "pg.proof.v1 bundle (unsigned container; every part is signed)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "subjects"
+  ],
+  "properties": {
+    "format": {
+      "const": "pg.proof.v1"
+    },
+    "subjects": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "request",
+          "answer",
+          "report",
+          "ack"
+        ],
+        "properties": {
+          "request": {
+            "type": "object",
+            "required": [
+              "type",
+              "body",
+              "signatures"
+            ]
+          },
+          "answer": {
+            "type": "object",
+            "required": [
+              "type",
+              "body",
+              "signatures"
+            ]
+          },
+          "report": {
+            "type": "object",
+            "required": [
+              "type",
+              "body",
+              "signatures"
+            ]
+          },
+          "ack": {
+            "type": "object",
+            "required": [
+              "type",
+              "body",
+              "signatures"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

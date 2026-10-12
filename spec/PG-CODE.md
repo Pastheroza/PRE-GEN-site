@@ -277,9 +277,12 @@ Rules:
    computed over `ISSUER + serial` for a subject and
    `ISSUER + CLASS + serial + tail` for a licence, so a mistyped prefix is
    reported as mistyped (§7), like any other typo.
-3. **Bare codes mean the origin registry, forever.** `PG-000042*` and every
-   code issued before this section existed keep their meaning. The origin
-   registry (PRAMPTA, the first registry) never uses a prefix.
+3. **Bare codes mean the origin registry, forever — and no new ones are
+   issued.** `PG-000042*` and every bare code issued before PRE-GEN v5 keep
+   their meaning, and the origin registry (PRAMPTA, the first registry)
+   keeps the bare namespace for them. From v5 on, every registry, the origin
+   registry included, issues new codes only under a four-letter prefix of
+   its own, so no registry holds a namespace the others cannot.
 4. **Prefixes are assigned publicly.** A registry asks for one through the
    public registry list at `https://www.pregen.org/registries`; the signed
    registry directory (§9.1) is the only record of who holds which prefix
@@ -320,6 +323,7 @@ signed by the **steward key**:
 | `registries` | array; each entry has `name`, `prefix` (`""` for the origin registry, otherwise four letters of the PG alphabet), `api`, `keys` (the registry's key set URL, `PRE-GEN-SPEC.md` §2.3) and `key_fingerprints` (every operator key the registry has ever signed with, current and retired, plus keys announced for future use, `PRE-GEN-SPEC.md` §2.1) |
 | `revoked` (in an entry) | optional: `{"at": RFC 3339 time, "reason": text}` — the registry is revoked (below) |
 | `revoked_keys` | optional array of `{"key_id", "at", "reason"}` — single operator keys revoked (below) |
+| `false_claims` | optional array of `{anchor, code, at, reason}` — codes the steward found to claim a person the registry cannot prove (`extensions/identity.md`); never removed |
 | `steward_compromised_since`, `annulled` | only after a steward handover (below) |
 | `steward_key_id` | fingerprint of the steward key |
 | `signature` | Ed25519 by the steward key over the canonical JSON (`PRE-GEN-SPEC.md` §2) of the object without `signature`, hex |
@@ -336,7 +340,7 @@ A verifier accepts the directory only if (`PRE-GEN-SPEC.md` V-12):
 1. the signature verifies with the **published** steward public key below —
    never with a key taken from the directory itself or from the connection
    that served it;
-2. exactly one entry has `prefix: ""`, no prefix appears twice, and every
+2. at most one entry has `prefix: ""`, no prefix appears twice, and every
    entry lists at least one key fingerprint;
 3. its `sequence` is not lower than the highest one the verifier has already
    accepted, so an old copy cannot be replayed to undo a listing.
@@ -368,7 +372,8 @@ a fake registry out, so the steward lists a registry only when it has:
    contact for complaints and disputes;
 2. a published policy (`PRE-GEN-SPEC.md` E-5), including how it verifies that
    a rights holder is who it claims to be and is entitled to license the
-   subject;
+   subject, and an anchor for every public person it registers
+   (`extensions/identity.md`);
 3. accepted the core, including its fixed floor and the conflict rule
    (`PRE-GEN-SPEC.md` R-15, P-10);
 4. an operator key set published at its `keys` URL, its fingerprints given to
@@ -382,13 +387,17 @@ conditions and can be revoked.
 entry: the entry, its prefix and its keys stay listed forever (the prefix is
 never reassigned), but nothing signed by its keys authorizes anything again
 (`PRE-GEN-SPEC.md` V-14). Grounds: licences for subjects it had no authority
-to license, refusing to act on proven complaints, breaking the core floor, or
-a compromise of its operation. The steward revokes a single stolen key by
+to license, refusing to act on proven complaints within 7 days, repeated false
+claims (`extensions/identity.md`), breaking the core floor, or a compromise of
+its operation. The steward revokes a single stolen key by
 listing it in `revoked_keys`; the registry keeps its other keys. Before
 revoking a registry the steward SHOULD ask its operator to answer, unless
 there is ongoing harm. Every revocation is announced on pregen.org with its
 reason. A verifier learns of a revocation only from a directory it has
-fetched; how fresh that must be is not yet defined.
+fetched, so it MUST NOT accept an answer on a directory it loaded more than
+24 hours earlier (`PRE-GEN-CORE.md` rule 2); a revocation reaches every
+verifier within a day. The directory may be served by any mirror: the steward
+signature, not the server, makes it authentic.
 
 **The steward key.** Held offline by the editor of the standard, Valerii
 Egorov — not by any registry, including the origin one — and used only to
