@@ -11,7 +11,8 @@ drift from what the server actually does. **Do not hand-edit** — see
 
 Rows marked **core** are the core codes of `PRE-GEN-SPEC.md` §3, which
 every registry uses with this meaning. The others are the first
-registry's own codes (an extension, `PRE-GEN-SPEC.md` E-4).
+registry's own codes (an extension, `PRE-GEN-SPEC.md` E-4), defined before
+v5 without a prefix and kept for compatibility; new ones carry its prefix.
 
 Current policy version: `2026-09-22`. `policy_version` on a signed
 decision names the exact rule set in force when it was made — see
