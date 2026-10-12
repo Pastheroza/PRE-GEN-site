@@ -50,9 +50,12 @@ await checkAnswer(answer, request, { directory });              // throws with t
 directory = pregen.load_directory(previous=saved)
 pregen.check_answer(answer, request, directory)                 # raises with the reason, or you may generate</code></pre>
 <p>Generate only when every subject of the job has a valid <code>allow</code>, and keep the answers with the output. The prompt and the output never leave your servers. Test against the open reference registry's sandbox (<a href="/docs/implement">Implement</a>) before asking a registry for production credentials.</p>
-<p class="note">The sections below describe the earlier interface, <code>/v1/verify</code>, which the first registry serves today and which stays valid for everything issued under it.</p>
+<p>Install: <code>npm install @pregen/verify</code> (0.9.0) · <code>pip install "pregen>=0.9.0"</code> — if PyPI still shows 0.8.0, install from the repository: <code>pip install "git+https://github.com/Pastheroza/PRE-GEN-site#subdirectory=packages/verify-py"</code>.</p>
 
-<h2>Minimum safe versions</h2>
+<h2 id="legacy">Earlier interface (legacy)</h2>
+<p class="note">Everything below describes the earlier interface, <code>/v1/verify</code>, which the first registry serves today and which stays valid for everything issued under it. New integrations use version 5 above.</p>
+
+<h3>Minimum safe versions</h3>
 <div class="table"><table>
 <thead><tr><th>Package</th><th>Use at least</th><th>Why</th></tr></thead>
 <tbody>
@@ -64,7 +67,7 @@ pregen.check_answer(answer, request, directory)                 # raises with th
 <p class="note">Two libraries, two jobs: <span class="mono">@prampta/sdk</span> asks the PRAMPTA registry for a decision; <span class="mono">@pregen/verify</span> (on PyPI: <span class="mono">pregen</span>) checks that any registry's answer is genuine.</p>
 <p class="note">Keep the provider secret on your server. It never goes to a browser, a URL or client code. Send a hash of the prompt, never the prompt.</p>
 
-<h2>Ask before generating</h2>
+<h3>Ask before generating (legacy)</h3>
 <pre><code>POST https://api2.prampta.com/v1/verify/
 Authorization: Bearer $PROVIDER_SECRET
 X-Provider-ID: your-provider-id
@@ -77,7 +80,7 @@ Content-Type: application/json
  "intended_use": {"use_case": "research"}}</code></pre>
 <p>Read <code>disposition</code>. Generate only on <code>allow</code> (or, for personal use, <code>not_blocked</code> under your own policy). On <code>deny</code> show <code>remediation.url</code> when present: it is where the user can request a licence.</p>
 
-<h2>Report after generating</h2>
+<h3>Report after generating (legacy)</h3>
 <pre><code>POST https://api2.prampta.com/v1/receipts/
 Authorization: Bearer $PROVIDER_SECRET
 X-Provider-ID: your-provider-id
@@ -87,7 +90,7 @@ X-Licensee-ID: lic-…
  "event_type": "output_accepted", "obligations_applied": {}}</code></pre>
 <p>One receipt per <code>allow</code> decision. The identical receipt sent again returns <code>already_recorded</code>; a different one is refused (<code>receipt_conflict</code>).</p>
 
-<h2>Check the signature against PRE-GEN</h2>
+<h3>Check the signature against PRE-GEN (legacy)</h3>
 <p>A signed <code>allow</code> is worth something only if the key that signed it belongs to the registry that owns the code. The verification library checks that chain with the PRE-GEN steward key built in: the <a href="/registries">registry directory</a> is signed by the steward, the code's namespace belongs to one listed registry, the decision's key is one of that registry's keys, and the signature verifies.</p>
 <pre><code>npm install @pregen/verify</code></pre>
 <pre><code>import { loadDirectory, checkDecision } from "@pregen/verify";
@@ -105,7 +108,7 @@ saved = directory.to_json()
 pregen.check_decision(decision, request, directory)           # raises with the reason</code></pre>
 <p><code>checkDecision</code> runs every check of <a href="/spec/PRE-GEN-SPEC.md">PRE-GEN-SPEC.md</a> §5.4 before you generate: a license-backed <code>allow</code>, every echoed field equal to what you sent, a valid lifetime, a verified user binding when you named a user, and the signature chain. It refuses an older or shrunk directory, and the origin registry's keys are pinned in the library. Source and tests: <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/packages">packages/</a>, Apache-2.0.</p>
 
-<h2>Test without a secret</h2>
+<h3>Test without a secret (legacy)</h3>
 <p>The verification libraries include an offline <strong>simulator</strong>: a stand-in registry with throwaway keys that answers the sandbox subjects below and handles receipts by PRAMPTA's rules (0.8.0): a receipt needs an allow issued to you for the same prompt, the identical receipt again returns the first answer, a different one is a conflict, and <code>receipt_hash</code> binds each answer to the bytes you sent. Your CI and coding agents can run the whole pipeline — ask, <code>checkDecision</code>, generate, receipt — without a provider secret. Nothing the simulator signs is ever accepted by the real directory.</p>
 <pre><code>import { createSimulator, checkDecision } from "@pregen/verify";   // 0.8.0 or later
 
@@ -118,7 +121,7 @@ pregen.check_decision(decision, {**request, "provider_id": "acme", "licensee_id"
 status, ack = sim.receipt(receipt, "acme", "lic-1")   # (200, {"status": "recorded", "receipt_hash": ...})</code></pre>
 <p>Then switch to the real sandbox with a secret, and to production. The simulator proves your client handles every answer; only the real registry proves your credentials and connections.</p>
 
-<h2>Receipts, volume and caching</h2>
+<h3>Receipts, volume and caching (legacy)</h3>
 <ul>
 <li><strong>One receipt per allow.</strong> Sending the identical receipt again (after a lost response) returns <code>already_recorded</code>; a different receipt for the same decision is refused with <code>receipt_conflict</code>. Never read "a receipt exists" as "mine was accepted".</li>
 <li><strong>One decision is not one output.</strong> The protocol cannot stop several generations under one allow; report each output you deliver and ask again for a new request. Lifecycle events after the receipt follow one output.</li>
@@ -126,7 +129,7 @@ status, ack = sim.receipt(receipt, "acme", "lic-1")   # (200, {"status": "record
 <li><strong>Usage limits at PRAMPTA.</strong> On a licence with <code>max_uses</code>, every allow uses up one use, receipt or not. If you did not generate, give it back before any receipt and within 24 hours with <code>POST /v1/receipts/{decision_id}/release</code>; the statement is kept in the signed audit log. An allow on a licence with <code>concurrency_limit</code> holds a slot until its receipt, its release, or 24 hours.</li>
 <li><strong>Without receipts</strong> you keep only the decisions: proof of what you asked, not of what you made. A provider becomes available to users outside its own team only after one production allow followed by its receipt.</li>
 </ul>
-<h2>TypeScript SDK</h2>
+<h3>TypeScript SDK (legacy)</h3>
 <pre><code>npm install @prampta/sdk@^0.11.3</code></pre>
 <p>The main setup: the signed PRE-GEN directory, your independently pinned operator key, and a journal in your own database whose <code>claim</code> is atomic across all your servers.</p>
 <pre><code>import { Prampta, loadPregenDirectory } from "@prampta/sdk";
@@ -155,7 +158,7 @@ const result = await pg.generateAuthorized(
 <p class="note">A journal is not a lock unless its <code>claim</code> is atomic in storage every worker shares. <code>singleProcessJournal()</code> is for tests and one process only.</p>
 <p><code>verify()</code>, <code>assertAllowed()</code> and <code>assertLicensed()</code> are lower-level: they check one decision and leave claiming, retries and receipts to you. Without <code>pregenDirectory</code> they check the signature against your pinned key but not the directory (namespace, revocation).</p>
 
-<h2>Sandbox test subjects</h2>
+<h3>Sandbox test subjects (legacy)</h3>
 <div class="table"><table>
 <thead><tr><th>subject_id</th><th>Expected answer (research use, <code>lic-sandbox</code>)</th></tr></thead>
 <tbody>

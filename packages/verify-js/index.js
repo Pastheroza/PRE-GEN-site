@@ -312,7 +312,8 @@ const UNDERSTOOD = new Set(["schema_version", "decision_id", "nonce", "dispositi
   "revocation_epoch", "max_cache_age_seconds", "cache_scope", "provider_user_binding", "provider_identity_link_id",
   "detection_id", "remediation"]);
 const MAX_DECISION_LIFETIME = 900;
-/** PRE-GEN-CORE.md rule 2: a revocation reaches every verifier within a day. */
+/** PRE-GEN-CORE.md rule 2: reload the directory at least daily. This bounds how long a copy is kept, not how
+ * old its content is: a stale copy can still hide a newer revocation. */
 export const DIRECTORY_MAX_AGE = 86_400;
 const ECHOED = ["subject_id", "provider_id", "licensee_id", "prompt_hash", "model", "modality"];
 const isEmpty = (v) => v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0);
@@ -394,6 +395,26 @@ async function registrySigned(env, type, code, directory, fetchFn) {
   return body;
 }
 
+/** PRE-GEN-CORE.md rule 4: an allow names its basis — a policy rule or a grant — and no reason; every
+ * other status gives a reason and no basis (schemas/answer.json). */
+function checkStatusShape(body) {
+  const { status, basis } = body;
+  if (!["allow", "deny", "review", "not_blocked"].includes(status)) fail(`unknown status: ${status}`);
+  const keys = (o) => (o && typeof o === "object" && !Array.isArray(o) ? Object.keys(o).sort() : null);
+  if (status === "allow") {
+    const policy = same(keys(basis), ["kind", "rule"]) && basis.kind === "policy" && typeof basis.rule === "string" && basis.rule !== "";
+    const g = basis?.grant, gk = keys(g);
+    const grant = same(keys(basis), ["grant", "kind"]) && basis.kind === "grant" && gk !== null
+      && gk.includes("format") && gk.includes("id") && gk.every((k) => ["format", "id", "license_id"].includes(k))
+      && typeof g.format === "string" && typeof g.id === "string" && /^[0-9a-f]{64}$/.test(g.id);
+    if (!policy && !grant) fail("an allow must name its basis: a policy rule or a grant");
+    if ("reason" in body) fail("an allow carries no reason");
+  } else {
+    if (typeof body.reason !== "string" || body.reason === "") fail(`a ${status} answer must give a reason`);
+    if ("basis" in body) fail(`a ${status} answer carries no basis`);
+  }
+}
+
 /** Is this a genuine, current answer to this request, whatever its status? Everything checkAnswer checks
  * except that it is an allow: use it to weigh refusals from several registries (decideIdentity). */
 export async function verifyAnswer(answer, request, { directory, fetch: fetchFn = globalThis.fetch,
@@ -405,6 +426,7 @@ export async function verifyAnswer(answer, request, { directory, fetch: fetchFn 
   directory ??= await loadDirectory({ fetch: fetchFn });
   if (now - directory.loadedAt > DIRECTORY_MAX_AGE) fail("the directory was loaded more than 24 hours ago: load it again");
   const body = await registrySigned(answer, "pg.answer.v1", asked.subject_ref, directory, fetchFn);
+  checkStatusShape(body);
   if (body.request_id !== (await messageId("pg.request.v1", asked))) fail("the answer is for another request");
   if (body.profile !== asked.profile) fail("the answer is under another profile");
   const iat = body.issued_at, exp = body.expires_at;

@@ -267,10 +267,11 @@ test("checkAnswer trusts an answer only through the directory (PRE-GEN-CORE.md r
   const fetch = keysFetch({ "https://test.example/keys": [{ key_id: real.id, public_key_hex: real.pub }] });
   const ask = (code, job = "job-1") => ({ type: "pg.request.v1", signatures: [], body: { subject_ref: code, provider_id: "p",
     profile: "likeness/1", use: { purpose: "research" }, job_id: job, job_hash: "a".repeat(64) } });
-  const answer = async (key, request, extra = {}) => {
+  const answer = async (key, request, extra = {}, drop = []) => {
     const body = { signers: [{ role: "registry", key_id: key.id }], request_id: await messageId(request.type, request.body),
       profile: "likeness/1", status: "allow", basis: { kind: "policy", rule: "r" }, issued_at: 1000, expires_at: 1300, ...extra };
-    if (body.status !== "allow") delete body.basis;
+    if (body.status !== "allow" && !("basis" in extra)) delete body.basis;
+    for (const k of drop) delete body[k];
     return { type: "pg.answer.v1", body, signatures: [await key.sign("PREGEN-V5\0pg.answer.v1\0" + canonicalJson(body))] };
   };
   const check = (a, r, o = {}) => checkAnswer(a, r, { directory: dir, fetch, now: 1010, ...o });
@@ -287,6 +288,12 @@ test("checkAnswer trusts an answer only through the directory (PRE-GEN-CORE.md r
   assert.equal((await check(sandbox, req, { testing: true })).status, "allow");
   // A directory loaded more than a day ago: a revocation might be missing from it.
   await assert.rejects(check(await answer(real, req, { issued_at: 87500, expires_at: 87800 }), req, { now: 87501 }), /24 hours/);
+  // A signed answer that breaks rule 4 is refused even with a valid signature.
+  await assert.rejects(check(await answer(real, req, {}, ["basis"]), req), /must name its basis/);
+  await assert.rejects(check(await answer(real, req, { basis: { kind: "grant", grant: { format: "pg.grant.v1", id: "x" } } }), req), /must name its basis/);
+  await assert.rejects(check(await answer(real, req, { reason: "PG_NO_LICENSE" }), req), /carries no reason/);
+  await assert.rejects(check(await answer(real, req, { status: "deny" }), req), /must give a reason/);
+  await assert.rejects(check(await answer(real, req, { status: "maybe", reason: "x" }), req), /unknown status/);
   await assert.rejects(check(await answer(real, req, { status: "deny", reason: "PG_SUBJECT_OPTED_OUT" }), req),
     /not an allow: deny PG_SUBJECT_OPTED_OUT/);
 });

@@ -31,9 +31,13 @@ See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
     of a listed registry with its own key and a revoked registry are refused. The sandbox extension
     defines the test directory.
   - **A directory is used for at most 24 hours** (founder: «Да, добавляй»). A verifier loads it again at
-    least daily, from pregen.org or any mirror, and accepts no answer on an older copy, so a revocation
-    reaches everyone within a day (core rule 2, `PG-CODE.md` §9.1). `checkAnswer` / `check_answer` enforce
-    it (`DIRECTORY_MAX_AGE`).
+    least daily, preferably from pregen.org, and accepts no answer on a copy it loaded earlier (core rule 2,
+    `PG-CODE.md` §9.1); `checkAnswer` / `check_answer` enforce it (`DIRECTORY_MAX_AGE`). This bounds how
+    long a verifier keeps a copy, not how old a copy's content is: a stale copy can still hide a newer
+    revocation (corrected after external review; a signed freshness statement is future work).
+  - **An allow must name its basis** (external review). The libraries now refuse a signed answer that breaks
+    core rule 4: an `allow` without a policy or grant basis, an `allow` with a reason, or a refusal without a
+    reason.
   - **Identity, proof, catalog** (founder: «N1–N8 да, делай»; scenarios in PRAMPTA `nmp/pregen-identity-proof-market.md`).
     The core is unchanged; three extensions and one profile rule:
     - `identity`: anchors (Wikidata/ISNI/domain) for public persons, confirmation on the person's own channel,

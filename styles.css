@@ -256,3 +256,6 @@ details p { margin: 10px 0 0; }
 .dg .dash { stroke-dasharray: 6 5; }
 .dg-hint { display: none; margin: 0; color: var(--muted); font-size: 14px; }
 @media (max-width: 720px) { .dg-hint { display: block; } }
+.hero-lede { margin: 20px auto 0; text-align: center; max-width: 34em; font-size: 22px; }
+.hero .go { justify-content: center; margin-top: 18px; }
+@media (max-width: 720px) { .hero-lede { font-size: 19px; } }

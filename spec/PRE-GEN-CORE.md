@@ -38,9 +38,10 @@ a prefix to a registry: `name`, `prefix`, `api`, `keys` (its key set URL) and
 - accepts the directory only if its `signature` verifies with the **published steward
   key** (below), never with a key from the directory itself, and its `sequence` is not lower
   than one it already accepted;
-- loads it again **at least once every 24 hours**, from pregen.org or any mirror (the
-  signature is what counts), and accepts no answer on an older copy — so a revocation
-  reaches every verifier within a day;
+- loads it again **at least once every 24 hours**, preferably from pregen.org, and accepts
+  no answer on a copy it loaded earlier than that. The signature proves a copy authentic,
+  not current: a stale copy from a mirror or an attacker can hide a newer revocation until
+  the verifier fetches a current one;
 - accepts a registry's signature only for the **prefix** the directory gives that registry;
 - refuses a registry marked `revoked` and a key listed in `revoked_keys`;
 - takes the public key from the registry's key set (`GET {api}/keys`) and checks that it
@@ -171,7 +172,7 @@ extension may turn a refusal the core or a profile requires into a permission.
 | [`reports`](extensions/reports.md) | "What happened?" A signed report after generation, and a signed acknowledgement |
 | [`provider-keys`](extensions/provider-keys.md) | Provider signing keys: first key, rotation, recovery |
 | [`limits`](extensions/limits.md) | Grants with a number of uses: reserve, count, give back |
-| [`jobs`](extensions/jobs.md) | One generation with several subjects; never generating twice |
+| [`jobs`](extensions/jobs.md) | One generation with several subjects; with the provider's job rules, never generating twice |
 | [`grants`](extensions/grants.md) | Licences as signed objects: `pg.grant.v1` |
 | [`licensee`](extensions/licensee.md) | Answers for a connected end user |
 | [`observe`](extensions/observe.md) | Trial mode: generate and record, without blocking |

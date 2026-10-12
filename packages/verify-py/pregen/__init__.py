@@ -374,7 +374,8 @@ _ECHOED = ("subject_id", "provider_id", "licensee_id", "prompt_hash", "model", "
 
 
 _MAX_DECISION_LIFETIME = 900
-# PRE-GEN-CORE.md rule 2: a revocation reaches every verifier within a day.
+# PRE-GEN-CORE.md rule 2: reload the directory at least daily. This bounds how long a copy is kept, not how
+# old its content is: a stale copy can still hide a newer revocation.
 DIRECTORY_MAX_AGE = 86_400
 
 
@@ -477,6 +478,34 @@ def _registry_signed(env: dict, type_: str, code: str, directory: Directory, get
     return body
 
 
+_HEX64 = re.compile(r"[0-9a-f]{64}")
+
+
+def _check_status_shape(body: dict) -> None:
+    """PRE-GEN-CORE.md rule 4: an allow names its basis — a policy rule or a grant — and no reason;
+    every other status gives a reason and no basis (schemas/answer.json)."""
+    status = body.get("status")
+    if status not in ("allow", "deny", "review", "not_blocked"):
+        raise PregenError(f"unknown status: {status!r}")
+    if status == "allow":
+        basis = body.get("basis")
+        policy = isinstance(basis, dict) and set(basis) == {"kind", "rule"} and basis["kind"] == "policy" \
+            and isinstance(basis["rule"], str) and basis["rule"] != ""
+        grant = isinstance(basis, dict) and set(basis) == {"kind", "grant"} and basis["kind"] == "grant" \
+            and isinstance(basis["grant"], dict) and {"format", "id"} <= set(basis["grant"]) <= {"format", "id", "license_id"} \
+            and isinstance(basis["grant"]["format"], str) and isinstance(basis["grant"]["id"], str) \
+            and bool(_HEX64.fullmatch(basis["grant"]["id"]))
+        if not (policy or grant):
+            raise PregenError("an allow must name its basis: a policy rule or a grant")
+        if "reason" in body:
+            raise PregenError("an allow carries no reason")
+    else:
+        if not isinstance(body.get("reason"), str) or body["reason"] == "":
+            raise PregenError(f"a {status} answer must give a reason")
+        if "basis" in body:
+            raise PregenError(f"a {status} answer carries no basis")
+
+
 def verify_answer(answer: dict, request: dict, directory: Directory = None, get_json=_get_json, now=None,
                   testing: bool = False) -> dict:
     """Is this a genuine, current answer to this request, whatever its status? Everything check_answer()
@@ -490,6 +519,7 @@ def verify_answer(answer: dict, request: dict, directory: Directory = None, get_
     if now - directory.loaded_at > DIRECTORY_MAX_AGE:
         raise PregenError("the directory was loaded more than 24 hours ago: load it again")
     body = _registry_signed(answer, "pg.answer.v1", asked.get("subject_ref"), directory, get_json)
+    _check_status_shape(body)
     if body.get("request_id") != message_id("pg.request.v1", asked):
         raise PregenError("the answer is for another request")
     if body.get("profile") != asked.get("profile"):

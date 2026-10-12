@@ -55,7 +55,7 @@ The libraries implement the rule as `decideIdentity` / `decide_identity`.
 - A registry answers a complaint within **7 days**. While it is examined the code is
   `disputed`, which `likeness/1` refuses (`PG_SUBJECT_UNAVAILABLE`).
 - The steward records the outcome in the directory: `false_claims: [{anchor, code, at,
-  reason}]`. Clients drop those codes within 24 hours; an entry is never removed. Repeated
+  reason}]`. Clients drop those codes when they load that directory; an entry is never removed. Repeated
   false claims are ground for revoking the registry.
 - Disputes are decided by the steward under published rules until an independent panel takes
   over.

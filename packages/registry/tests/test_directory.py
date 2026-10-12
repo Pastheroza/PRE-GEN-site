@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from pregen import PregenError, canonical_json, check_answer, verify_directory
 
 from pregen_registry.app import create_app
-from pregen_registry.protocol import Key, mint_code
+from pregen_registry.protocol import Key, message_id, mint_code, seal
 from pregen_registry.registry import Config, Registry
 
 NOW = 1_800_000_000
@@ -110,3 +110,21 @@ def test_a_refusal_is_genuine_but_never_permits():
 def test_no_new_registry_issues_bare_codes():
     with pytest.raises(ValueError, match="four letters"):
         Config(prefix="", name="x", api="https://x.example")
+
+
+@pytest.mark.parametrize("change,error", [
+    ({"basis": None}, "must name its basis"),
+    ({"basis": {"kind": "grant", "grant": {"format": "pg.grant.v1", "id": "x"}}}, "must name its basis"),
+    ({"reason": "PG_NO_LICENSE"}, "carries no reason"),
+    ({"status": "deny", "basis": None}, "must give a reason"),
+    ({"status": "maybe", "basis": None, "reason": "x"}, "unknown status"),
+])
+def test_a_signed_answer_that_breaks_rule_4_is_refused(change, error):
+    # Signed with the real key, so only the shape check can catch it.
+    request, _ = ask(real, real_http, mint_code("TEST", 1))
+    body = {"request_id": message_id("pg.request.v1", request["body"]), "profile": "likeness/1", "status": "allow",
+            "basis": {"kind": "policy", "rule": "test"}, "issued_at": NOW, "expires_at": NOW + 300}
+    body.update(change)
+    body = {k: v for k, v in body.items() if v is not None}
+    with pytest.raises(PregenError, match=error):
+        check(request, seal("pg.answer.v1", body, [("registry", real.key)]), testing=True)

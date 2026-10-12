@@ -25,6 +25,9 @@ use}`, where `registry` is the prefix (`""` for the origin).
 
 **A new generation always needs a new `job_id`.**
 
+The registry cannot stop two workers of one provider from both generating on the same answer:
+that is the provider's part (X-1 below). "Never twice" holds when both sides keep their rules.
+
 Only the provider can guarantee that its asks to *different* registries come from one
 manifest. A verifier can check it afterwards: all requests carry the same `job_hash`, and
 the manifest hashes to it.

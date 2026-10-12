@@ -151,9 +151,9 @@ table.split tr { break-inside: avoid; }
 <tr><th>Mechanism</th><th>Effect</th></tr>
 <tr><td>Admission</td><td>A registry is listed only with a named operator and public address, a contact for complaints, a published policy saying how it verifies rights holders, an anchor for every public person it registers (§7), and acceptance of the core floor.</td></tr>
 <tr><td>Prefix binding</td><td>A registry's key is accepted only for its own prefix; a copy of a listed registry with a different key is refused.</td></tr>
-<tr><td>Freshness</td><td>A verifier loads the directory at least every 24 hours — from pregen.org or any mirror, since the signature, not the server, makes it authentic — and accepts no answer on an older copy. A revocation reaches every verifier within a day.</td></tr>
+<tr><td>Freshness</td><td>A verifier loads the directory at least every 24 hours, preferably from pregen.org, and accepts no answer on a copy loaded earlier. The signature proves a copy authentic, not current: a stale copy can hide a newer revocation until a current one is fetched. A signed freshness statement is future work (§13).</td></tr>
 <tr><td>Revocation</td><td>A revoked registry stays listed forever and its prefix is never reused, but nothing signed by its keys authorizes anything again, including answers signed before the revocation. A single stolen key can be revoked alone.</td></tr>
-<tr><td>False claims</td><td>The steward can mark one code as a false claim about a person; clients drop it within 24 hours. An entry is never removed.</td></tr>
+<tr><td>False claims</td><td>The steward can mark one code as a false claim about a person; clients drop it when they load that directory. An entry is never removed.</td></tr>
 <tr><td>Steward key loss</td><td>A successor key, created in advance and stored apart, replaces the steward key; a directory it signs supersedes all earlier ones and must keep every listing and revocation.</td></tr>
 </table>
 <p>A listing is the steward's statement that a registry met the conditions; it is not a certificate that every rights holder in it is genuine. That responsibility stays with the registry, and §7 limits the damage when it fails.</p>
@@ -164,7 +164,7 @@ table.split tr { break-inside: avoid; }
 <tr><td><code>reports</code></td><td>After the answer, the provider signs a <code>pg.report.v1</code> stating what it did (outcome, output hash, time); the registry signs an acknowledgement. A report never grants anything.</td></tr>
 <tr><td><code>provider-keys</code></td><td>Provider signing keys: first key, rotation and recovery, as a signed key-set chain.</td></tr>
 <tr><td><code>limits</code></td><td>Grants with a number of uses: an <code>allow</code> reserves a use, a report consumes it, and a use not generated is given back within the profile's window (24 hours for <code>likeness/1</code>).</td></tr>
-<tr><td><code>jobs</code></td><td>One generation with several subjects, possibly in several registries. The provider fixes a manifest once; <code>job_hash</code> is its hash. A registry binds one job hash per job, one request per subject, and gives no new answer after a subject was reported generated — so ten workers or a crash never generate twice.</td></tr>
+<tr><td><code>jobs</code></td><td>One generation with several subjects, possibly in several registries. The provider fixes a manifest once; <code>job_hash</code> is its hash. A registry binds one job hash per job, one request per subject, and gives no new answer after a subject was reported generated. The provider claims each job atomically and never restarts one that may have started, so together they never generate twice; the registry alone cannot stop two workers using one answer.</td></tr>
 <tr><td><code>grants</code></td><td>Licences as signed objects (<code>pg.grant.v1</code>), signed by the rights holder's key and then by the registry; an <code>allow</code> names the grant as its basis.</td></tr>
 <tr><td><code>licensee</code></td><td>Answers for a connected end user of the provider.</td></tr>
 <tr><td><code>observe</code></td><td>Trial mode: a provider asks and reports without blocking, so a registry can measure before enforcing.</td></tr>
@@ -221,7 +221,7 @@ table.split tr { break-inside: avoid; }
 <tr><td>Unlisted (fake) registry</td><td>Its prefix is not in the signed directory</td><td>A provider that trusts another directory by choice</td></tr>
 <tr><td>Copy of a listed registry</td><td>Its key is not the listed key</td><td>None</td></tr>
 <tr><td>Answer replayed for another request or job</td><td>Bound to the request id; lifetime ≤ 900 s; one answer per job and subject</td><td>None</td></tr>
-<tr><td>Stale directory hiding a revocation</td><td>Sequence never decreases; directory used for at most 24 hours</td><td>Up to 24 hours</td></tr>
+<tr><td>Stale directory hiding a revocation</td><td>Sequence never decreases; a copy is used for at most 24 hours; load from pregen.org</td><td>A stale copy served as current, until a current one is fetched</td></tr>
 <tr><td>Stolen registry key</td><td>Single-key revocation in the directory</td><td>Until the revocation is published</td></tr>
 <tr><td>Stolen steward key</td><td>Successor key; pinned keys of the first registry in the libraries</td><td>Until the handover</td></tr>
 <tr><td>Listed registry claiming a person it cannot prove</td><td>Confirmed claims silence it; unproven conflicts freeze; complaints, false claims, revocation</td><td>A public person who never confirmed anything (§13)</td></tr>
