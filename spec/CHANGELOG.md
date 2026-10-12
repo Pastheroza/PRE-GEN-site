@@ -10,6 +10,17 @@ See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
 
 ## v5 — draft of 2026-10-03
 
+- **The principle** (2026-10-12, founder: "защитить и зафиксировать принцип
+  пред генерационный механизм"). A short section before §0 states the five
+  commitments every version keeps:
+  1. permission is checked before generation;
+  2. those entitled to decide, decide;
+  3. every answer is signed and checkable by anyone;
+  4. open to every registry on the same terms;
+  5. floors only go up.
+
+  It adds no new requirement, because the numbered rules in §8 already
+  implement it, and it records the first publication date (Zenodo v1, 2026-05-12).
 - **P-10 without a self-declared tie-break; annulling a thief's revocations**
   (2026-10-04, founder; after the second package re-check). P-10: when two
   registries disagree about what may be the same subject, neither answer

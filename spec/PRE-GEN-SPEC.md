@@ -27,6 +27,40 @@ registry are in [`PRE-GEN-EXTENSIONS.md`](PRE-GEN-EXTENSIONS.md). How a
 registry registers subjects, issues licenses, accepts opt-outs and connects
 end users is registry policy, outside the core (§5.1, §8.2).
 
+## The principle
+
+PRE-GEN is a protocol of **pre-generation authorization**. Permission to
+use a protected subject — in this version, a person's likeness or voice —
+is asked for and proven *before* a generative system produces the output,
+not discovered and contested after it.
+
+Every version of PRE-GEN keeps these five commitments:
+
+1. **Permission is checked before generation, not after.** A provider asks
+   the registry responsible for a subject before it generates. Only a valid
+   answer issued before an output was made can permit it. A report made
+   afterwards records what happened and never grants anything.
+2. **Those entitled to decide, decide.** The rights holder decides what is
+   allowed, through the registry that holds the subject. PRE-GEN carries and
+   proves that decision. It decides nothing itself and classifies no content.
+3. **Every answer is signed and can be checked by anyone.** An answer is
+   bound to the exact request it answers. Anyone can verify it offline,
+   without trusting the party that issued it or the party that shows it.
+4. **Open to every registry on the same terms.** Any registry that meets the
+   published conditions may join. The same rules, checks and protections
+   apply to every registry, including the first.
+5. **Floors only go up.** No licence, extension or registry policy may turn
+   a refusal the core requires into a permission: an opt-out, a protection
+   for minors, an immutable denial (E-1, R-4).
+
+These commitments say what PRE-GEN is. The requirements that implement them
+are the numbered rules collected in §8. A later version may change formats
+and details, but never these five.
+
+*Informative:* PRE-GEN was first published as Prompt Protocol version 1 on
+2026-05-12 ([10.5281/zenodo.20129902](https://doi.org/10.5281/zenodo.20129902)).
+Its author and editor is Valerii Egorov.
+
 ## 0. Conventions and authority
 
 ### 0.1 Requirement language
