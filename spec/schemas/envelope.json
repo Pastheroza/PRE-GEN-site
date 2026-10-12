@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.pregen.org/spec/schemas/envelope.json",
+  "title": "PRE-GEN message envelope (PRE-GEN-CORE.md, Messages)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "body",
+    "signatures"
+  ],
+  "properties": {
+    "type": {
+      "enum": [
+        "pg.request.v1",
+        "pg.answer.v1",
+        "pg.report.v1",
+        "pg.report_ack.v1",
+        "pg.keyset.v1",
+        "pg.grant.v1"
+      ]
+    },
+    "body": {
+      "type": "object"
+    },
+    "signatures": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{128}$"
+      }
+    }
+  }
+}

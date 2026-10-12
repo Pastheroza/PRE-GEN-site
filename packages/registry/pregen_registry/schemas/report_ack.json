@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.pregen.org/spec/schemas/report_ack.json",
+  "title": "pg.report_ack.v1 body (extension reports; counted/released from limits)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "signers",
+    "report",
+    "answer",
+    "answer_status",
+    "provider_key_id",
+    "received_at"
+  ],
+  "properties": {
+    "signers": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "prefixItems": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "role",
+            "key_id"
+          ],
+          "properties": {
+            "role": {
+              "const": "registry"
+            },
+            "key_id": {
+              "type": "string",
+              "pattern": "^pg-ed25519:[0-9a-f]{32}$"
+            }
+          }
+        }
+      ],
+      "items": false
+    },
+    "report": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "answer": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "answer_status": {
+      "enum": [
+        "allow",
+        "deny",
+        "review",
+        "not_blocked",
+        "none"
+      ]
+    },
+    "provider_key_id": {
+      "type": "string",
+      "pattern": "^pg-ed25519:[0-9a-f]{32}$"
+    },
+    "received_at": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "counted": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "released": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      }
+    },
+    "ext": {
+      "type": "object"
+    }
+  }
+}

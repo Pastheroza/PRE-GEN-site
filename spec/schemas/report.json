@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.pregen.org/spec/schemas/report.json",
+  "title": "pg.report.v1 body (extension reports)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "signers",
+    "request_id",
+    "answer",
+    "job_id",
+    "outcome",
+    "output_hash",
+    "occurred_at"
+  ],
+  "properties": {
+    "signers": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "prefixItems": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "role",
+            "key_id"
+          ],
+          "properties": {
+            "role": {
+              "const": "provider"
+            },
+            "key_id": {
+              "type": "string",
+              "pattern": "^pg-ed25519:[0-9a-f]{32}$"
+            }
+          }
+        }
+      ],
+      "items": false
+    },
+    "request_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "answer": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "request": {
+      "$ref": "request.json"
+    },
+    "job_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]{1,100}$"
+    },
+    "outcome": {
+      "enum": [
+        "generated",
+        "not_generated"
+      ]
+    },
+    "output_hash": {
+      "type": "string",
+      "pattern": "^([0-9a-f]{64})?$"
+    },
+    "occurred_at": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "mode": {
+      "enum": [
+        "enforce",
+        "observe"
+      ]
+    },
+    "obligations_applied": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ext": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "answer": {
+            "type": "null"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "request"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "request"
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "outcome": {
+            "const": "generated"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "output_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "output_hash": {
+            "const": ""
+          }
+        }
+      }
+    }
+  ]
+}

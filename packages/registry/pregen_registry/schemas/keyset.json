@@ -1,0 +1,237 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.pregen.org/spec/schemas/keyset.json",
+  "title": "pg.keyset.v1 body (extension provider-keys)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "signers",
+    "kind",
+    "provider_id",
+    "previous",
+    "recovery_registry",
+    "keys"
+  ],
+  "properties": {
+    "signers": {
+      "type": "array"
+    },
+    "kind": {
+      "enum": [
+        "first",
+        "rotation",
+        "recovery"
+      ]
+    },
+    "provider_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "previous": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "recovery_registry": {
+      "type": "string",
+      "pattern": "^([ABCDEFGHJKMNPQRSTVWXYZ]{4})?$"
+    },
+    "keys": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key_id",
+          "public_key_hex",
+          "status"
+        ],
+        "properties": {
+          "key_id": {
+            "type": "string",
+            "pattern": "^pg-ed25519:[0-9a-f]{32}$"
+          },
+          "public_key_hex": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "status": {
+            "enum": [
+              "current",
+              "previous",
+              "revoked"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "first"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "signers": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 1,
+            "prefixItems": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "role",
+                  "key_id"
+                ],
+                "properties": {
+                  "role": {
+                    "const": "provider"
+                  },
+                  "key_id": {
+                    "type": "string",
+                    "pattern": "^pg-ed25519:[0-9a-f]{32}$"
+                  }
+                }
+              }
+            ],
+            "items": false
+          },
+          "previous": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "rotation"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "signers": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "prefixItems": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "role",
+                  "key_id"
+                ],
+                "properties": {
+                  "role": {
+                    "const": "provider"
+                  },
+                  "key_id": {
+                    "type": "string",
+                    "pattern": "^pg-ed25519:[0-9a-f]{32}$"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "role",
+                  "key_id"
+                ],
+                "properties": {
+                  "role": {
+                    "const": "provider_previous"
+                  },
+                  "key_id": {
+                    "type": "string",
+                    "pattern": "^pg-ed25519:[0-9a-f]{32}$"
+                  }
+                }
+              }
+            ],
+            "items": false
+          },
+          "previous": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "recovery"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "signers": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "prefixItems": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "role",
+                  "key_id"
+                ],
+                "properties": {
+                  "role": {
+                    "const": "provider"
+                  },
+                  "key_id": {
+                    "type": "string",
+                    "pattern": "^pg-ed25519:[0-9a-f]{32}$"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "role",
+                  "key_id"
+                ],
+                "properties": {
+                  "role": {
+                    "const": "recovery_registry"
+                  },
+                  "key_id": {
+                    "type": "string",
+                    "pattern": "^pg-ed25519:[0-9a-f]{32}$"
+                  }
+                }
+              }
+            ],
+            "items": false
+          },
+          "previous": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    }
+  ]
+}
