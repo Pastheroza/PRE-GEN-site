@@ -258,8 +258,8 @@ if any code path starts slicing an id.
 ## 9. Issuers: more than one registry
 
 PRE-GEN is an open standard, and any company may run a registry. So that two
-registries can never issue the same code, every registry other than the
-origin one puts its **issuer prefix** in every code it issues.
+registries can never issue the same code, every registry — the first one
+included — puts its **issuer prefix** in every code it issues from v5 on.
 
 | Shape | Example | Meaning |
 |---|---|---|
@@ -277,12 +277,13 @@ Rules:
    computed over `ISSUER + serial` for a subject and
    `ISSUER + CLASS + serial + tail` for a licence, so a mistyped prefix is
    reported as mistyped (§7), like any other typo.
-3. **Bare codes mean the origin registry, forever — and no new ones are
-   issued.** `PG-000042*` and every bare code issued before PRE-GEN v5 keep
-   their meaning, and the origin registry (PRAMPTA, the first registry)
-   keeps the bare namespace for them. From v5 on, every registry, the origin
-   registry included, issues new codes only under a four-letter prefix of
-   its own, so no registry holds a namespace the others cannot.
+3. **Every registry has a prefix, the first one included.** From v5 on,
+   every registry issues new codes only under a four-letter prefix of its
+   own; PRAMPTA, the first registry, issues under `PRAM`. Bare codes
+   (`PG-000042*`) issued before v5 are a closed legacy namespace: they keep
+   their meaning forever and resolve at the registry that issued them, but
+   no registry issues new ones, and holding them gives no right the other
+   registries lack.
 4. **Prefixes are assigned publicly.** A registry asks for one through the
    public registry list at `https://www.pregen.org/registries`; the signed
    registry directory (§9.1) is the only record of who holds which prefix
@@ -306,10 +307,10 @@ A PG code is a string; nothing stops anyone from printing one. What the
 standard controls is which codes conforming software **accepts**:
 **one namespace, one registry, one set of keys.** The bare namespace (codes
 with no prefix, including the legacy `PG-STD-` and `PG-SUB-` shapes) belongs
-to the origin registry; each prefix belongs to exactly one other registry.
+to the first registry; each prefix belongs to exactly one other registry.
 A code is valid only when a key of the registry that owns its namespace
 signed it. The rule is the same for every registry: it keeps other
-registries out of the bare namespace exactly as it keeps the origin registry
+registries out of the bare namespace exactly as it keeps the first registry
 out of every prefix.
 
 **The directory** is `https://www.pregen.org/registries.json`, a JSON object
@@ -320,7 +321,7 @@ signed by the **steward key**:
 | `schema` | `"pregen.registries.v2"` |
 | `sequence` | integer ≥ 1, increased by every signing |
 | `issued_at` | RFC 3339 UTC time of signing (informative) |
-| `registries` | array; each entry has `name`, `prefix` (`""` for the origin registry, otherwise four letters of the PG alphabet), `api`, `keys` (the registry's key set URL, `PRE-GEN-SPEC.md` §2.3) and `key_fingerprints` (every operator key the registry has ever signed with, current and retired, plus keys announced for future use, `PRE-GEN-SPEC.md` §2.1) |
+| `registries` | array; each entry has `name`, `prefix` (`""` for the legacy bare namespace, otherwise four letters of the PG alphabet), `api`, `keys` (the registry's key set URL, `PRE-GEN-SPEC.md` §2.3) and `key_fingerprints` (every operator key the registry has ever signed with, current and retired, plus keys announced for future use, `PRE-GEN-SPEC.md` §2.1) |
 | `revoked` (in an entry) | optional: `{"at": RFC 3339 time, "reason": text}` — the registry is revoked (below) |
 | `revoked_keys` | optional array of `{"key_id", "at", "reason"}` — single operator keys revoked (below) |
 | `false_claims` | optional array of `{anchor, code, at, reason}` — codes the steward found to claim a person the registry cannot prove (`extensions/identity.md`); never removed |
@@ -358,11 +359,11 @@ newer one that removes a listed namespace or fingerprint, and one that
 differs from it at the same `sequence` (two directories signed with one
 number mean the steward key signed twice), and one that drops or changes a
 revocation. A verifier MAY additionally pin
-the origin registry's fingerprints and accept a bare code only from a key in
-both the directory and its pin, so that a stolen steward key cannot add a
-key to the bare namespace; a new origin key then needs a new release of that
-verifier. The PRE-GEN verification libraries (`@pregen/verify`, `pregen`)
-do both from version 0.2.
+the fingerprints of any registry it chooses and accept that registry's codes
+only from a key in both the directory and its pin, so that a stolen steward
+key cannot add a key to that namespace. Pins are the verifier's own choice:
+the standard and its libraries pin no registry by default (the libraries take
+pins as `pinnedKeys` / `pinned_keys` from version 0.10).
 
 **Admission.** A listing says that conforming software accepts a registry's
 signatures in its namespace; it is the one point where the standard can keep
@@ -402,7 +403,7 @@ one. Bounding the age of a copy's content needs a signed freshness statement,
 which is not yet specified.
 
 **The steward key.** Held offline by the editor of the standard, Valerii
-Egorov — not by any registry, including the origin one — and used only to
+Egorov — not by any registry, including the first one — and used only to
 sign the directory.
 
 - public key: `5cb949aab04186e3e216ec541b847c912fc3f78138c0ec3cb2560b2dad0d1f1b`

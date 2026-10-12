@@ -1,4 +1,9 @@
-# PRE-GEN extensions
+# PRE-GEN extensions of the earlier interface
+
+**Informative.** These are extensions of the earlier interface (`/v1/verify`)
+as the first registry, PRAMPTA, implements them. Any registry may implement
+them on the same terms; implementing them gives no registry a right the
+others lack. The v5 extensions are in `extensions/`.
 
 **Version:** PRE-GEN v5 draft (2026-10-04) · companion to
 [`PRE-GEN-SPEC.md`](PRE-GEN-SPEC.md) · Apache License 2.0.
@@ -13,10 +18,10 @@ Every requirement keeps the identifier it had before the core was
 separated (2026-10-04), so references in code and documents stay valid.
 `§n` refers to a section of the core document, `X.n` to this one.
 
-## X.1 The origin registry profile (PRAMPTA)
+## X.1 PRAMPTA's registry profile (one registry's published policy)
 
-PRAMPTA, the origin registry, implements every extension below. Its
-refusal codes beyond the core set are the origin rows of
+PRAMPTA, the first registry, implements every extension below. Its
+refusal codes beyond the core set are the first registry's rows of
 [`REFUSAL-CODES.md`](REFUSAL-CODES.md). Its published policy (core E-5):
 decisions live 300 seconds; an opt-out waits 14 days, a pause is
 immediate; on a licence with `max_uses` every `allow` counts, and an unused
@@ -26,7 +31,7 @@ subjects are registered in `managed` custody only.
 
 ## X.2 Decision members
 
-Optional members the origin registry adds to every decision (core §1.1,
+Optional members the first registry adds to every decision (core §1.1,
 E-2). Each is signed; a verifier that does not use one ignores it.
 
 | Field | Type | Notes |
@@ -43,7 +48,7 @@ E-2). Each is signed; a verifier that does not use one ignores it.
 | `detection_id` | string | echoed from the request |
 | `remediation` | object \| null | populated only on `PG_NO_LICENSE`: where and how to fix exactly this refusal |
 
-Request members the origin registry accepts in addition to the core ones
+Request members the first registry accepts in addition to the core ones
 (core §5.2): `provider_user_id` / `provider_identity_link_id` (X.4),
 `detection_id` (an earlier detection record; echoed, never used to decide),
 `idempotency_key` (echoed), `return_url` (where a `PG_NO_LICENSE`
@@ -52,18 +57,18 @@ remediation link returns the user), and `intended_use` members
 `X-Prampta-Expected-Schema-Version: pg.decision.v1`; the registry then
 answers HTTP 409 if it signs a different decision schema.
 
-Organization-internal use (`PG_ORG_INTERNAL_USE`) is an origin policy grant
+Organization-internal use (`PG_ORG_INTERNAL_USE`) is the first registry's policy grant
 under core R-5(b): a member of the organization that itself holds a
 non-person subject, never a person's likeness or voice.
 
 ## X.3 Reusing a decision (cache)
 
 The core lets a decision be reused only as an extension permits (core
-P-7). The origin registry permits it this way:
+P-7). The first registry permits it this way:
 
 - **R-9** `cache_scope` MUST be `not_cacheable` and `max_cache_age_seconds`
   `0` on anything other than a plain allow.
-- **P-7 (origin)** A decision MAY be reused only for the identical request,
+- **P-7 (first registry)** A decision MAY be reused only for the identical request,
   only when `cache_scope` is `exact_request`, only within
   `max_cache_age_seconds`, and never past `expires_at`.
 
@@ -87,10 +92,10 @@ How an end user is connected to a provider (a one-time authorization code,
 in the manner of OAuth 2.0) is described in PRAMPTA's
 `docs/licensing-integration.md`.
 
-## X.5 How the origin registry builds a licence body
+## X.5 How the first registry builds a licence body
 
 The core verifies a licence over its body as carried (core §1.2). This is
-how the origin registry builds that body, which matters only to an
+how the first registry builds that body, which matters only to an
 implementation that rebuilds bodies from stored records.
 
 **Always-present members:** `subject_id`, `licensee_id`, `license_class`,

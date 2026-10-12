@@ -85,11 +85,11 @@ test("canonical JSON refuses what cannot be signed portably", () => {
   assert.throws(() => canonicalJson({ x: undefined }), PregenError);
 });
 
-test("a stolen steward key cannot add its own key to the pinned origin namespace", async () => {
+test("a stolen steward key cannot add its own key to a pinned namespace", async () => {
   const thief = await keypair();
   const d = await directory(3, [
     { name: "Origin", prefix: "", api: "https://origin.test", keys: "https://origin.test/keys", key_fingerprints: [origin.id, thief.id] }]);
-  const pinned = await verifyDirectory(d, { stewardPublicKeyHex: steward.pub, originKeyFingerprints: [origin.id] });
+  const pinned = await verifyDirectory(d, { stewardPublicKeyHex: steward.pub, pinnedKeys: { "": [origin.id] } });
   assert.equal(pinned.checkSigner("PG-000042*", thief.id), "issuer_mismatch");
   assert.equal(pinned.checkSigner("PG-000042*", origin.id), "valid");
 });
@@ -317,4 +317,17 @@ test("checkChannelProof: only the person's own channel counts", async () => {
   assert.equal(await checkChannelProof("PG-XXXX-000001V", "https://www.instagram.com/cristiano/p/1", official, text), true);
   assert.equal(await checkChannelProof("PG-XXXX-000001V", "https://www.instagram.com/cristiano_fan/p/1", official, text), false);
   assert.equal(await checkChannelProof("PG-AAAA-000001V", "https://www.instagram.com/cristiano/p/1", official, text), false);
+});
+
+test("no registry is pinned by default, and any prefix can be pinned", async () => {
+  const thief = await keypair();
+  const d = await directory(3, [
+    { name: "Origin", prefix: "", api: "https://origin.test", keys: "https://origin.test/keys", key_fingerprints: [origin.id] },
+    { name: "Other", prefix: "NWRD", api: "https://other.test", keys: "https://other.test/keys", key_fingerprints: [other.id, thief.id] }]);
+  assert.equal((await verifyDirectory(d, { stewardPublicKeyHex: steward.pub })).checkSigner("PG-NWRD-000042-K", thief.id), "valid");
+  const pinned = await verifyDirectory(d, { stewardPublicKeyHex: steward.pub, pinnedKeys: { NWRD: [other.id] } });
+  assert.equal(pinned.checkSigner("PG-NWRD-000042-K", thief.id), "issuer_mismatch");
+  assert.equal(pinned.checkSigner("PG-NWRD-000042-K", other.id), "valid");
+  const legacy = await verifyDirectory(d, { stewardPublicKeyHex: steward.pub, originKeyFingerprints: [other.id] }); // deprecated alias
+  assert.equal(legacy.checkSigner("PG-000042*", origin.id), "issuer_mismatch");
 });

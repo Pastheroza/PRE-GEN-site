@@ -38,6 +38,13 @@ See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
   - **An allow must name its basis** (external review). The libraries now refuse a signed answer that breaks
     core rule 4: an `allow` without a policy or grant basis, an `allow` with a reason, or a refusal without a
     reason (`@pregen/verify` and `pregen` 0.9.1).
+  - **No registry has special rights** (founder and co-founder, 2026-10-12: «прампте нужен тоже префикс…
+    чтобы мы были как все»). PRAMPTA is the *first* registry, not an "origin" one: it issues new codes under
+    `PRAM` like every registry; the bare codes it issued before v5 are a closed legacy namespace with no
+    special right; its own refusal codes defined before v5 keep their meaning, new ones carry its prefix;
+    `PRE-GEN-EXTENSIONS.md` is marked as one registry's informative extensions. The verification libraries
+    (0.10.0) no longer pin PRAMPTA's keys: no registry is pinned by default, and a verifier may pin any
+    registry itself (`pinnedKeys` / `pinned_keys`; `originKeyFingerprints` stays as a deprecated alias).
   - **Identity, proof, catalog** (founder: «N1–N8 да, делай»; scenarios in PRAMPTA `nmp/pregen-identity-proof-market.md`).
     The core is unchanged; three extensions and one profile rule:
     - `identity`: anchors (Wikidata/ISNI/domain) for public persons, confirmation on the person's own channel,

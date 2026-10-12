@@ -13,12 +13,12 @@ from urllib.parse import urlsplit
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-__version__ = "0.9.1"
+__version__ = "0.10.0"
 __all__ = [
     "STEWARD_PUBLIC_KEY_HEX", "DIRECTORY_URL", "PregenError", "Directory", "canonical_json",
     "fingerprint", "verify_bytes", "verify_signed", "verify_license", "issuer_of",
     "verify_directory", "load_directory", "verify_decision", "check_decision", "check_answer", "verify_answer", "message_id", "DIRECTORY_MAX_AGE", "decide_identity",
-    "verify_anchors", "check_channel_proof", "wikidata_official_urls", "check_proof", "FLOOR_REASONS", "ORIGIN_KEY_FINGERPRINTS", "STEWARD_SUCCESSOR_PUBLIC_KEY_HEX", "Simulator",
+    "verify_anchors", "check_channel_proof", "wikidata_official_urls", "check_proof", "FLOOR_REASONS", "STEWARD_SUCCESSOR_PUBLIC_KEY_HEX", "Simulator",
 ]
 
 STEWARD_PUBLIC_KEY_HEX = "5cb949aab04186e3e216ec541b847c912fc3f78138c0ec3cb2560b2dad0d1f1b"
@@ -26,13 +26,6 @@ STEWARD_PUBLIC_KEY_HEX = "5cb949aab04186e3e216ec541b847c912fc3f78138c0ec3cb2560b
 # signs replaces every directory signed by the current steward key, whatever their sequence.
 STEWARD_SUCCESSOR_PUBLIC_KEY_HEX = "658544163d6abd5fef046407980d249817875d87d8cf4b67879a2e265fa5612f"  # pg-ed25519:3e5e20729ce8485eea274c4cb33721d6, created 2026-10-03
 DIRECTORY_URL = "https://www.pregen.org/registries.json"
-# The origin registry's (PRAMPTA's) operator keys, pinned here as well as in the
-# directory: a stolen steward key cannot add its own key to the bare namespace.
-# A new origin key needs a new release of this library (threat model T4).
-ORIGIN_KEY_FINGERPRINTS = (
-    "pg-ed25519:1904514fd2ac442f0a5388d13cc313a0",  # current
-    "pg-ed25519:58d4a309fff25a0f4763cffc5c92cb0e",  # next, announced 2026-10-03, offline until rotation
-)
 SCHEMA = "pregen.registries.v2"
 _MAX_INT = 2**53 - 1
 _PREFIX = re.compile(r"[ABCDEFGHJKMNPQRSTVWXYZ]{4}")
@@ -197,12 +190,13 @@ def _get_json(url: str):
 class Directory:
     """A directory accepted under V-12. Get one from verify_directory() or load_directory()."""
 
-    def __init__(self, directory: dict, _token=None, _origin_pin=None, _loaded_at=0):
+    def __init__(self, directory: dict, _token=None, _pins=None, _loaded_at=0):
         if _token is not _TOKEN:
             raise PregenError("use verify_directory() or load_directory()")
         self._d = deepcopy(directory)
         self.loaded_at = _loaded_at  # Unix seconds when it was accepted; check_answer wants it under a day old
-        self._origin_pin = tuple(_origin_pin) if _origin_pin is not None else None
+        # The caller's own pins, prefix -> fingerprints; no registry is pinned by default (PG-CODE.md §9.1).
+        self._pins = {k: tuple(v) for k, v in (_pins or {}).items()}
 
     @property
     def sequence(self) -> int:
@@ -239,7 +233,8 @@ class Directory:
             return "revoked"
         if signer_key_id not in r["key_fingerprints"]:
             return "issuer_mismatch"
-        if r["prefix"] == "" and self._origin_pin is not None and signer_key_id not in self._origin_pin:
+        pin = self._pins.get(r["prefix"])
+        if pin is not None and signer_key_id not in pin:
             return "issuer_mismatch"
         return "valid"
 
@@ -317,11 +312,11 @@ _DEFAULT = object()
 
 
 def verify_directory(directory: dict, steward_public_key_hex: str = STEWARD_PUBLIC_KEY_HEX,
-                     min_sequence: int = 0, previous=None, origin_key_fingerprints=_DEFAULT,
+                     min_sequence: int = 0, previous=None, pinned_keys=None, origin_key_fingerprints=None,
                      successor_public_key_hex=_DEFAULT, now=None) -> Directory:
     """V-12: accept the directory only with the pinned steward's signature, its invariants,
     a sequence no lower than one already seen and, given the last accepted directory,
-    nothing removed from it. With the built-in steward key the origin keys are pinned too."""
+    nothing removed from it. No registry is pinned unless you pass pinned_keys."""
     if type(min_sequence) is not int or not 0 <= min_sequence <= _MAX_INT:
         raise PregenError("min_sequence must be a nonnegative integer")
     _check_invariants(directory)
@@ -350,10 +345,11 @@ def verify_directory(directory: dict, steward_public_key_hex: str = STEWARD_PUBL
         # A handover may restart the sequence, never drop a listing or a revocation, except
         # revocations the old key signed after it was compromised, named in `annulled`.
         _keeps_history(directory, prev, _annulments(directory))
-    if origin_key_fingerprints is _DEFAULT:
-        origin_key_fingerprints = ORIGIN_KEY_FINGERPRINTS if steward_public_key_hex == STEWARD_PUBLIC_KEY_HEX else None
     import time
-    return Directory(directory, _TOKEN, origin_key_fingerprints, int(time.time()) if now is None else now)
+    pins = dict(pinned_keys or {})
+    if origin_key_fingerprints is not None:   # deprecated alias: a pin for the bare namespace
+        pins.setdefault("", list(origin_key_fingerprints))
+    return Directory(directory, _TOKEN, pins, int(time.time()) if now is None else now)
 
 
 def load_directory(url: str = DIRECTORY_URL, min_sequence: int = 0, get_json=_get_json, previous=None) -> Directory:
@@ -695,7 +691,7 @@ class Simulator:
                                 "keys": base_url + "/keys", "key_fingerprints": [self._operator_id]}]}
         body["signature"] = self._steward.sign(canonical_json(body)).hex()
         self.directory = verify_directory(body, steward_pub, successor_public_key_hex=None,
-                                          origin_key_fingerprints=[self._operator_id])
+                                          pinned_keys={"": [self._operator_id]})
         self._decisions, self._receipts, self._n = {}, {}, 0
 
     def get_json(self, url: str) -> dict:

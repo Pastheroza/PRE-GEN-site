@@ -36,15 +36,17 @@ Pass `requireVerifiedAuthority: true` to also refuse a subject whose rights hold
 registry has not verified (`subject_authority` other than `verified`).
 
 The directory check also refuses an older directory, a newer one that removes
-a registry or key or undoes a revocation, and a different one with the same sequence. The origin
-registry's keys are pinned in the library as well, so a stolen steward key
-cannot add its own key to bare `PG-…` codes; a new origin key comes with a
-new release. A successor steward key
-(`pg-ed25519:3e5e20729ce8485eea274c4cb33721d6`) is pinned too: a directory it
-signs replaces those of the current steward key whatever their sequence, so a
-thief holding the old key cannot outbid it; it must keep every listing and
-revocation of the directory it replaces, except revocations the old key signed
-after the declared `steward_compromised_since`, which it names in `annulled`.
+a registry or key or undoes a revocation, and a different one with the same sequence. No registry is pinned by default: every registry, the first one included,
+is trusted only through the signed directory. You may pin any registry's keys
+yourself (`pinnedKeys` / `pinned_keys`, prefix → fingerprints, `""` for bare
+codes), so that even a stolen steward key cannot add a key to that prefix.
+
+A successor steward key (`pg-ed25519:3e5e20729ce8485eea274c4cb33721d6`) is
+pinned in the library: a directory it signs replaces those of the current
+steward key whatever their sequence, so a thief holding the old key cannot
+outbid it; it must keep every listing and revocation of the directory it
+replaces, except revocations the old key signed after the declared
+`steward_compromised_since`, which it names in `annulled`.
 
 A listing in the directory proves which registry may issue a code, not that
 it holds any right over a person or a work. A signed decision proves what the

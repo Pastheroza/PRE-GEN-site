@@ -16,9 +16,9 @@ it without asking permission.
 | `profiles/likeness-1.md` | The first profile: a person's likeness and voice |
 | `schemas/`, `test-vectors/messages.json` | JSON Schemas and byte vectors for the v5 messages |
 | `PRE-GEN-SPEC.md` | Foundations the core builds on (canonical bytes, keys, refusal codes) and the earlier interface (`/v1/verify`, receipts), still valid |
-| `PRE-GEN-EXTENSIONS.md` | What a registry adds; the origin registry's (PRAMPTA) extensions |
+| `PRE-GEN-EXTENSIONS.md` | What a registry adds; the first registry's (PRAMPTA) extensions |
 | `PG-CODE.md` | Identifier format, check character, issuer prefixes (§9) |
-| `REFUSAL-CODES.md` | The origin registry's reason codes, core codes marked |
+| `REFUSAL-CODES.md` | The first registry's reason codes, core codes marked |
 | `VERSIONS.md` | Every version, numbered as on Zenodo, and what changed |
 | `PRE-GEN-v5.pdf` | Version 5 as a paper (source: `paper/`) |
 | `CHANGELOG.md` | Protocol changes |
@@ -32,7 +32,7 @@ implementation that claims an extension. The text defines the requirements
 (written in BCP 14 language, `PRE-GEN-SPEC.md` §0); the vectors are its
 conformance test, and a disagreement between them is an erratum, never a
 rule (§0.3). References to paths such as `backend/app/...` name files in
-the origin registry's implementation (PRAMPTA) and are **informative**.
+the first registry's implementation (PRAMPTA) and are **informative**.
 
 What "conforms to PRE-GEN v5" means — the Verifier, Provider and Registry
 profiles, and which requirements the checks do not cover — is

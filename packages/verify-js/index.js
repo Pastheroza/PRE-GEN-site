@@ -7,13 +7,6 @@ export const STEWARD_PUBLIC_KEY_HEX = "5cb949aab04186e3e216ec541b847c912fc3f7813
  * it signs replaces every directory signed by the current steward key, whatever their sequence. */
 export const STEWARD_SUCCESSOR_PUBLIC_KEY_HEX = "658544163d6abd5fef046407980d249817875d87d8cf4b67879a2e265fa5612f"; // pg-ed25519:3e5e20729ce8485eea274c4cb33721d6, created 2026-10-03
 export const DIRECTORY_URL = "https://www.pregen.org/registries.json";
-/** The origin registry's (PRAMPTA's) operator keys, pinned here as well as in the
- * directory: a stolen steward key cannot add its own key to the bare namespace.
- * A new origin key needs a new release of this library (threat model T4). */
-export const ORIGIN_KEY_FINGERPRINTS = Object.freeze([
-  "pg-ed25519:1904514fd2ac442f0a5388d13cc313a0", // current
-  "pg-ed25519:58d4a309fff25a0f4763cffc5c92cb0e", // next, announced 2026-10-03, offline until rotation
-]);
 const SCHEMA = "pregen.registries.v2";
 const MAX_INT = 2 ** 53 - 1;
 const PREFIX = /^[ABCDEFGHJKMNPQRSTVWXYZ]{4}$/;
@@ -164,15 +157,15 @@ function checkInvariants(d) {
 /** A directory accepted under V-12. Build one with verifyDirectory() or loadDirectory(). */
 export class Directory {
   #d;
-  #originPin;
-  constructor(token, directory, originPin, loadedAt) {
+  #pins;
+  constructor(token, directory, pins, loadedAt) {
     if (token !== Directory.#token) fail("use verifyDirectory() or loadDirectory()");
     this.#d = structuredClone(directory);
-    this.#originPin = originPin;
+    this.#pins = pins; // the caller's own pins, prefix -> fingerprints; no registry is pinned by default
     this.loadedAt = loadedAt; // Unix seconds when it was accepted; checkAnswer wants it under a day old
   }
   static #token = Symbol();
-  static _make(directory, originPin, loadedAt) { return new Directory(Directory.#token, directory, originPin, loadedAt); }
+  static _make(directory, pins, loadedAt) { return new Directory(Directory.#token, directory, pins, loadedAt); }
 
   /** Store this and pass it as minSequence next time, so an older copy is refused. */
   get sequence() { return this.#d.sequence; }
@@ -197,7 +190,8 @@ export class Directory {
     if (!r) return "unknown_issuer";
     if (r.revoked || (this.#d.revoked_keys || []).some((k) => k.key_id === signerKeyId)) return "revoked";
     if (!r.key_fingerprints.includes(signerKeyId)) return "issuer_mismatch";
-    if (r.prefix === "" && this.#originPin && !this.#originPin.includes(signerKeyId)) return "issuer_mismatch";
+    const pin = this.#pins[r.prefix];
+    if (pin && !pin.includes(signerKeyId)) return "issuer_mismatch";
     return "valid";
   }
 
@@ -256,9 +250,9 @@ function keepsHistory(next, previous, annulled = []) {
 
 /** V-12: accept the directory only with the pinned steward's signature, its invariants,
  * a sequence no lower than one already seen and, given the last accepted directory,
- * nothing removed from it. With the built-in steward key the origin keys are pinned too. */
+ * nothing removed from it. No registry is pinned unless you pass pinnedKeys. */
 export async function verifyDirectory(directory, { stewardPublicKeyHex = STEWARD_PUBLIC_KEY_HEX, successorPublicKeyHex,
-  minSequence = 0, previous, originKeyFingerprints, now = Math.floor(Date.now() / 1000) } = {}) {
+  minSequence = 0, previous, pinnedKeys, originKeyFingerprints, now = Math.floor(Date.now() / 1000) } = {}) {
   if (!Number.isSafeInteger(minSequence) || minSequence < 0) fail("minSequence must be a nonnegative integer");
   checkInvariants(directory);
   const successor = successorPublicKeyHex !== undefined ? successorPublicKeyHex
@@ -283,9 +277,9 @@ export async function verifyDirectory(directory, { stewardPublicKeyHex = STEWARD
     // revocations the old key signed after it was compromised, named in `annulled`.
     keepsHistory(directory, prev, annulments(directory));
   }
-  const pin = originKeyFingerprints !== undefined ? originKeyFingerprints
-    : stewardPublicKeyHex === STEWARD_PUBLIC_KEY_HEX ? ORIGIN_KEY_FINGERPRINTS : null;
-  return Directory._make(directory, pin && [...pin], now);
+  const pins = Object.fromEntries(Object.entries(pinnedKeys || {}).map(([k, v]) => [k, [...v]]));
+  if (originKeyFingerprints && !("" in pins)) pins[""] = [...originKeyFingerprints]; // deprecated alias: a pin for the bare namespace
+  return Directory._make(directory, pins, now);
 }
 
 /** Download and verify the directory from pregen.org. Pass the last accepted one as `previous`. */
@@ -575,7 +569,7 @@ export async function createSimulator({ baseUrl = "https://simulator.pregen.inva
     registries: [{ name: "PRE-GEN simulator (not a registry)", prefix: "", api: baseUrl, keys: baseUrl + "/keys",
       key_fingerprints: [operator.id] }] };
   const directory = await verifyDirectory({ ...dirBody, signature: await steward.sign(dirBody) },
-    { stewardPublicKeyHex: steward.pub, successorPublicKeyHex: null, originKeyFingerprints: [operator.id] });
+    { stewardPublicKeyHex: steward.pub, successorPublicKeyHex: null, pinnedKeys: { "": [operator.id] } });
   const answers = { "sbx-allowed": ["allow", null], "sbx-revoked": ["deny", "PG_NO_LICENSE"], "sbx-expired": ["deny", "PG_NO_LICENSE"],
     "sbx-exhausted": ["deny", "PG_USAGE_LIMIT"], "sbx-optedout": ["deny", "PG_SUBJECT_OPTED_OUT"] };
   // What PRAMPTA's /v1 does with receipts (R-10), so a provider's tests meet the same rules: a receipt

@@ -223,7 +223,7 @@ table.split tr { break-inside: avoid; }
 <tr><td>Answer replayed for another request or job</td><td>Bound to the request id; lifetime ≤ 900 s; one answer per job and subject</td><td>None</td></tr>
 <tr><td>Stale directory hiding a revocation</td><td>Sequence never decreases; a copy is used for at most 24 hours; load from pregen.org</td><td>A stale copy served as current, until a current one is fetched</td></tr>
 <tr><td>Stolen registry key</td><td>Single-key revocation in the directory</td><td>Until the revocation is published</td></tr>
-<tr><td>Stolen steward key</td><td>Successor key; pinned keys of the first registry in the libraries</td><td>Until the handover</td></tr>
+<tr><td>Stolen steward key</td><td>Successor key; a verifier may pin any registry's keys itself</td><td>Until the handover</td></tr>
 <tr><td>Listed registry claiming a person it cannot prove</td><td>Confirmed claims silence it; unproven conflicts freeze; complaints, false claims, revocation</td><td>A public person who never confirmed anything (§13)</td></tr>
 <tr><td>Registry granting intimate content for someone else</td><td>Personal-signature rule (§9)</td><td>A person whose own key is stolen</td></tr>
 <tr><td>Proof copied to another file or altered</td><td>Output hash, soft binding, acknowledgement over the report</td><td>Soft binding quality is outside PRE-GEN</td></tr>

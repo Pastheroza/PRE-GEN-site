@@ -86,11 +86,11 @@ def test_canonical_json_refuses_unportable_values():
 
 
 
-def test_stolen_steward_key_cannot_add_a_key_to_the_pinned_origin():
+def test_stolen_steward_key_cannot_add_a_key_to_a_pinned_namespace():
     thief = Key()
     d = directory(3, [{"name": "Origin", "prefix": "", "api": "https://origin.test",
                        "keys": "https://origin.test/keys", "key_fingerprints": [origin.id, thief.id]}])
-    pinned = verify_directory(d, steward.pub, origin_key_fingerprints=[origin.id])
+    pinned = verify_directory(d, steward.pub, pinned_keys={"": [origin.id]})
     assert pinned.check_signer("PG-000042*", thief.id) == "issuer_mismatch"
     assert pinned.check_signer("PG-000042*", origin.id) == "valid"
 
@@ -261,3 +261,15 @@ def test_simulator_runs_the_whole_pipeline_offline_and_is_never_trusted_for_real
                            sim.directory, sim.get_json)
     with pytest.raises(PregenError, match="different steward"):
         verify_directory(sim.directory.to_json())
+
+
+def test_no_registry_is_pinned_by_default_and_any_prefix_can_be_pinned():
+    thief = Key()
+    d = directory(3, [{"name": "Origin", "prefix": "", "api": "https://origin.test", "keys": "https://origin.test/keys",
+                       "key_fingerprints": [origin.id]},
+                      {"name": "Other", "prefix": "NWRD", "api": "https://other.test", "keys": "https://other.test/keys",
+                       "key_fingerprints": [other.id, thief.id]}])
+    assert verify_directory(d, steward.pub).check_signer("PG-NWRD-000042-K", thief.id) == "valid"   # no built-in pins
+    pinned = verify_directory(d, steward.pub, pinned_keys={"NWRD": [other.id]})
+    assert pinned.check_signer("PG-NWRD-000042-K", thief.id) == "issuer_mismatch"
+    assert pinned.check_signer("PG-NWRD-000042-K", other.id) == "valid"

@@ -2,15 +2,15 @@
 <!--   backend/.venv/bin/python spec/generate_refusal_table.py -->
 <!-- Source of truth: backend/app/core/policy_registry.py -->
 
-# PRE-GEN refusal codes — origin registry
+# PRE-GEN refusal codes — the core set, and PRAMPTA's own
 
-Every `PG_*` code the origin registry (PRAMPTA) can return as a decision's
+Every `PG_*` code the first registry (PRAMPTA) can return as a decision's
 `reason`, generated from its live policy registry so this table cannot
 drift from what the server actually does. **Do not hand-edit** — see
 `spec/generate_refusal_table.py`.
 
 Rows marked **core** are the core codes of `PRE-GEN-SPEC.md` §3, which
-every registry uses with this meaning. The others are the origin
+every registry uses with this meaning. The others are the first
 registry's own codes (an extension, `PRE-GEN-SPEC.md` E-4).
 
 Current policy version: `2026-09-22`. `policy_version` on a signed

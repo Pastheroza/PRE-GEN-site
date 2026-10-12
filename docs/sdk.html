@@ -29,7 +29,7 @@
 </div></header>
 <main><div class="wrap">
 <div class="doc"><aside><ul><li><a href="/docs">Overview</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versioning</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk" aria-current="page">Integrate</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Implement</a></li></ul></aside><article><h1>Integrate</h1>
-<p class="meta">HTTP · v5: <span class="mono">POST /v2/requests</span> and <span class="mono">checkAnswer</span> in <span class="mono">@pregen/verify</span> / <span class="mono">check_answer</span> in <span class="mono">pregen</span> 0.9.1 · earlier interface: <span class="mono">/v1/verify</span> and the reference TypeScript SDK <span class="mono">@prampta/sdk</span></p>
+<p class="meta">HTTP · v5: <span class="mono">POST /v2/requests</span> and <span class="mono">checkAnswer</span> in <span class="mono">@pregen/verify</span> / <span class="mono">check_answer</span> in <span class="mono">pregen</span> 0.10.0 · earlier interface: <span class="mono">/v1/verify</span> and the reference TypeScript SDK <span class="mono">@prampta/sdk</span></p>
 <p>A provider needs credentials from a <a href="/registries">registry</a>. The first registry, PRAMPTA, issues a sandbox key after a verified company email and a production key after a DNS record on the company domain. The sandbox reaches synthetic test subjects only.</p>
 <h2>Version 5: ask, check, generate</h2>
 <pre><code>POST {api}/v2/requests
@@ -50,7 +50,7 @@ await checkAnswer(answer, request, { directory });              // throws with t
 directory = pregen.load_directory(previous=saved)
 pregen.check_answer(answer, request, directory)                 # raises with the reason, or you may generate</code></pre>
 <p>Generate only when every subject of the job has a valid <code>allow</code>, and keep the answers with the output. The prompt and the output never leave your servers. Test against the open reference registry's sandbox (<a href="/docs/implement">Implement</a>) before asking a registry for production credentials.</p>
-<p>Install: <code>npm install @pregen/verify</code> (0.9.1) · <code>pip install "pregen>=0.9.1"</code> — if PyPI does not show 0.9.1 yet, install from the repository: <code>pip install "git+https://github.com/Pastheroza/PRE-GEN-site#subdirectory=packages/verify-py"</code>.</p>
+<p>Install: <code>npm install @pregen/verify</code> (0.10.0) · <code>pip install "pregen>=0.10.0"</code> — if PyPI does not show 0.10.0 yet, install from the repository: <code>pip install "git+https://github.com/Pastheroza/PRE-GEN-site#subdirectory=packages/verify-py"</code>.</p>
 
 <h2 id="legacy">Earlier interface (legacy)</h2>
 <p class="note">Everything below describes the earlier interface, <code>/v1/verify</code>, which the first registry serves today and which stays valid for everything issued under it. New integrations use version 5 above.</p>
@@ -106,7 +106,7 @@ await checkDecision(decision, request, { directory });         // throws with th
 directory = pregen.load_directory(previous=saved)
 saved = directory.to_json()
 pregen.check_decision(decision, request, directory)           # raises with the reason</code></pre>
-<p><code>checkDecision</code> runs every check of <a href="/spec/PRE-GEN-SPEC.md">PRE-GEN-SPEC.md</a> §5.4 before you generate: a license-backed <code>allow</code>, every echoed field equal to what you sent, a valid lifetime, a verified user binding when you named a user, and the signature chain. It refuses an older or shrunk directory, and the origin registry's keys are pinned in the library. Source and tests: <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/packages">packages/</a>, Apache-2.0.</p>
+<p><code>checkDecision</code> runs every check of <a href="/spec/PRE-GEN-SPEC.md">PRE-GEN-SPEC.md</a> §5.4 before you generate: a license-backed <code>allow</code>, every echoed field equal to what you sent, a valid lifetime, a verified user binding when you named a user, and the signature chain. It refuses an older or shrunk directory, and no registry's keys are pinned by default — you may pin any registry yourself (<code>pinnedKeys</code>). Source and tests: <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/packages">packages/</a>, Apache-2.0.</p>
 
 <h3>Test without a secret (legacy)</h3>
 <p>The verification libraries include an offline <strong>simulator</strong>: a stand-in registry with throwaway keys that answers the sandbox subjects below and handles receipts by PRAMPTA's rules (0.8.0): a receipt needs an allow issued to you for the same prompt, the identical receipt again returns the first answer, a different one is a conflict, and <code>receipt_hash</code> binds each answer to the bytes you sent. Your CI and coding agents can run the whole pipeline — ask, <code>checkDecision</code>, generate, receipt — without a provider secret. Nothing the simulator signs is ever accepted by the real directory.</p>

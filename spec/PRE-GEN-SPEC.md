@@ -29,7 +29,7 @@ publication completely enough that a registry, a provider, or an independent
 verifier can be built **without reading any registry's source code**.
 
 What a registry adds — its own fields, refusal codes, stricter rules and
-services — is an **extension** (§0.5). Extensions used by the origin
+services — is an **extension** (§0.5). Extensions used by the first
 registry are in [`PRE-GEN-EXTENSIONS.md`](PRE-GEN-EXTENSIONS.md). How a
 registry registers subjects, issues licenses, accepts opt-outs and connects
 end users is registry policy, outside the core (§5.1, §8.2).
@@ -86,13 +86,13 @@ with the check that covers each one.
 PRE-GEN v5 consists of four normative parts: this document (the core);
 `PG-CODE.md` (identifiers); `test-vectors/vectors.json` (byte-level
 examples); and, for an implementation that claims an extension,
-`PRE-GEN-EXTENSIONS.md` and the origin registry's code table
+`PRE-GEN-EXTENSIONS.md` and the first registry's code table
 `REFUSAL-CODES.md`. The paper
 `PRE-GEN-v5.pdf` explains the design and is informative.
 
 Also informative, wherever they appear: rationale, examples, and every
 paragraph or pointer marked **Reference implementation** — these name files
-in PRAMPTA, the origin registry, so an implementer can compare notes. No
+in PRAMPTA, the first registry, so an implementer can compare notes. No
 requirement depends on them, and an implementation needs none of them.
 
 ### 0.3 When the text and a vector disagree
@@ -123,8 +123,10 @@ evidence of what the text means, not a source of meaning.
   signed decisions, and keeps the audit log.
 - **Registry operator** (**operator**) — the organization that runs a
   registry, and its signing identity: the operator key set (§2.3).
-- **Origin registry** — the directory's origin entry, which issues bare PG
-  codes (`PG-CODE.md` §9). Today: PRAMPTA.
+- **First registry** — PRAMPTA, the first registry listed. It holds the bare
+  PG codes issued before v5, a closed legacy namespace (`PG-CODE.md` §9),
+  and issues new codes under `PRAM` like every registry. It has no right
+  the other registries lack.
 - **Steward** — the holder of the key that signs the registry directory
   (`PG-CODE.md` §9.1) and so decides which registries are listed.
 - **Provider** — an AI service that asks a registry before generating and
@@ -155,10 +157,11 @@ their own rules and their services, not in the core.
   safely. A verifier that does not understand every listed member MUST
   treat the decision as unusable for generation. An obligation (P-8) a
   provider cannot apply has the same effect.
-- **E-4 Own refusal codes.** A registry that is not the origin registry
-  names its own codes `PG_<ISSUER>_<NAME>`, with its issuer prefix
-  (`PG-CODE.md` §9). The origin registry's codes are listed in
-  `REFUSAL-CODES.md`. A code a provider does not know is hard (P-6).
+- **E-4 Own refusal codes.** A registry names its own codes
+  `PG_<ISSUER>_<NAME>`, with its issuer prefix (`PG-CODE.md` §9). Codes the
+  first registry defined without a prefix before v5 keep their meaning and
+  are listed in `REFUSAL-CODES.md`; new ones carry its prefix like any
+  registry's. A code a provider does not know is hard (P-6).
 - **E-5 Published policy.** A registry SHOULD publish, at a stable URL in
   its documentation: its own floors and refusal codes, the extensions it
   implements, the lifetime of its decisions, its opt-out waiting period,
@@ -202,7 +205,7 @@ verifier MUST NOT drop unrecognized members before checking the signature
 *Reference implementation:* `backend/app/api/verify.py` (`SignedDecision`,
 `_build_signed_decision`).
 
-**Core members.** A registry MAY add others (E-2); the origin registry's
+**Core members.** A registry MAY add others (E-2); the first registry's
 are in `PRE-GEN-EXTENSIONS.md` X.2.
 
 | Field | Type | Notes |
@@ -278,7 +281,7 @@ registry's licence fields:
 **Core body members.** Every body carries `v` (the licence marker,
 `pg.license.v2` today), `subject_id`, `licensee_id`, `contract_start`,
 `expires_at` and `scope`. Everything else in the body — classes, territories,
-channels, usage limits, prices — is the registry's (E-2); the origin
+channels, usage limits, prices — is the registry's (E-2); the first
 registry's body is described in `PRE-GEN-EXTENSIONS.md` X.5, including the
 licences minted before markers existed, which carry no `v` and stay valid.
 A verifier MUST refuse (`PG_INVALID_SIGNATURE`) a licence whose marker it
@@ -507,7 +510,7 @@ meaning. **Hard** means no retry, reshaped request or licence fixes it;
 | `PG_HELD_FOR_REVIEW` | soft | held for a human; disposition `review` |
 
 A registry MAY refuse for other reasons with its own codes (E-4). The
-origin registry's full table, generated from its policy registry, is
+first registry's full table, generated from its policy registry, is
 [`REFUSAL-CODES.md`](REFUSAL-CODES.md); its core rows match this table.
 A provider MUST treat a code it does not know as hard (P-6): failing closed
 is the safer wrong answer.
@@ -639,7 +642,7 @@ requirement. *Reference implementation:* `docs/licensing-integration.md`.
 | `generation_id` | string | the provider's own id for this attempt; echoed. The same id across the decisions for one output (P-9) |
 | `license_id` | string | optional hint; narrows candidate licenses, never widens them |
 
-A registry MAY accept further members (E-2); the origin registry's are in
+A registry MAY accept further members (E-2); the first registry's are in
 `PRE-GEN-EXTENSIONS.md` X.2.
 
 The response is always HTTP 200 with a signed decision (§1.1), whether the
@@ -665,7 +668,7 @@ be processed (malformed body, rate limit).
   which is not revoked, and whose scope covers the request, applies to the
   licensee; or (b) the registry's published policy grants the use without a
   license, and the decision says so by its reason code
-  (the origin registry's example: `PG_ORG_INTERNAL_USE`, extension X.2).
+  (the first registry's example: `PG_ORG_INTERNAL_USE`, extension X.2).
   An allow MUST carry `allowed: true` and
   `disposition: "allow"`.
 - **R-6** `not_blocked` MAY be answered only when no license applies,
@@ -718,7 +721,7 @@ and human review (`PG_HELD_FOR_REVIEW`, disposition `review`).
 - **P-6** A reason code the provider does not know (§3, E-4) MUST be
   treated as hard.
 - **P-7** A decision authorizes the one generation it answers. It MAY be
-  reused only as the registry's extension permits (origin: X.3), and never
+  reused only as the registry's extension permits (first registry: X.3), and never
   after `expires_at`.
 - **P-8** Obligations returned in `obligations` (watermark, disclosure, …)
   MUST be applied to an output generated under an allow, and reported in the
@@ -770,7 +773,7 @@ the output; REQUIRED), `model`, `obligations_applied` (object),
 `event_type` (v3), and `provider_signature` (hex).
 
 - **R-10** A registry MUST accept at most one receipt per decision: the
-  identical receipt sent again MUST get the original answer (the origin
+  identical receipt sent again MUST get the original answer (the first
   registry: `already_recorded`), and a different one MUST be refused (HTTP 409),
   so that "a receipt exists" never reads as "mine was accepted"; it MUST refuse a receipt whose decision was not an allow issued
   to the same provider and licensee (HTTP 400 / 403), and MUST refuse a
@@ -790,16 +793,15 @@ An extension (`PRE-GEN-EXTENSIONS.md` X.8).
 ### 5.7 Registry publication
 
 - **R-12** A registry MUST publish its key set (§2.3); MUST publish each
-  subject's custody mode where it offers `managed` custody (§1.2); and, if
-  it is not the origin registry, MUST issue codes with its assigned issuer
-  prefix (`PG-CODE.md` §9).
+  subject's custody mode where it offers `managed` custody (§1.2); and MUST
+  issue new codes with its assigned issuer prefix (`PG-CODE.md` §9).
 - **R-13** A registry that receives a code with an issuer prefix it does not
   hold MUST answer that the code belongs to another registry, not that it
   was not found (`PG-CODE.md` §9).
 - **R-14** A registry MUST issue PG codes only in the namespace the registry
   directory assigns to it, and MUST NOT issue codes before it is listed.
-  Only the directory's origin entry may hold bare codes, and from v5 it
-  issues no new ones (`PG-CODE.md` §9 rule 3). Every key it signs
+  Bare codes are a closed legacy namespace held by the registry that issued
+  them before v5; nobody issues new ones (`PG-CODE.md` §9 rule 3). Every key it signs
   with MUST be listed in its entry's `key_fingerprints` before first use.
 - **R-15** A registry that receives a claim, with evidence, that another
   listed registry holds the same person, brand or work SHOULD examine it with
@@ -914,8 +916,8 @@ An implementation claims conformance to one or more profiles of
   receipts (§5.5) exactly; the core refusal codes (§3).
 
 **Extensions** (`PRE-GEN-EXTENSIONS.md`) are claimed by name on top of a
-profile: the origin decision members and request members (X.2), decision
-reuse (X.3, with R-9 and the origin P-7), end-user binding (X.4, with V-13),
+profile: the first registry's decision members and request members (X.2), decision
+reuse (X.3, with R-9 and the first registry's P-7), end-user binding (X.4, with V-13),
 evidence bundles (X.6), C2PA assertions (X.7), observations (X.8),
 lifecycle events (X.9), `pg.receipt.v3`. An implementation that offers an
 extension MUST implement it as specified.
@@ -953,7 +955,7 @@ runner, and the Level 2 HTTP scenarios (`conformance/`). Everything marked
 | §8.1 no skipped required operation | Runner `--require-op`; unsupported required operations fail, optional skips are counted separately |
 | Extensions X.6 to X.9, `pg.receipt.v3` | **not checked** |
 
-Level 2 sets up its subjects, licenses and connections through the origin
+Level 2 sets up its subjects, licenses and connections through the first
 registry's own management endpoints, which v5 does not standardize. Against
 another registry the setup steps have to be adapted; the checked requests
 and answers are the standard's.
@@ -973,7 +975,7 @@ four implementations in this repository.
 
 ## 9. Reference implementation status (informative)
 
-What the origin registry, PRAMPTA, offers today — so that nothing in this
+What the first registry, PRAMPTA, offers today — so that nothing in this
 document is read as a claim about it. PRAMPTA implements the core and every
 extension in `PRE-GEN-EXTENSIONS.md`; its policy (E-5) is summarised in X.1.
 
@@ -982,8 +984,8 @@ extension in `PRE-GEN-EXTENSIONS.md`; its policy (E-5) is summarised in X.1.
   retired, and licenses signed under `self` custody earlier still verify.
 - **C2PA.** PRAMPTA issues `pg.assertion.v1` (extension X.7). No end-to-end
   integration with a C2PA manifest has been tested.
-- **Namespace.** PRAMPTA is the directory's origin entry and issues bare
-  codes. The steward key is published (`PG-CODE.md` §9.1, 2026-10-03) and
+- **Namespace.** PRAMPTA holds the legacy bare codes it issued before v5
+  and moves to the prefix `PRAM` for new codes once the directory lists it. The steward key is published (`PG-CODE.md` §9.1, 2026-10-03) and
   the directory on pregen.org is signed; at the time of writing it is at
   `sequence` 2, which adds the next PRAMPTA operator key and the successor
   steward key. The verification libraries `@pregen/verify` (npm) and

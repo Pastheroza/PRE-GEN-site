@@ -201,7 +201,7 @@ check = CHECK_ALPHABET[ sum mod 37 ]</code></pre>
     </p>
 
     <h2>8 · Issuers: more than one registry</h2>
-    <p>Any company may run a PRE-GEN registry. So that two registries never issue the same code, every registry other than the origin one puts its <strong>issuer prefix</strong> in every code it issues.</p>
+    <p>Any company may run a PRE-GEN registry. So that two registries never issue the same code, every registry — the first one included — puts its <strong>issuer prefix</strong> in every code it issues.</p>
     <div class="table"><table>
       <thead><tr><th>Shape</th><th>Example</th><th>Meaning</th></tr></thead>
       <tbody>
@@ -212,14 +212,14 @@ check = CHECK_ALPHABET[ sum mod 37 ]</code></pre>
     <ol>
       <li><strong>Exactly four letters</strong> from the PG alphabet, <code>ABCDEFGHJKMNPQRSTVWXYZ</code> — no digits, no I, L, O, U. Four, never three, so a prefix can't be mistaken for a licence class or a legacy <code>PG-STD-</code> code. 234 256 possible prefixes.</li>
       <li><strong>The prefix is checked.</strong> The check character covers <code>ISSUER + serial</code> (subject) or <code>ISSUER + CLASS + serial + tail</code> (licence), so a mistyped prefix is reported as mistyped.</li>
-      <li><strong>Bare codes mean the origin registry, forever — and no new ones are issued.</strong> Every code issued without a prefix keeps its meaning. From version 5 every registry, the origin registry included, issues new codes under its own four-letter prefix.</li>
+      <li><strong>Every registry has a prefix, the first one included.</strong> PRAMPTA, the first registry, issues new codes under <span class="mono">PRAM</span>. Bare codes issued before version 5 are a closed legacy namespace: they keep their meaning forever, nobody issues new ones, and holding them gives no special right.</li>
       <li><strong>Prefixes are assigned in public</strong>, through the <a href="/registries">registry list</a>, and never reassigned.</li>
       <li><strong>The issuer is the one thing software may read from a code</strong> — to know which registry to ask. Everything else is resolved, never parsed.</li>
     </ol>
     <p>A registry that receives a code with a prefix it doesn't hold answers that the code belongs to another registry, not "not found". Longer serials stay free as well: the pad width is a minimum.</p>
 
     <h3>The signed registry directory</h3>
-    <p>A prefix by itself protects nothing: anyone can print one. What decides which codes software <strong>accepts</strong> is the directory at <a href="/registries.json">registries.json</a>, signed by the PRE-GEN steward key (<a href="/spec/PG-CODE.md">PG-CODE.md</a> §9.1). It lists each registry with its namespace (bare for the origin registry, four letters for every other), its API and key-set addresses (HTTPS only) and the fingerprints of every operator key it may sign with. A code is valid only when a key listed for its namespace signed it — the same rule for every registry, the origin one included.</p>
+    <p>A prefix by itself protects nothing: anyone can print one. What decides which codes software <strong>accepts</strong> is the directory at <a href="/registries.json">registries.json</a>, signed by the PRE-GEN steward key (<a href="/spec/PG-CODE.md">PG-CODE.md</a> §9.1). It lists each registry with its namespace (four letters for every registry; bare only for the legacy codes issued before v5), its API and key-set addresses (HTTPS only) and the fingerprints of every operator key it may sign with. A code is valid only when a key listed for its namespace signed it — the same rule for every registry, the origin one included.</p>
     <ul>
       <li>A client checks the signature with a steward key it already holds, never with a key taken from the directory, and refuses a directory older than one it has seen, one that removes a registry or key or undoes a revocation, or a different one with the same <code>sequence</code>.</li>
       <li>A registry announces its next operator key in the directory before using it, so a planned rotation changes nothing for clients.</li>
