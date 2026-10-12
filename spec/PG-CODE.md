@@ -277,9 +277,12 @@ Rules:
    computed over `ISSUER + serial` for a subject and
    `ISSUER + CLASS + serial + tail` for a licence, so a mistyped prefix is
    reported as mistyped (§7), like any other typo.
-3. **Bare codes mean the origin registry, forever.** `PG-000042*` and every
-   code issued before this section existed keep their meaning. The origin
-   registry (PRAMPTA, the first registry) never uses a prefix.
+3. **Bare codes mean the origin registry, forever — and no new ones are
+   issued.** `PG-000042*` and every bare code issued before PRE-GEN v5 keep
+   their meaning, and the origin registry (PRAMPTA, the first registry)
+   keeps the bare namespace for them. From v5 on, every registry, the origin
+   registry included, issues new codes only under a four-letter prefix of
+   its own, so no registry holds a namespace the others cannot.
 4. **Prefixes are assigned publicly.** A registry asks for one through the
    public registry list at `https://www.pregen.org/registries`; the signed
    registry directory (§9.1) is the only record of who holds which prefix
@@ -336,7 +339,7 @@ A verifier accepts the directory only if (`PRE-GEN-SPEC.md` V-12):
 1. the signature verifies with the **published** steward public key below —
    never with a key taken from the directory itself or from the connection
    that served it;
-2. exactly one entry has `prefix: ""`, no prefix appears twice, and every
+2. at most one entry has `prefix: ""`, no prefix appears twice, and every
    entry lists at least one key fingerprint;
 3. its `sequence` is not lower than the highest one the verifier has already
    accepted, so an old copy cannot be replayed to undo a listing.

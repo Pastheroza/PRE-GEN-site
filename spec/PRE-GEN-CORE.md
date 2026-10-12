@@ -23,16 +23,30 @@ Everything else in PRE-GEN is an optional extension that builds on this.
 ## The core, in five rules
 
 **1. A code names the subject and its registry.**
-A subject has a PG code (`PG-CODE.md`): `PG-<prefix>-<number><check>`.
-- The four-letter prefix names the registry; a code with no prefix belongs to the origin
-  registry.
+A subject has a PG code (`PG-CODE.md`): `PG-<prefix>-<number><check>`, for example
+`PG-TEST-000001N`.
+- The four-letter prefix names the registry. Every registry has one, and every new code
+  carries it.
+- Codes without a prefix (`PG-000042*`) were issued before v5 by the first registry. They
+  keep their meaning forever; no registry issues new ones.
 - Software may read the prefix, and nothing else, from a code.
 
 **2. The directory says whom to trust.**
-The steward signs one directory (`PG-CODE.md` §9.1). It maps each prefix to a registry's
-address and signing keys. A verifier checks the directory with the published steward key.
-A verifier accepts a registry's signature only for the prefix the directory gives that
-registry.
+The steward signs one directory, `https://www.pregen.org/registries.json`. Each entry maps
+a prefix to a registry: `name`, `prefix`, `api`, `keys` (its key set URL) and
+`key_fingerprints`. A verifier:
+- accepts the directory only if its `signature` verifies with the **published steward
+  key** (below), never with a key from the directory itself, and its `sequence` is not lower
+  than one it already accepted;
+- accepts a registry's signature only for the **prefix** the directory gives that registry;
+- refuses a registry marked `revoked` and a key listed in `revoked_keys`;
+- takes the public key from the registry's key set (`GET {api}/keys`) and checks that it
+  hashes to a listed fingerprint.
+
+A registry not in the directory is not refused by anyone's opinion; it simply cannot sign
+anything a verifier accepts. Steward key: `pg-ed25519:dcdd244659e6d0e2426f2b504cb11590`,
+public key `5cb949aab04186e3e216ec541b847c912fc3f78138c0ec3cb2560b2dad0d1f1b`, also in DNS
+at `_pregen-steward.pregen.org`. Admission, revocation and key handover: `PG-CODE.md` §9.1.
 
 **3. Ask.**
 The provider sends the registry one request about one subject.
@@ -89,7 +103,8 @@ without a valid `allow` is never presented as permitted.**
 - `issued_at` is not more than 60 seconds in the future;
 - it has not expired.
 
-A provider that does exactly this, and nothing more, implements PRE-GEN.
+A provider that does exactly this, and nothing more, implements PRE-GEN. The libraries do
+rules 2 and 5 in one call: `checkAnswer` in `@pregen/verify`, `check_answer` in `pregen`.
 
 ## Messages
 
@@ -97,10 +112,12 @@ Every message is `{type, body, signatures}`.
 
 | Element | Rule |
 |---|---|
+| **Canonical JSON** | UTF-8; object members sorted by key in code point order; no whitespace; strings escape only `"`, `\`, `\b \t \n \f \r` and other code points below U+0020 (as `\u00xx`, lowercase); no Unicode normalization; numbers are integers within ±(2^53 − 1); times are Unix seconds |
 | **Signing input** | `"PREGEN-V5" || 0x00 || type || 0x00 || canonical(body)` |
-| **Signature** | Ed25519, hex. The body's `signers` list names each signer's `role` and `key_id`, in order |
+| **Signature** | Ed25519 (RFC 8032), lowercase hex. The body's `signers` list names each signer's `role` and `key_id`, in order; `signatures` follow the same order |
+| **Key id** | `pg-ed25519:` + the first 32 hex characters of SHA-256 of the raw 32-byte public key |
+| **Key set** | `GET {api}/keys` → `{"keys": [{"key_id", "public_key_hex", …}], …}`, current and retired keys |
 | **Message id** | SHA-256 hex of `"PREGEN-V5-ID" || 0x00 || type || 0x00 || canonical(body)`. Signatures are not part of it |
-| **Canonical JSON** | `PRE-GEN-SPEC.md` §2. Numbers are integers; times are Unix seconds |
 | **Unknown members** | Rejected, unless defined by the profile or by an extension the registry declares. `ext` holds registry extensions; `critical` lists those a receiver must understand |
 
 JSON Schemas: `schemas/`. Byte vectors: `test-vectors/messages.json`.
@@ -124,7 +141,7 @@ JSON Schemas: `schemas/`. Byte vectors: `test-vectors/messages.json`.
 
 ## What a registry publishes
 
-- **`GET {api}/keys`** — its signing keys (`PRE-GEN-SPEC.md` §2.3).
+- **`GET {api}/keys`** — its signing keys (Messages, Key set).
 - **`GET {api}/.well-known/pregen-registry.json`** — a document listing:
   - `prefix`, `name`;
   - `profiles` and `extensions`;
@@ -158,5 +175,8 @@ extension may turn a refusal the core or a profile requires into a permission.
 | [`sandbox`](extensions/sandbox.md) | Standard test subjects and a test directory |
 | [`lookup`](extensions/lookup.md) | Public lookup of a code |
 
-The earlier interface (`PRE-GEN-SPEC.md` §1, §5: `pg.decision.v1`, `/v1/verify`,
-receipts) stays valid. Everything issued under it keeps its meaning (`VERSIONS.md`).
+## The earlier interface
+
+New implementations use only this document. The earlier interface (`PRE-GEN-SPEC.md` §1,
+§5: `pg.decision.v1`, `/v1/verify`, receipts) is **legacy**: what was issued under it stays
+valid and verifiable forever (`VERSIONS.md`), and it gets no new features.

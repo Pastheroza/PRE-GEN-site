@@ -41,7 +41,7 @@ def main(argv=None):
         p = sub.add_parser(name)
         p.add_argument("--dir", required=True)
         if name == "init":
-            p.add_argument("--prefix", required=True, help="four letters from the PG alphabet, or '' for an origin registry")
+            p.add_argument("--prefix", required=True, help="four letters from the PG alphabet")
             p.add_argument("--name", required=True)
             p.add_argument("--api", required=True, help="the public URL of this registry")
             p.add_argument("--policy", default="")
@@ -73,9 +73,13 @@ def main(argv=None):
         cfg_path, key_path, db_path = _paths(a.dir)
         if cfg_path.exists():
             sys.exit(f"{a.dir} already holds a registry")
-        Path(a.dir).mkdir(parents=True, exist_ok=True)
         cfg = {"prefix": a.prefix, "name": a.name, "api": a.api, "policy": a.policy, "complaints": a.complaints,
                "sandbox": a.sandbox}
+        try:
+            Config(**cfg)
+        except ValueError as e:
+            sys.exit(str(e))
+        Path(a.dir).mkdir(parents=True, exist_ok=True)
         cfg_path.write_text(json.dumps(cfg, indent=2) + "\n")
         key = Key()
         key_path.write_text(key.private_hex + "\n")
@@ -83,7 +87,7 @@ def main(argv=None):
         reg = Registry(Config(**cfg), key, str(db_path))
         if a.sandbox:
             reg.seed_sandbox()
-        print(f"Registry created in {a.dir}.\n  prefix: {a.prefix or '(origin)'}\n  operator key id: {key.id}\n"
+        print(f"Registry created in {a.dir}.\n  prefix: {a.prefix}\n  operator key id: {key.id}\n"
               f"  public key: {key.public_hex}\nGive the key id and public key to the steward for the directory.\n"
               f"The private key is in {key_path} (mode 600): back it up offline.")
     elif a.cmd == "serve":

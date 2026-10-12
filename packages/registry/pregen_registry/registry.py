@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import secrets
 import sqlite3
 import threading
@@ -70,6 +71,10 @@ class Config:
     sandbox: bool = False
     profiles: list = field(default_factory=lambda: [PROFILE])
 
+    def __post_init__(self):
+        if not re.fullmatch(r"[ABCDEFGHJKMNPQRSTVWXYZ]{4}", self.prefix):
+            raise ValueError("a registry's prefix is four letters of the PG alphabet (new codes are never bare, PG-CODE.md §9)")
+
 
 class Registry:
     def __init__(self, config: Config, operator_key: Key, db_path: str = ":memory:", clock=lambda: int(time.time())):
@@ -77,7 +82,7 @@ class Registry:
         self.db = sqlite3.connect(db_path, check_same_thread=False, isolation_level=None)
         self.db.row_factory = sqlite3.Row
         self.db.executescript(SCHEMA)
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()  # one sqlite connection: every use of it holds this lock
         self.activated_at = int(self._meta("activated_at") or self._set_meta("activated_at", str(clock())))
 
     # ── storage helpers ──────────────────────────────────────────────────
@@ -91,6 +96,10 @@ class Registry:
             except BaseException:
                 self.db.execute("ROLLBACK")
                 raise
+
+    def _row(self, sql, args=()):
+        with self.lock:
+            return self.db.execute(sql, args).fetchone()
 
     def _meta(self, k):
         row = self.db.execute("SELECT v FROM meta WHERE k = ?", (k,)).fetchone()
@@ -155,7 +164,7 @@ class Registry:
     # ── authentication ───────────────────────────────────────────────────
     def authenticate(self, provider_id: str, authorization: str | None):
         token = (authorization or "").removeprefix("Bearer ").strip()
-        row = self.db.execute("SELECT token_hash FROM providers WHERE provider_id = ?", (provider_id or "",)).fetchone()
+        row = self._row("SELECT token_hash FROM providers WHERE provider_id = ?", (provider_id or "",))
         if not row or not token or not secrets.compare_digest(row["token_hash"], _hash_token(token)):
             raise ProtocolError("PG_NOT_AUTHENTICATED", "unknown provider or credential", status=401)
 
@@ -170,8 +179,8 @@ class Registry:
             raise ProtocolError("PG_PROFILE_UNSUPPORTED", f"this registry answers under {self.config.profiles}")
         self._check_use(body["use"])
         licensee = body.get("licensee_id", "")
-        if licensee and not self.config.sandbox and not self.db.execute(
-                "SELECT 1 FROM connections WHERE provider_id = ? AND licensee_id = ?", (provider_id, licensee)).fetchone():
+        if licensee and not self.config.sandbox and not self._row(
+                "SELECT 1 FROM connections WHERE provider_id = ? AND licensee_id = ?", (provider_id, licensee)):
             raise ProtocolError("PG_NOT_AUTHENTICATED", "this licensee is not connected to this provider", status=401)
         with self.tx() as db:
             ask = self._bind(db, body)
@@ -309,7 +318,8 @@ class Registry:
             return {"keyset": env}
 
     def get_keysets(self, provider_id: str) -> dict:
-        return {"provider_id": provider_id, "keysets": self._chain(self.db, provider_id)}
+        with self.lock:
+            return {"provider_id": provider_id, "keysets": self._chain(self.db, provider_id)}
 
     # ── extension reports (+ limits, observe) ────────────────────────────
     def report(self, provider_id: str, authorization: str | None, env) -> dict:
@@ -319,10 +329,11 @@ class Registry:
         body = env["body"]
         check_body("report", body)
         rid = message_id(env["type"], body)
-        stored = self.db.execute("SELECT ack FROM reports WHERE id = ? AND provider_id = ?", (rid, provider_id)).fetchone()
+        stored = self._row("SELECT ack FROM reports WHERE id = ? AND provider_id = ?", (rid, provider_id))
         if stored:                                         # identical report: the stored ack, before key status
             return {"ack": json.loads(stored["ack"])}
-        chain = self._chain(self.db, provider_id)
+        with self.lock:
+            chain = self._chain(self.db, provider_id)
         if not chain:
             raise ProtocolError("PG_NOT_AUTHENTICATED", "register a provider signing key first (POST /v2/keys)", status=401)
         current = self._current(chain[-1]["body"])
@@ -389,7 +400,7 @@ class Registry:
 
     # ── extensions grants, lookup; publication ──────────────────────────
     def grant(self, grant_id: str) -> dict:
-        row = self.db.execute("SELECT envelope FROM grants WHERE id = ?", (grant_id,)).fetchone()
+        row = self._row("SELECT envelope FROM grants WHERE id = ?", (grant_id,))
         if not row:
             raise ProtocolError("PG_NOT_FOUND", "no such grant", status=404)
         return {"grant": json.loads(row["envelope"])}
@@ -400,7 +411,7 @@ class Registry:
             raise ProtocolError("PG_MALFORMED", "not a PG subject code (or its check character is wrong)")
         if parsed[0] != self.config.prefix:
             return {"code": code, "registry": parsed[0], "status": "other_registry"}
-        s = self.db.execute("SELECT * FROM subjects WHERE code = ?", (code,)).fetchone()
+        s = self._row("SELECT * FROM subjects WHERE code = ?", (code,))
         if s is None or not s["published"]:
             return {"code": code, "registry": self.config.prefix, "status": "unknown"}
         return {"code": code, "registry": self.config.prefix, "status": "active", "name": s["name"], "level": s["level"],

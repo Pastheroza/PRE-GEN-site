@@ -50,6 +50,18 @@ A listing in the directory proves which registry may issue a code, not that
 it holds any right over a person or a work. A signed decision proves what the
 registry answered, not that the output was lawful.
 
+## PRE-GEN v5 answers (`PRE-GEN-CORE.md`)
+
+```python
+# request: the pg.request.v1 envelope you sent to POST /v2/requests; answer: the registry's reply
+pregen.check_answer(answer, request, directory)   # raises with the reason, or you may generate
+```
+
+`check_answer` does core rules 2 and 5: the answer is signed by a key the directory lists for
+the subject's prefix (registry and key not revoked), answers exactly this request under the
+same profile, is within its lifetime, is an `allow`, and is not a sandbox answer unless you
+pass `testing=True`.
+
 ## Test without a secret: the simulator
 
 ```python

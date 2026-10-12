@@ -145,7 +145,6 @@ function checkInvariants(d) {
       fail(`registry ${r.name}: key_fingerprints must list pg-ed25519 fingerprints`);
     }
   }
-  if (!seen.has("")) fail("no registry holds the bare namespace");
   // Revocation (PG-CODE.md §9.1): a revoked registry keeps its entry; a revoked key keeps its listing.
   for (const r of d.registries) {
     if (r.revoked !== undefined && !(r.revoked && typeof r.revoked === "object" && typeof r.revoked.at === "string")) {
@@ -358,6 +357,44 @@ export async function checkDecision(decision, request, { directory, fetch: fetch
 
   if (!(await verifyDecision(decision, decision.license_id, { directory, fetch: fetchFn }))) fail("bad signature");
   return decision;
+}
+
+/** A PRE-GEN v5 message id (PRE-GEN-CORE.md, Messages). Signatures are not part of it. */
+export async function messageId(type, body) {
+  return sha256Hex("PREGEN-V5-ID\0" + type + "\0" + canonicalJson(body));
+}
+
+/** PRE-GEN-CORE.md rule 5: may I generate on this answer? `request` is the pg.request.v1 envelope you
+ * sent. Checks that a key the directory lists for the subject's prefix signed it (and is not revoked),
+ * that it answers exactly this request under the same profile, that it is within its lifetime, that it
+ * is not a sandbox answer outside testing, and that it is an `allow`. Throws PregenError with the
+ * reason; returns the answer body when you may generate. Keep the answer with the output. */
+export async function checkAnswer(answer, request, { directory, fetch: fetchFn = globalThis.fetch,
+  now = Math.floor(Date.now() / 1000), testing = false } = {}) {
+  if (!answer || answer.type !== "pg.answer.v1" || !same(Object.keys(answer).sort(), ["body", "signatures", "type"])) {
+    fail("not a pg.answer.v1 envelope");
+  }
+  if (!request || request.type !== "pg.request.v1" || !request.body || typeof request.body !== "object") {
+    fail("request must be the pg.request.v1 envelope you sent");
+  }
+  const body = answer.body ?? {}, asked = request.body, signers = body.signers, sigs = answer.signatures;
+  if (!Array.isArray(signers) || signers.length !== 1 || signers[0]?.role !== "registry"
+      || !Array.isArray(sigs) || sigs.length !== 1) fail("an answer is signed by exactly one registry key");
+  directory ??= await loadDirectory({ fetch: fetchFn });
+  const key = await directory.publicKey(asked.subject_ref, signers[0].key_id, { fetch: fetchFn }); // rules 1-2
+  if (!(await verifyBytes(key, sigs[0], utf8.encode("PREGEN-V5\0pg.answer.v1\0" + canonicalJson(body))))) fail("bad signature");
+  if (body.request_id !== (await messageId("pg.request.v1", asked))) fail("the answer is for another request");
+  if (body.profile !== asked.profile) fail("the answer is under another profile");
+  const iat = body.issued_at, exp = body.expires_at;
+  if (!Number.isSafeInteger(iat) || !Number.isSafeInteger(exp) || exp - iat < 1 || exp - iat > MAX_DECISION_LIFETIME) {
+    fail(`an answer lives 1 to ${MAX_DECISION_LIFETIME} seconds`);
+  }
+  if (iat > now + 60) fail("issued in the future");
+  if (exp <= now) fail("answer expired");
+  if (body.ext?.sandbox && !testing) fail("a sandbox answer is accepted only when testing");
+  if (body.critical?.length) fail(`critical extensions this library does not understand: ${body.critical}`);
+  if (body.status !== "allow") fail(`not an allow: ${body.status} ${body.reason ?? ""}`.trim());
+  return body;
 }
 
 /** An offline sandbox registry for tests and CI: no network, no secret, its own throwaway keys.

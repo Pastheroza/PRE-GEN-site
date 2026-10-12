@@ -24,8 +24,11 @@ prefix, with fixed serials:
 - **Every sandbox answer carries `ext: {"sandbox": true}`.**
 - **Never accepted in production.** A client MUST NOT accept a sandbox answer unless it is
   explicitly configured for testing.
-- **Test directory.** Sandbox registries are listed in a test directory, signed by a test
-  steward key. Clients accept it only in testing mode.
+- **Test directory.** Sandbox registries are listed in a test directory: the same format as
+  the real one (core rule 2), at `https://test.pregen.org/registries.json`, signed by a
+  separate **test steward key** that never signs the real directory. It holds no bare
+  namespace. A client uses it only when configured for testing, so a sandbox registry can
+  never sign anything accepted in production.
 - **Credentials.** A sandbox MAY issue credentials without an account, because it holds no
   real people.
 

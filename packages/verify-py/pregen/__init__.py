@@ -13,11 +13,11 @@ from urllib.parse import urlsplit
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-__version__ = "0.8.0"
+__version__ = "0.9.0"
 __all__ = [
     "STEWARD_PUBLIC_KEY_HEX", "DIRECTORY_URL", "PregenError", "Directory", "canonical_json",
     "fingerprint", "verify_bytes", "verify_signed", "verify_license", "issuer_of",
-    "verify_directory", "load_directory", "verify_decision", "check_decision", "ORIGIN_KEY_FINGERPRINTS", "STEWARD_SUCCESSOR_PUBLIC_KEY_HEX", "Simulator",
+    "verify_directory", "load_directory", "verify_decision", "check_decision", "check_answer", "message_id", "ORIGIN_KEY_FINGERPRINTS", "STEWARD_SUCCESSOR_PUBLIC_KEY_HEX", "Simulator",
 ]
 
 STEWARD_PUBLIC_KEY_HEX = "5cb949aab04186e3e216ec541b847c912fc3f78138c0ec3cb2560b2dad0d1f1b"
@@ -167,8 +167,6 @@ def _check_invariants(d):
         fps = r.get("key_fingerprints")
         if not isinstance(fps, list) or not fps or not all(_FINGERPRINT.fullmatch(str(f)) for f in fps):
             raise PregenError(f"registry {r.get('name')!r}: key_fingerprints must list pg-ed25519 fingerprints")
-    if "" not in seen:
-        raise PregenError("no registry holds the bare namespace")
     # Revocation (PG-CODE.md §9.1): a revoked registry keeps its entry; a revoked key keeps its listing.
     for r in regs:
         rev = r.get("revoked")
@@ -438,6 +436,55 @@ def check_decision(decision: dict, request: dict, directory: Directory = None, g
     if not verify_decision(decision, decision["license_id"], directory, get_json):
         raise PregenError("bad signature")
     return decision
+
+
+def message_id(type_: str, body: dict) -> str:
+    """A PRE-GEN v5 message id (PRE-GEN-CORE.md, Messages). Signatures are not part of it."""
+    return hashlib.sha256(b"PREGEN-V5-ID\x00" + type_.encode() + b"\x00" + canonical_json(body)).hexdigest()
+
+
+def check_answer(answer: dict, request: dict, directory: Directory = None, get_json=_get_json, now=None,
+                 testing: bool = False) -> dict:
+    """PRE-GEN-CORE.md rule 5: may I generate on this answer? `request` is the pg.request.v1 envelope you
+    sent. Checks that a key the directory lists for the subject's prefix signed it (and is not revoked),
+    that it answers exactly this request under the same profile, that it is within its lifetime, that it
+    is not a sandbox answer outside testing, and that it is an `allow`. Raises PregenError with the
+    reason; returns the answer body when you may generate. Keep the answer with the output."""
+    import time
+    now = int(time.time()) if now is None else now
+    if not isinstance(answer, dict) or answer.get("type") != "pg.answer.v1" or set(answer) != {"type", "body", "signatures"}:
+        raise PregenError("not a pg.answer.v1 envelope")
+    if not isinstance(request, dict) or request.get("type") != "pg.request.v1" or not isinstance(request.get("body"), dict):
+        raise PregenError("request must be the pg.request.v1 envelope you sent")
+    body, asked = answer["body"], request["body"]
+    signers, sigs = body.get("signers") if isinstance(body, dict) else None, answer["signatures"]
+    if not isinstance(signers, list) or len(signers) != 1 or not isinstance(signers[0], dict) \
+            or signers[0].get("role") != "registry" or not isinstance(sigs, list) or len(sigs) != 1:
+        raise PregenError("an answer is signed by exactly one registry key")
+    directory = directory or load_directory(get_json=get_json)
+    code = asked.get("subject_ref")
+    key = directory.public_key(code, signers[0].get("key_id"), get_json=get_json)  # rules 1-2: whose prefix, which keys
+    if not verify_bytes(key, sigs[0], b"PREGEN-V5\x00pg.answer.v1\x00" + canonical_json(body)):
+        raise PregenError("bad signature")
+    if body.get("request_id") != message_id("pg.request.v1", asked):
+        raise PregenError("the answer is for another request")
+    if body.get("profile") != asked.get("profile"):
+        raise PregenError("the answer is under another profile")
+    iat, exp = body.get("issued_at"), body.get("expires_at")
+    if type(iat) is not int or type(exp) is not int or not 1 <= exp - iat <= _MAX_DECISION_LIFETIME:
+        raise PregenError(f"an answer lives 1 to {_MAX_DECISION_LIFETIME} seconds")
+    if iat > now + 60:
+        raise PregenError("issued in the future")
+    if exp <= now:
+        raise PregenError("answer expired")
+    ext = body.get("ext") or {}
+    if isinstance(ext, dict) and ext.get("sandbox") and not testing:
+        raise PregenError("a sandbox answer is accepted only when testing")
+    if body.get("critical"):
+        raise PregenError(f"critical extensions this library does not understand: {body['critical']}")
+    if body.get("status") != "allow":
+        raise PregenError(f"not an allow: {body.get('status')} {body.get('reason') or ''}".strip())
+    return body
 
 
 class Simulator:

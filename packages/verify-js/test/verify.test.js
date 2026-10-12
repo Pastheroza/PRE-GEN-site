@@ -251,3 +251,40 @@ test("simulator: the whole provider pipeline runs offline, and nothing it signs 
   }
   await assert.rejects(vd(sim.directory.toJSON()), /different steward/); // the real pin refuses it
 });
+
+test("checkAnswer trusts an answer only through the directory (PRE-GEN-CORE.md rules 2 and 5)", async () => {
+  const { checkAnswer, messageId } = await import("../index.js");
+  const v5key = async () => {
+    const k = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
+    const pub = hex(await crypto.subtle.exportKey("raw", k.publicKey));
+    const sign = async (s) => hex(await crypto.subtle.sign({ name: "Ed25519" }, k.privateKey, new TextEncoder().encode(s)));
+    return { pub, id: await fingerprint(pub), sign };
+  };
+  const real = await v5key(), fake = await v5key();
+  const dir = await verifyDirectory(await steward.sign({ schema: "pregen.registries.v2", sequence: 1, steward_key_id: steward.id,
+    registries: [{ name: "Test", prefix: "TEST", api: "https://test.example", keys: "https://test.example/keys",
+      key_fingerprints: [real.id] }] }, "signature"), { stewardPublicKeyHex: steward.pub }); // a test directory: no bare namespace
+  const fetch = keysFetch({ "https://test.example/keys": [{ key_id: real.id, public_key_hex: real.pub }] });
+  const ask = (code, job = "job-1") => ({ type: "pg.request.v1", signatures: [], body: { subject_ref: code, provider_id: "p",
+    profile: "likeness/1", use: { purpose: "research" }, job_id: job, job_hash: "a".repeat(64) } });
+  const answer = async (key, request, extra = {}) => {
+    const body = { signers: [{ role: "registry", key_id: key.id }], request_id: await messageId(request.type, request.body),
+      profile: "likeness/1", status: "allow", basis: { kind: "policy", rule: "r" }, issued_at: 1000, expires_at: 1300, ...extra };
+    if (body.status !== "allow") delete body.basis;
+    return { type: "pg.answer.v1", body, signatures: [await key.sign("PREGEN-V5\0pg.answer.v1\0" + canonicalJson(body))] };
+  };
+  const check = (a, r, o = {}) => checkAnswer(a, r, { directory: dir, fetch, now: 1010, ...o });
+  const req = ask("PG-TEST-000001N");
+
+  assert.equal((await check(await answer(real, req), req)).status, "allow");
+  const fakeReq = ask("PG-AFRK-000001X"); // a registry the steward never listed
+  await assert.rejects(check(await answer(fake, fakeReq), fakeReq), /unknown_issuer/);
+  await assert.rejects(check(await answer(fake, req), req), /issuer_mismatch/); // a copy with its own key
+  await assert.rejects(check(await answer(real, req), ask("PG-TEST-000001N", "job-2")), /another request/);
+  await assert.rejects(check(await answer(real, req), req, { now: 1300 }), /expired/);
+  const sandbox = await answer(real, req, { ext: { sandbox: true } });
+  await assert.rejects(check(sandbox, req), /sandbox/);
+  assert.equal((await check(sandbox, req, { testing: true })).status, "allow");
+  await assert.rejects(check(await answer(real, req, { status: "deny", reason: "PG_SUBJECT_OPTED_OUT" }), req),
+    /not an allow: deny PG_SUBJECT_OPTED_OUT/);
+});

@@ -50,5 +50,10 @@ export function verifyDecision(decision: Record<string, unknown>, code: string, 
  * reason; returns the decision when you may generate. `request`: the /v1/verify body plus provider_id and licensee_id. */
 export function checkDecision<T extends Record<string, unknown>>(decision: T, request: Record<string, unknown>,
   options?: { directory?: Directory; fetch?: Fetch; now?: number; requireVerifiedAuthority?: boolean }): Promise<T>;
+export function messageId(type: string, body: Record<string, unknown>): Promise<string>;
+/** PRE-GEN-CORE.md rule 5: may I generate on this answer? Checks it through the directory; throws PregenError
+ * with the reason; returns the answer body on a valid allow. `request`: the pg.request.v1 envelope you sent. */
+export function checkAnswer(answer: Record<string, unknown>, request: Record<string, unknown>,
+  options?: { directory?: Directory; fetch?: Fetch; now?: number; testing?: boolean }): Promise<Record<string, unknown>>;
 /** Offline sandbox registry for tests and CI. Never accepted by the real directory. */
 export function createSimulator(options?: { baseUrl?: string }): Promise<{ baseUrl: string; directory: Directory; operatorPublicKeyHex: string; fetch: Fetch & ((url: string, init?: { method?: string; headers?: Record<string, string>; body?: string }) => Promise<Response>) }>;
