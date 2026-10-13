@@ -307,11 +307,12 @@ A PG code is a string; nothing stops anyone from printing one. What the
 standard controls is which codes conforming software **accepts**:
 **one namespace, one registry, one set of keys.** The bare namespace (codes
 with no prefix, including the legacy `PG-STD-` and `PG-SUB-` shapes) belongs
-to the first registry; each prefix belongs to exactly one other registry.
-A code is valid only when a key of the registry that owns its namespace
-signed it. The rule is the same for every registry: it keeps other
-registries out of the bare namespace exactly as it keeps the first registry
-out of every prefix.
+to the first registry as a closed legacy namespace; each prefix belongs to
+exactly one registry. A code is valid only when a key of the registry that
+owns its namespace signed it. The rule is the same for every registry: it
+keeps every registry out of every namespace but its own. The first registry
+therefore has two entries — the bare namespace and `PRAM` — with the same
+keys.
 
 **The directory** is `https://www.pregen.org/registries.json`, a JSON object
 signed by the **steward key**:

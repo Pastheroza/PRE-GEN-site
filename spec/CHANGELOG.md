@@ -10,6 +10,9 @@ See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
 
 ## v5 — 2026-10-12
 
+- **One list of normative parts** (2026-10-12, external review). `PRE-GEN-SPEC.md` §0.2 no longer
+  calls itself the core: it lists the same normative parts as `README.md`, with `PRE-GEN-CORE.md` first,
+  and says the core governs the v5 interface where both describe it. Editorial; no rule changes.
 - **Core and extensions** (2026-10-12, founder: «все гениальное просто… ядро отличное даже идеальное для
   индустрии»). The message interface of v5 is now a one-page core plus optional extensions.
   - `PRE-GEN-CORE.md`: codes, directory, ask, signed answer, the generation rule.

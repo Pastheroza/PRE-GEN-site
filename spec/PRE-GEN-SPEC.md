@@ -83,12 +83,26 @@ with the check that covers each one.
 
 ### 0.2 What is normative
 
-PRE-GEN v5 consists of four normative parts: this document (the core);
-`PG-CODE.md` (identifiers); `test-vectors/vectors.json` (byte-level
-examples); and, for an implementation that claims an extension,
-`PRE-GEN-EXTENSIONS.md` and the first registry's code table
-`REFUSAL-CODES.md`. The paper
-`PRE-GEN-v5.pdf` explains the design and is informative.
+PRE-GEN v5 has one list of normative parts — the same one as
+[`README.md`](README.md):
+
+1. [`PRE-GEN-CORE.md`](PRE-GEN-CORE.md) — **the core**: the v5 message
+   interface every new implementation starts from;
+2. this document — what the core builds on (canonical bytes §2, keys §2.3,
+   refusal codes §3, conformance §8) and the **earlier interface**
+   (`pg.decision.v1`, `/v1/verify`, receipts), which is legacy;
+3. [`PG-CODE.md`](PG-CODE.md) — identifiers, prefixes and the registry
+   directory;
+4. the profile a party answers under (`profiles/`) and the extensions it
+   declares (`extensions/`);
+5. the test vectors (`test-vectors/vectors.json`, `test-vectors/messages.json`);
+6. for an implementation that claims an extension of the earlier interface,
+   `PRE-GEN-EXTENSIONS.md` and the first registry's code table
+   `REFUSAL-CODES.md`.
+
+Where this document and `PRE-GEN-CORE.md` describe the same thing for the
+v5 interface, the core governs. The paper `PRE-GEN-v5.pdf` explains the
+design and is informative.
 
 Also informative, wherever they appear: rationale, examples, and every
 paragraph or pointer marked **Reference implementation** — these name files

@@ -7,7 +7,7 @@ file is a reference implementation of it, with no dependency beyond the
 adapters.
 
 One namespace, one registry, one set of keys: the bare namespace belongs to
-the origin registry, each four-letter prefix to exactly one other registry,
+the origin registry (closed legacy), each four-letter prefix to exactly one registry,
 and a code is valid only when a key of the registry owning its namespace
 signed it. The same rule for every registry.
 """
