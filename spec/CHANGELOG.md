@@ -10,6 +10,13 @@ See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
 
 ## v5 — 2026-10-12
 
+- **Honest security wording** (2026-10-13, external review; editorial, no rule changes).
+  `extensions/identity.md` and the paper: a confirmation proves control of the channel, not a
+  right to license every use; an impostor cannot post there *without taking over the account*;
+  a confirmation lapses when the line is removed. Paper §10: "None" residual risks state their
+  condition (registry key not stolen; provider keeps its job rules), and a row for a hijacked
+  official channel. Paper §12: the first registry's codes move to `PRAM` from its listing, not
+  "now".
 - **One list of normative parts** (2026-10-12, external review). `PRE-GEN-SPEC.md` §0.2 no longer
   calls itself the core: it lists the same normative parts as `README.md`, with `PRE-GEN-CORE.md` first,
   and says the core governs the v5 interface where both describe it. Editorial; no rule changes.

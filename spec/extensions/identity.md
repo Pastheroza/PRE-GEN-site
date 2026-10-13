@@ -28,8 +28,11 @@ daily, and for a public person asks **every** code its anchor names.
 
 A claim is **confirmed** when the person published the line `PRE-GEN: <code>` on an
 official channel that the anchor's source lists for them (Wikidata: official website, X,
-Instagram, YouTube channel, TikTok), and `proof_url` points to it. Anyone can check it; an
-impostor cannot post there. Registries re-check confirmations at least daily.
+Instagram, YouTube channel, TikTok), and `proof_url` points to it. Anyone can check it. An
+impostor cannot post there without taking over the account or misusing someone's access to
+it, so a confirmation proves control of the channel, not a right to license every use.
+Registries re-check confirmations at least daily; once the line is gone, the claim is no
+longer confirmed.
 
 ## The rule
 
