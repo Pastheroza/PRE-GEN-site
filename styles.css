@@ -259,27 +259,3 @@ details p { margin: 10px 0 0; }
 .hero-lede { margin: 20px auto 0; text-align: center; max-width: 34em; font-size: 22px; }
 .hero .go { justify-content: center; margin-top: 18px; }
 @media (max-width: 720px) { .hero-lede { font-size: 19px; } }
-
-/* Apply for a prefix */
-.apply { max-width: 680px; margin: 24px 0; }
-.apply fieldset { margin: 0 0 28px; padding: 0; border: 0; min-width: 0; }
-.apply legend { float: left; width: 100%; padding: 12px 0 0; border-top: 1px solid var(--rule); font-weight: 600; font-size: 17px; }
-.apply legend + * { clear: both; }
-.apply .field { margin: 14px 0 0; }
-.apply label { display: block; margin-bottom: 6px; font-size: 15px; }
-.apply .opt { color: var(--muted); font-size: 13px; }
-.apply input:not([type=checkbox]), .apply textarea, .apply select { box-sizing: border-box; width: 100%; padding: 9px 12px; border: 1px solid var(--rule); background: var(--bg); color: var(--fg); font: inherit; font-size: 16px; border-radius: 0; }
-.apply input.mono, .apply textarea.mono { font-family: var(--mono); }
-.apply #prefix, .apply #prefix2 { width: 8em; letter-spacing: 0.08em; }
-.apply [aria-invalid="true"] { outline: 2px solid #c00; outline-offset: -2px; }
-.apply .help { margin: 6px 0 0; font-size: 14px; color: var(--muted); }
-.apply .help[data-state="bad"] { color: #c00; }
-.apply .check { display: flex; gap: 10px; align-items: flex-start; margin-top: 14px; }
-.apply .check input { margin-top: 4px; flex: none; }
-.apply button.btn { font: inherit; cursor: pointer; border-radius: 0; }
-.apply-errors { margin: 0 0 16px; padding: 12px 16px; border: 2px solid #c00; }
-.apply-errors p { margin: 0 0 6px; font-weight: 600; }
-.apply-errors ul { margin: 0; padding-left: 20px; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .apply .help[data-state="bad"], :root:not([data-theme="light"]) .apply-errors { color: #ff6b6b; border-color: #ff6b6b; } }
-:root[data-theme="dark"] .apply .help[data-state="bad"] { color: #ff6b6b; }
-:root[data-theme="dark"] .apply-errors { border-color: #ff6b6b; }
