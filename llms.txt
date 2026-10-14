@@ -21,6 +21,8 @@
 - [FAQ](https://www.pregen.org/faq): fake registries, fake proofs, one person in two registries
 - [Refusal codes](https://www.pregen.org/docs/refusal-codes), [Versioning](https://www.pregen.org/docs/versions), [C2PA](https://www.pregen.org/docs/c2pa)
 
+- Draft, informative, not part of v5: [Authorized Releases](https://www.pregen.org/spec/drafts/authorized-releases.md) — releases with the artist's permission; stamping AI content that already exists.
+
 ## Registries
 
 - [Registries](https://www.pregen.org/registries) and [registries.json](https://www.pregen.org/registries.json): who runs PRE-GEN. Today one registry is in production: PRAMPTA (https://prampta.com, API https://api2.prampta.com). registries.json is signed by the PRE-GEN steward key (fingerprint pg-ed25519:dcdd244659e6d0e2426f2b504cb11590; also in DNS TXT `_pregen-steward.pregen.org`). Verify it with that key, never with one taken from the file. The steward lists a registry only after admission conditions (named operator, published way of verifying rights holders, anchors for public persons, answers to complaints within seven days), can mark a false claim, and can revoke a registry or a stolen key; nothing a revoked registry signed authorizes a generation.
