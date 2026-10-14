@@ -1,12 +1,27 @@
 {
   "schema": "pregen.registries.v2",
-  "sequence": 2,
-  "note": "Signed registry directory (PG-CODE.md §9.1): each namespace — bare for the origin registry, a four-letter prefix for every other — and the operator keys allowed to sign in it. Verify the signature with the published steward key, never with a key taken from this file.",
+  "sequence": 3,
+  "note": "Signed registry directory (PG-CODE.md §9.1): each namespace — the closed legacy bare namespace, or a four-letter prefix — and the operator keys allowed to sign in it. Verify the signature with the published steward key, never with a key taken from this file.",
   "registries": [
     {
       "name": "PRAMPTA",
       "prefix": "",
-      "role": "Registry operator, origin issuer",
+      "role": "Closed legacy namespace: bare codes issued by the first registry before v5",
+      "website": "https://prampta.com",
+      "api": "https://api2.prampta.com",
+      "keys": "https://api2.prampta.com/keys",
+      "key_fingerprints": [
+        "pg-ed25519:1904514fd2ac442f0a5388d13cc313a0",
+        "pg-ed25519:58d4a309fff25a0f4763cffc5c92cb0e"
+      ],
+      "status": "Production",
+      "since": "2026",
+      "pregen_version": "5"
+    },
+    {
+      "name": "PRAMPTA",
+      "prefix": "PRAM",
+      "role": "Registry operator, first registry",
       "website": "https://prampta.com",
       "api": "https://api2.prampta.com",
       "keys": "https://api2.prampta.com/keys",
@@ -20,7 +35,7 @@
     }
   ],
   "providers": [],
-  "issued_at": "2026-10-03T20:17:32Z",
+  "issued_at": "2026-10-14T19:48:15Z",
   "steward_key_id": "pg-ed25519:dcdd244659e6d0e2426f2b504cb11590",
-  "signature": "703c87477651c0e0f4045a9dd5856c6098c81e9cb7f67cdbfa9cfec9f5d33604405a32cc1c5ea40f10827b356a3bcf572a9ab2f4f64fbeed3a24cbf35e381807"
+  "signature": "df364ec6bb223d200ca91271d73e0455604048257289e0ab6fd205766e1a3cf4beccc3d2fa639cd257c1978a3663af0a8150bf8232d09703762613f5e8c30309"
 }
