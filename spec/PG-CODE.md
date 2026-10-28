@@ -379,7 +379,9 @@ a fake registry out, so the steward lists a registry only when it has:
 3. accepted the core, including its fixed floor and the conflict rule
    (`PRE-GEN-SPEC.md` R-15, P-10);
 4. an operator key set published at its `keys` URL, its fingerprints given to
-   the steward out of band, and its next key announced (above).
+   the steward out of band, and its next key announced (above). The steward
+   takes each public key itself, not only its fingerprint, and refuses a
+   small-order or non-canonical one (`PRE-GEN-CORE.md`, Messages, Signature).
 
 A listing is not a certificate that the registry's rights holders are
 genuine; it is the steward's statement that the registry met these

@@ -118,7 +118,7 @@ Every message is `{type, body, signatures}`.
 |---|---|
 | **Canonical JSON** | UTF-8; object members sorted by key in code point order; no whitespace; strings escape only `"`, `\`, `\b \t \n \f \r` and other code points below U+0020 (as `\u00xx`, lowercase); no Unicode normalization; numbers are integers within ±(2^53 − 1); times are Unix seconds |
 | **Signing input** | `"PREGEN-V5" || 0x00 || type || 0x00 || canonical(body)` |
-| **Signature** | Ed25519 (RFC 8032), lowercase hex. The body's `signers` list names each signer's `role` and `key_id`, in order; `signatures` follow the same order |
+| **Signature** | Ed25519 (RFC 8032), lowercase hex. The body's `signers` list names each signer's `role` and `key_id`, in order; `signatures` follow the same order. A public key that is a small-order point, in any encoding, or is not canonically encoded (y ≥ p) is refused wherever a key is recorded, and nothing verifies under it: anyone could sign under such a key (`test-vectors/small-order-keys.json`) |
 | **Key id** | `pg-ed25519:` + the first 32 hex characters of SHA-256 of the raw 32-byte public key |
 | **Key set** | `GET {api}/keys` → `{"keys": [{"key_id", "public_key_hex", …}], …}`, current and retired keys |
 | **Message id** | SHA-256 hex of `"PREGEN-V5-ID" || 0x00 || type || 0x00 || canonical(body)`. Signatures are not part of it |

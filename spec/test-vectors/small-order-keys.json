@@ -1,0 +1,203 @@
+{
+  "version": 1,
+  "comment": "Ed25519 public keys no one can be held to (stress test C1, 2026-10-28). Every one MUST be refused wherever a key is recorded, and no signature verifies under it: the 8 small-order points in both sign-bit encodings, and every non-canonical encoding (y >= p). A cofactorless verifier without this check accepts the forged signatures below for ANY message under the small-order keys. The list is the one PRAMPTA 0.386.11 refuses.",
+  "message_hex": "616e79206d65737361676520617420616c6c",
+  "forged_signatures": [
+    "01000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "<the public key itself> followed by 32 zero bytes"
+  ],
+  "refuse": [
+    {
+      "public_key_hex": "0000000000000000000000000000000000000000000000000000000000000000",
+      "why": "small-order point"
+    },
+    {
+      "public_key_hex": "0000000000000000000000000000000000000000000000000000000000000080",
+      "why": "small-order point, sign bit set"
+    },
+    {
+      "public_key_hex": "0100000000000000000000000000000000000000000000000000000000000000",
+      "why": "small-order point"
+    },
+    {
+      "public_key_hex": "0100000000000000000000000000000000000000000000000000000000000080",
+      "why": "small-order point, sign bit set"
+    },
+    {
+      "public_key_hex": "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05",
+      "why": "small-order point"
+    },
+    {
+      "public_key_hex": "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc85",
+      "why": "small-order point, sign bit set"
+    },
+    {
+      "public_key_hex": "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a",
+      "why": "small-order point"
+    },
+    {
+      "public_key_hex": "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa",
+      "why": "small-order point, sign bit set"
+    },
+    {
+      "public_key_hex": "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+      "why": "small-order point"
+    },
+    {
+      "public_key_hex": "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "why": "small-order point, sign bit set"
+    },
+    {
+      "public_key_hex": "edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+      "why": "small-order point"
+    },
+    {
+      "public_key_hex": "edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "why": "small-order point, sign bit set"
+    },
+    {
+      "public_key_hex": "eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+      "why": "small-order point"
+    },
+    {
+      "public_key_hex": "eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "why": "small-order point, sign bit set"
+    },
+    {
+      "public_key_hex": "efffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "efffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "f0ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "f0ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "f1ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "f1ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "f2ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "f2ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "f3ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "f3ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "f4ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "f4ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "f5ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "f5ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "f6ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "f6ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "f7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "f7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "f8ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "f8ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "f9ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "f9ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "faffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "faffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "fbffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "fbffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "fcffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "fcffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "fdffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "fdffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "feffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "feffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+      "why": "non-canonical encoding: y >= p"
+    },
+    {
+      "public_key_hex": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "why": "non-canonical encoding: y >= p"
+    }
+  ]
+}

@@ -16,7 +16,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 __version__ = "0.10.0"
 __all__ = [
     "STEWARD_PUBLIC_KEY_HEX", "DIRECTORY_URL", "PregenError", "Directory", "canonical_json",
-    "fingerprint", "verify_bytes", "verify_signed", "verify_license", "issuer_of",
+    "fingerprint", "check_public_key", "verify_bytes", "verify_signed", "verify_license", "issuer_of",
     "verify_directory", "load_directory", "verify_decision", "check_decision", "check_answer", "verify_answer", "message_id", "DIRECTORY_MAX_AGE", "decide_identity",
     "verify_anchors", "check_channel_proof", "wikidata_official_urls", "check_proof", "FLOOR_REASONS", "STEWARD_SUCCESSOR_PUBLIC_KEY_HEX", "Simulator",
 ]
@@ -32,6 +32,19 @@ _PREFIX = re.compile(r"[ABCDEFGHJKMNPQRSTVWXYZ]{4}")
 _FINGERPRINT = re.compile(r"pg-ed25519:[0-9a-f]{32}")
 _ISSUER_IN_CODE = re.compile(r"^PG-([ABCDEFGHJKMNPQRSTVWXYZ]{4})-")
 _BARE_CODE = re.compile(r"^PG-(?:[A-Z]{3}-)?[0-9]")
+# The curve's 8 small-order points, sign bit cleared; y = p and p + 1 are 0 and 1 again (as libsodium lists them).
+# Under such a key a signature checks out for any message with no private key behind it, and OpenSSL takes it
+# (stress test C1, 2026-10-28). The same list as PRAMPTA's verify_ed25519.
+_SMALL_ORDER = frozenset(bytes.fromhex(h) for h in (
+    "0000000000000000000000000000000000000000000000000000000000000000",
+    "0100000000000000000000000000000000000000000000000000000000000000",
+    "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05",
+    "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a",
+    "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+    "edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+    "eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+))
+_P = 2**255 - 19
 
 
 class PregenError(ValueError):
@@ -74,10 +87,22 @@ def fingerprint(public_key_hex: str) -> str:
     return "pg-ed25519:" + hashlib.sha256(bytes.fromhex(public_key_hex)).hexdigest()[:32]
 
 
+def check_public_key(public_key_hex: str) -> bytes:
+    """The raw key, or PregenError for a key no one can be held to: a small-order point in any encoding, or a
+    non-canonical encoding (y >= p). Call it wherever a key is first recorded; verify_bytes calls it too."""
+    if not isinstance(public_key_hex, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", public_key_hex):
+        raise PregenError("public key must be 32 bytes of hex")
+    raw = bytes.fromhex(public_key_hex)
+    y = raw[:31] + bytes([raw[31] & 0x7F])
+    if y in _SMALL_ORDER or int.from_bytes(y, "little") >= _P:
+        raise PregenError("public key is a small-order or non-canonical point: anyone could sign under it")
+    return raw
+
+
 def verify_bytes(public_key_hex: str, signature_hex: str, message: bytes) -> bool:
-    """Ed25519 over raw bytes. False on any bad signature or key encoding."""
+    """Ed25519 over raw bytes. False on any bad signature or key encoding, and under a key check_public_key refuses."""
     try:
-        Ed25519PublicKey.from_public_bytes(bytes.fromhex(public_key_hex)).verify(
+        Ed25519PublicKey.from_public_bytes(check_public_key(public_key_hex)).verify(
             bytes.fromhex(signature_hex), message)
         return True
     except (InvalidSignature, ValueError, TypeError):

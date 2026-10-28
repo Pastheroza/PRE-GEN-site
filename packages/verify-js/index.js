@@ -66,10 +66,36 @@ export async function fingerprint(publicKeyHex) {
   return "pg-ed25519:" + (await sha256Hex(hexBytes(publicKeyHex, 32))).slice(0, 32);
 }
 
-/** Ed25519 over raw bytes. False on any bad signature or key encoding. */
+// The curve's 8 small-order points, sign bit cleared; y = p and p + 1 are 0 and 1 again (as libsodium lists them).
+// Under such a key a signature checks out for any message with no private key behind it, and OpenSSL takes it
+// (stress test C1, 2026-10-28). The same list as PRAMPTA's verify_ed25519 and pregen.check_public_key.
+const SMALL_ORDER = new Set([
+  "0000000000000000000000000000000000000000000000000000000000000000",
+  "0100000000000000000000000000000000000000000000000000000000000000",
+  "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05",
+  "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a",
+  "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+  "edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+  "eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+]);
+const P = 2n ** 255n - 19n;
+
+/** The raw key, or PregenError for a key no one can be held to: a small-order point in any encoding, or a
+ *  non-canonical encoding (y >= p). Call it wherever a key is first recorded; verifyBytes calls it too. */
+export function checkPublicKey(publicKeyHex) {
+  const raw = hexBytes(publicKeyHex, 32);
+  const y = Uint8Array.from(raw);
+  y[31] &= 0x7f;
+  let n = 0n;
+  for (let i = 31; i >= 0; i--) n = (n << 8n) | BigInt(y[i]);
+  if (SMALL_ORDER.has(toHex(y)) || n >= P) fail("public key is a small-order or non-canonical point: anyone could sign under it");
+  return raw;
+}
+
+/** Ed25519 over raw bytes. False on any bad signature or key encoding, and under a key checkPublicKey refuses. */
 export async function verifyBytes(publicKeyHex, signatureHex, message) {
   try {
-    const key = await crypto.subtle.importKey("raw", hexBytes(publicKeyHex, 32), { name: "Ed25519" }, false, ["verify"]);
+    const key = await crypto.subtle.importKey("raw", checkPublicKey(publicKeyHex), { name: "Ed25519" }, false, ["verify"]);
     return await crypto.subtle.verify({ name: "Ed25519" }, key, hexBytes(signatureHex, 64), message);
   } catch {
     return false;

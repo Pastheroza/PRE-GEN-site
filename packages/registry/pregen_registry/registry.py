@@ -17,7 +17,7 @@ import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
-from pregen import fingerprint
+from pregen import PregenError, check_public_key, fingerprint
 
 from .protocol import Key, ProtocolError, canonical, check_body, check_envelope, message_id, mint_code, parse_code, seal
 
@@ -122,6 +122,8 @@ class Registry:
     def add_subject(self, name: str, *, serial: int | None = None, level: str = "self", holder_public: str | None = None,
                     **flags) -> str:
         """`holder_public`: the person holds their own key (custody self); the registry never sees it."""
+        if holder_public:
+            check_public_key(holder_public)          # a small-order key would let anyone sign as the person (C1)
         with self.tx() as db:
             if serial is None:
                 serial = (db.execute("SELECT COALESCE(MAX(serial), 0) FROM subjects").fetchone()[0] or 0) + 1
@@ -333,6 +335,11 @@ class Registry:
         check_body("keyset", body)
         if body["provider_id"] != provider_id or [k["status"] for k in body["keys"]].count("current") != 1:
             raise ProtocolError("PG_MALFORMED", "provider_id, and exactly one current key")
+        for k in body["keys"]:                       # stress test C1: a key no one can be held to is never recorded
+            try:
+                check_public_key(k["public_key_hex"])
+            except PregenError as e:
+                raise ProtocolError("PG_MALFORMED", f"{k['key_id']}: {e}") from None
         kid = message_id(env["type"], body)
         with self.tx() as db:
             chain = self._chain(db, provider_id)

@@ -4,7 +4,7 @@ import threading
 
 import pytest
 from fastapi.testclient import TestClient
-from pregen import canonical_json, verify_bytes
+from pregen import PregenError, canonical_json, fingerprint, verify_bytes
 
 from pregen_registry.app import create_app
 from pregen_registry.cli import main as cli
@@ -219,6 +219,21 @@ def test_keys_first_idempotent_rotation_and_bad_signature():
     rot = seal("pg.keyset.v1", rot_body, [("provider", new), ("provider_previous", p.key)])
     assert c.post("/v2/keys", headers=p.h, json=rot).status_code == 200
     assert [k["body"]["kind"] for k in c.get(f"/v2/keys/{p.id}").json()["keysets"]] == ["first", "rotation"]
+
+
+def test_a_small_order_key_is_never_recorded():
+    """Stress test C1: with no private key behind it, a small-order key would sign as the provider or the person."""
+    reg, c, _ = make()
+    p = Provider(reg, c)
+    pub = "01" + "00" * 31
+    body = {"kind": "first", "provider_id": p.id, "previous": None, "recovery_registry": "",
+            "keys": [{"key_id": fingerprint(pub), "public_key_hex": pub, "status": "current"}],
+            "signers": [{"role": "provider", "key_id": fingerprint(pub)}]}
+    r = c.post("/v2/keys", headers=p.h, json={"type": "pg.keyset.v1", "body": body, "signatures": ["01" + "00" * 63]})
+    assert r.status_code == 422 and r.json()["error"] == "PG_MALFORMED", r.text
+    p.register()                                                                       # control: an ordinary key
+    with pytest.raises(PregenError):
+        reg.add_subject("TEST person", holder_public=pub)
 
 
 def test_reports_ack_conflicts_closed_ask_and_key_rules():

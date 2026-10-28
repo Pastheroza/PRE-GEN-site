@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { canonicalJson, fingerprint, verifyDirectory, verifyDecision, checkDecision, PregenError, issuerOf, sha256Hex } from "../index.js";
+import { canonicalJson, fingerprint, verifyDirectory, verifyDecision, checkDecision, PregenError, issuerOf, sha256Hex, checkPublicKey, verifyBytes } from "../index.js";
+import { readFileSync } from "node:fs";
 
 const hex = (b) => Buffer.from(b).toString("hex");
 async function keypair() {
@@ -330,4 +331,17 @@ test("no registry is pinned by default, and any prefix can be pinned", async () 
   assert.equal(pinned.checkSigner("PG-NWRD-000042-K", other.id), "valid");
   const legacy = await verifyDirectory(d, { stewardPublicKeyHex: steward.pub, originKeyFingerprints: [other.id] }); // deprecated alias
   assert.equal(legacy.checkSigner("PG-000042*", origin.id), "issuer_mismatch");
+});
+
+test("stress test C1: a key no one can be held to is refused, and nothing verifies under it", async () => {
+  const v = JSON.parse(readFileSync(new URL("../../../spec/test-vectors/small-order-keys.json", import.meta.url)));
+  const message = Uint8Array.from(Buffer.from(v.message_hex, "hex"));
+  for (const { public_key_hex: key } of v.refuse) {
+    assert.throws(() => checkPublicKey(key), PregenError);
+    for (const forged of ["01" + "00".repeat(63), key + "00".repeat(32)]) assert.equal(await verifyBytes(key, forged, message), false);
+  }
+  const k = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
+  const pub = hex(await crypto.subtle.exportKey("raw", k.publicKey));
+  assert.equal(hex(checkPublicKey(pub)), pub);
+  assert.equal(await verifyBytes(pub, hex(await crypto.subtle.sign({ name: "Ed25519" }, k.privateKey, message)), message), true);
 });
