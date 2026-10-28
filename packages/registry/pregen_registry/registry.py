@@ -34,6 +34,8 @@ UNAVAILABLE = {"pending", "paused", "disputed", "withdrawn"}
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS operator_keys (key_id TEXT PRIMARY KEY, public_key_hex TEXT NOT NULL,
+  activated_at INTEGER NOT NULL, deactivated_at INTEGER);
 CREATE TABLE IF NOT EXISTS subjects (
   code TEXT PRIMARY KEY, serial INTEGER UNIQUE NOT NULL, name TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL DEFAULT 'active', level TEXT NOT NULL DEFAULT 'self', published INTEGER NOT NULL DEFAULT 1,
@@ -89,6 +91,7 @@ class Registry:
         self.db.executescript(SCHEMA)
         self.lock = threading.RLock()  # one sqlite connection: every use of it holds this lock
         self.activated_at = int(self._meta("activated_at") or self._set_meta("activated_at", str(clock())))
+        self._record_key()
 
     # ── storage helpers ──────────────────────────────────────────────────
     @contextmanager
@@ -109,6 +112,21 @@ class Registry:
     def _q(self, sql, args=()):
         with self.lock:
             return self.db.execute(sql, args).fetchall()
+
+    def _record_key(self):
+        """Every operator key this registry ever signed with stays in /keys (PRE-GEN-SPEC.md §2.3): starting on a new
+        key retires the previous one and never forgets it, so earlier answers and proofs stay verifiable (stress
+        test C2). A retired key never signs again."""
+        with self.tx() as db:
+            row = db.execute("SELECT deactivated_at FROM operator_keys WHERE key_id = ?", (self.key.id,)).fetchone()
+            if row is not None:
+                if row["deactivated_at"] is not None:
+                    raise ValueError(f"{self.key.id} is retired: a retired key never signs again")
+                return
+            now, first = self.clock(), db.execute("SELECT COUNT(*) FROM operator_keys").fetchone()[0] == 0
+            db.execute("UPDATE operator_keys SET deactivated_at = ? WHERE deactivated_at IS NULL", (now,))
+            db.execute("INSERT INTO operator_keys VALUES (?, ?, ?, NULL)",
+                       (self.key.id, self.key.public_hex, self.activated_at if first else now))
 
     def _meta(self, k):
         row = self.db.execute("SELECT v FROM meta WHERE k = ?", (k,)).fetchone()
@@ -516,8 +534,10 @@ class Registry:
                 "spec": "PRE-GEN v5"}
 
     def key_set(self) -> dict:
-        """PRE-GEN-SPEC.md §2.3: self-signed; trust comes from the directory, never from this list alone."""
+        """PRE-GEN-SPEC.md §2.3: every key ever signed with, current and retired; self-signed, so trust comes from the
+        directory, never from this list alone."""
         body = {"current_key_id": self.key.id, "keys": [{
-            "key_id": self.key.id, "public_key_hex": self.key.public_hex, "activated_at": self.activated_at,
-            "deactivated_at": None, "status": "active", "is_ephemeral": False}]}
+            "key_id": r["key_id"], "public_key_hex": r["public_key_hex"], "activated_at": r["activated_at"],
+            "deactivated_at": r["deactivated_at"], "status": "active" if r["deactivated_at"] is None else "retired",
+            "is_ephemeral": False} for r in self._q("SELECT * FROM operator_keys ORDER BY activated_at, key_id")]}
         return {**body, "signature": self.key.sign(canonical(body))}

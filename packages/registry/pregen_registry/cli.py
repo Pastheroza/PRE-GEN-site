@@ -7,6 +7,8 @@
   pregen-registry provider add --dir DATA [--id frame-ai]     (prints the credential once)
   pregen-registry connect --dir DATA --provider frame-ai --licensee user-1
   pregen-registry info --dir DATA
+  pregen-registry key next --dir DATA      (makes the next operator key: give it to the steward to announce)
+  pregen-registry key rotate --dir DATA    (once the directory lists it: the next key signs, the old one is retired)
 """
 from __future__ import annotations
 
@@ -25,6 +27,11 @@ def _paths(d: str):
     return p / "registry.json", p / "operator.key", p / "registry.db"
 
 
+def _write_key(path: Path, key: Key):
+    path.write_text(key.private_hex + "\n")
+    os.chmod(path, 0o600)
+
+
 def load(d: str) -> Registry:
     cfg_path, key_path, db_path = _paths(d)
     if not cfg_path.exists():
@@ -37,7 +44,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(prog="pregen-registry", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for name in ("init", "serve", "subject", "grant", "provider", "connect", "info"):
+    for name in ("init", "serve", "subject", "grant", "provider", "connect", "info", "key"):
         p = sub.add_parser(name)
         p.add_argument("--dir", required=True)
         if name == "init":
@@ -67,6 +74,8 @@ def main(argv=None):
         elif name == "connect":
             p.add_argument("--provider", required=True)
             p.add_argument("--licensee", required=True)
+        elif name == "key":
+            p.add_argument("action", choices=["next", "rotate"])
     a = ap.parse_args(argv)
 
     if a.cmd == "init":
@@ -82,8 +91,7 @@ def main(argv=None):
         Path(a.dir).mkdir(parents=True, exist_ok=True)
         cfg_path.write_text(json.dumps(cfg, indent=2) + "\n")
         key = Key()
-        key_path.write_text(key.private_hex + "\n")
-        os.chmod(key_path, 0o600)
+        _write_key(key_path, key)
         reg = Registry(Config(**cfg), key, str(db_path))
         if a.sandbox:
             reg.seed_sandbox()
@@ -105,6 +113,24 @@ def main(argv=None):
     elif a.cmd == "connect":
         load(a.dir).connect(a.provider, a.licensee)
         print("connected")
+    elif a.cmd == "key":
+        _, key_path, _ = _paths(a.dir)
+        next_path = key_path.with_name("operator.next.key")
+        if a.action == "next":
+            if not next_path.exists():
+                _write_key(next_path, Key())
+            nxt = Key(next_path.read_text().strip())
+            print(f"next operator key id: {nxt.id}\n  public key: {nxt.public_hex}\nGive both to the steward to announce "
+                  f"in the directory. When the directory lists it, run `pregen-registry key rotate`.")
+        else:
+            if not next_path.exists():
+                sys.exit("no next key: run `pregen-registry key next` and have the steward announce it first")
+            old = Key(key_path.read_text().strip())
+            key_path.rename(key_path.with_name(f"operator.retired.{old.id.split(':')[1]}.key"))
+            next_path.rename(key_path)
+            new = load(a.dir).key                                          # starting on it retires the old key in /keys
+            print(f"operator key is now {new.id}; {old.id} is retired and stays in /keys, so everything it signed "
+                  f"still verifies. Move the retired private key file offline.")
     elif a.cmd == "info":
         reg = load(a.dir)
         print(json.dumps({**reg.document(), "operator_key_id": reg.key.id, "public_key": reg.key.public_hex}, indent=2))

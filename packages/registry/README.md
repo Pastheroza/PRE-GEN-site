@@ -37,12 +37,20 @@ answers as `spec/extensions/sandbox.md` says.
 
 `PREGEN_OPERATOR_KEY_HEX` may hold the operator key instead of the file.
 
+**Rotating the operator key.**
+1. `pregen-registry key next --dir ./data` makes the next key and prints it. Give the key id and public key to the
+   steward to announce in the directory.
+2. Once the directory lists it, run `pregen-registry key rotate --dir ./data` and restart.
+
+The old key stays in `GET /keys` as `retired`, so every answer and proof it signed still verifies. A retired key
+never signs again. Move its private key file offline.
+
 ## HTTP interface
 
 | Method and path | What |
 |---|---|
 | `GET /.well-known/pregen-registry.json` | who this registry is |
-| `GET /keys` | its signed operator key set |
+| `GET /keys` | its signed operator key set: every key it ever signed with, current and retired |
 | `POST /v2/requests` | ask → `{"answer": <signed pg.answer.v1>}` |
 | `POST /v2/reports` | report → `{"ack": <signed pg.report_ack.v1>}` |
 | `POST /v2/keys`, `GET /v2/keys/{provider_id}` | provider keysets |

@@ -236,6 +236,45 @@ def test_a_small_order_key_is_never_recorded():
         reg.add_subject("TEST person", holder_public=pub)
 
 
+def test_rotation_keeps_every_key_so_earlier_answers_still_verify(tmp_path):
+    """Stress test C2: /keys is the full history; a registry that starts on a new key retires the old one."""
+    clock, db, k1, k2 = Clock(), str(tmp_path / "r.db"), Key(), Key()
+    cfg = Config(prefix="TEST", name="Test", api="https://test.example", sandbox=True)
+    reg = Registry(cfg, k1, db, clock=clock)
+    reg.seed_sandbox()
+    c = TestClient(create_app(reg))
+    p = Provider(reg, c)
+    old = p.answer(p.body(code(1)))                                          # signed by k1
+    clock.t += 100
+    reg2 = Registry(cfg, k2, db, clock=clock)
+    keys = TestClient(create_app(reg2)).get("/keys").json()
+    assert keys["current_key_id"] == k2.id
+    assert [(k["key_id"], k["status"], k["deactivated_at"]) for k in keys["keys"]] == \
+        [(k1.id, "retired", clock.t), (k2.id, "active", None)]
+    listed = {k["key_id"]: k["public_key_hex"] for k in keys["keys"]}
+    assert verify_bytes(listed[old["body"]["signers"][0]["key_id"]], old["signatures"][0],
+                        signing_input(old["type"], old["body"]))                # the earlier answer still verifies
+    assert verify_bytes(k2.public_hex, keys["signature"], canonical_json({k: v for k, v in keys.items() if k != "signature"}))
+    with pytest.raises(ValueError):
+        Registry(cfg, k1, db, clock=clock)                                     # a retired key never signs again
+
+
+def test_cli_key_next_then_rotate(tmp_path, capsys):
+    d = str(tmp_path / "reg")
+    cli(["init", "--dir", d, "--prefix", "TEST", "--name", "Test", "--api", "https://test.example"])
+    old = Key((tmp_path / "reg" / "operator.key").read_text().strip())
+    with pytest.raises(SystemExit):
+        cli(["key", "rotate", "--dir", d])                                     # nothing announced yet
+    cli(["key", "next", "--dir", d])
+    new = Key((tmp_path / "reg" / "operator.next.key").read_text().strip())
+    assert new.id in capsys.readouterr().out
+    cli(["key", "rotate", "--dir", d])
+    from pregen_registry.cli import load
+    keys = load(d).key_set()
+    assert keys["current_key_id"] == new.id and [k["status"] for k in keys["keys"]] == ["retired", "active"]
+    assert {k["key_id"] for k in keys["keys"]} == {old.id, new.id}
+
+
 def test_reports_ack_conflicts_closed_ask_and_key_rules():
     reg, c, _ = make()
     p = Provider(reg, c)
