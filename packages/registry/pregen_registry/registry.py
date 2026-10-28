@@ -539,5 +539,5 @@ class Registry:
         body = {"current_key_id": self.key.id, "keys": [{
             "key_id": r["key_id"], "public_key_hex": r["public_key_hex"], "activated_at": r["activated_at"],
             "deactivated_at": r["deactivated_at"], "status": "active" if r["deactivated_at"] is None else "retired",
-            "is_ephemeral": False} for r in self._q("SELECT * FROM operator_keys ORDER BY activated_at, key_id")]}
+            "is_ephemeral": False} for r in self._q("SELECT * FROM operator_keys ORDER BY rowid")]}
         return {**body, "signature": self.key.sign(canonical(body))}
