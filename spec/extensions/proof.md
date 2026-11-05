@@ -13,7 +13,9 @@ itself is unsigned: every part is.
 
 The report names the output by its SHA-256 (`output_hash`) and may add `bindings`:
 `[{alg, value}]`, fingerprints that survive re-encoding (C2PA *soft bindings*; `alg` is a
-C2PA soft-binding algorithm name).
+C2PA soft-binding algorithm name). A binding fingerprints the output file, never a person.
+Its `value` is opaque to PRE-GEN: registries store it, and the libraries neither compute nor
+compare it.
 
 ## Carrying it
 
@@ -40,7 +42,8 @@ A platform accepts the bundle when, for every subject:
    nothing: one old allow must not buy a "permitted" output at any later time;
 
 and all reports name one `output_hash` and one `job_id`. Given the file, its SHA-256 must
-equal `output_hash`; after re-encoding the platform matches a soft binding instead.
+equal `output_hash`. After re-encoding, a platform may match a soft binding with that
+algorithm's own tooling, outside this specification; `check_proof` does not.
 
 A revoked registry's bundles fail, including old ones (`PRE-GEN-SPEC.md` V-14). A bundle
 shows what was permitted and by whom; it does not decide whether a use is lawful.

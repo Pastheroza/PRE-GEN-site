@@ -89,13 +89,14 @@ def cases():
     yield "deny is not an allow", REQUEST, answer(status="deny", basis=None, reason="PG_NO_LICENSE"), False, False
     yield "not_blocked is not an allow", REQUEST, answer(status="not_blocked", basis=None, reason="PG_UNKNOWN_SUBJECT"), False, False
     yield "an allow for another request", other_request(job_id="job-0001"), answer(), False, False
-    yield "an allow under another profile", REQUEST, answer(profile="likeness/2"), False, False
+    yield "an allow under another profile", REQUEST, answer(profile="work/1"), False, False
     yield "expired", REQUEST, answer(issued_at=NOW - 400, expires_at=NOW - 100), False, False
     yield "issued more than 60 s in the future", REQUEST, answer(issued_at=NOW + 61, expires_at=NOW + 300), False, False
     yield "lives longer than 900 s", REQUEST, answer(issued_at=NOW - 10, expires_at=NOW + 900), False, False
     yield "an allow with no basis", REQUEST, answer(basis=None), False, False
     yield "an allow with a reason", REQUEST, answer(reason="PG_NO_LICENSE"), False, False
     yield "a critical extension not understood", REQUEST, answer(critical=["x-unknown"]), False, False
+    yield "a member the core does not define (a registry's own go in ext)", REQUEST, answer(note="x"), False, False
     yield "signed by another registry's key", REQUEST, answer(key="other_registry"), False, False
     yield "signed by a revoked key", REQUEST, answer(key="registry_revoked"), False, False
     yield "signed by a key retired before it was issued", REQUEST, answer(key="registry_retired"), False, False

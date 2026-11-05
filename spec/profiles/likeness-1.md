@@ -61,10 +61,11 @@ categories it grants explicitly (required for intimate ones), and the resale rig
 
 ## Public persons
 
-A public person is resolved through [`identity`](../extensions/identity.md): by anchor, across
-every registry that lists it. By default a client does not generate a public person whose
-claim is not confirmed on their own channel (`PG_IDENTITY_UNCONFIRMED`, `PG_IDENTITY_CONFLICT`
-— client outcomes, not registry answers).
+For a public person, a client asks every registry whose anchor list names the person's
+anchor, and decides over those claims with the [`identity`](../extensions/identity.md) rule,
+for each generation. With no claim confirmed on the person's own channel, PRE-GEN says
+nothing (`not_blocked`, `PG_IDENTITY_UNCONFIRMED`: a client outcome, not a registry answer).
+Nothing is permitted; a client generates only on `allow`.
 
 **A registry may add its own reasons.** A provider treats an unknown reason as a refusal.
 

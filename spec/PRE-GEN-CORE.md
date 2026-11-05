@@ -91,7 +91,9 @@ The registry replies `{"answer": <envelope>}`:
 
   **Only `allow` permits.**
 - **`basis`** is `{"kind": "policy", "rule"}` or `{"kind": "grant", "grant": {"format",
-  "id", …}}`.
+  "id", …}}`. `rule` names the registry's rule (for example `minors-never`); it is never a
+  hash or a version of any text. A grant `id` names one signed grant, as `request_id` names
+  one request.
 - **Lifetime:** `expires_at − issued_at` is between 1 and 900 seconds.
 
 **5. Generate only on a valid allow, and keep it.**

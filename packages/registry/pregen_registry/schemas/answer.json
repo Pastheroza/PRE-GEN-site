@@ -72,7 +72,8 @@
             },
             "rule": {
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "description": "the name of the registry's rule (for example minors-never); never a hash or a version of any text"
             }
           }
         },

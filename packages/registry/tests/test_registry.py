@@ -247,6 +247,15 @@ def test_every_answer_carries_only_the_known_members():
         assert b["profile"] == "likeness/1"                     # the name asked for, never a version of a policy
 
 
+@pytest.mark.parametrize("member", [{"model": "m-1"}, {"prompt_hash": "a" * 64}, {"modality": "image"}])
+def test_a_request_carrying_what_job_hash_stands_for_is_refused(member):
+    """job_hash is opaque: what the provider fixed about the job never travels beside it."""
+    reg, c, _ = make()
+    p = Provider(reg, c)
+    r = p.ask(p.body(code(1), **member))
+    assert r.status_code == 422 and r.json()["error"] == "PG_MALFORMED"
+
+
 # ── extension jobs ──────────────────────────────────────────────────────
 
 def test_one_hash_per_job_one_request_per_subject_same_answer_while_open():

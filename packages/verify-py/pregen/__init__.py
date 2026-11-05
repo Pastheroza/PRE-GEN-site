@@ -581,6 +581,12 @@ def _check_status_shape(body: dict) -> None:
             raise PregenError(f"a {status} answer carries no basis")
 
 
+# The members an answer body may carry (spec/schemas/answer.json; PRE-GEN-CORE.md: unknown members are rejected).
+# A registry's own members go in `ext`.
+_ANSWER_MEMBERS = frozenset({"signers", "request_id", "profile", "status", "reason", "basis", "issued_at", "expires_at",
+                             "level", "obligations", "ext", "critical"})
+
+
 def verify_answer(answer: dict, request: dict, directory: Directory = None, get_json=_get_json, now=None,
                   testing: bool = False) -> dict:
     """Is this a genuine, current answer to this request, whatever its status? Everything check_answer()
@@ -595,6 +601,9 @@ def verify_answer(answer: dict, request: dict, directory: Directory = None, get_
     if now - directory.loaded_at > DIRECTORY_MAX_AGE:
         raise PregenError("the directory was loaded more than 24 hours ago: load it again")
     body = _registry_signed(answer, "pg.answer.v1", asked.get("subject_ref"), directory, get_json)
+    unknown = sorted(set(body) - _ANSWER_MEMBERS)
+    if unknown:
+        raise PregenError(f"the answer carries members the core does not define: {', '.join(unknown)}")
     _check_status_shape(body)
     if body.get("request_id") != message_id("pg.request.v1", asked):
         raise PregenError("the answer is for another request")

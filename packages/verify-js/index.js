@@ -486,6 +486,11 @@ function checkStatusShape(body) {
 /** Is this a genuine, current answer to this request, whatever its status? Everything checkAnswer checks
  * except that it is an allow: use it to weigh refusals from several registries (decideIdentity). Like
  * checkAnswer, it compares `profile` only as a name, and nothing about a version of a registry's rules. */
+// The members an answer body may carry (spec/schemas/answer.json; PRE-GEN-CORE.md: unknown members are rejected).
+// A registry's own members go in `ext`.
+const ANSWER_MEMBERS = new Set(["signers", "request_id", "profile", "status", "reason", "basis", "issued_at", "expires_at",
+  "level", "obligations", "ext", "critical"]);
+
 export async function verifyAnswer(answer, request, { directory, fetch: fetchFn = globalThis.fetch,
   now = Math.floor(Date.now() / 1000), testing = false } = {}) {
   if (!request || request.type !== "pg.request.v1" || !request.body || typeof request.body !== "object") {
@@ -495,6 +500,8 @@ export async function verifyAnswer(answer, request, { directory, fetch: fetchFn 
   directory ??= await loadDirectory({ fetch: fetchFn });
   if (now - directory.loadedAt > DIRECTORY_MAX_AGE) fail("the directory was loaded more than 24 hours ago: load it again");
   const body = await registrySigned(answer, "pg.answer.v1", asked.subject_ref, directory, fetchFn);
+  const unknown = Object.keys(body).filter((k) => !ANSWER_MEMBERS.has(k)).sort();
+  if (unknown.length) fail(`the answer carries members the core does not define: ${unknown.join(", ")}`);
   checkStatusShape(body);
   if (body.request_id !== (await messageId("pg.request.v1", asked))) fail("the answer is for another request");
   if (body.profile !== asked.profile) fail("the answer is under another profile");

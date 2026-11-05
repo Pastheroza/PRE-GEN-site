@@ -349,7 +349,7 @@
       }
      ],
      "request_id": "9e09f6feb458074af0b91391097be4e60ad3957acc4a14ad3a2312f31cc164ee",
-     "profile": "likeness/2",
+     "profile": "work/1",
      "status": "allow",
      "basis": {
       "kind": "policy",
@@ -359,7 +359,7 @@
      "expires_at": 1790000290
     },
     "signatures": [
-     "22987ee55bb579ccf59ee9ed18bba34a4eb8462c892fcb671a8291b33e126deef514355aa06f55b23cf022e0e00c6abb009c997f20eab43a7be36ff0262d3108"
+     "c80a4d75987e40e39edce9155a19d9b68f3999a96e985b4465f9ff3045a8afb3c0461ee31e3a3662fcea00685e019c4d1e8af71b046ed2603a0c434d6e6be302"
     ]
    },
    "testing": false,
@@ -612,6 +612,49 @@
     },
     "signatures": [
      "efa23250380bca961b879f246febd50984fff8d91992de96e365e941253d6ee05d13aa0f2fb7b2534058a0f7164afa7642957e10db63ba2d7874af0514274703"
+    ]
+   },
+   "testing": false,
+   "ok": false
+  },
+  {
+   "name": "a member the core does not define (a registry's own go in ext)",
+   "request": {
+    "type": "pg.request.v1",
+    "signatures": [],
+    "body": {
+     "subject_ref": "PG-TEST-000001N",
+     "provider_id": "frame-ai",
+     "profile": "likeness/1",
+     "use": {
+      "purpose": "commercial"
+     },
+     "job_id": "job-8841",
+     "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "answer": {
+    "type": "pg.answer.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "request_id": "9e09f6feb458074af0b91391097be4e60ad3957acc4a14ad3a2312f31cc164ee",
+     "profile": "likeness/1",
+     "status": "allow",
+     "basis": {
+      "kind": "policy",
+      "rule": "test"
+     },
+     "issued_at": 1789999990,
+     "expires_at": 1790000290,
+     "note": "x"
+    },
+    "signatures": [
+     "39865c60bd2e8e88f2c0882a28f655000d79c67624e1804022b1d7960fdc881af45c5dafac8b33583e811f1ecce93fba62be78eb953f41b34e97203f8dd98d07"
     ]
    },
    "testing": false,

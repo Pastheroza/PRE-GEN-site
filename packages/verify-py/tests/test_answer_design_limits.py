@@ -3,7 +3,7 @@
 - A signed answer (pg.answer.v1) carries no policy, rules or terms digest, no epoch, no rules version, no ledger
   reference, and nothing about the model or preprocessing; `basis.rule` is a name, never a hash of a text.
 - The gate never compares policy versions or epochs: it checks request_id, lifetime, signature, revocation and
-  `profile` as a name. Answers that differ only in such members get the same verdict.
+  `profile` as a name. An answer that carries such a member is refused for carrying it, whatever its value.
 - The core, its extensions and profiles, the guides and the libraries hold no embeddings, face features, similarity
   scores, ledgers, wallets or a canonical subject id: identity stays distributed (anchors, the person's own
   confirmation, a per-generation decision over claims).
@@ -75,7 +75,7 @@ def check_answer_body(body):
     bad = [k for k in _member_names(body) if FORBIDDEN_MEMBER.search(k)]
     assert not bad, f"an answer carries {bad}"
     rule = (body.get("basis") or {}).get("rule")
-    assert rule is None or not re.fullmatch(r"[0-9a-fA-F]{16,}", rule), f"basis.rule looks like a hash: {rule}"
+    assert rule is None or not re.fullmatch(r"(?:[a-z0-9-]+:)?[0-9a-fA-F]{16,}", rule), f"basis.rule looks like a hash: {rule}"
     assert "job_hash" not in body, "an answer never repeats what job_hash stands for, nor job_hash itself"
 
 
@@ -89,13 +89,17 @@ def _seed(name):
 
 
 @pytest.mark.parametrize("extra", [{"policy_version": "2026-01-01"}, {"policy_version": "2031-12-31"},
-                                   {"epoch": 1}, {"epoch": 7}, {"rules_text_hash": "0" * 64}])
-def test_the_gate_compares_no_policy_version_or_epoch(extra):
-    """Members a registry might add are never compared: the verdict is the plain allow's verdict."""
+                                   {"epoch": 1}, {"epoch": 7}, {"rules_text_hash": "0" * 64},
+                                   {"block_hash": "0" * 64}, {"model_id": "m-1"}])
+def test_the_gate_refuses_an_answer_that_carries_them_whatever_their_value(extra):
+    """Such a member is never compared: an answer carrying one is refused for carrying it, and the same answer
+    without it is a plain allow."""
     allow = next(c for c in VECTORS["cases"] if c["name"] == "allow")
     now, d = VECTORS["now"], pregen.verify_directory(VECTORS["directory"], VECTORS["steward_public_key_hex"],
                                                      now=VECTORS["now"])
     get_json = lambda url: VECTORS["key_sets"][url]  # noqa: E731
-    body = {**allow["answer"]["body"], **extra}
-    answer = pregen.sign_envelope("pg.answer.v1", body, _seed("registry"))
-    assert pregen.check_answer(answer, allow["request"], d, get_json, now=now)["status"] == "allow"
+    plain = pregen.sign_envelope("pg.answer.v1", allow["answer"]["body"], _seed("registry"))
+    assert pregen.check_answer(plain, allow["request"], d, get_json, now=now)["status"] == "allow"
+    answer = pregen.sign_envelope("pg.answer.v1", {**allow["answer"]["body"], **extra}, _seed("registry"))
+    with pytest.raises(pregen.PregenError, match=f"members the core does not define: {next(iter(extra))}$"):
+        pregen.check_answer(answer, allow["request"], d, get_json, now=now)

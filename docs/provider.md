@@ -1,7 +1,7 @@
 # PRE-GEN for AI providers: ask, check, generate, report, prove
 
 You run a generative AI product. Before it generates an output that shows a protected
-person (or work), it **asks** the registry that holds them, **checks** the signed answer,
+person (or work), it **asks** the registry its code names, **checks** the signed answer,
 generates **only on a valid `allow`**, **reports** the output, and keeps a **proof** anyone
 can check offline. This guide gives every step in Python and JavaScript, with what each
 step returns. Where it and the specification differ, the specification wins:
@@ -25,7 +25,7 @@ step returns. Where it and the specification differ, the specification wins:
    fixed about the job: `hashlib.sha256(pregen.canonical_json(job_input)).hexdigest()`, where
    `job_input` is a dict of the prompt and settings (`canonical_json` returns bytes; in JS,
    `canonicalJson` returns a string to hash). Keep that input with the job, so you can show
-   later what the hash stands for.
+   later, to whoever you choose (never a registry), what the hash stands for.
 4. **Keep your clock synced** with your system's time service (NTP: `timedatectl`, `chronyc
    tracking`, `sntp time.apple.com` on macOS, or Windows Time): answers live minutes, and one issued more than 60 s in your
    future is refused.
@@ -184,8 +184,10 @@ Authorization: Bearer <token from that registry>
   (extension `licensee`). Leave it out otherwise. Some grants cover
   only one licensee. Send exactly the licensee id the registry gave you. An id the registry
   did not connect to you is refused (401 `PG_NOT_AUTHENTICATED`).
-- **One request per person.** A job with two people asks twice, under the same `job_id`,
-  each at the registry that holds them. **Every job has a new `job_id`** (random, not a
+- **One request per code.** A job with two people asks twice, under the same `job_id`,
+  each code at the registry its prefix names. A public person may hold codes in several
+  registries: the `identity` extension (`spec/extensions/identity.md`) says how a client
+  asks each and combines the answers (`decide_identity` / `decideIdentity`). **Every job has a new `job_id`** (random, not a
   timestamp), and `job_input` holds everything you fixed, the customer included (for example
   `{"prompt": …, "settings": …, "customer": "<licensee id, or null>"}`): once a
   person in a job is reported, asking again under that id is refused
@@ -643,7 +645,7 @@ reason you do not know as a refusal.
 
 - [ ] The directory is saved after every load, and loaded again (with `previous`) at least every 24 hours
 - [ ] Your provider key is in your secret store and registered at every registry you ask
-- [ ] Every generation of a listed person is preceded by a request to the registry that holds them
+- [ ] Every generation of a listed person is preceded by a request for each of their codes, to the registry each code names
 - [ ] `check_answer` / `checkAnswer` passes for every person in the job before generating
 - [ ] Every allow is reported: `generated` with `occurred_at` = when generation began, or `not_generated`
 - [ ] The proof bundle is checked with `check_proof` / `checkProof` and kept with the output

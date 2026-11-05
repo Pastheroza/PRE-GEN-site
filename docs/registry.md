@@ -364,7 +364,7 @@ library (`spec/conformance/README.md`). It requires the v5 operations by default
 python3 spec/conformance/level1/run_conformance.py --adapter "<command that runs your adapter>"
 ```
 
-The last line must read `… 0 failed … ; v5: 113 passed` or more.
+The last line must read `… 0 failed … ; v5: 114 passed` or more.
 
 ## 9. Apply for your prefix
 
