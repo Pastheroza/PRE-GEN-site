@@ -31,8 +31,8 @@ from .registry import Config, Registry
 
 POLICY_TEMPLATE = """# {name}: registry policy
 
-Registry prefix: {prefix}. Operator: <legal name, public address>. Complaints and disputes: {complaints}, answered
-within 7 days.
+Registry prefix: {prefix}. Operator: <legal name, public address>.
+Complaints and disputes: {complaints}, answered within 7 days.
 {sandbox}
 ## How we verify a rights holder
 {verify}
@@ -154,7 +154,8 @@ def main(argv=None):
                 "\nThis is a sandbox: it holds no real people, only the eight standard test subjects, and its "
                 "answers are marked as sandbox answers.\n" if a.sandbox else "")))
         print(f"Registry created in {a.dir}.\n  prefix: {a.prefix}\n  operator key id: {key.id}\n"
-              f"  public key: {key.public_hex}\nGive the key id and public key to the steward for the directory.\n"
+              f"  public key: {key.public_hex}\nGive the key id to the steward (step 9 of docs/registry.md); it reads "
+              f"the public key from {a.api.rstrip('/')}/keys.\n"
               f"The private key is in {key_path} (mode 600): back it up offline.\n"
               f"A policy to edit is in {policy}; `serve` publishes it at {a.api.rstrip('/')}/policy.")
         if a.sandbox:

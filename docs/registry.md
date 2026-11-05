@@ -81,7 +81,7 @@ Registry created in ./data.
   prefix: ABCD
   operator key id: pg-ed25519:<32 hex>
   public key: <64 hex>
-Give the key id and public key to the steward for the directory.
+Give the key id to the steward (step 9 of docs/registry.md); it reads the public key from https://registry.example/keys.
 The private key is in ./data/operator.key (mode 600): back it up offline.
 A policy to edit is in ./data/policy.md; `serve` publishes it at https://registry.example/policy.
 ```
@@ -100,7 +100,7 @@ While the server runs, copy the database safely with Python's `sqlite3`, and the
 `cp`:
 
 ```bash
-rm -rf ./backup/data && mkdir -p ./backup/data
+umask 077 && rm -rf ./backup/data && mkdir -p ./backup/data
 python3 -c "import sqlite3; sqlite3.connect('./data/registry.db').backup(sqlite3.connect('./backup/data/registry.db'))"
 cp -p ./data/*.key ./data/registry.json ./data/policy.md ./backup/data/
 ```
@@ -153,7 +153,8 @@ Start the server again (step 5) and run `pregen-registry check --api … --direc
 directory: add `--steward <its key hex>`): it must show `PASS listed with the current key`.
 The directory does not change, so nothing goes to the steward.
 The retired key's file is `./data/operator.retired.<hex>.key`: the server does not need it;
-move it offline. If you rotate before the directory lists the new key, providers refuse
+move it to its own offline folder (for example `./offline/retired/`), not into
+`./backup/data`, which the step 3 recipe empties each time. If you rotate before the directory lists the new key, providers refuse
 every answer you sign until it does. A retired key cannot sign anything new (clients refuse
 what it signs after it was retired), but keep its file as secret as the current one.
 
@@ -179,9 +180,10 @@ pregen-registry serve --dir ./data --host 127.0.0.1 --port 8443 \
   --ssl-certfile cert.pem --ssl-keyfile key.pem
 ```
 
-Keep it running (a service manager, or `nohup … & echo $! > registry.pid`, so you can stop it
-later with `kill "$(cat registry.pid)"`). A registry and its sandbox are two servers on two
-ports; each is stopped and started on its own. Only a key rotation needs a restart:
+Keep it running (a service manager, or `nohup … > registry.log 2>&1 & echo $! > registry.pid`,
+so you can stop it later with `kill "$(cat registry.pid)"`). A registry and its sandbox are
+two servers on two ports, each with its own pid file and log (`sandbox.pid`,
+`sandbox.log`); each is stopped and started on its own. Only a key rotation needs a restart:
 people, anchors, grants, providers and `policy.md` take effect at once. Check from another
 shell:
 
@@ -211,7 +213,7 @@ prints every code you hold, with its level and name.
 Wikidata item, an ISNI, or a domain) and the page on their official channel where they
 posted the line `PRE-GEN: PG-ABCD-000001G`. Open that page yourself first and see the exact
 line: the command records what you give it and fetches nothing, so do not anchor before you
-have seen it. Providers' clients read the page themselves.
+have seen it. If you cannot open it, leave the person unanchored and try again later. Providers' clients read the page themselves.
 
 ```bash
 pregen-registry subject anchor --dir ./data --code 'PG-ABCD-000001G' \
@@ -251,6 +253,10 @@ provider_id: frame-ai
 token: <secret>
 Shown once. Give it to the provider over a private channel.
 ```
+
+Until you hand it over, keep it only in a file readable by you
+(`umask 077; pregen-registry provider add … > frame-ai.credential`), and delete that file
+once it is sent.
 
 `pregen-registry connect --dir ./data --provider frame-ai --licensee frame-ai:user-1` lets that
 provider ask on behalf of its end customer `user-1`. **A licensee id names one customer of
@@ -373,7 +379,8 @@ It asks for:
    with your current key among them, so a stolen GitHub account cannot list someone else's
    key;
 6. **Your `pregen-registry check --api …` output** (the plain run of step 8, without any
-   token), ending `OK: all checks passed`;
+   token), ending `OK: all checks passed`; if you wrote your own registry, also the last line
+   of conformance Level 1 (step 8);
 7. **Status:** `production`, or `sandbox` for a sandbox (one application per prefix). The
    steward lists a sandbox in its **test directory**, not the real one, and gives you that
    directory's URL and test steward key.
@@ -400,7 +407,8 @@ For a test directory, add `--steward <its steward public key hex>`. Then send ea
 privately: your `api`; its credential in the shape it stores, one entry per prefix,
 `{"ABCD": {"provider_id": "frame-ai", "token": "<secret>"}}`; the codes it may ask about,
 and the exact licensee id of each customer you connected for it; your sandbox `api`, the
-sandbox's eight test codes, and the test directory's URL and steward key.
+sandbox's eight test codes, and the test directory's URL and steward key. Providers take
+sandbox credentials themselves (`POST {sandbox api}/v2/sandbox/access`).
 A listing can be revoked, with notice and reasons; a prefix is never given to anyone else.
 
 ## You are done when

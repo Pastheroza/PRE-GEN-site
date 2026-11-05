@@ -16,15 +16,18 @@ step returns. Where it and the specification differ, the specification wins:
    refusal. (A new job for a new output, with a new `job_id`, is not asking again.)
 2. **No answer is not a refusal and not a permission.** After a timeout or an HTTP 5xx you
    may send the **identical** request again (same `job_id`, same bytes): a registry answers
-   it with the answer it already gave. Resend at most 3 times, a few seconds apart; after
-   that, you have no allow for that person.
+   it with the answer it already gave. The same goes for a connection error with no HTTP
+   response. Wait 10 s for an answer, resend at most 3 times, 3 s apart; after that, you
+   have no allow for that person. Skipping the resend can leave an allow you never saw
+   counted against the grant.
 3. **Never send the prompt or the output.** You send `job_hash`: a SHA-256 of what you
    fixed about the job: `hashlib.sha256(pregen.canonical_json(job_input)).hexdigest()`, where
    `job_input` is a dict of the prompt and settings (`canonical_json` returns bytes; in JS,
    `canonicalJson` returns a string to hash). Keep that input with the job, so you can show
    later what the hash stands for.
-4. **Keep your clock synced** (NTP): answers live minutes, and one issued more than 60 s in
-   your future is refused.
+4. **Keep your clock synced** with your system's time service (NTP: `timedatectl`, `chronyc
+   tracking`, or Windows Time): answers live minutes, and one issued more than 60 s in your
+   future is refused.
 5. **Secrets stay server-side:** registry tokens and your private key never go to a browser,
    a URL, a log or client code. Your secret store is wherever only your servers can read
    them: a secrets manager, environment variables, or a file readable only by the service.
@@ -39,7 +42,8 @@ step returns. Where it and the specification differ, the specification wins:
 
 ## 1. Credentials from each registry
 
-The directory (`https://www.pregen.org/registries.json`, human view
+Do the steps in this order: install (step 2), load the directory (step 4), then this step
+and step 3; every `api` below comes from the directory. The directory (`https://www.pregen.org/registries.json`, human view
 `https://www.pregen.org/registries`) lists every registry with its prefix and `api`. Each
 registry gives you, privately, a **provider id** and a **token**. Always send to the
 `api` in the registry's directory entry; if one a registry gave you differs, ask it before
@@ -97,7 +101,9 @@ const keyId = await fingerprint(pub);
 ```
 
 Register it **once at each registry**, with that registry's credential, before your first
-report there, and remember which registries are done:
+request there (a report without a registered key is refused with 401, and the allow would
+stay counted), and remember which registries are done. `PROVIDER_ID` is the provider id
+that registry gave you; for JavaScript, see the complete example:
 
 ```python
 keyset = pregen.sign_envelope("pg.keyset.v1", {
@@ -156,25 +162,28 @@ Authorization: Bearer <token from that registry>
 {"type": "pg.request.v1", "signatures": [],
  "body": {"subject_ref": "PG-ABCD-000001G", "provider_id": "<provider id>",
           "profile": "likeness/1", "use": {"purpose": "commercial"},
-          "job_id": "job-8841", "job_hash": "<sha-256 hex of what you fixed about the job>"}}
+          "job_id": "job-8841", "job_hash": "<sha-256 hex of what you fixed about the job>",
+          "licensee_id": "frame-ai:user-1"}}
 ```
 
-- These six members are all a request needs. `use.purpose` is what the output is for, not
+- The first six members are required; `licensee_id` and the others below are optional. `use.purpose` is what the output is for, not
   its medium (an ad, image or video, is `commercial`; if you do not know what your customer
   will use it for, ask them, or send `commercial`): `personal`, `educational`,
   `research`, `editorial` or `commercial`; add `territory`, `channel` and `categories`
   (for example `["political"]`) when they apply, honestly: fixed protections are checked
   against them.
-- **`licensee_id`** (optional): your end customer's id, when you generate on their behalf
-  and the registry connected that customer to you (extension `licensee`). Some grants cover
+- **`licensee_id`** (optional, a member of `body` beside `job_id`): your end customer's id,
+  when you generate on their behalf and the registry connected that customer to you
+  (extension `licensee`). Leave it out otherwise. Some grants cover
   only one licensee. Send exactly the licensee id the registry gave you. An id the registry
   did not connect to you is refused (401 `PG_NOT_AUTHENTICATED`).
 - **One request per person.** A job with two people asks twice, under the same `job_id`,
   each at the registry that holds them. **Every job has a new `job_id`** (random, not a
-  timestamp), and `job_input` holds everything you fixed, the customer included: once a
+  timestamp), and `job_input` holds everything you fixed, the customer included (for example
+  `{"prompt": …, "settings": …, "customer": "<licensee id, or null>"}`): once a
   person in a job is reported, asking again under that id is refused
   (409 `PG_ASK_CLOSED`, which carries the acknowledgement you were given before: keep it if
-  you lost yours). Within one job, every request carries the same `job_hash`; a reused `job_id`
+  you lost yours; otherwise nothing to do). Within one job, every request carries the same `job_hash`; a reused `job_id`
   with a different `job_hash` gets 409 `PG_JOB_CONFLICT` first. Both mean no answer.
 - `pregen.sign_envelope("pg.request.v1", body)` / `signEnvelope("pg.request.v1", body)`
   makes the envelope (no key: `signatures` stays empty; the token authenticates you).
@@ -240,7 +249,8 @@ report = pregen.sign_envelope("pg.report.v1", {
   refused, an error, you changed your mind, the allows expired), report
   `"outcome": "not_generated"` with `"output_hash": ""` and `occurred_at` = when you gave it
   up, for **every** allow already received in that job, soon (within 24 hours of the
-  answer). Otherwise the use stays counted.
+  answer's expiry). Otherwise the use stays counted. Name your own request and the answer
+  you received, even when that answer was for another request.
 - **Keep the signed report** you sent. If a report gets no answer, send the **same bytes**
   again: you get the same acknowledgement. A different report for the same answer is
   refused (409 `PG_REPORT_CONFLICT`).
@@ -318,9 +328,13 @@ for (const r of directory.registries) {              // savedKeySets: the previo
 }
 ```
 
-If one registry does not answer, keep its previous copy and go on. Keep each as one JSON
-file; a test directory's steward key is a constant you keep with them. Save key sets as
-they come: at check time the library takes only keys whose ids the directory lists.
+If one registry does not answer, keep its previous copy and go on. Keep the directory in
+one JSON file, and all key sets in another, as one object keyed by URL; a test directory's
+steward key is a constant you keep with them. Save key sets as they come: at check time the
+library uses only keys whose ids the directory lists, and refuses small-order keys. It does
+not check the provider's signature on a report: it relies on the registry's signed
+acknowledgement, which names that report. If your saved copy is more than 24 hours old, do
+not label: go online, load and save again.
 
 Later, check with no network:
 
@@ -351,8 +365,9 @@ now. For answers, always `load_directory(previous=saved)`.
 From the registry, get its sandbox `api`, the sandbox's eight test codes, and the test
 directory (its URL and test steward key). A sandbox is its own registry with its own prefix
 (for example `ABCE` beside `ABCD`): take credentials from `{sandbox api}/v2/sandbox/access`,
-store them under that prefix in `CREDENTIALS`, and register your key there (step 3). Test
-code `N` is `PG-<prefix>-00000N` plus its check character. Each answers one way:
+store them under that prefix in `CREDENTIALS`, and register your key there (step 3). Copy
+the eight test codes the registry gives you (code `N` is `PG-<prefix>-00000N` plus a check
+character that cannot be guessed). Each answers one way:
 
 | Code | Answer |
 |---|---|
@@ -471,7 +486,11 @@ began = int(time.time())                                                  # step
 if began >= min(a["body"]["expires_at"] for _, _, a in allowed):          # an allow ran out: give all back, ask again
     give_back(allowed, began)
     raise RuntimeError("an allow expired before generation began: ask again under a new job_id")
-output = b"<the generated file>"
+try:
+    output = b"<the generated file>"                                      # your generation
+except Exception:
+    give_back(allowed, int(time.time()))                                  # it failed: free every use
+    raise
 output_hash = hashlib.sha256(output).hexdigest()
 
 subjects = []
@@ -566,7 +585,13 @@ if (began >= Math.min(...allowed.map(({ answer }) => answer.body.expires_at))) {
   await giveBack(allowed, began);
   throw new Error("an allow expired before generation began: ask again under a new job_id");
 }
-const output = Buffer.from("<the generated file>");
+let output;
+try {
+  output = Buffer.from("<the generated file>");                                 // your generation
+} catch (e) {
+  await giveBack(allowed, Math.floor(Date.now() / 1000));                       // it failed: free every use
+  throw e;
+}
 const outputHash = createHash("sha256").update(output).digest("hex");
 
 const subjects = [];
