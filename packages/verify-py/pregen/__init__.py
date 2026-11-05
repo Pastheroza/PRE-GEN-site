@@ -13,7 +13,7 @@ from urllib.parse import urlsplit
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-__version__ = "0.10.0"
+__version__ = "0.11.0"
 __all__ = [
     "STEWARD_PUBLIC_KEY_HEX", "DIRECTORY_URL", "PregenError", "Directory", "canonical_json",
     "fingerprint", "check_public_key", "verify_bytes", "verify_signed", "verify_license", "issuer_of", "normalize_code",

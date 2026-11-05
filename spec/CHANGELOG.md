@@ -8,9 +8,10 @@ comments cited throughout `spec/PRE-GEN-SPEC.md`.
 
 See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
 
-## Unreleased — stress-test fixes (2026-10-28, a local branch: not published)
+## Unreleased — pregen 0.11.0, @pregen/verify 0.11.0, pregen-registry 0.2.0 (not published)
 
-From the hard stress test of 2026-10-28; the founder approved the fix order the same day.
+Security fixes from an internal review (2026-10-28), and what the two new guides need (`docs/provider.md`,
+`docs/registry.md`). No message format changes; one behaviour change in `decide_identity`.
 - **C1 — keys no one can be held to are refused.** Under a small-order Ed25519 key a fixed signature verifies for any
   message. Such keys (in either sign-bit encoding) and every non-canonical encoding (y ≥ p) are refused wherever a key
   is recorded, and nothing verifies under them. Core, Messages, Signature; `PG-CODE.md` §9.1 item 4 (the steward
@@ -24,6 +25,19 @@ From the hard stress test of 2026-10-28; the founder approved the fix order the 
 - **H5 — one code, one string.** A full-match ASCII grammar for codes in messages; no trimming, case change or folding
   except where a person types a code; a registry answers a non-canonical `subject_ref` with `PG_MALFORMED` (422), never
   a signed answer (`PG-CODE.md` §7).
+- **`decide_identity` (behaviour change).** With no confirmed claim the result is `not_blocked`,
+  `PG_IDENTITY_UNCONFIRMED`: an unconfirmed claim neither permits nor refuses, so an impostor's listing can no longer
+  freeze a person who never confirmed anything, and `allow_unconfirmed` no longer permits. With no allow among confirmed
+  claims, the strongest refusal wins, never the first in the list (`extensions/identity.md` rules 3–4).
+  `check_channel_proof` matches the whole code, not its start.
+- **Conformance Level 1 tests v5.** New operations `message_id`, `signing_input`, `verify_envelope` (with the C1
+  forgeries) and `check_answer` (`test-vectors/answers.json`, 20 cases), required by default; a run where nothing ran
+  fails. Before, an implementation with every v5 message id wrong passed Level 1.
+- **Libraries:** `sign_envelope` / `signEnvelope`, `signing_input` / `signingInput`, `new_private_key_hex` /
+  `newPrivateKeyHex`, `public_key_hex` / `publicKeyHex`; `load_directory` / `loadDirectory` take a test steward key;
+  `check_proof` / `checkProof` take `testing`.
+- **Reference registry:** `serve --ssl-certfile/--ssl-keyfile`, `subject anchor`. **Steward tool:** a scripted test
+  steward reads `PREGEN_STEWARD_PASSPHRASE`.
 
 ## v5 — 2026-10-12
 
