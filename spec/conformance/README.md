@@ -58,6 +58,20 @@ implementation in *any* language, not just the four already in this repo.
 → {"result": "valid" | "issuer_mismatch" | "unknown_issuer"}
 ```
 
+**v5 messages (PRE-GEN-CORE.md, Messages and rule 5), required by default:**
+
+```
+{"op": "message_id", "type": "pg.answer.v1", "body": {...}} → {"message_id": "<hex>"}
+{"op": "signing_input", "type": "pg.answer.v1", "body": {...}} → {"signing_input_hex": "<hex>"}
+{"op": "verify_envelope", "envelope": {...}, "public_keys": {"<key_id>": "<hex>", ...}} → {"valid": true}
+{"op": "check_answer", "answer": {...}, "request": {...}, "directory": {...}, "steward_public_key_hex": "...",
+ "key_sets": {"<keys url>": {...}}, "now": 1790000000, "testing": false} → {"ok": true} or {"ok": false, "error": "…"}
+```
+
+The vectors are `test-vectors/messages.json` (8 messages), `test-vectors/small-order-keys.json` (the C1 forgeries
+`verify_envelope` must refuse) and `test-vectors/answers.json` (20 answer checks, from `spec/tools/answer_vectors.py`).
+A pre-v5 implementation runs with `--allow-missing-v5` and is not v5 conformant. A run where no operation ran fails.
+
 An adapter answers `{"unsupported": true}` for an op it doesn't implement.
 For release gates, require the operations your profile claims, for example
 `--require-op verify_signature --require-op verify_license --require-op verify_directory`.

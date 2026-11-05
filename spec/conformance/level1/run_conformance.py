@@ -16,6 +16,7 @@ are SKIPPED, not failed, and reported separately in the summary.
 """
 
 import argparse
+import hashlib
 import json
 import os
 import shlex
@@ -25,6 +26,10 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 VECTORS_PATH = REPO_ROOT / "spec" / "test-vectors" / "vectors.json"
+V5_DIR = REPO_ROOT / "spec" / "test-vectors"
+# The v5 operations (PRE-GEN-CORE.md, Messages and rule 5). Required unless --allow-missing-v5: before they were part
+# of Level 1, an implementation with every v5 message id wrong passed it (stress test M2).
+V5_OPS = ["message_id", "signing_input", "verify_envelope", "check_answer"]
 
 
 def _call(adapter_cmd: str, cwd: str | None, extra_env: dict, request: dict) -> dict:
@@ -239,6 +244,8 @@ def run(adapter_cmd: str, cwd: str | None, extra_env: dict | None = None,
                 ok = resp.get("valid") is want
                 _check(name, ok, "" if ok else f"expected valid={want}, got {resp}", results)
 
+    _run_v5(adapter_cmd, cwd, extra_env, results)
+
     # Probe each explicitly required operation using an existing valid vector.
     probes = {
         "canonical_json": {"op": "canonical_json", "input": {}},
@@ -254,7 +261,17 @@ def run(adapter_cmd: str, cwd: str | None, extra_env: dict | None = None,
                                     "steward_public_key_hex": ns["steward_public_key_hex"],
                                     "code": ns["namespace_cases"][0]["code"],
                                     "signer_key_id": ns["namespace_cases"][0]["signer_key_id"]}
+    msg = json.loads((V5_DIR / "messages.json").read_text(encoding="utf-8"))["vectors"][0]["envelope"]
+    ans = json.loads((V5_DIR / "answers.json").read_text(encoding="utf-8"))
+    probes["message_id"] = {"op": "message_id", "type": msg["type"], "body": msg["body"]}
+    probes["signing_input"] = {"op": "signing_input", "type": msg["type"], "body": msg["body"]}
+    probes["verify_envelope"] = {"op": "verify_envelope", "envelope": msg, "public_keys": {}}
+    probes["check_answer"] = _answer_request(ans, ans["cases"][0])
     coverage = {
+        "message_id": ("v5_message_id:",),
+        "signing_input": ("v5_signing_input:",),
+        "verify_envelope": ("v5_envelope:", "v5_small_order:"),
+        "check_answer": ("v5_check_answer:",),
         "canonical_json": ("canonical_json:", "signing_canonical:"),
         "verify_signature": ("signing_verify:", "signing_reject_tampered:"),
         "verify_license": ("license_countersignature:",),
@@ -273,6 +290,53 @@ def run(adapter_cmd: str, cwd: str | None, extra_env: dict | None = None,
     return results
 
 
+def _answer_request(ans: dict, case: dict) -> dict:
+    return {"op": "check_answer", "answer": case["answer"], "request": case["request"], "directory": ans["directory"],
+            "steward_public_key_hex": ans["steward_public_key_hex"], "key_sets": ans["key_sets"], "now": ans["now"],
+            "testing": case["testing"]}
+
+
+def _run_v5(adapter_cmd: str, cwd: str | None, extra_env: dict, results: list) -> None:
+    """v5 messages: ids, signing input, envelopes (with the C1 small-order forgery) and the answer check."""
+    def ask(name: str, request: dict, judge) -> None:
+        resp = _call(adapter_cmd, cwd, extra_env, request)
+        if resp.get("unsupported"):
+            _check(name, True, "skipped (unsupported)", results)
+        else:
+            ok, detail = judge(resp)
+            _check(name, ok, "" if ok else detail, results)
+
+    msgs = json.loads((V5_DIR / "messages.json").read_text(encoding="utf-8"))
+    keys = {k["key_id"]: k["public_key_hex"] for k in msgs["keys"].values()}
+    for v in msgs["vectors"]:
+        env, n = v["envelope"], v["name"]
+        ask(f"v5_message_id:{n}", {"op": "message_id", "type": env["type"], "body": env["body"]},
+            lambda r, v=v: (r.get("message_id") == v["message_id"], f"expected {v['message_id']}, got {r}"))
+        ask(f"v5_signing_input:{n}", {"op": "signing_input", "type": env["type"], "body": env["body"]},
+            lambda r, v=v: (r.get("signing_input_hex") == v["signing_input_hex"], f"got {str(r)[:120]}"))
+        if not env["signatures"]:
+            continue
+        pubs = {s["key_id"]: keys[s["key_id"]] for s in env["body"]["signers"]}
+        for label, e, want in (("valid", env, True),
+                               ("tampered_body", {**env, "body": {**env["body"], "conformance_tampered": True}}, False),
+                               ("other_type", {**env, "type": env["type"] + "x"}, False),
+                               ("no_signatures", {**env, "signatures": []}, False)):
+            ask(f"v5_envelope:{n}:{label}", {"op": "verify_envelope", "envelope": e, "public_keys": pubs},
+                lambda r, want=want: (r.get("valid") is want, f"expected valid={want}, got {r}"))
+    small = json.loads((V5_DIR / "small-order-keys.json").read_text(encoding="utf-8"))
+    for i, k in enumerate(small["refuse"]):
+        pub = k["public_key_hex"]
+        kid = "pg-ed25519:" + hashlib.sha256(bytes.fromhex(pub)).hexdigest()[:32]
+        forged = {"type": "pg.report.v1", "body": {"signers": [{"role": "provider", "key_id": kid}], "outcome": "generated"},
+                  "signatures": ["01" + "00" * 63]}
+        ask(f"v5_small_order:{i}", {"op": "verify_envelope", "envelope": forged, "public_keys": {kid: pub}},
+            lambda r: (r.get("valid") is False, f"a small-order key verified a forgery: {r}"))
+    ans = json.loads((V5_DIR / "answers.json").read_text(encoding="utf-8"))
+    for c in ans["cases"]:
+        ask(f"v5_check_answer:{c['name']}", _answer_request(ans, c),
+            lambda r, c=c: (r.get("ok") is c["ok"], f"expected ok={c['ok']}, got {r}"))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--adapter", required=True, help="shell command to invoke the adapter")
@@ -281,18 +345,24 @@ def main() -> int:
                         help="extra KEY=VALUE env var for the adapter process, repeatable")
     parser.add_argument("--require-op", action="append", default=[],
                         help="fail rather than skip when this operation is unsupported (repeatable)")
+    parser.add_argument("--allow-missing-v5", action="store_true",
+                        help="do not require the v5 operations (a pre-v5 implementation: it is not v5 conformant)")
     args = parser.parse_args()
 
     extra_env = dict(kv.split("=", 1) for kv in args.env)
-    results = run(args.adapter, args.cwd, extra_env, args.require_op)
+    required = list(dict.fromkeys(args.require_op + ([] if args.allow_missing_v5 else V5_OPS)))
+    results = run(args.adapter, args.cwd, extra_env, required)
     passed = sum(1 for _, ok, _ in results if ok)
     skipped = sum(1 for _, ok, detail in results if ok and detail.startswith("skipped"))
     failed = [(name, detail) for name, ok, detail in results if not ok]
 
-    print(f"{passed - skipped} passed, {len(failed)} failed, {skipped} skipped ({len(results)} total)")
+    v5 = sum(1 for name, ok, detail in results if name.startswith("v5_") and ok and not detail.startswith("skipped"))
+    print(f"{passed - skipped} passed, {len(failed)} failed, {skipped} skipped ({len(results)} total); v5: {v5} passed")
     for name, detail in failed:
         print(f"  FAIL {name}: {detail}")
-
+    if passed - skipped == 0:
+        print("  FAIL nothing ran: the adapter implements no operation")
+        return 1
     return 1 if failed else 0
 
 

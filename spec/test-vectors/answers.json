@@ -1,0 +1,905 @@
+{
+ "description": "Generate spec/test-vectors/answers.json: the answer-check differential for conformance Level 1 (core rule 5).",
+ "now": 1790000000,
+ "steward_public_key_hex": "1529cd357cf9e8c26db8d338f4d76dc3cde10d60766ebe7afa5d4cdeba2ff9e2",
+ "directory": {
+  "schema": "pregen.registries.v2",
+  "sequence": 1,
+  "steward_key_id": "pg-ed25519:37b5a0c8a972fcf58c10bef972c220c3",
+  "registries": [
+   {
+    "name": "Test registry",
+    "prefix": "TEST",
+    "api": "https://registry.test.example",
+    "keys": "https://registry.test.example/keys",
+    "key_fingerprints": [
+     "pg-ed25519:a5599d87d32efebb2571d65a6848da03",
+     "pg-ed25519:61bbe5802b57426ce673cbd94bf45473",
+     "pg-ed25519:01d0fabd251fcbbe2b93b4b927b26ad2"
+    ]
+   },
+   {
+    "name": "Other registry",
+    "prefix": "NWRD",
+    "api": "https://other.test.example",
+    "keys": "https://other.test.example/keys",
+    "key_fingerprints": [
+     "pg-ed25519:a8807bb07969da1558ec42d39fd3493d"
+    ]
+   }
+  ],
+  "revoked_keys": [
+   {
+    "key_id": "pg-ed25519:61bbe5802b57426ce673cbd94bf45473",
+    "at": "2026-10-01T00:00:00Z"
+   }
+  ],
+  "signature": "249f6dd71a8fb3d3642a2550be59aa2c1ee32c62a00f10cdf1505e96b840a67b4e546117ae72e9727e6765ab56b787c1a5c806c09c40df88ed0a2eb64fe0a709"
+ },
+ "key_sets": {
+  "https://registry.test.example/keys": {
+   "keys": [
+    {
+     "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03",
+     "public_key_hex": "93d2c786f930e606da24075095f3fd3ddaffcc1ed7b32d02cb73c74fd24c56f0"
+    },
+    {
+     "key_id": "pg-ed25519:61bbe5802b57426ce673cbd94bf45473",
+     "public_key_hex": "de4f75f1986ad200f6461f1635afcb23b87b280272e7a0a30439602af1de4127"
+    },
+    {
+     "key_id": "pg-ed25519:01d0fabd251fcbbe2b93b4b927b26ad2",
+     "public_key_hex": "0100000000000000000000000000000000000000000000000000000000000000"
+    }
+   ]
+  },
+  "https://other.test.example/keys": {
+   "keys": [
+    {
+     "key_id": "pg-ed25519:a8807bb07969da1558ec42d39fd3493d",
+     "public_key_hex": "9c88a5eb9c0b95cd013c0600257629970eef735d0dc1b7b30dd96821b0a513d8"
+    }
+   ]
+  }
+ },
+ "cases": [
+  {
+   "name": "allow",
+   "request": {
+    "type": "pg.request.v1",
+    "signatures": [],
+    "body": {
+     "subject_ref": "PG-TEST-000001N",
+     "provider_id": "frame-ai",
+     "profile": "likeness/1",
+     "use": {
+      "purpose": "commercial"
+     },
+     "job_id": "job-8841",
+     "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "answer": {
+    "type": "pg.answer.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "request_id": "9e09f6feb458074af0b91391097be4e60ad3957acc4a14ad3a2312f31cc164ee",
+     "profile": "likeness/1",
+     "status": "allow",
+     "basis": {
+      "kind": "policy",
+      "rule": "test"
+     },
+     "issued_at": 1789999990,
+     "expires_at": 1790000290
+    },
+    "signatures": [
+     "0d9a55fbd3174436239765b983e2bc5914971bd7f2face0ec51f8b72eec599937f314808c3f541b39a7b8e8edeff8ada35da24dd68e5f0bd2879437e15494307"
+    ]
+   },
+   "testing": false,
+   "ok": true
+  },
+  {
+   "name": "allow, sandbox answer, testing",
+   "request": {
+    "type": "pg.request.v1",
+    "signatures": [],
+    "body": {
+     "subject_ref": "PG-TEST-000001N",
+     "provider_id": "frame-ai",
+     "profile": "likeness/1",
+     "use": {
+      "purpose": "commercial"
+     },
+     "job_id": "job-8841",
+     "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "answer": {
+    "type": "pg.answer.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "request_id": "9e09f6feb458074af0b91391097be4e60ad3957acc4a14ad3a2312f31cc164ee",
+     "profile": "likeness/1",
+     "status": "allow",
+     "basis": {
+      "kind": "policy",
+      "rule": "test"
+     },
+     "issued_at": 1789999990,
+     "expires_at": 1790000290,
+     "ext": {
+      "sandbox": true
+     }
+    },
+    "signatures": [
+     "ce627a139f75ddb39d33d12065d26b5e28acdcdd3c8455a841fd073374f58e9d340469b252dfbb81f826056c7dc94ec7f1dd535d246b78d04e6fe41fcaf85e06"
+    ]
+   },
+   "testing": true,
+   "ok": true
+  },
+  {
+   "name": "sandbox answer outside testing",
+   "request": {
+    "type": "pg.request.v1",
+    "signatures": [],
+    "body": {
+     "subject_ref": "PG-TEST-000001N",
+     "provider_id": "frame-ai",
+     "profile": "likeness/1",
+     "use": {
+      "purpose": "commercial"
+     },
+     "job_id": "job-8841",
+     "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "answer": {
+    "type": "pg.answer.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "request_id": "9e09f6feb458074af0b91391097be4e60ad3957acc4a14ad3a2312f31cc164ee",
+     "profile": "likeness/1",
+     "status": "allow",
+     "basis": {
+      "kind": "policy",
+      "rule": "test"
+     },
+     "issued_at": 1789999990,
+     "expires_at": 1790000290,
+     "ext": {
+      "sandbox": true
+     }
+    },
+    "signatures": [
+     "ce627a139f75ddb39d33d12065d26b5e28acdcdd3c8455a841fd073374f58e9d340469b252dfbb81f826056c7dc94ec7f1dd535d246b78d04e6fe41fcaf85e06"
+    ]
+   },
+   "testing": false,
+   "ok": false
+  },
+  {
+   "name": "deny is not an allow",
+   "request": {
+    "type": "pg.request.v1",
+    "signatures": [],
+    "body": {
+     "subject_ref": "PG-TEST-000001N",
+     "provider_id": "frame-ai",
+     "profile": "likeness/1",
+     "use": {
+      "purpose": "commercial"
+     },
+     "job_id": "job-8841",
+     "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "answer": {
+    "type": "pg.answer.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "request_id": "9e09f6feb458074af0b91391097be4e60ad3957acc4a14ad3a2312f31cc164ee",
+     "profile": "likeness/1",
+     "status": "deny",
+     "issued_at": 1789999990,
+     "expires_at": 1790000290,
+     "reason": "PG_NO_LICENSE"
+    },
+    "signatures": [
+     "1cd0153688ea71da39171ddd1e2d2fa39acd01210eaeee997962329ce8bd9464fe0538b59177e94f7b4ebbc3e44e307d950832cbb3e7905f891d88f3d574830d"
+    ]
+   },
+   "testing": false,
+   "ok": false
+  },
+  {
+   "name": "not_blocked is not an allow",
+   "request": {
+    "type": "pg.request.v1",
+    "signatures": [],
+    "body": {
+     "subject_ref": "PG-TEST-000001N",
+     "provider_id": "frame-ai",
+     "profile": "likeness/1",
+     "use": {
+      "purpose": "commercial"
+     },
+     "job_id": "job-8841",
+     "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "answer": {
+    "type": "pg.answer.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "request_id": "9e09f6feb458074af0b91391097be4e60ad3957acc4a14ad3a2312f31cc164ee",
+     "profile": "likeness/1",
+     "status": "not_blocked",
+     "issued_at": 1789999990,
+     "expires_at": 1790000290,
+     "reason": "PG_UNKNOWN_SUBJECT"
+    },
+    "signatures": [
+     "b6c311232efc9b255daec122398fbf4cca7ffefea53730d08a011557cf5ba350d7c1bc8ff897a51ed2572d85e98448931f4356fca95617e5968b6b99d1cbe900"
+    ]
+   },
+   "testing": false,
+   "ok": false
+  },
+  {
+   "name": "an allow for another request",
+   "request": {
+    "type": "pg.request.v1",
+    "signatures": [],
+    "body": {
+     "subject_ref": "PG-TEST-000001N",
+     "provider_id": "frame-ai",
+     "profile": "likeness/1",
+     "use": {
+      "purpose": "commercial"
+     },
+     "job_id": "job-0001",
+     "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "answer": {
+    "type": "pg.answer.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "request_id": "9e09f6feb458074af0b91391097be4e60ad3957acc4a14ad3a2312f31cc164ee",
+     "profile": "likeness/1",
+     "status": "allow",
+     "basis": {
+      "kind": "policy",
+      "rule": "test"
+     },
+     "issued_at": 1789999990,
+     "expires_at": 1790000290
+    },
+    "signatures": [
+     "0d9a55fbd3174436239765b983e2bc5914971bd7f2face0ec51f8b72eec599937f314808c3f541b39a7b8e8edeff8ada35da24dd68e5f0bd2879437e15494307"
+    ]
+   },
+   "testing": false,
+   "ok": false
+  },
+  {
+   "name": "an allow under another profile",
+   "request": {
+    "type": "pg.request.v1",
+    "signatures": [],
+    "body": {
+     "subject_ref": "PG-TEST-000001N",
+     "provider_id": "frame-ai",
+     "profile": "likeness/1",
+     "use": {
+      "purpose": "commercial"
+     },
+     "job_id": "job-8841",
+     "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "answer": {
+    "type": "pg.answer.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "request_id": "9e09f6feb458074af0b91391097be4e60ad3957acc4a14ad3a2312f31cc164ee",
+     "profile": "likeness/2",
+     "status": "allow",
+     "basis": {
+      "kind": "policy",
+      "rule": "test"
+     },
+     "issued_at": 1789999990,
+     "expires_at": 1790000290
+    },
+    "signatures": [
+     "22987ee55bb579ccf59ee9ed18bba34a4eb8462c892fcb671a8291b33e126deef514355aa06f55b23cf022e0e00c6abb009c997f20eab43a7be36ff0262d3108"
+    ]
+   },
+   "testing": false,
+   "ok": false
+  },
+  {
+   "name": "expired",
+   "request": {
+    "type": "pg.request.v1",
+    "signatures": [],
+    "body": {
+     "subject_ref": "PG-TEST-000001N",
+     "provider_id": "frame-ai",
+     "profile": "likeness/1",
+     "use": {
+      "purpose": "commercial"
+     },
+     "job_id": "job-8841",
+     "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "answer": {
+    "type": "pg.answer.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "request_id": "9e09f6feb458074af0b91391097be4e60ad3957acc4a14ad3a2312f31cc164ee",
+     "profile": "likeness/1",
+     "status": "allow",
+     "basis": {
+      "kind": "policy",
+      "rule": "test"
+     },
+     "issued_at": 1789999600,
+     "expires_at": 1789999900
+    },
+    "signatures": [
+     "ce2e3182782e4209e91c5a839a388644284801d21438a605d2636224d2548ee6ab97d9b302a806c6931e0ba4a57d612282cdb41e1f85dcb8e3412ba558fc2905"
+    ]
+   },
+   "testing": false,
+   "ok": false
+  },
+  {
+   "name": "issued more than 60 s in the future",
+   "request": {
+    "type": "pg.request.v1",
+    "signatures": [],
+    "body": {
+     "subject_ref": "PG-TEST-000001N",
+     "provider_id": "frame-ai",
+     "profile": "likeness/1",
+     "use": {
+      "purpose": "commercial"
+     },
+     "job_id": "job-8841",
+     "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "answer": {
+    "type": "pg.answer.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "request_id": "9e09f6feb458074af0b91391097be4e60ad3957acc4a14ad3a2312f31cc164ee",
+     "profile": "likeness/1",
+     "status": "allow",
+     "basis": {
+      "kind": "policy",
+      "rule": "test"
+     },
+     "issued_at": 1790000061,
+     "expires_at": 1790000300
+    },
+    "signatures": [
+     "b669edfc77547e3935ef389c4d149881ab7469375f815406df7d30e5da9d08280ad5d1103d249f393de8b7e3451e1d18ac3b30f497b92b722e9e13a85caaeb02"
+    ]
+   },
+   "testing": false,
+   "ok": false
+  },
+  {
+   "name": "lives longer than 900 s",
+   "request": {
+    "type": "pg.request.v1",
+    "signatures": [],
+    "body": {
+     "subject_ref": "PG-TEST-000001N",
+     "provider_id": "frame-ai",
+     "profile": "likeness/1",
+     "use": {
+      "purpose": "commercial"
+     },
+     "job_id": "job-8841",
+     "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "answer": {
+    "type": "pg.answer.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "request_id": "9e09f6feb458074af0b91391097be4e60ad3957acc4a14ad3a2312f31cc164ee",
+     "profile": "likeness/1",
+     "status": "allow",
+     "basis": {
+      "kind": "policy",
+      "rule": "test"
+     },
+     "issued_at": 1789999990,
+     "expires_at": 1790000900
+    },
+    "signatures": [
+     "e152d2008f8011afb8d072406d7b6fe5e30c6d34332d74df4f16b2e47ab214c3a2a91206fe96b06eec6c210cc30b4e2712662f5cdd0f6244c3bc1d8c58328e00"
+    ]
+   },
+   "testing": false,
+   "ok": false
+  },
+  {
+   "name": "an allow with no basis",
+   "request": {
+    "type": "pg.request.v1",
+    "signatures": [],
+    "body": {
+     "subject_ref": "PG-TEST-000001N",
+     "provider_id": "frame-ai",
+     "profile": "likeness/1",
+     "use": {
+      "purpose": "commercial"
+     },
+     "job_id": "job-8841",
+     "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "answer": {
+    "type": "pg.answer.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "request_id": "9e09f6feb458074af0b91391097be4e60ad3957acc4a14ad3a2312f31cc164ee",
+     "profile": "likeness/1",
+     "status": "allow",
+     "issued_at": 1789999990,
+     "expires_at": 1790000290
+    },
+    "signatures": [
+     "3948e928bf77810fea05a39dddecf739297717317e6e68ba859cd5d182e3747f71b997daf773d742ed8eda7704020c53f737e93df86f2f7cfd921e060ea5b40b"
+    ]
+   },
+   "testing": false,
+   "ok": false
+  },
+  {
+   "name": "an allow with a reason",
+   "request": {
+    "type": "pg.request.v1",
+    "signatures": [],
+    "body": {
+     "subject_ref": "PG-TEST-000001N",
+     "provider_id": "frame-ai",
+     "profile": "likeness/1",
+     "use": {
+      "purpose": "commercial"
+     },
+     "job_id": "job-8841",
+     "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "answer": {
+    "type": "pg.answer.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "request_id": "9e09f6feb458074af0b91391097be4e60ad3957acc4a14ad3a2312f31cc164ee",
+     "profile": "likeness/1",
+     "status": "allow",
+     "basis": {
+      "kind": "policy",
+      "rule": "test"
+     },
+     "issued_at": 1789999990,
+     "expires_at": 1790000290,
+     "reason": "PG_NO_LICENSE"
+    },
+    "signatures": [
+     "061a2c4ffcb222a0c610e89cd22752f222466eca63d920bcf2940cdef11f7582d2f5881bbe9d1799ed8444832df6b64a8944b7ce33e728ae1c90acaeca3cb80e"
+    ]
+   },
+   "testing": false,
+   "ok": false
+  },
+  {
+   "name": "a critical extension not understood",
+   "request": {
+    "type": "pg.request.v1",
+    "signatures": [],
+    "body": {
+     "subject_ref": "PG-TEST-000001N",
+     "provider_id": "frame-ai",
+     "profile": "likeness/1",
+     "use": {
+      "purpose": "commercial"
+     },
+     "job_id": "job-8841",
+     "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "answer": {
+    "type": "pg.answer.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "request_id": "9e09f6feb458074af0b91391097be4e60ad3957acc4a14ad3a2312f31cc164ee",
+     "profile": "likeness/1",
+     "status": "allow",
+     "basis": {
+      "kind": "policy",
+      "rule": "test"
+     },
+     "issued_at": 1789999990,
+     "expires_at": 1790000290,
+     "critical": [
+      "commerce"
+     ]
+    },
+    "signatures": [
+     "8c252715c1adf80be49f3d6a2bcae2f3d89f4ff4f92a09ee13bb964c3ea2e3cc94255188802570fa4170bf740b3ba4c3d8d140664d8769d926a6eddda485240a"
+    ]
+   },
+   "testing": false,
+   "ok": false
+  },
+  {
+   "name": "signed by another registry's key",
+   "request": {
+    "type": "pg.request.v1",
+    "signatures": [],
+    "body": {
+     "subject_ref": "PG-TEST-000001N",
+     "provider_id": "frame-ai",
+     "profile": "likeness/1",
+     "use": {
+      "purpose": "commercial"
+     },
+     "job_id": "job-8841",
+     "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "answer": {
+    "type": "pg.answer.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a8807bb07969da1558ec42d39fd3493d"
+      }
+     ],
+     "request_id": "9e09f6feb458074af0b91391097be4e60ad3957acc4a14ad3a2312f31cc164ee",
+     "profile": "likeness/1",
+     "status": "allow",
+     "basis": {
+      "kind": "policy",
+      "rule": "test"
+     },
+     "issued_at": 1789999990,
+     "expires_at": 1790000290
+    },
+    "signatures": [
+     "c361394caa8c0045416e7971802b78b5ef735b52d1d794fa58306519fe298ca7589e402b28990850166de867789cec381d8a5b16384c37c9be7879badc1d7a02"
+    ]
+   },
+   "testing": false,
+   "ok": false
+  },
+  {
+   "name": "signed by a revoked key",
+   "request": {
+    "type": "pg.request.v1",
+    "signatures": [],
+    "body": {
+     "subject_ref": "PG-TEST-000001N",
+     "provider_id": "frame-ai",
+     "profile": "likeness/1",
+     "use": {
+      "purpose": "commercial"
+     },
+     "job_id": "job-8841",
+     "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "answer": {
+    "type": "pg.answer.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:61bbe5802b57426ce673cbd94bf45473"
+      }
+     ],
+     "request_id": "9e09f6feb458074af0b91391097be4e60ad3957acc4a14ad3a2312f31cc164ee",
+     "profile": "likeness/1",
+     "status": "allow",
+     "basis": {
+      "kind": "policy",
+      "rule": "test"
+     },
+     "issued_at": 1789999990,
+     "expires_at": 1790000290
+    },
+    "signatures": [
+     "8b6e7875ba2ce6fd4586a814def8407c6e492482adb7a7c933e2a44e34142a7058b246985f83c96bea9253319416c23ba57b85f30019a984be5cca8e29a11700"
+    ]
+   },
+   "testing": false,
+   "ok": false
+  },
+  {
+   "name": "a small-order key and a forged signature (C1)",
+   "request": {
+    "type": "pg.request.v1",
+    "signatures": [],
+    "body": {
+     "subject_ref": "PG-TEST-000001N",
+     "provider_id": "frame-ai",
+     "profile": "likeness/1",
+     "use": {
+      "purpose": "commercial"
+     },
+     "job_id": "job-8841",
+     "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "answer": {
+    "type": "pg.answer.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:01d0fabd251fcbbe2b93b4b927b26ad2"
+      }
+     ],
+     "request_id": "9e09f6feb458074af0b91391097be4e60ad3957acc4a14ad3a2312f31cc164ee",
+     "profile": "likeness/1",
+     "status": "allow",
+     "basis": {
+      "kind": "policy",
+      "rule": "test"
+     },
+     "issued_at": 1789999990,
+     "expires_at": 1790000290
+    },
+    "signatures": [
+     "01000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    ]
+   },
+   "testing": false,
+   "ok": false
+  },
+  {
+   "name": "no signature",
+   "request": {
+    "type": "pg.request.v1",
+    "signatures": [],
+    "body": {
+     "subject_ref": "PG-TEST-000001N",
+     "provider_id": "frame-ai",
+     "profile": "likeness/1",
+     "use": {
+      "purpose": "commercial"
+     },
+     "job_id": "job-8841",
+     "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "answer": {
+    "type": "pg.answer.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "request_id": "9e09f6feb458074af0b91391097be4e60ad3957acc4a14ad3a2312f31cc164ee",
+     "profile": "likeness/1",
+     "status": "allow",
+     "basis": {
+      "kind": "policy",
+      "rule": "test"
+     },
+     "issued_at": 1789999990,
+     "expires_at": 1790000290
+    },
+    "signatures": []
+   },
+   "testing": false,
+   "ok": false
+  },
+  {
+   "name": "a tampered body",
+   "request": {
+    "type": "pg.request.v1",
+    "signatures": [],
+    "body": {
+     "subject_ref": "PG-TEST-000001N",
+     "provider_id": "frame-ai",
+     "profile": "likeness/1",
+     "use": {
+      "purpose": "commercial"
+     },
+     "job_id": "job-8841",
+     "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "answer": {
+    "type": "pg.answer.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "request_id": "9e09f6feb458074af0b91391097be4e60ad3957acc4a14ad3a2312f31cc164ee",
+     "profile": "likeness/1",
+     "status": "allow",
+     "basis": {
+      "kind": "policy",
+      "rule": "test"
+     },
+     "issued_at": 1789999990,
+     "expires_at": 1790000291
+    },
+    "signatures": [
+     "0d9a55fbd3174436239765b983e2bc5914971bd7f2face0ec51f8b72eec599937f314808c3f541b39a7b8e8edeff8ada35da24dd68e5f0bd2879437e15494307"
+    ]
+   },
+   "testing": false,
+   "ok": false
+  },
+  {
+   "name": "a lower-case code (H5)",
+   "request": {
+    "type": "pg.request.v1",
+    "signatures": [],
+    "body": {
+     "subject_ref": "pg-test-000001n",
+     "provider_id": "frame-ai",
+     "profile": "likeness/1",
+     "use": {
+      "purpose": "commercial"
+     },
+     "job_id": "job-8841",
+     "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "answer": {
+    "type": "pg.answer.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "request_id": "9058323e656d1cfcb072d6347b05f317d9aecfea415b5724f5ce4fa9658efb5f",
+     "profile": "likeness/1",
+     "status": "allow",
+     "basis": {
+      "kind": "policy",
+      "rule": "test"
+     },
+     "issued_at": 1789999990,
+     "expires_at": 1790000290
+    },
+    "signatures": [
+     "b4f165c3e8f6e5bf16b95387717d538d7ae327a5b03478d70219d379d467c209eeb5e200005aa16f60ef1d49715380505d02b3654b6ced2d57c51fa3ab99c105"
+    ]
+   },
+   "testing": false,
+   "ok": false
+  },
+  {
+   "name": "a code with a trailing space (H5)",
+   "request": {
+    "type": "pg.request.v1",
+    "signatures": [],
+    "body": {
+     "subject_ref": "PG-TEST-000001N ",
+     "provider_id": "frame-ai",
+     "profile": "likeness/1",
+     "use": {
+      "purpose": "commercial"
+     },
+     "job_id": "job-8841",
+     "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "answer": {
+    "type": "pg.answer.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "request_id": "3c982f392f804a849852525ac04d11e71ed945261c11f62c5b36a2cacdda5030",
+     "profile": "likeness/1",
+     "status": "allow",
+     "basis": {
+      "kind": "policy",
+      "rule": "test"
+     },
+     "issued_at": 1789999990,
+     "expires_at": 1790000290
+    },
+    "signatures": [
+     "95ba97420b9af432abeca071c1b7545b627fab1a27326fbddcc8c64548167e1b8c684410b9bcd35bce02c6af2514b18df937045270dc60aa4238e29a29cdfb02"
+    ]
+   },
+   "testing": false,
+   "ok": false
+  }
+ ]
+}

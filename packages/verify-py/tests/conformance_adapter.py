@@ -2,6 +2,7 @@
   python3 spec/conformance/level1/run_conformance.py --adapter "python3 packages/verify-py/tests/conformance_adapter.py" \
     --require-op canonical_json --require-op verify_signature --require-op verify_license \
     --require-op verify_directory --require-op check_namespace
+The v5 operations (message_id, signing_input, verify_envelope, check_answer) are required by default.
 """
 import hashlib
 import json
@@ -30,6 +31,27 @@ elif op == "verify_directory":
 elif op == "check_namespace":
     d = pregen.verify_directory(req["directory"], req["steward_public_key_hex"])
     out = {"result": d.check_signer(req["code"], req["signer_key_id"])}
+elif op == "message_id":
+    out = {"message_id": pregen.message_id(req["type"], req["body"])}
+elif op == "signing_input":
+    out = {"signing_input_hex": pregen.signing_input(req["type"], req["body"]).hex()}
+elif op == "verify_envelope":
+    env = req["envelope"]
+    signers, sigs = env["body"].get("signers") or [], env.get("signatures") or []
+    data = pregen.signing_input(env["type"], env["body"])
+    try:
+        out = {"valid": bool(signers) and len(sigs) == len(signers) and all(
+            pregen.verify_bytes(req["public_keys"][s["key_id"]], sig, data) for s, sig in zip(signers, sigs))}
+    except (KeyError, pregen.PregenError):
+        out = {"valid": False}
+elif op == "check_answer":
+    try:
+        d = pregen.verify_directory(req["directory"], req["steward_public_key_hex"], now=req["now"])
+        pregen.check_answer(req["answer"], req["request"], d, lambda url: req["key_sets"][url], now=req["now"],
+                            testing=req["testing"])
+        out = {"ok": True}
+    except (KeyError, pregen.PregenError) as e:
+        out = {"ok": False, "error": str(e)}
 else:
     out = {"unsupported": True}
 print(json.dumps(out))
