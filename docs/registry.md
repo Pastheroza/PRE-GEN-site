@@ -153,11 +153,14 @@ pregen-registry key rotate --dir ./data
 nohup pregen-registry serve --dir ./data --host 127.0.0.1 --port 8000 >> registry.log 2>&1 & echo $! > registry.pid
 ```
 
+The last line is exactly the serve command you started with in step 5: the same port, and
+the same `--ssl-certfile`/`--ssl-keyfile` if you serve HTTPS directly.
+
 ```
 operator key is now pg-ed25519:<new>; pg-ed25519:<old> is retired and stays in /keys, so everything it signed still verifies. Move the retired private key file offline.
 ```
 
-Start the server again (step 5) and run `pregen-registry check --api … --directory …` (test
+Then run `pregen-registry check --api … --directory …` (test
 directory: add `--steward <its key hex>`): it must show `PASS listed with the current key`.
 The directory does not change, so nothing goes to the steward.
 The retired key's file is `./data/operator.retired.<hex>.key`: the server does not need it;
@@ -219,11 +222,15 @@ It prints the person's code, for example `PG-ABCD-000001G`. `--level` is how far
 them: `self`, `asserted`, `consented` or `verified`. `pregen-registry subject list --dir ./data`
 prints every code you hold, with its level and name.
 
-**Anchor a public person** (extension `identity`): record their public identifier (a
-Wikidata item, an ISNI, or a domain) and the page on their official channel where they
+**Anchor a public person** (extension `identity`; every public person needs one): record their
+public identifier, written exactly as `wikidata:Q42`, `isni:0000000123456789` (16 characters,
+no spaces) or `domain:example.com` (lower case); the command does not check the spelling, and
+a different spelling is a different person to every client. Add the page on their official
+channel where they
 posted the line `PRE-GEN: PG-ABCD-000001G`. Open that page yourself first and see the exact
 line: the command records what you give it and fetches nothing, so do not anchor before you
-have seen it. If you cannot open it, leave the person unanchored and try again later. A client weighing
+have seen it. If you cannot open it yet, anchor without `--proof-url` (the claim stays
+unconfirmed) and run `subject anchor` again with both once you have seen the line. A client weighing
 several registries' claims reads the page itself.
 
 ```bash
@@ -254,6 +261,10 @@ pregen-registry grant add --dir ./data --subject 'PG-ABCD-000001G' \
   only requests that name that licensee (extension `licensee`).
 - `--max-uses` counts allows (without it, no limit); `--days` is how long the grant lasts
   (default 365). Without `--purposes`, only `research` is covered.
+- `grant add` does not check spellings: use the five lower-case purposes and the full
+  `<provider id>:<customer id>`, then try the grant in the sandbox (step 8). To confirm a
+  provider's token works without using a grant, `GET {api}/v2/grants/<grant id>` with its
+  headers returns 200.
 - **Without `--licensee` the grant is open:** any provider may use it for these purposes. If
   the person agreed to one client, pass `--licensee`.
 
@@ -395,7 +406,8 @@ It asks for:
    policy URL will do);
 2. **Policy:** its URL (step 2). The details live on that page;
 3. **Acceptance of the core**, its fixed protections, the rule for a person held by several
-   registries (a refusal of the person in any of them holds everywhere), and the revocation
+   registries (a refusal by any registry whose claim the person confirmed holds everywhere),
+   and the revocation
    grounds;
 4. **Endpoints:** `api`, `keys` (`{api}/keys`), that `/.well-known/pregen-registry.json`
    answers, and the profiles you answer under (`likeness/1`);

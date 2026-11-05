@@ -140,7 +140,8 @@ const keyId = await fingerprint(pub);
 Register it **once at each registry**, with that registry's credential, before your first
 request there (a report without a registered key is refused with 401, and the allow would
 stay counted), and remember which registries are done (persist that list with your secrets,
-and each job's `job_input` with the job record). `PROVIDER_ID` is the provider id
+and each job's `job_id` and `job_input` with the job record, saved before its first request,
+so a resend after a crash is the identical request). `PROVIDER_ID` is the provider id
 that registry gave you; in JavaScript, `await signEnvelope("pg.keyset.v1", { …the same body… },
 KEY)` (the complete example has it in full):
 
@@ -207,34 +208,49 @@ Authorization: Bearer <token from that registry>
 The registry answers HTTP 200 `{"answer": {"type": "pg.answer.v1", "body": {…}, "signatures": […]}}`.
 
 **A public person** (extension `identity`, `spec/extensions/identity.md`) may be claimed by
-several registries, and a refusal of the person by any of them holds everywhere. So:
+several registries, and a refusal by any registry whose claim the person confirmed holds
+everywhere. So:
 
-1. At least daily, fetch every listed registry's anchor list and check it (a registry
-   without the extension answers 404: skip it):
+1. At least daily, fetch every listed registry's anchor list and check it:
 
    ```python
    anchors = {}                                      # anchor -> [{code, proof_url, …}, …]
    for r in directory.registries:
+       if r.get("revoked") or not r["prefix"]:
+           continue                                  # revoked, or the legacy bare namespace
        try:
            env = json.loads(urllib.request.urlopen(r["api"] + "/v2/anchors", timeout=10).read())
-       except urllib.error.HTTPError:
-           continue
+       except urllib.error.HTTPError as e:
+           if e.code == 404:
+               continue                              # no identity extension
+           raise                                     # anything else: no decision (item 5)
        for e in pregen.verify_anchors(env, r["prefix"], directory):   # refuses a list over a day old
            anchors.setdefault(e["anchor"], []).append(e)
    ```
 
-   JS: `await verifyAnchors(env, prefix, { directory })` returns the same entries.
+   JS: `await verifyAnchors(env, prefix, { directory })` returns the same entries. An entry's
+   `status` (`active`, `opted_out`, …) is information only: ask the code anyway.
 2. If a person's code is in a list, ask **every** code listed under the same anchor, each at
    its registry, in the same job.
 3. For each code, decide whether the person confirmed it on their own channel:
    `pregen.check_channel_proof(code, entry["proof_url"], pregen.wikidata_official_urls(anchor),
    get_text)`, where `get_text(url)` returns the page's text (JS: `await checkChannelProof(code,
-   proofUrl, await wikidataOfficialUrls(anchor), getText)`). Only `wikidata:` anchors have a
-   defined list of official channels today; any other anchor counts as unconfirmed.
+   proofUrl, await wikidataOfficialUrls(anchor), getText)`, with `getText` an `async (url) =>
+   string`). Only `wikidata:` anchors have a defined list of official channels today; any other
+   anchor counts as unconfirmed.
 4. Combine: `pregen.decide_identity([{"code": c, "confirmed": …, "answer":
-   pregen.verify_answer(answer, request, directory)}, …])` / `decideIdentity([...])`. Generate
-   only if its `status` is `allow`. With no confirmed claim it is `not_blocked`
-   (`PG_IDENTITY_UNCONFIRMED`): no permission. Report every allow you received, as usual.
+   pregen.verify_answer(answer, request, directory)}, …])` / `decideIdentity([...])` returns
+   `{status, reason, code}`. Generate only if its `status` is `allow`. With no confirmed claim
+   it is `not_blocked` (`PG_IDENTITY_UNCONFIRMED`): no permission. `check_answer` must pass for
+   the code it returns; `verify_answer` must pass for every other code under the anchor. Report
+   each `allow` under the anchor as `generated` and put each in the proof; leave the other codes
+   out. Give back nothing else.
+5. **Unknown is not unconfirmed.** If any listed registry's anchor list fails (anything but
+   404, or `verify_anchors` raises), if a proof page or Wikidata cannot be read, or if any code
+   under the anchor gets no valid answer (no credentials there, a 4xx, or `verify_answer`
+   raises), you have no decision for this person: do not generate them, and give back their
+   allows. Until every anchor list (except 404s) has verified within the last 24 hours, generate
+   no person whose code appears in any list.
 
 ## 6. Check the answer
 
@@ -243,11 +259,11 @@ public-person rule then: keep every answer, and never present the output as perm
 refusal of the person stands.
 
 ```python
-pregen.check_answer(answer, request, directory)     # raises PregenError; str(e) is the reason
+pregen.check_answer(answer, request, directory)     # raises pregen.PregenError (a ValueError); str(e) is the reason
 ```
 
 ```js
-import { checkAnswer } from "@pregen/verify";
+import { checkAnswer, PregenError } from "@pregen/verify";
 await checkAnswer(answer, request, { directory });  // throws PregenError; e.message is the reason
 ```
 
@@ -278,8 +294,10 @@ product does not apply, do not generate, and give the allow back.
 ## 7. Generate, only on a valid allow for every person
 
 An answer lives a short time (`expires_at`, at most 15 minutes; often 5). Generate only when
-**every** person in the job has a checked `allow` whose `expires_at` has not passed. Take
-one time, `began`, right before generation starts: it is the `occurred_at` of every report
+**every** person in the job has a checked `allow` (for a public person, `decide_identity`'s
+`allow`, step 5) whose `expires_at` has not passed. Take
+one time, `began` (whole Unix seconds, `int(time.time())`), right before generation starts:
+it is the `occurred_at` of every report
 in the job (step 8), even if rendering ends later. If generation cannot start before the
 earliest `expires_at`, ask again under a new `job_id` and give back the old allows (step 8).
 Write the output only after every check passed and `began` is taken. Hash it:
@@ -355,7 +373,8 @@ one but the registrant vouched, and a strict default is `verified`. `check_proof
 look at `obligations`: they are in each `answer.body`, and were the provider's to apply;
 show them if your label cares. The result does not name a licensee; a licensee-only grant shows as `licensee_id`
 in that person's `request.body`. With no file to hash, do not run the check: record it as not
-accepted, reason "no file: not checked"; it is never a label. A proof made in a sandbox passes only with `testing` and is never a label.
+accepted, reason "no file: not checked"; it is never a label. A proof covers only the people
+it lists; it says nothing about anyone else the file shows. A proof made in a sandbox passes only with `testing` and is never a label.
 
 **Offline:** while online, save the directory (`directory.to_json()` / `toJSON()`) and the key
 set of every registry it lists: `GET` each entry's `keys` URL and keep the JSON, keyed by that
@@ -394,10 +413,12 @@ the two files as `saved_at.json` = `{"saved_at": <unix seconds>}`: the library c
 `saved_at` is more than 24 hours ago, do not
 label: go online, load and save again.
 
-Later, check with no network (the files: `directory.json`, `key_sets.json`, `saved_at.json`, and
-for a test directory its steward key):
+Later, check with no network (the files: `directory.json` (`directory-test.json` for a test
+directory), `key_sets.json`, `saved_at.json`, and for a test directory `test_steward.json` =
+`{"steward_public_key_hex": …}`):
 
 ```python
+saved_directory, saved_key_sets = json.load(open("directory.json")), json.load(open("key_sets.json"))
 if time.time() - json.load(open("saved_at.json"))["saved_at"] > 86_400:
     raise SystemExit("the saved copy is more than 24 hours old: go online, load and save again")
 directory = pregen.verify_directory(saved_directory)       # test directory: steward_public_key_hex=TEST_STEWARD
@@ -406,7 +427,10 @@ result = pregen.check_proof(bundle, directory, get_json=lambda url: saved_key_se
 ```
 
 ```js
+import { readFileSync } from "node:fs";
 import { verifyDirectory, checkProof } from "@pregen/verify";
+const savedDirectory = JSON.parse(readFileSync("directory.json", "utf8"));
+const savedKeySets = JSON.parse(readFileSync("key_sets.json", "utf8"));
 if (Date.now() / 1000 - JSON.parse(readFileSync("saved_at.json", "utf8")).saved_at > 86_400) {
   throw new Error("the saved copy is more than 24 hours old: go online, load and save again");
 }
@@ -702,7 +726,7 @@ reason you do not know as a refusal.
 - [ ] If you check proofs offline, the directory and every key set are saved with `saved_at`, at least every 24 hours
 - [ ] Every generation of a listed person is preceded by a request for each of their codes, to the registry each code names
 - [ ] A public person is asked at every code their anchor names, and generated only on `decide_identity`'s `allow`
-- [ ] `check_answer` / `checkAnswer` passes for every person in the job before generating
+- [ ] `check_answer` / `checkAnswer` passes for every private person, and for the code `decide_identity` names for each public person, before generating
 - [ ] Every allow is reported: `generated` with `occurred_at` = when generation began, or `not_generated`
 - [ ] The proof bundle is checked with `check_proof` / `checkProof` and kept with the output
 - [ ] Nothing in production accepts a sandbox answer; no prompt, output, token or key leaves your servers
