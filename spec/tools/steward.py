@@ -35,7 +35,10 @@ STEWARD_PUBLIC_KEY_HEX = "5cb949aab04186e3e216ec541b847c912fc3f78138c0ec3cb2560b
 
 
 def _passphrase(confirm: bool) -> bytes:
-    p = getpass.getpass("Passphrase for the steward key: ")
+    # PREGEN_STEWARD_PASSPHRASE: for a test steward run by a script. Never put the real steward's passphrase in it.
+    p = os.environ.get("PREGEN_STEWARD_PASSPHRASE") or getpass.getpass("Passphrase for the steward key: ")
+    if os.environ.get("PREGEN_STEWARD_PASSPHRASE"):
+        return p.encode()
     if confirm:
         if len(p) < 12:
             sys.exit("Use at least 12 characters.")

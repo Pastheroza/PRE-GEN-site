@@ -57,9 +57,14 @@ def main(argv=None):
         elif name == "serve":
             p.add_argument("--host", default="127.0.0.1")
             p.add_argument("--port", type=int, default=8000)
+            p.add_argument("--ssl-certfile", help="serve HTTPS directly (a local test); in production, use a TLS proxy")
+            p.add_argument("--ssl-keyfile")
         elif name == "subject":
-            p.add_argument("action", choices=["add"])
-            p.add_argument("--name", required=True)
+            p.add_argument("action", choices=["add", "anchor"])
+            p.add_argument("--name", help="add: the subject's name")
+            p.add_argument("--code", help="anchor: the subject's PG code")
+            p.add_argument("--anchor", help="anchor: wikidata:Q…, isni:…, or a domain (identity.md)")
+            p.add_argument("--proof-url", help="anchor: where the person posted \"PRE-GEN: <code>\" on an official channel")
             p.add_argument("--level", default="self", choices=["self", "asserted", "consented", "verified"])
         elif name == "grant":
             p.add_argument("action", choices=["add"])
@@ -101,9 +106,20 @@ def main(argv=None):
     elif a.cmd == "serve":
         import uvicorn
         from .app import create_app
-        uvicorn.run(create_app(load(a.dir)), host=a.host, port=a.port)
-    elif a.cmd == "subject":
+        uvicorn.run(create_app(load(a.dir)), host=a.host, port=a.port, ssl_certfile=a.ssl_certfile,
+                    ssl_keyfile=a.ssl_keyfile)
+    elif a.cmd == "subject" and a.action == "add":
+        if not a.name:
+            sys.exit("subject add needs --name")
         print(load(a.dir).add_subject(a.name, level=a.level))
+    elif a.cmd == "subject":
+        if not (a.code and a.anchor):
+            sys.exit("subject anchor needs --code and --anchor")
+        reg = load(a.dir)
+        if not reg._row("SELECT code FROM subjects WHERE code = ?", (a.code,)):
+            sys.exit(f"no subject {a.code} in this registry")
+        reg.set_identity(a.code, anchor=a.anchor, proof_url=a.proof_url)
+        print(f"{a.code} anchored to {a.anchor}; GET /v2/anchors lists it")
     elif a.cmd == "grant":
         print(load(a.dir).add_grant(a.subject, licensee_id=a.licensee, purposes=a.purposes.split(","),
                                     days=a.days, max_uses=a.max_uses))
