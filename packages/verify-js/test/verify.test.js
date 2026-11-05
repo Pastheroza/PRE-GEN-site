@@ -325,6 +325,8 @@ test("checkChannelProof: only the person's own channel counts", async () => {
   assert.equal(await checkChannelProof("PG-XXXX-000001V", "https://www.instagram.com/cristiano/p/1", official, text), true);
   assert.equal(await checkChannelProof("PG-XXXX-000001V", "https://www.instagram.com/cristiano_fan/p/1", official, text), false);
   assert.equal(await checkChannelProof("PG-AAAA-000001V", "https://www.instagram.com/cristiano/p/1", official, text), false);
+  const legacy = async () => "PRE-GEN: PG-ABC-0000421";             // another legacy code with the same start
+  assert.equal(await checkChannelProof("PG-ABC-000042", "https://www.instagram.com/cristiano/p/1", official, legacy), false);
 });
 
 test("no registry is pinned by default, and any prefix can be pinned", async () => {

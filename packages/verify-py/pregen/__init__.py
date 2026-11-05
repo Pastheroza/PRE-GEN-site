@@ -642,14 +642,15 @@ _SEVERITY = {"deny": 0, "review": 1}     # no allow: the strongest refusal, ties
 
 def check_channel_proof(code: str, proof_url: str, official_urls: list, get_text) -> bool:
     """Did the person confirm `code` on an official channel? `proof_url` must lie on one of `official_urls`
-    (for example from wikidata_official_urls()) and its text must contain "PRE-GEN: <code>"."""
+    (for example from wikidata_official_urls()) and its text must contain "PRE-GEN: <code>", the whole code: a longer
+    code that starts the same way (a legacy code has six or more digits) confirms nothing."""
     from urllib.parse import urlsplit
     p = urlsplit(proof_url or "")
     def under(o):  # same host, and the official path itself or below it ("/cristiano", not "/cristiano_fan")
         base = o.path.rstrip("/")
         return p.hostname == o.hostname and (p.path.rstrip("/") == base or p.path.startswith(base + "/"))
     on_official = p.scheme == "https" and any(under(urlsplit(u)) for u in official_urls)
-    return on_official and f"PRE-GEN: {code}" in (get_text(proof_url) or "")
+    return on_official and re.search(rf"PRE-GEN: {re.escape(code)}(?![\w-])", get_text(proof_url) or "") is not None
 
 
 # Wikidata properties naming a person's own channels: official website, X, Instagram, YouTube channel, TikTok.

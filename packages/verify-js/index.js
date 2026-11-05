@@ -542,7 +542,9 @@ export async function checkChannelProof(code, proofUrl, officialUrls, getText) {
     const base = o.pathname.replace(/\/+$/, "");
     return p.hostname === o.hostname && (p.pathname.replace(/\/+$/, "") === base || p.pathname.startsWith(base + "/"));
   };
-  return p.protocol === "https:" && officialUrls.some(under) && String((await getText(proofUrl)) ?? "").includes(`PRE-GEN: ${code}`);
+  // The whole code: a longer code that starts the same way (a legacy code has six or more digits) confirms nothing.
+  const line = new RegExp(`PRE-GEN: ${code.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w-])`);
+  return p.protocol === "https:" && officialUrls.some(under) && line.test(String((await getText(proofUrl)) ?? ""));
 }
 
 // Wikidata properties naming a person's own channels: official website, X, Instagram, YouTube channel, TikTok.

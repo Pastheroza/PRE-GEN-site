@@ -132,6 +132,8 @@ def test_a_proof_must_be_on_the_persons_own_channel():
     assert not check_channel_proof("PG-XXXX-000001V", "https://www.instagram.com/cristiano_fan/p/1", official, fake)
     assert not check_channel_proof("PG-XXXX-000001V", "https://xxxx.example/cristiano", official, fake)
     assert not check_channel_proof("PG-AAAA-000001V", "https://www.instagram.com/cristiano/p/1", official, fake)
+    legacy = lambda url: "PRE-GEN: PG-ABC-0000421"                    # noqa: E731  another legacy code, same start
+    assert not check_channel_proof("PG-ABC-000042", "https://www.instagram.com/cristiano/p/1", official, legacy)
 
 
 def test_the_steward_marks_a_false_claim_and_every_client_drops_it():
