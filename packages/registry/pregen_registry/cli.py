@@ -9,6 +9,7 @@
   pregen-registry info --dir DATA
   pregen-registry key next --dir DATA      (makes the next operator key: give it to the steward to announce)
   pregen-registry key rotate --dir DATA    (once the directory lists it: the next key signs, the old one is retired)
+  pregen-registry subject list --dir DATA      (every code, with its check character)
   pregen-registry subject anchor --dir DATA --code PG-… --anchor wikidata:Q… [--proof-url https://…]
   pregen-registry check --api https://registry.example [--directory URL --steward HEX] [--provider-id ID --token T --subject PG-…]
 """
@@ -62,7 +63,7 @@ def main(argv=None):
             p.add_argument("--ssl-certfile", help="serve HTTPS directly (a local test); in production, use a TLS proxy")
             p.add_argument("--ssl-keyfile")
         elif name == "subject":
-            p.add_argument("action", choices=["add", "anchor"])
+            p.add_argument("action", choices=["add", "anchor", "list"])
             p.add_argument("--name", help="add: the subject's name")
             p.add_argument("--code", help="anchor: the subject's PG code")
             p.add_argument("--anchor", help="anchor: wikidata:Q…, isni:…, or a domain (identity.md)")
@@ -90,12 +91,13 @@ def main(argv=None):
     p.add_argument("--provider-id")
     p.add_argument("--token")
     p.add_argument("--subject", help="a PG code this registry holds, to ask about")
+    p.add_argument("--purpose", default="commercial", help="the use.purpose of that request (default commercial)")
     a = ap.parse_args(argv)
 
     if a.cmd == "check":
         from .check import check
         failed = 0
-        for ok, what in check(a.api, a.directory, a.steward, a.provider_id, a.token, a.subject):
+        for ok, what in check(a.api, a.directory, a.steward, a.provider_id, a.token, a.subject, a.purpose):
             print(("PASS " if ok else "FAIL ") + what)
             failed += not ok
         print("OK: all checks passed" if not failed else f"{failed} check(s) failed")
@@ -118,18 +120,24 @@ def main(argv=None):
         reg = Registry(Config(**cfg), key, str(db_path))
         if a.sandbox:
             reg.seed_sandbox()
+            print("Sandbox test subjects (copy them; the last character is a check character):")
+            for s in reg._q("SELECT code, name FROM subjects ORDER BY serial"):
+                print(f"  {s['code']}  {s['name']}")
         print(f"Registry created in {a.dir}.\n  prefix: {a.prefix}\n  operator key id: {key.id}\n"
               f"  public key: {key.public_hex}\nGive the key id and public key to the steward for the directory.\n"
               f"The private key is in {key_path} (mode 600): back it up offline.")
     elif a.cmd == "serve":
         import uvicorn
         from .app import create_app
-        uvicorn.run(create_app(load(a.dir)), host=a.host, port=a.port, ssl_certfile=a.ssl_certfile,
+        uvicorn.run(create_app(load(a.dir), Path(a.dir) / "policy.md"), host=a.host, port=a.port, ssl_certfile=a.ssl_certfile,
                     ssl_keyfile=a.ssl_keyfile)
     elif a.cmd == "subject" and a.action == "add":
         if not a.name:
             sys.exit("subject add needs --name")
         print(load(a.dir).add_subject(a.name, level=a.level))
+    elif a.cmd == "subject" and a.action == "list":
+        for s in load(a.dir)._q("SELECT code, name, level FROM subjects ORDER BY serial"):
+            print(f"{s['code']}  {s['level']}  {s['name']}")
     elif a.cmd == "subject":
         if not (a.code and a.anchor):
             sys.exit("subject anchor needs --code and --anchor")

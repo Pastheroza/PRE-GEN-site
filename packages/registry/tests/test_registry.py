@@ -415,3 +415,12 @@ def test_vendored_schemas_are_the_spec_schemas():
     assert sorted(p.name for p in spec.glob("*.json")) == sorted(p.name for p in vendored.glob("*.json"))
     for p in spec.glob("*.json"):
         assert (vendored / p.name).read_text() == p.read_text(), p.name
+
+
+def test_the_policy_page_is_served_from_policy_md(tmp_path):
+    reg, _, _ = make()
+    c = TestClient(create_app(reg, tmp_path / "policy.md"))
+    assert c.get("/policy").status_code == 404
+    (tmp_path / "policy.md").write_text("# Policy\nHow we verify rights holders.\n")
+    r = c.get("/policy")
+    assert r.status_code == 200 and r.text.startswith("# Policy") and r.headers["content-type"].startswith("text/markdown")

@@ -6,18 +6,21 @@ signed PRE-GEN directory, where every provider finds you. Every step has the exa
 and what it prints. Where this guide and the specification differ, the specification
 wins: `https://www.pregen.org/spec/PRE-GEN-CORE.md`.
 
-**You need:** Python 3.10 or later, a server reachable over HTTPS on your own domain, and a
-four-letter prefix (step 8). Any company or person can run a registry on the same terms.
+**You need:** Python 3.10 or later, and a server reachable over HTTPS on your own domain.
+Any company or person can run a registry on the same terms.
 
 ## Ground rules
 
 1. **Your operator key is the registry.** Whoever holds it can answer for every person you
-   hold. Keep it on the server only, back it up offline, never paste it anywhere.
+   hold. Keep it on the server only, never paste it anywhere.
 2. **Never delete a key from your key set.** A retired key stays listed, so every answer
-   and proof it signed keeps verifying (step 3).
+   and proof it signed keeps verifying (step 4).
 3. **A provider credential is shown once.** Give it over a private channel.
 4. **HTTPS only.** The directory lists only `https://` addresses, with no credentials,
    query or fragment.
+5. **Quote PG codes.** A code ends with a check character that may be `*`, `~`, `$`, `=` or
+   `!`. In a shell, put codes in single quotes (`'PG-ABCD-000001$'`); in a URL path, encode
+   them (`$` is `%24`, `*` is `%2A`). Always copy codes, never retype them.
 
 ## 1. Install
 
@@ -28,12 +31,28 @@ pregen-registry --help
 
 `--help` lists the commands `init, serve, subject, grant, provider, connect, info, key,
 check`. If you write your own registry instead, implement `PRE-GEN-CORE.md`, pass
-conformance Level 1 with your signing library (step 7), and serve the same HTTP interface
+conformance Level 1 with your signing library (step 8), and serve the same HTTP interface
 (the table at the end); the rest of this guide still applies.
 
-## 2. Create the registry
+## 2. Choose your prefix and your address
 
-Pick your prefix (step 8 says how) and your public HTTPS address, then:
+**Your prefix** is four letters from `ABCDEFGHJKMNPQRSTVWXYZ` (no digits, no I, L, O, U).
+It starts every code you issue (`PG-ABCD-…`) and is never given to anyone else, so choose it
+first. Open `https://www.pregen.org/registries.json`: the `prefix` of every entry is taken.
+Pick one that is free, and a second choice in case someone asks for yours first.
+
+**A sandbox is a separate registry with its own prefix** (step 7), applied for the same way.
+
+**Your address** (`api`) is the HTTPS URL providers will use, exactly as you will serve
+it, with no trailing slash: for example `https://registry.example`.
+
+**Your policy** is a public page that says how you verify that a rights holder is who they
+claim and may license the person, which anchor you record for public people (step 6), your
+own refusals, how long your answers live, and how long an opt-out waits. The reference
+registry serves it for you: write it to `./data/policy.md` after step 3 and it answers at
+`{api}/policy`. Or publish it on your website. It must answer before you apply.
+
+## 3. Create the registry
 
 ```bash
 pregen-registry init --dir ./data --prefix ABCD --name "Example Registry" \
@@ -52,13 +71,18 @@ Give the key id and public key to the steward for the directory.
 The private key is in ./data/operator.key (mode 600): back it up offline.
 ```
 
-Write down the key id and the public key: the steward needs both (step 8). `--api` is the
-address providers will use, exactly as you will serve it, with no trailing slash.
+The **key id** (`pg-ed25519:` and 32 hex) is the key's **fingerprint**: it is what the
+directory lists and what the steward asks for (step 9). The steward reads the public key
+itself from your `/keys`.
 
-## 3. Keys: one current key, with its whole history
+**Back up the whole `./data` folder offline** (an encrypted drive kept apart): `operator.key`
+is your signing key, and `registry.db` holds your people, grants and provider credentials.
+Back it up again after you add people or grants. Do the same for your sandbox's folder.
+
+## 4. Keys: one current key, with its whole history
 
 `GET {api}/keys` is your signed key set: the current key and every key you ever signed
-with. Never edit it by hand. To change keys:
+with. Never edit it by hand. You need a next key only when you want to rotate. To rotate:
 
 ```bash
 pregen-registry key next --dir ./data
@@ -70,7 +94,8 @@ next operator key id: pg-ed25519:<32 hex>
 Give both to the steward to announce in the directory. When the directory lists it, run `pregen-registry key rotate`.
 ```
 
-Send both to the steward (step 8). **Only after the directory lists the new key:**
+Send the new key id to the steward as in step 9 (your current key ids, plus this one).
+**Only after the directory lists the new key:**
 
 ```bash
 pregen-registry key rotate --dir ./data
@@ -80,10 +105,10 @@ pregen-registry key rotate --dir ./data
 operator key is now pg-ed25519:<new>; pg-ed25519:<old> is retired and stays in /keys, so everything it signed still verifies. Move the retired private key file offline.
 ```
 
-Restart the server (step 4). If you rotate before the directory lists the new key, every
-answer you sign is refused by providers until it does.
+Then restart the server (step 5). If you rotate before the directory lists the new key,
+providers refuse every answer you sign until it does.
 
-## 4. Serve it over HTTPS
+## 5. Serve it over HTTPS
 
 In production, run the server behind your TLS proxy (nginx, Caddy, a load balancer) that
 forwards `https://registry.example` to it:
@@ -99,7 +124,9 @@ pregen-registry serve --dir ./data --host 127.0.0.1 --port 8443 \
   --ssl-certfile cert.pem --ssl-keyfile key.pem
 ```
 
-Leave it running, and check from another shell:
+Keep it running (a service manager, or `nohup … &`). Only a key rotation needs a restart:
+people, anchors, grants, providers and `policy.md` take effect at once. Check from another
+shell:
 
 ```bash
 curl -s https://registry.example/.well-known/pregen-registry.json
@@ -111,7 +138,7 @@ The first returns your document: `prefix`, `name`, `api`, `keys`, `profiles`
 returns `{"current_key_id": "pg-ed25519:…", "keys": [{"key_id", "public_key_hex",
 "activated_at", "deactivated_at", "status", …}], "signature": "…"}`.
 
-## 5. People, anchors, grants and providers
+## 6. People, anchors, grants and providers
 
 Add a person you have verified:
 
@@ -119,15 +146,17 @@ Add a person you have verified:
 pregen-registry subject add --dir ./data --name "Maya Cole" --level verified
 ```
 
-It prints the person's code, for example `PG-ABCD-000001G`. The last character is a
-check character: always copy codes, never type them.
+It prints the person's code, for example `PG-ABCD-000001G`. `pregen-registry subject list
+--dir ./data` prints every code you hold, with its level and name.
 
 **Anchor a public person** (extension `identity`): record their public identifier (a
 Wikidata item, an ISNI, or a domain) and the page on their official channel where they
-posted the line `PRE-GEN: PG-ABCD-000001G`:
+posted the line `PRE-GEN: PG-ABCD-000001G`. Open that page yourself first and see the exact
+line: the command records what you give it and fetches nothing. Providers' clients read the
+page themselves.
 
 ```bash
-pregen-registry subject anchor --dir ./data --code PG-ABCD-000001G \
+pregen-registry subject anchor --dir ./data --code 'PG-ABCD-000001G' \
   --anchor wikidata:Q42 --proof-url https://www.instagram.com/mayacole/p/1
 ```
 
@@ -141,9 +170,17 @@ several registries claim the same person. A matching name is never evidence.
 **Grant a use** the person agreed to. It prints the grant id (64 hex):
 
 ```bash
-pregen-registry grant add --dir ./data --subject PG-ABCD-000001G \
+pregen-registry grant add --dir ./data --subject 'PG-ABCD-000001G' \
   --purposes commercial,editorial --days 30 --max-uses 10
 ```
+
+- `--purposes` lists the `use.purpose` values it covers (`personal`, `educational`,
+  `research`, `editorial`, `commercial`). A request for any other purpose is answered
+  `deny`, `PG_SCOPE_VIOLATION`.
+- Without `--licensee`, the grant covers any provider that asks for this person. With
+  `--licensee user-1`, it covers only requests that name that licensee (extension
+  `licensee`; see `connect` below).
+- `--max-uses` counts allows; `--days` is how long the grant lasts.
 
 **Give a provider its credential.** It is printed once:
 
@@ -158,27 +195,43 @@ Shown once. Give it to the provider over a private channel.
 ```
 
 `pregen-registry connect --dir ./data --provider frame-ai --licensee user-1` lets that
-provider ask for a named end customer (extension `licensee`).
+provider ask on behalf of a named end customer.
 
-## 6. A sandbox, for providers to test against
+## 7. A sandbox, for providers to test against
 
-A sandbox is a **separate** registry, with its own data folder, key and test prefix, that
-holds the eight standard test subjects and gives credentials without an account:
+A sandbox is a **separate** registry, with its own data folder, key, address and prefix,
+that holds the eight standard test subjects and gives credentials without an account. Use
+the same flags as in step 3, plus `--sandbox`:
 
 ```bash
 pregen-registry init --dir ./sandbox --prefix ABCE --name "Example Registry sandbox" \
-  --api https://sandbox.registry.example --sandbox
-pregen-registry serve --dir ./sandbox --host 127.0.0.1 --port 8001
+  --api https://sandbox.registry.example --policy https://sandbox.registry.example/policy \
+  --complaints mailto:complaints@registry.example --sandbox
+```
+
+It prints, after the key lines, the eight test codes:
+
+```
+Sandbox test subjects (copy them; the last character is a check character):
+  PG-ABCE-000001…  Test subject 1 (allow)
+  …
+  PG-ABCE-000007…  Test subject 7 (not blocked)
+```
+
+Code 8 (`PG-ABCE-000008…`) is deliberately not registered: it answers `PG_UNKNOWN_SUBJECT`.
+Serve it (step 5) and get test credentials:
+
+```bash
 curl -s -X POST https://sandbox.registry.example/v2/sandbox/access
 ```
 
-The last command returns `{"provider_id": "sbx-…", "token": "…", "registry": "…", "note": "…"}`. The subjects are
-`PG-ABCE-000001…` to `…000008`: `1` allows, `2` to `7` refuse, hold or say `not_blocked`,
-`8` is unknown (`spec/extensions/sandbox.md`). Every sandbox answer carries
-`ext: {"sandbox": true}`, and clients refuse it unless they are testing. A sandbox is listed
-only in a **test directory**, never in the real one.
+It returns `{"provider_id": "sbx-…", "token": "…", "registry": "…", "note": "…"}`. Every
+sandbox answer carries `ext: {"sandbox": true}`, and clients refuse it unless they are
+testing. Apply for the sandbox's prefix too (step 9, status `sandbox`): a sandbox is listed
+only in a **test directory**, never in the real one. The directory entry looks like any
+other; providers learn it is a sandbox from its document (`"sandbox": true`) and from you.
 
-## 7. Check yourself before you apply
+## 8. Check yourself before you apply
 
 From any machine, as a provider would see you:
 
@@ -191,6 +244,7 @@ PASS registry document: prefix ABCD, profiles ['likeness/1']
 PASS document api is 'https://registry.example'
 PASS answers under likeness/1
 PASS declares reports, provider-keys
+PASS the policy page answers: https://registry.example/policy
 PASS key set: current key pg-ed25519:<32 hex>, 1 key(s) in its history
 PASS every key id is its key's fingerprint, and no key is small-order
 PASS key set signed by its current key
@@ -198,9 +252,18 @@ PASS an unauthenticated request is refused with an error code: HTTP 422 PG_MALFO
 OK: all checks passed
 ```
 
-Any `FAIL` line names what to fix; the command exits 1 until everything passes. Add
-`--provider-id frame-ai --token <secret> --subject PG-ABCD-000001G` to also ask about one
-person and see the answer's status.
+Any `FAIL` line names what to fix; the command exits 1 until everything passes. To see one
+person's answer as a provider would, add a credential, a code and the purpose to ask for
+(default `commercial`):
+
+```bash
+pregen-registry check --api https://registry.example \
+  --provider-id frame-ai --token '<secret>' --subject 'PG-ABCD-000001G' --purpose commercial
+```
+
+The extra line reads `PASS POST /v2/requests for PG-ABCD-000001G, purpose commercial: HTTP
+200, allow` when a grant covers that purpose (step 6), and `… deny PG_SCOPE_VIOLATION` when
+it does not.
 
 **If you wrote your own registry,** also run conformance Level 1 against your signing
 library (`spec/conformance/README.md`). It requires the v5 operations by default:
@@ -209,29 +272,27 @@ library (`spec/conformance/README.md`). It requires the v5 operations by default
 python3 spec/conformance/level1/run_conformance.py --adapter "<command that runs your adapter>"
 ```
 
-The last line must read `… passed, 0 failed, … ; v5: 112 passed` or more.
+The last line must read `… 0 failed … ; v5: 112 passed` or more.
 
-## 8. Apply for your prefix
+## 9. Apply for your prefix
 
-A prefix is four letters from `ABCDEFGHJKMNPQRSTVWXYZ` (no digits, no I, L, O, U). Look at
-`https://www.pregen.org/registries.json` to see which are taken; bring a second choice.
 Open a "Registry application" issue:
 `https://github.com/Pastheroza/PRE-GEN-site/issues/new?template=registry-application.md`.
-
 It asks for:
 1. **Operator:** legal name, public address, a complaints contact answered within 7 days,
    website;
-2. **Policy:** its URL; how you verify that a rights holder is who they claim; the anchor
-   you record for public people; your own refusals and answer lifetime;
+2. **Policy:** its URL (step 2). The details live on that page;
 3. **Acceptance of the core**, its fixed protections, and the revocation grounds;
-4. **Endpoints:** `api`, `keys`, and that `/.well-known/pregen-registry.json` answers;
-5. **Keys:** the fingerprint of every operator key: current, retired, and the next one if
-   you made it. **Send the same list to the steward by a second channel** (an email from
-   your domain), so a stolen account cannot list someone else's key;
-6. **Your `pregen-registry check` output**, ending `OK: all checks passed`;
-7. **Status:** sandbox or production.
+4. **Endpoints:** `api`, `keys` (`{api}/keys`), and that `/.well-known/pregen-registry.json`
+   answers;
+5. **Keys:** the key id (fingerprint) of every operator key: current, retired, and the next
+   one if you made one. **Send the same list to the steward by a second channel** (an email
+   from your domain), so a stolen account cannot list someone else's key;
+6. **Your `pregen-registry check --api …` output** (the plain run of step 8, without any
+   token), ending `OK: all checks passed`;
+7. **Status:** `production`, or `sandbox` for a sandbox (one application per prefix).
 
-## 9. Listed: the steward signs
+## 10. Listed: the steward signs
 
 **Listed** means the steward signed a new directory with your prefix and keys. Until
 then, providers refuse your answers: that is the directory doing its job. Confirm it:
@@ -249,17 +310,17 @@ PASS listed with this api and keys URL
 PASS listed with the current key
 ```
 
-For a test directory, add `--steward <its steward public key hex>`. Then send your
-providers your `api`, their credentials, and your sandbox. A listing can be revoked, with
-notice and reasons; a prefix is never given to anyone else.
+For a test directory, add `--steward <its steward public key hex>`. Then send each provider,
+privately: your `api`, its credential, the codes it may ask about, and your sandbox `api`.
+A listing can be revoked, with notice and reasons; a prefix is never given to anyone else.
 
 ## You are done when
 
-- [ ] The operator key is backed up offline; the server is the only place it is in use
-- [ ] `GET {api}/keys` lists every key you ever used; the next key is announced before rotation
-- [ ] `{api}/.well-known/pregen-registry.json` answers over HTTPS with your prefix and policy
-- [ ] Every public person has an anchor and a proof URL; every grant matches what the person agreed
-- [ ] Providers got their credentials over a private channel; your sandbox is separate
+- [ ] The `./data` folder (key and database) is backed up offline; the server is the only place the key is in use
+- [ ] `GET {api}/keys` lists every key you ever used; any rotation waits until the directory lists the next key
+- [ ] `{api}/.well-known/pregen-registry.json` and your policy page answer over HTTPS
+- [ ] Every public person has an anchor and a proof URL you opened; every grant matches what the person agreed
+- [ ] Providers got their credentials over a private channel; your sandbox is a separate registry
 - [ ] `pregen-registry check --api … --directory …` ends `OK: all checks passed`, listing included
 
 ## The HTTP interface
@@ -268,6 +329,7 @@ notice and reasons; a prefix is never given to anyone else.
 |---|---|
 | `GET /.well-known/pregen-registry.json` | who this registry is |
 | `GET /keys` | its signed operator key set: every key it ever signed with, current and retired |
+| `GET /policy` | `policy.md` from the data folder, if you wrote one |
 | `POST /v2/requests` | ask → `{"answer": <signed pg.answer.v1>}` |
 | `POST /v2/reports` | report → `{"ack": <signed pg.report_ack.v1>}` |
 | `POST /v2/keys`, `GET /v2/keys/{provider_id}` | provider key sets |

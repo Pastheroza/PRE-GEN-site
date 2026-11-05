@@ -4,7 +4,7 @@ from __future__ import annotations
 import time
 
 from fastapi import Body, FastAPI, Header, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 
 from . import __version__
 from .protocol import ProtocolError
@@ -13,7 +13,8 @@ from .registry import Registry
 SANDBOX_ACCESS_PER_HOUR = 10
 
 
-def create_app(registry: Registry) -> FastAPI:
+def create_app(registry: Registry, policy_file=None) -> FastAPI:
+    """`policy_file`: a published policy page, served at GET /policy (text/markdown) when it exists."""
     app = FastAPI(title=f"PRE-GEN registry — {registry.config.name}", version=__version__,
                   docs_url="/docs", redoc_url=None)
     issued: dict[str, list[float]] = {}            # sandbox credentials per client address, last hour
@@ -29,6 +30,12 @@ def create_app(registry: Registry) -> FastAPI:
     @app.get("/keys")
     def keys():
         return registry.key_set()
+
+    @app.get("/policy")
+    def policy():
+        if not (policy_file and policy_file.exists()):
+            raise ProtocolError("PG_NOT_FOUND", "no policy.md in this registry's data folder", status=404)
+        return PlainTextResponse(policy_file.read_text(encoding="utf-8"), media_type="text/markdown; charset=utf-8")
 
     @app.post("/v2/requests")
     def requests(env=Body(...), x_provider_id: str = Header(""), authorization: str | None = Header(None)):

@@ -130,7 +130,9 @@ Authorization: Bearer <token from that registry>
 - `pregen.sign_envelope("pg.request.v1", body)` / `signEnvelope("pg.request.v1", body)`
   makes the envelope (no key: `signatures` stays empty; the token authenticates you).
 - Copy codes exactly. A code with another case, a space or an invisible character is
-  refused with HTTP 422 `PG_MALFORMED`.
+  refused with HTTP 422 `PG_MALFORMED`. Its last character is a check character that may
+  be `*`, `~`, `$`, `=` or `!`: quote codes in a shell (`'PG-ABCD-000001$'`) and encode them
+  in a URL path (`%24` for `$`).
 
 The registry answers HTTP 200 `{"answer": {"type": "pg.answer.v1", "body": {…}, "signatures": […]}}`.
 
@@ -236,10 +238,10 @@ A proof from a revoked registry fails, old ones included.
 
 ## 10. Try it in a sandbox first
 
-Ask a registry for its sandbox `api` and its test directory (the URL and the test steward
-key). Take credentials from `{sandbox api}/v2/sandbox/access`. The test subjects are
-`PG-<sandbox prefix>-000001…` to `…000008`: `1` allows; `2`–`7` refuse, hold or say
-`not_blocked`; `8` is unknown. Check sandbox answers and proofs with `testing`:
+Ask a registry for its sandbox `api`, the sandbox's eight test codes, and its test
+directory (the URL and the test steward key). Take credentials from
+`{sandbox api}/v2/sandbox/access`. The test subjects are `PG-<sandbox prefix>-000001…` to
+`…000008`: `1` allows; `2`–`7` refuse, hold or say `not_blocked`; `8` is unknown. Check sandbox answers and proofs with `testing`:
 `check_answer(…, testing=True)`, `check_proof(…, testing=True)` /
 `{ testing: true }`. Your provider key needs registering at the sandbox too (step 3).
 
