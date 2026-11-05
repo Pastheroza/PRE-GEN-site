@@ -86,6 +86,9 @@ The private key is in ./data/operator.key (mode 600): back it up offline.
 A policy to edit is in ./data/policy.md; `serve` publishes it at https://registry.example/policy.
 ```
 
+Keep the folder private: `chmod 700 ./data` (the database holds your people, grants and
+provider credentials). Replace each `<…>` in `./data/policy.md`, the operator line included.
+
 The **key id** (`pg-ed25519:` and 32 hex) is the key's **fingerprint**: it is what the
 directory lists and what the steward asks for (step 9). The directory lists key ids only;
 the steward checks your current key id against your live `/keys`. A next key is announced
@@ -97,7 +100,7 @@ While the server runs, copy the database safely with Python's `sqlite3`, and the
 `cp`:
 
 ```bash
-mkdir -p ./backup/data
+rm -rf ./backup/data && mkdir -p ./backup/data
 python3 -c "import sqlite3; sqlite3.connect('./data/registry.db').backup(sqlite3.connect('./backup/data/registry.db'))"
 cp -p ./data/*.key ./data/registry.json ./data/policy.md ./backup/data/
 ```
@@ -148,7 +151,7 @@ operator key is now pg-ed25519:<new>; pg-ed25519:<old> is retired and stays in /
 
 Start the server again (step 5) and run `pregen-registry check --api … --directory …` (test
 directory: add `--steward <its key hex>`): it must show `PASS listed with the current key`.
-Send that output to the steward as your fresh `check` output; nothing else changes.
+The directory does not change, so nothing goes to the steward.
 The retired key's file is `./data/operator.retired.<hex>.key`: the server does not need it;
 move it offline. If you rotate before the directory lists the new key, providers refuse
 every answer you sign until it does. A retired key cannot sign anything new (clients refuse
@@ -252,8 +255,9 @@ Shown once. Give it to the provider over a private channel.
 `pregen-registry connect --dir ./data --provider frame-ai --licensee frame-ai:user-1` lets that
 provider ask on behalf of its end customer `user-1`. **A licensee id names one customer of
 one provider, so always write it as `<provider id>:<the customer's id at that provider>`.**
-`connect` does not check this, and a grant to a licensee covers every provider connected
-to that id: two providers' `user-1` written bare would share each other's grants. Tell the
+`connect` refuses any other shape: a grant to a licensee covers every provider connected to
+that id, so two providers' `user-1` written bare would share each other's grants. The grant
+may come before or after `connect`. Tell the
 provider the exact licensee id (step 10); it sends it as `licensee_id`.
 
 **When things change**, each takes effect from the next answer; answers already given stay
@@ -266,7 +270,7 @@ pregen-registry provider remove --dir ./data --id frame-ai               # a lea
 ```
 
 Nothing you publish can be deleted afterwards, so add no test records to this registry:
-test in your sandbox (step 8).
+test in your sandbox (step 7).
 
 ## 7. A sandbox, for providers to test against
 
@@ -338,7 +342,8 @@ The extra line reads `PASS POST /v2/requests for PG-ABCE-000001…, purpose comm
 200, allow`; with test code 2 it reads `… deny PG_NO_LICENSE`. To try a grant of your own
 (purposes, a licensee), add a test person and that grant to the sandbox (`subject add`,
 `grant add --dir ./sandbox …`) and ask for it the same way; for a licensee-only grant, give
-it `--licensee test:t1` and add `--licensee test:t1` to `check`.
+it `--licensee test:t1` and add `--licensee test:t1` to `check`. Then change the line in
+`./sandbox/policy.md` that says it holds only the eight test subjects.
 
 **If you wrote your own registry,** also run conformance Level 1 against your signing
 library (`spec/conformance/README.md`). It requires the v5 operations by default:
@@ -354,12 +359,14 @@ The last line must read `… 0 failed … ; v5: 113 passed` or more.
 Open a "Registry application" issue:
 `https://github.com/Pastheroza/PRE-GEN-site/issues/new?template=registry-application.md`.
 It asks for:
+0. **Prefix** asked for, and a second choice (step 2);
 1. **Operator:** legal name, public address, a complaints contact answered within 7 days,
-   and the operator's website (any public `https://` page about you or your registry);
+   and the operator's website (any public `https://` page about you or your registry; your
+   policy URL will do);
 2. **Policy:** its URL (step 2). The details live on that page;
 3. **Acceptance of the core**, its fixed protections, and the revocation grounds;
-4. **Endpoints:** `api`, `keys` (`{api}/keys`), and that `/.well-known/pregen-registry.json`
-   answers;
+4. **Endpoints:** `api`, `keys` (`{api}/keys`), that `/.well-known/pregen-registry.json`
+   answers, and the profiles you answer under (`likeness/1`);
 5. **Keys** (the application's `keys` field is the key set URL; this item is the list of
    key ids): the key id (fingerprint) of every operator key: current, retired, and the next
    one if you made one. The steward lists only key ids it finds in your live `{api}/keys`,

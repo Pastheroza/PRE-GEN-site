@@ -735,7 +735,7 @@ def check_proof(bundle: dict, directory: Directory = None, get_json=_get_json, o
         ack = _registry_signed(it.get("ack"), "pg.report_ack.v1", code, directory, get_json)
         if ack.get("report") != message_id("pg.report.v1", rbody) or ack.get("answer") != message_id("pg.answer.v1", answer) \
                 or rbody.get("answer") != ack.get("answer") or rbody.get("outcome") != "generated":
-            raise PregenError(f"{code}: the registry did not acknowledge this generation")
+            raise PregenError(f"{code}: the registry's acknowledgement does not match this report and answer (one was changed) or names no generation")
         received = ack.get("received_at")
         if type(received) is not int or received > answer.get("expires_at", 0) + REPORT_GRACE:
             raise PregenError(f"{code}: reported more than 24 hours after the allow expired, so when the output was "

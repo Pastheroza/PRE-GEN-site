@@ -15,7 +15,7 @@
   pregen-registry subject list --dir DATA      (every code, with its check character)
   pregen-registry subject anchor --dir DATA --code PG-… --anchor wikidata:Q… [--proof-url https://…]
   pregen-registry subject opt-out --dir DATA --code PG-…  (the person opted out or withdrew: refused from the next answer)
-  pregen-registry check --api https://registry.example [--directory URL --steward HEX] [--provider-id ID --token T --subject PG-… [--licensee ID]]
+  pregen-registry check --api https://registry.example [--directory URL --steward HEX] [--provider-id ID --token T --subject PG-… [--purpose P] [--licensee ID]]
 """
 from __future__ import annotations
 

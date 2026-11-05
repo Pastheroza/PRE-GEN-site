@@ -618,7 +618,7 @@ export async function checkProof(bundle, { directory, fetch: fetchFn = globalThi
     const ack = await registrySigned(it.ack, "pg.report_ack.v1", code, directory, fetchFn);
     if (ack.report !== (await messageId("pg.report.v1", rbody)) || ack.answer !== (await messageId("pg.answer.v1", answer))
         || rbody.answer !== ack.answer || rbody.outcome !== "generated") {
-      fail(`${code}: the registry did not acknowledge this generation`);
+      fail(`${code}: the registry's acknowledgement does not match this report and answer (one was changed) or names no generation`);
     }
     if (!Number.isInteger(ack.received_at) || ack.received_at > (answer.expires_at ?? 0) + REPORT_GRACE) {
       fail(`${code}: reported more than 24 hours after the allow expired, so when the output was made is only the provider's word`);

@@ -254,7 +254,7 @@ def test_v_a_platform_checks_the_proof_carried_with_the_video():
     with pytest.raises(PregenError, match="another file"):                         # V3: copied onto another video
         check_proof(bundle, w.directory, w.get_json, output_sha256=hashlib.sha256(b"a deepfake").hexdigest(), now=later)
     edited = {**bundle["subjects"][0], "report": {**report, "body": {**report["body"], "output_hash": "f" * 64}}}
-    with pytest.raises(PregenError, match="did not acknowledge"):                  # V2: a doctored report
+    with pytest.raises(PregenError, match="acknowledgement does not match"):                  # V2: a doctored report
         check_proof({"format": "pg.proof.v1", "subjects": [edited]}, w.directory, w.get_json, now=later)
     revoked = w.directory.to_json()
     revoked["registries"][0]["revoked"] = {"at": "2027-02-01T00:00:00Z", "reason": "fraud"}

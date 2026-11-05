@@ -34,13 +34,16 @@ step returns. Where it and the specification differ, the specification wins:
    `$`, `=` or `!`: quote codes in a shell (`'PG-ABCD-000001$'`) and encode them in a URL
    path (`%24` for `$`).
 8. **Ask the person** who runs the product before you create accounts, accept terms or
-   store secrets.
+   store secrets. Their request to integrate PRE-GEN covers what this guide makes: the
+   sandbox credential and your provider key.
 
 ## 1. Credentials from each registry
 
 The directory (`https://www.pregen.org/registries.json`, human view
 `https://www.pregen.org/registries`) lists every registry with its prefix and `api`. Each
-registry gives you, privately, a **provider id** and a **token**. If a registry sends a token
+registry gives you, privately, a **provider id** and a **token**. Always send to the
+`api` in the registry's directory entry; if one a registry gave you differs, ask it before
+sending anything. If a registry sends a token
 without its provider id, ask for the id: do not guess (a wrong one is 401
 `PG_NOT_AUTHENTICATED`). Keep one pair per registry, keyed by its prefix, for example:
 
@@ -52,10 +55,13 @@ without its provider id, ask for the id: do not guess (a wrong one is 401
 A registry's sandbox gives test credentials without an account:
 `curl -s -X POST {sandbox api}/v2/sandbox/access` → `{"provider_id": "sbx-…", "token": "…",
 "registry": "<the sandbox api>", "note": "…"}` (Python: `json.loads(urllib.request.urlopen(
-urllib.request.Request(sandbox_api + "/v2/sandbox/access", data=b"", method="POST")).read())`).
+urllib.request.Request(sandbox_api + "/v2/sandbox/access", data=b"", method="POST")).read())`;
+JS: `await (await fetch(sandboxApi + "/v2/sandbox/access", { method: "POST" })).json()`).
 The token is shown once: store the pair at once, under the sandbox's prefix (the four
-letters of its test codes), and check that `registry` equals
-`directory.registry_for(<test code 1>)["api"]` (step 4). Use it like any other credential.
+letters of its test codes). Once you have loaded the test directory (step 4), check that
+`registry` equals `directory.registry_for(<test code 1>)["api"]`. A directory entry does not
+say it is a sandbox; the registry's document does (`GET {api}/.well-known/pregen-registry.json`
+→ `"sandbox": true`). Use the credential like any other.
 
 ## 2. Install the library
 
@@ -165,9 +171,10 @@ Authorization: Bearer <token from that registry>
   did not connect to you is refused (401 `PG_NOT_AUTHENTICATED`).
 - **One request per person.** A job with two people asks twice, under the same `job_id`,
   each at the registry that holds them. **Every job has a new `job_id`** (random, not a
-  timestamp): once a person in a job is reported, asking again under that id is refused
-  (409 `PG_ASK_CLOSED`, which carries the earlier acknowledgement as `ack`: keep it if you
-  lost yours). Within one job, every request carries the same `job_hash`; a reused `job_id`
+  timestamp), and `job_input` holds everything you fixed, the customer included: once a
+  person in a job is reported, asking again under that id is refused
+  (409 `PG_ASK_CLOSED`, which carries the acknowledgement you were given before: keep it if
+  you lost yours). Within one job, every request carries the same `job_hash`; a reused `job_id`
   with a different `job_hash` gets 409 `PG_JOB_CONFLICT` first. Both mean no answer.
 - `pregen.sign_envelope("pg.request.v1", body)` / `signEnvelope("pg.request.v1", body)`
   makes the envelope (no key: `signatures` stays empty; the token authenticates you).
@@ -193,8 +200,8 @@ says `allow` all the same (expired, badly signed, for another request), still re
 `not_generated` for it (step 8), so a registry that did issue it frees the use; one that did
 not refuses the report: log that and go on. To log why a valid answer refused, the same
 arguments to `pregen.verify_answer(answer, request, directory)` /
-`await verifyAnswer(answer, request, { directory })` return the checked body whatever its
-status: read `body["reason"]` there. The statuses:
+`await verifyAnswer(answer, request, { directory })` (plus `testing` for a sandbox answer)
+return the checked body whatever its status: read `body["reason"]` there. The statuses:
 
 | `status` | Meaning | Do |
 |---|---|---|
@@ -278,8 +285,9 @@ hash matches. `level` is how far the registry established who holds the person's
 `self` (the registrant's own claim), `asserted` (an agent's claim), `consented` (the
 person's documented consent), `verified` (the registry checked identity and authority).
 Show it with your label, and decide which levels your label requires; below `consented`, no
-one but the registrant vouched. `check_proof` does not look at `obligations`: they are in
-each `answer.body`. The result does not name a licensee; a licensee-only grant shows as `licensee_id`
+one but the registrant vouched, and a strict default is `verified`. `check_proof` does not
+look at `obligations`: they are in each `answer.body`, and were the provider's to apply;
+show them if your label cares. The result does not name a licensee; a licensee-only grant shows as `licensee_id`
 in that person's `request.body`. With no file to hash, record the proof as not checked: it
 is never a label. A proof made in a sandbox passes only with `testing` and is never a label.
 
@@ -292,26 +300,34 @@ so the newest copy verifies old proofs too):
 
 ```python
 saved_directory = directory.to_json()
-saved_key_sets = {r["keys"]: json.loads(urllib.request.urlopen(r["keys"]).read()) for r in directory.registries}
+for r in directory.registries:                       # saved_key_sets: the previous copy, or {}
+    try:
+        saved_key_sets[r["keys"]] = json.loads(urllib.request.urlopen(r["keys"], timeout=10).read())
+    except Exception as e:
+        print("kept the previous key set for", r["keys"], e)
 ```
 
 ```js
 const savedDirectory = directory.toJSON();
-const savedKeySets = Object.fromEntries(await Promise.all(directory.registries.map(async (r) => {
-  const res = await fetch(r.keys);
-  if (!res.ok) throw new Error(`${r.keys}: HTTP ${res.status}`);
-  return [r.keys, await res.json()];
-})));
+for (const r of directory.registries) {              // savedKeySets: the previous copy, or {}
+  try {
+    const res = await fetch(r.keys, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    savedKeySets[r.keys] = await res.json();
+  } catch (e) { console.log("kept the previous key set for", r.keys, e.message); }
+}
 ```
 
-Keep each as one JSON file. A test directory's steward key is a constant you keep with them.
+If one registry does not answer, keep its previous copy and go on. Keep each as one JSON
+file; a test directory's steward key is a constant you keep with them. Save key sets as
+they come: at check time the library takes only keys whose ids the directory lists.
 
 Later, check with no network:
 
 ```python
 directory = pregen.verify_directory(saved_directory)       # test directory: steward_public_key_hex=TEST_STEWARD
 result = pregen.check_proof(bundle, directory, get_json=lambda url: saved_key_sets.get(url, {}),
-                            output_sha256=sha256_of_the_file)
+                            output_sha256=sha256_of_the_file)          # a sandbox proof: testing=True
 ```
 
 ```js
@@ -324,7 +340,8 @@ const result = await checkProof(bundle, { directory, fetch: offlineFetch, output
 
 The check fetches only through the `get_json` / `fetch` you pass. A retired registry key stays
 in its key set, so old proofs keep verifying after a key change.
-A proof from a revoked registry fails, old ones included. An offline check can only be as
+A proof from a revoked registry fails, old ones included (the directory marks a revoked
+registry `"revoked": true`, and lists revoked keys in `revoked_keys`). An offline check can only be as
 current as what you saved: a revocation published after that is invisible to it. Use
 `verify_directory(saved)` only for offline proof checks: it counts the saved copy as loaded
 now. For answers, always `load_directory(previous=saved)`.
@@ -350,7 +367,8 @@ code `N` is `PG-<prefix>-00000N` plus its check character. Each answers one way:
 
 Ask each in a job of its own, and take code `1` through the whole flow (ask, check,
 generate, report, proof), as in production: the complete examples below do, with
-`TESTING = True` / `const TESTING = true`. Check sandbox answers
+`TESTING = True` / `const TESTING = true`. Keep sandbox outputs and proofs apart from
+production ones: they are never labels. Check sandbox answers
 and proofs with `testing`: `check_answer(answer, request, directory, testing=True)`,
 `check_proof(…, testing=True)`; JS `checkAnswer(answer, request, { directory, testing: true })`.
 
@@ -443,7 +461,7 @@ try:
         if answer.get("body", {}).get("status") == "allow":
             allowed.append((entry, request, answer))                      # given back below if anything fails
         pregen.check_answer(answer, request, directory, testing=TESTING)  # raises unless a valid allow
-        if answer["body"].get("obligations"):                             # step 6: obligations this product does not apply
+        if answer["body"].get("obligations"):                             # this product applies none, so any listed one stops it
             raise RuntimeError(f"{code}: an allow with obligations this product does not apply")
 except Exception:
     give_back(allowed, int(time.time()))
@@ -467,7 +485,8 @@ print(pregen.check_proof(bundle, directory, output_sha256=output_hash, testing=T
 
 It prints `{'output_hash': '…', 'job_id': 'job-…', 'subjects': [{'code': 'PG-ABCD-000001G',
 'level': 'verified', 'basis': {'kind': 'grant', …}}]}`. Not shown, in either example: the
-identical resend of rule 2, and `verify_answer` to log why a refusal refused (step 6).
+identical resend of rule 2, the directory reload on `issuer_mismatch` (step 4), and
+`verify_answer` to log why a refusal refused (step 6).
 
 ## Complete example (JavaScript)
 
@@ -494,7 +513,7 @@ writeFileSync(SAVED, JSON.stringify(directory.toJSON()));
 
 async function post(entry, path, envelope) {
   const cred = CREDENTIALS[entry.prefix];
-  const res = await fetch(entry.api + path, { method: "POST", body: JSON.stringify(envelope), headers: {
+  const res = await fetch(entry.api + path, { method: "POST", body: JSON.stringify(envelope), signal: AbortSignal.timeout(10000), headers: {
     "Content-Type": "application/json", "X-Provider-ID": cred.provider_id, Authorization: `Bearer ${cred.token}` } });
   if (!res.ok) throw new Error(`${path}: HTTP ${res.status} ${await res.text()}`);
   return res.json();
@@ -535,7 +554,7 @@ try {
     const { answer } = await post(entry, "/v2/requests", request);
     if (answer?.body?.status === "allow") allowed.push({ entry, request, answer }); // given back below if anything fails
     await checkAnswer(answer, request, { directory, testing: TESTING });       // throws unless a valid allow
-    if (answer.body.obligations?.length) throw new Error(`${code}: an allow with obligations this product does not apply`);
+    if (answer.body.obligations?.length) throw new Error(`${code}: an allow with obligations`); // this product applies none
   }
 } catch (e) {
   await giveBack(allowed, Math.floor(Date.now() / 1000));
