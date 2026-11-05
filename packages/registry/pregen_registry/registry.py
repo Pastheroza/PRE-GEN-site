@@ -127,6 +127,14 @@ class Registry:
             db.execute("UPDATE operator_keys SET deactivated_at = ? WHERE deactivated_at IS NULL", (now,))
             db.execute("INSERT INTO operator_keys VALUES (?, ?, ?, NULL)",
                        (self.key.id, self.key.public_hex, self.activated_at if first else now))
+            db.execute("DELETE FROM meta WHERE k = 'next_key'")                # the announced key now signs
+
+    def announce_next_key(self, public_key_hex: str):
+        """The next operator key, listed in /keys with status `next` until it signs, so the steward can match the
+        key id an application names against this registry's own domain."""
+        check_public_key(public_key_hex)
+        with self.tx() as db:
+            db.execute("INSERT OR REPLACE INTO meta (k, v) VALUES ('next_key', ?)", (public_key_hex,))
 
     def _meta(self, k):
         row = self.db.execute("SELECT v FROM meta WHERE k = ?", (k,)).fetchone()
@@ -558,10 +566,14 @@ class Registry:
                 "spec": "PRE-GEN v5"}
 
     def key_set(self) -> dict:
-        """PRE-GEN-SPEC.md §2.3: every key ever signed with, current and retired; self-signed, so trust comes from the
-        directory, never from this list alone."""
+        """PRE-GEN-SPEC.md §2.3: every key ever signed with, current and retired, and the announced next key; self-signed,
+        so trust comes from the directory, never from this list alone."""
         body = {"current_key_id": self.key.id, "keys": [{
             "key_id": r["key_id"], "public_key_hex": r["public_key_hex"], "activated_at": r["activated_at"],
             "deactivated_at": r["deactivated_at"], "status": "active" if r["deactivated_at"] is None else "retired",
             "is_ephemeral": False} for r in self._q("SELECT * FROM operator_keys ORDER BY rowid")]}
+        nxt = self._row("SELECT v FROM meta WHERE k = 'next_key'")
+        if nxt:
+            body["keys"].append({"key_id": fingerprint(nxt["v"]), "public_key_hex": nxt["v"], "activated_at": None,
+                                 "deactivated_at": None, "status": "next", "is_ephemeral": False})
         return {**body, "signature": self.key.sign(canonical(body))}

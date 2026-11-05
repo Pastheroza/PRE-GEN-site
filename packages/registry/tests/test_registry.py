@@ -288,8 +288,11 @@ def test_cli_key_next_then_rotate(tmp_path, capsys):
     cli(["key", "next", "--dir", d])
     new = Key((tmp_path / "reg" / "operator.next.key").read_text().strip())
     assert new.id in capsys.readouterr().out
-    cli(["key", "rotate", "--dir", d])
     from pregen_registry.cli import load
+    announced = load(d).key_set()                                              # the steward matches it on our domain
+    assert announced["current_key_id"] == old.id and \
+        [(k["key_id"], k["status"]) for k in announced["keys"]] == [(old.id, "active"), (new.id, "next")]
+    cli(["key", "rotate", "--dir", d])
     keys = load(d).key_set()
     assert keys["current_key_id"] == new.id and [k["status"] for k in keys["keys"]] == ["retired", "active"]
     assert {k["key_id"] for k in keys["keys"]} == {old.id, new.id}

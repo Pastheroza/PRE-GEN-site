@@ -26,7 +26,7 @@ labels: registry-application
 - `{api}/.well-known/pregen-registry.json` returns your `prefix`, `profiles`, `extensions`, `policy`, `complaints`: yes / no
 - Profiles you answer under (e.g. `likeness/1`):
 
-**5. Keys.** Fingerprints (`pg-ed25519:…`) of every operator key — current, retired and the next one announced. **Do not paste them only here:** send the same list to the steward by a second channel (email from the operator's domain, or a signed message), so a stolen GitHub account cannot list someone else's key.
+**5. Keys.** Fingerprints (`pg-ed25519:…`) of every operator key — current, retired and the next one (`pregen-registry key next` lists it in `/keys` as `next`). The steward lists only fingerprints it finds in your live `{api}/keys`, on your own domain, so a stolen GitHub account cannot list someone else's key. A stolen operator key is reported privately, never here: https://github.com/Pastheroza/PRE-GEN-site/security/advisories/new
 
 **6. Conformance.** Paste the output of `pregen-registry check --api <your api>` (it must end `OK: all checks passed`). If you wrote your own registry, also paste the summary line of conformance Level 1 against your signing library (`spec/conformance/`):
 

@@ -10,7 +10,7 @@
   pregen-registry provider remove --dir DATA --id frame-ai    (its token stops working)
   pregen-registry connect --dir DATA --provider frame-ai --licensee frame-ai:user-1
   pregen-registry info --dir DATA
-  pregen-registry key next --dir DATA      (makes the next operator key: give it to the steward to announce)
+  pregen-registry key next --dir DATA      (makes the next operator key and lists it in /keys as `next`)
   pregen-registry key rotate --dir DATA    (once the directory lists it: the next key signs, the old one is retired)
   pregen-registry subject list --dir DATA      (every code, with its check character)
   pregen-registry subject anchor --dir DATA --code PG-… --anchor wikidata:Q… [--proof-url https://…]
@@ -224,9 +224,10 @@ def main(argv=None):
             if not next_path.exists():
                 _write_key(next_path, Key())
             nxt = Key(next_path.read_text().strip())
-            print(f"next operator key id: {nxt.id}\n  public key: {nxt.public_hex}\nGive the key id to the steward to "
-                  f"announce in the directory. 24 hours after the directory lists it, stop the server, run "
-                  f"`pregen-registry key rotate`, and start it again.")
+            load(a.dir).announce_next_key(nxt.public_hex)                  # /keys lists it as `next` from now on
+            print(f"next operator key id: {nxt.id}\n  public key: {nxt.public_hex}\n{{api}}/keys now lists it as "
+                  f"`next`. Apply again with this key id added; 24 hours after the directory lists it, stop the "
+                  f"server, run `pregen-registry key rotate`, and start it again.")
         else:
             if not next_path.exists():
                 sys.exit("no next key: run `pregen-registry key next` and have the steward announce it first")

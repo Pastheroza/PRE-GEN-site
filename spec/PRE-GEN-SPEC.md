@@ -477,7 +477,10 @@ independently verifiable. The registry's Merkle root over event hashes
  "signature": "…"}
 ```
 
-`keys` is the full history, current and retired; `signature` is the current
+`keys` is the full history, current and retired, plus the next key once the
+registry has made one (`"status": "next"`, `activated_at` null), so the steward can
+match a key id announced for the directory against the registry's own domain; the
+registry signs nothing with a `next` key until it becomes current. `signature` is the current
 key's Ed25519 signature over the canonical JSON of the object without
 `signature`. A retired key stays listed so that everything it ever signed
 remains verifiable. Which keys may sign in which PG-code namespace is not a

@@ -108,8 +108,10 @@ or `key rotate`.
 
 ## 4. Keys: one current key, with its whole history
 
-`GET {api}/keys` is your signed key set: the current key and every key you ever signed
-with. Never edit it by hand. You need a next key only when you want to rotate. To rotate:
+`GET {api}/keys` is your signed key set: the current key, every key you ever signed with,
+and your next key once you make one. Never edit it by hand. The steward reads your key ids
+there, on your own domain: that is how it knows an application really comes from you. You
+need a next key only when you want to rotate. To rotate:
 
 ```bash
 pregen-registry key next --dir ./data
@@ -118,12 +120,13 @@ pregen-registry key next --dir ./data
 ```
 next operator key id: pg-ed25519:<32 hex>
   public key: <64 hex>
-Give the key id to the steward to announce in the directory. 24 hours after the directory lists it, stop the server, run `pregen-registry key rotate`, and start it again.
+{api}/keys now lists it as `next`. Apply again with this key id added; 24 hours after the directory lists it, stop the server, run `pregen-registry key rotate`, and start it again.
 ```
 
-Send the steward the same application as in step 9, again by both channels, with the new
-key id added to your key ids, and a fresh plain `check` output; the key id is all the
-steward needs of the new key. Back up `./data/operator.next.key` (step 3). Then confirm the
+`{api}/keys` lists it at once, with `"status": "next"` (no restart needed). Send the steward
+the same application as in step 9 with the new key id added to your key ids, and a fresh
+plain `check` output; the steward finds the new key id in your live `/keys`. Back up
+`./data/operator.next.key` (step 3). Then confirm the
 steward listed it: `pregen-registry check --api … --directory …` (on a test directory, add
 `--steward <its key hex>`) prints `PASS the directory (sequence <n>) lists prefix ABCD with
 keys …`, and the new key id must be among them.
@@ -151,10 +154,11 @@ move it offline. If you rotate before the directory lists the new key, providers
 every answer you sign until it does. A retired key cannot sign anything new (clients refuse
 what it signs after it was retired), but keep its file as secret as the current one.
 
-**If a key is stolen,** tell the steward at once by both channels (step 9). The steward
-revokes it in the directory: from then on everything it ever signed fails, old proofs
-included. Make a new key with `key next`, have it listed, `key rotate`, and tell your
-providers.
+**If a key is stolen,** report it at once, privately, through PRE-GEN's security advisory
+form: `https://github.com/Pastheroza/PRE-GEN-site/security/advisories/new` (never a public
+issue). A thief may control your domain; that channel stays yours. The steward revokes the
+key in the directory: from then on everything it ever signed fails, old proofs included.
+Make a new key with `key next`, have it listed, `key rotate`, and tell your providers.
 
 ## 5. Serve it over HTTPS
 
@@ -358,8 +362,9 @@ It asks for:
    answers;
 5. **Keys** (the application's `keys` field is the key set URL; this item is the list of
    key ids): the key id (fingerprint) of every operator key: current, retired, and the next
-   one if you made one. **Send the same list to the steward by a second channel** (an email
-   from your domain), so a stolen account cannot list someone else's key;
+   one if you made one. The steward lists only key ids it finds in your live `{api}/keys`,
+   with your current key among them, so a stolen GitHub account cannot list someone else's
+   key;
 6. **Your `pregen-registry check --api …` output** (the plain run of step 8, without any
    token), ending `OK: all checks passed`;
 7. **Status:** `production`, or `sandbox` for a sandbox (one application per prefix). The
