@@ -203,6 +203,26 @@ class Registry:
         with self.tx() as db:
             db.execute("INSERT OR IGNORE INTO connections VALUES (?, ?)", (provider_id, licensee_id))
 
+    def opt_out(self, code: str):
+        """The person opted out or withdrew: every answer from now on is PG_SUBJECT_OPTED_OUT (core rule 3)."""
+        with self.tx() as db:
+            if not db.execute("UPDATE subjects SET opted_out = 1 WHERE code = ?", (code,)).rowcount:
+                raise ValueError(f"no subject {code} in this registry")
+
+    def revoke_grant(self, grant_id: str):
+        """The grant ends now: no answer from now on rests on it. Answers already given stay what they were."""
+        with self.tx() as db:
+            if not db.execute("UPDATE grants SET expires_at = MIN(expires_at, ?) WHERE id = ?",
+                              (self.clock(), grant_id)).rowcount:
+                raise ValueError(f"no grant {grant_id} in this registry")
+
+    def remove_provider(self, provider_id: str):
+        """Its token stops working at once, and its licensee connections go; its registered keys stay on record."""
+        with self.tx() as db:
+            if not db.execute("DELETE FROM providers WHERE provider_id = ?", (provider_id,)).rowcount:
+                raise ValueError(f"no provider {provider_id} in this registry")
+            db.execute("DELETE FROM connections WHERE provider_id = ?", (provider_id,))
+
     def seed_sandbox(self):
         """The standard sandbox subjects (extensions/sandbox.md), serials 1–7; serial 8 stays unregistered."""
         one = self.add_subject("Test subject 1 (allow)", serial=1, level="verified")

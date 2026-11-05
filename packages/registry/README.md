@@ -32,7 +32,7 @@ answers as `spec/extensions/sandbox.md` says.
    - `pregen-registry subject add --name "…" --level verified`
    - `pregen-registry grant add --subject PG-ABCD-… --purposes commercial --days 365 --max-uses 100`
    - `pregen-registry provider add --id frame-ai` — prints the credential once
-   - `pregen-registry connect --provider frame-ai --licensee user-1`
+   - `pregen-registry connect --provider frame-ai --licensee frame-ai:user-1`
 5. **Serve it behind TLS:** `pregen-registry serve --dir ./data --host 0.0.0.0 --port 8000`, or HTTPS directly with
    `--ssl-certfile cert.pem --ssl-keyfile key.pem`.
 6. **Anchor public people:** `pregen-registry subject anchor --code PG-ABCD-… --anchor wikidata:Q… --proof-url https://…`

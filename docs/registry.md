@@ -52,6 +52,9 @@ second choice in case someone asks for yours first.
 **A sandbox is a separate registry with its own prefix** (step 7), applied for the same way.
 Any free prefix will do; one close to yours (`ABCE` beside `ABCD`) helps people recognise it.
 
+**Your complaints contact** is a mailbox or web form you answer within 7 days (for example
+`mailto:complaints@registry.example`).
+
 **Your address** (`api`) is the HTTPS URL providers will use, exactly as you will serve
 it, with no trailing slash: for example `https://registry.example`.
 
@@ -84,20 +87,24 @@ A policy to edit is in ./data/policy.md; `serve` publishes it at https://registr
 ```
 
 The **key id** (`pg-ed25519:` and 32 hex) is the key's **fingerprint**: it is what the
-directory lists and what the steward asks for (step 9). The steward reads the public key
-itself from your `/keys`.
+directory lists and what the steward asks for (step 9). The directory lists key ids only;
+the steward checks your current key id against your live `/keys`. A next key is announced
+by its id alone (step 4).
 
 **Back up the whole `./data` folder offline** (an encrypted drive kept apart): `operator.key`
 is your signing key, and `registry.db` holds your people, grants and provider credentials.
-While the server runs, copy the database safely with `sqlite3`, and the rest with `cp`:
+While the server runs, copy the database safely with Python's `sqlite3`, and the rest with
+`cp`:
 
 ```bash
-mkdir -p ./backup && sqlite3 ./data/registry.db ".backup ./backup/registry.db"
-cp -p ./data/*.key ./data/registry.json ./data/policy.md ./backup/
+mkdir -p ./backup/data
+python3 -c "import sqlite3; sqlite3.connect('./data/registry.db').backup(sqlite3.connect('./backup/data/registry.db'))"
+cp -p ./data/*.key ./data/registry.json ./data/policy.md ./backup/data/
 ```
 
-Then move `./backup` to the offline drive. Back up again after you add people or grants,
-and after every `key next` or `key rotate`. Do the same for your sandbox's folder.
+For the sandbox, the same with `./sandbox` and `./backup/sandbox`. Then move `./backup` to
+the offline drive. Back up again after you add people or grants, and after every `key next`
+or `key rotate`.
 
 ## 4. Keys: one current key, with its whole history
 
@@ -138,6 +145,7 @@ operator key is now pg-ed25519:<new>; pg-ed25519:<old> is retired and stays in /
 
 Start the server again (step 5) and run `pregen-registry check --api … --directory …` (test
 directory: add `--steward <its key hex>`): it must show `PASS listed with the current key`.
+Send that output to the steward as your fresh `check` output; nothing else changes.
 The retired key's file is `./data/operator.retired.<hex>.key`: the server does not need it;
 move it offline. If you rotate before the directory lists the new key, providers refuse
 every answer you sign until it does. A retired key cannot sign anything new (clients refuse
@@ -244,6 +252,18 @@ one provider, so always write it as `<provider id>:<the customer's id at that pr
 to that id: two providers' `user-1` written bare would share each other's grants. Tell the
 provider the exact licensee id (step 10); it sends it as `licensee_id`.
 
+**When things change**, each takes effect from the next answer; answers already given stay
+what they were:
+
+```bash
+pregen-registry subject opt-out --dir ./data --code 'PG-ABCD-000001G'   # the person opted out or withdrew
+pregen-registry grant revoke --dir ./data --id <grant id>                # the grant ends now
+pregen-registry provider remove --dir ./data --id frame-ai               # a leaked token: then `provider add` again
+```
+
+Nothing you publish can be deleted afterwards, so add no test records to this registry:
+test in your sandbox (step 8).
+
 ## 7. A sandbox, for providers to test against
 
 A sandbox is a **separate** registry, with its own data folder, key, address, prefix and
@@ -277,7 +297,8 @@ It returns `{"provider_id": "sbx-…", "token": "…", "registry": "…", "note"
 sandbox answer carries `ext: {"sandbox": true}`, and clients refuse it unless they are
 testing. Apply for the sandbox's prefix too (step 9, status `sandbox`): a sandbox is listed
 only in a **test directory**, never in the real one. The directory entry looks like any
-other; providers learn it is a sandbox from its document (`"sandbox": true`) and from you.
+other; the document's `sandbox` member is only `true` or `false`, and nothing links your
+registry to your sandbox: give providers the sandbox `api` yourself (step 10).
 
 ## 8. Check yourself before you apply
 
@@ -300,22 +321,20 @@ PASS a request with an unknown credential is refused: HTTP 401 PG_NOT_AUTHENTICA
 OK: all checks passed
 ```
 
-Any `FAIL` line names what to fix; the command exits 1 until everything passes. To see one
-person's answer as a provider would, add a credential, a code and the purpose to ask for
-(default `commercial`). This asks for real: an `allow` uses one use of that grant. So use a
-credential of your own (`provider add --id self-check`) and a test person with a test
-grant, never a provider's token or a real person's grant:
+Any `FAIL` line names what to fix; the command exits 1 until everything passes. To see an
+answer as a provider would, ask your **sandbox** (never production: an `allow` uses a real
+use, and test records cannot be removed), with its credentials from step 7 and a code:
 
 ```bash
-pregen-registry check --api https://registry.example \
-  --provider-id self-check --token '<secret>' --subject 'PG-ABCD-000002K' --purpose commercial
+pregen-registry check --api https://sandbox.registry.example \
+  --provider-id sbx-… --token '<sandbox token>' --subject '<sandbox code 1>' --purpose commercial
 ```
 
-The extra line reads `PASS POST /v2/requests for PG-ABCD-000002K, purpose commercial: HTTP
-200, allow` when a grant covers that purpose (step 6), and `… deny PG_SCOPE_VIOLATION` when
-it does not. To try a licensee-only grant the same way, give a test person a test grant
-with `--licensee self-check:t1`, run `connect --provider self-check --licensee
-self-check:t1`, and add `--licensee self-check:t1` to `check`.
+The extra line reads `PASS POST /v2/requests for PG-ABCE-000001…, purpose commercial: HTTP
+200, allow`; with test code 2 it reads `… deny PG_NO_LICENSE`. To try a grant of your own
+(purposes, a licensee), add a test person and that grant to the sandbox (`subject add`,
+`grant add --dir ./sandbox …`) and ask for it the same way; for a licensee-only grant, give
+it `--licensee test:t1` and add `--licensee test:t1` to `check`.
 
 **If you wrote your own registry,** also run conformance Level 1 against your signing
 library (`spec/conformance/README.md`). It requires the v5 operations by default:
@@ -399,4 +418,4 @@ A listing can be revoked, with notice and reasons; a prefix is never given to an
 
 Providers authenticate with `X-Provider-ID: <id>` and `Authorization: Bearer <token>` on
 `POST /v2/requests`, `/v2/reports`, `/v2/keys` and `GET /v2/grants/…`; the rest is public.
-Errors are `{"error": "PG_…", "error_description": "…"}` with HTTP 401 or 422.
+Errors are `{"error": "PG_…", "error_description": "…"}` with HTTP 401, 409 or 422.

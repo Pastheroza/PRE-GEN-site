@@ -183,6 +183,26 @@ def test_licensee_must_be_connected_outside_a_sandbox():
     assert p.answer(p.body(s, job="j2", purpose="commercial"))["body"]["reason"] == "PG_NO_LICENSE"   # the grant is user-1's
 
 
+def test_opt_out_revoke_and_remove_take_effect_from_the_next_answer(tmp_path, capsys):
+    reg, c, _ = make(sandbox=False)
+    p = Provider(reg, c)
+    s, t = reg.add_subject("Maya", level="verified"), reg.add_subject("Theo", level="verified")
+    gid = reg.add_grant(s, purposes=["commercial"])
+    reg.add_grant(t, purposes=["commercial"])
+    assert p.answer(p.body(s, purpose="commercial"))["body"]["status"] == "allow"
+    reg.revoke_grant(gid)
+    assert p.answer(p.body(s, job="j2", purpose="commercial"))["body"]["reason"] == "PG_NO_LICENSE"
+    reg.opt_out(t)
+    assert p.answer(p.body(t, job="j3", purpose="commercial"))["body"]["reason"] == "PG_SUBJECT_OPTED_OUT"
+    reg.remove_provider(p.id)
+    assert p.ask(p.body(t, job="j4", purpose="commercial")).status_code == 401
+    with pytest.raises(ValueError):
+        reg.opt_out(code(99))
+    cli(["init", "--dir", str(tmp_path), "--prefix", "TEST", "--name", "T", "--api", "https://t.example"])
+    with pytest.raises(SystemExit, match="frame-ai:user-1"):
+        cli(["connect", "--dir", str(tmp_path), "--provider", "frame-ai", "--licensee", "user-1"])
+
+
 # ── extension jobs ──────────────────────────────────────────────────────
 
 def test_one_hash_per_job_one_request_per_subject_same_answer_while_open():

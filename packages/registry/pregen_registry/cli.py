@@ -1,17 +1,21 @@
 """pregen-registry — run and operate a PRE-GEN registry.
 
-  pregen-registry init --dir DATA --prefix TEST --name "My Registry" --api https://registry.example [--sandbox]
+  pregen-registry init --dir DATA --prefix TEST --name "My Registry" --api https://registry.example
+                       --policy https://registry.example/policy --complaints mailto:… [--sandbox]
   pregen-registry serve --dir DATA [--host 0.0.0.0 --port 8000]
   pregen-registry subject add --dir DATA --name "Maya Cole" [--level verified]
   pregen-registry grant add --dir DATA --subject PG-… [--licensee ID] [--purposes research,commercial] [--days 365] [--max-uses N]
+  pregen-registry grant revoke --dir DATA --id GRANT_ID    (the grant ends now)
   pregen-registry provider add --dir DATA [--id frame-ai]     (prints the credential once)
-  pregen-registry connect --dir DATA --provider frame-ai --licensee user-1
+  pregen-registry provider remove --dir DATA --id frame-ai    (its token stops working)
+  pregen-registry connect --dir DATA --provider frame-ai --licensee frame-ai:user-1
   pregen-registry info --dir DATA
   pregen-registry key next --dir DATA      (makes the next operator key: give it to the steward to announce)
   pregen-registry key rotate --dir DATA    (once the directory lists it: the next key signs, the old one is retired)
   pregen-registry subject list --dir DATA      (every code, with its check character)
   pregen-registry subject anchor --dir DATA --code PG-… --anchor wikidata:Q… [--proof-url https://…]
-  pregen-registry check --api https://registry.example [--directory URL --steward HEX] [--provider-id ID --token T --subject PG-…]
+  pregen-registry subject opt-out --dir DATA --code PG-…  (the person opted out or withdrew: refused from the next answer)
+  pregen-registry check --api https://registry.example [--directory URL --steward HEX] [--provider-id ID --token T --subject PG-… [--licensee ID]]
 """
 from __future__ import annotations
 
@@ -31,10 +35,10 @@ Registry prefix: {prefix}. Operator: <legal name, public address>. Complaints an
 within 7 days.
 {sandbox}
 ## How we verify a rights holder
-<who may register a person, and how we check they are that person or may act for them>
+{verify}
 
 ## Anchors for public people
-<the anchor we record: a Wikidata item, an ISNI or a domain; and how the person confirms on their own channel>
+{anchors}
 
 ## Our refusals
 We keep the PRE-GEN core's fixed protections. <any refusals of our own, with their reason codes>
@@ -82,21 +86,22 @@ def main(argv=None):
             p.add_argument("--ssl-certfile", help="serve HTTPS directly (a local test); in production, use a TLS proxy")
             p.add_argument("--ssl-keyfile")
         elif name == "subject":
-            p.add_argument("action", choices=["add", "anchor", "list"])
+            p.add_argument("action", choices=["add", "anchor", "list", "opt-out"])
             p.add_argument("--name", help="add: the subject's name")
-            p.add_argument("--code", help="anchor: the subject's PG code")
+            p.add_argument("--code", help="anchor, opt-out: the subject's PG code")
             p.add_argument("--anchor", help="anchor: wikidata:Q…, isni:…, or a domain (identity.md)")
             p.add_argument("--proof-url", help="anchor: where the person posted \"PRE-GEN: <code>\" on an official channel")
             p.add_argument("--level", default="self", choices=["self", "asserted", "consented", "verified"])
         elif name == "grant":
-            p.add_argument("action", choices=["add"])
-            p.add_argument("--subject", required=True)
+            p.add_argument("action", choices=["add", "revoke"])
+            p.add_argument("--subject", help="add: the subject's PG code")
+            p.add_argument("--id", help="revoke: the grant id")
             p.add_argument("--licensee", default="")
             p.add_argument("--purposes", default="research")
             p.add_argument("--days", type=int, default=365)
             p.add_argument("--max-uses", type=int)
         elif name == "provider":
-            p.add_argument("action", choices=["add"])
+            p.add_argument("action", choices=["add", "remove"])
             p.add_argument("--id")
         elif name == "connect":
             p.add_argument("--provider", required=True)
@@ -140,7 +145,12 @@ def main(argv=None):
         reg = Registry(Config(**cfg), key, str(db_path))
         policy = Path(a.dir) / "policy.md"
         if not policy.exists():
-            policy.write_text(POLICY_TEMPLATE.format(name=a.name, prefix=a.prefix, complaints=a.complaints or "…", sandbox=(
+            policy.write_text(POLICY_TEMPLATE.format(name=a.name, prefix=a.prefix, complaints=a.complaints or "…", **(
+                {"verify": "Not applicable: this sandbox holds only test subjects.",
+                 "anchors": "Not applicable: this sandbox holds only test subjects."} if a.sandbox else
+                {"verify": "<who may register a person, and how we check they are that person or may act for them>",
+                 "anchors": "<the anchor we record: a Wikidata item, an ISNI or a domain; and how the person confirms "
+                            "on their own channel>"}), sandbox=(
                 "\nThis is a sandbox: it holds no real people, only the eight standard test subjects, and its "
                 "answers are marked as sandbox answers.\n" if a.sandbox else "")))
         print(f"Registry created in {a.dir}.\n  prefix: {a.prefix}\n  operator key id: {key.id}\n"
@@ -166,6 +176,14 @@ def main(argv=None):
     elif a.cmd == "subject" and a.action == "list":
         for s in load(a.dir)._q("SELECT code, name, level FROM subjects ORDER BY serial"):
             print(f"{s['code']}  {s['level']}  {s['name']}")
+    elif a.cmd == "subject" and a.action == "opt-out":
+        if not a.code:
+            sys.exit("subject opt-out needs --code")
+        try:
+            load(a.dir).opt_out(a.code)
+        except ValueError as e:
+            sys.exit(str(e))
+        print(f"{a.code} opted out: every answer from now on is deny PG_SUBJECT_OPTED_OUT")
     elif a.cmd == "subject":
         if not (a.code and a.anchor):
             sys.exit("subject anchor needs --code and --anchor")
@@ -174,13 +192,29 @@ def main(argv=None):
             sys.exit(f"no subject {a.code} in this registry")
         reg.set_identity(a.code, anchor=a.anchor, proof_url=a.proof_url)
         print(f"{a.code} anchored to {a.anchor}; GET /v2/anchors lists it")
+    elif a.cmd == "grant" and a.action == "revoke":
+        try:
+            load(a.dir).revoke_grant(a.id or "")
+        except ValueError as e:
+            sys.exit(str(e))
+        print(f"grant {a.id} revoked: no answer from now on rests on it")
     elif a.cmd == "grant":
+        if not a.subject:
+            sys.exit("grant add needs --subject")
         print(load(a.dir).add_grant(a.subject, licensee_id=a.licensee, purposes=a.purposes.split(","),
                                     days=a.days, max_uses=a.max_uses))
+    elif a.cmd == "provider" and a.action == "remove":
+        try:
+            load(a.dir).remove_provider(a.id or "")
+        except ValueError as e:
+            sys.exit(str(e))
+        print(f"provider {a.id} removed: its token no longer works")
     elif a.cmd == "provider":
         pid, token = load(a.dir).add_provider(a.id)
         print(f"provider_id: {pid}\ntoken: {token}\nShown once. Give it to the provider over a private channel.")
     elif a.cmd == "connect":
+        if not a.licensee.startswith(a.provider + ":"):       # a bare id would share grants across providers
+            sys.exit(f"a licensee id is <provider id>:<customer id>, for example {a.provider}:{a.licensee}")
         load(a.dir).connect(a.provider, a.licensee)
         print("connected")
     elif a.cmd == "key":

@@ -13,10 +13,10 @@ step returns. Where it and the specification differ, the specification wins:
 
 1. **Only `allow` permits.** `deny`, `review`, `not_blocked`, an unknown status or reason,
    or no valid answer at all: do not generate. Never ask again to get another answer to a
-   refusal.
+   refusal. (A new job for a new output, with a new `job_id`, is not asking again.)
 2. **No answer is not a refusal and not a permission.** After a timeout or an HTTP 5xx you
    may send the **identical** request again (same `job_id`, same bytes): a registry answers
-   it with the answer it already gave. Resend a few times at most, within a minute; after
+   it with the answer it already gave. Resend at most 3 times, a few seconds apart; after
    that, you have no allow for that person.
 3. **Never send the prompt or the output.** You send `job_hash`: a SHA-256 of what you
    fixed about the job: `hashlib.sha256(pregen.canonical_json(job_input)).hexdigest()`, where
@@ -26,7 +26,8 @@ step returns. Where it and the specification differ, the specification wins:
 4. **Keep your clock synced** (NTP): answers live minutes, and one issued more than 60 s in
    your future is refused.
 5. **Secrets stay server-side:** registry tokens and your private key never go to a browser,
-   a URL, a log or client code.
+   a URL, a log or client code. Your secret store is wherever only your servers can read
+   them: a secrets manager, environment variables, or a file readable only by the service.
 6. **A sandbox answer is never accepted in production.** It carries `ext: {"sandbox": true}`;
    the libraries refuse it unless you pass `testing`.
 7. **Copy codes exactly.** A person's code ends with a check character that may be `*`, `~`,
@@ -50,10 +51,11 @@ without its provider id, ask for the id: do not guess (a wrong one is 401
 
 A registry's sandbox gives test credentials without an account:
 `curl -s -X POST {sandbox api}/v2/sandbox/access` → `{"provider_id": "sbx-…", "token": "…",
-"registry": "<the sandbox api>", "note": "…"}`. The token is shown once: store the pair at
-once, under the sandbox's prefix (the four letters of its test codes), and check that
-`registry` equals the `api` of that prefix's directory entry. Use it like any other
-credential.
+"registry": "<the sandbox api>", "note": "…"}` (Python: `json.loads(urllib.request.urlopen(
+urllib.request.Request(sandbox_api + "/v2/sandbox/access", data=b"", method="POST")).read())`).
+The token is shown once: store the pair at once, under the sandbox's prefix (the four
+letters of its test codes), and check that `registry` equals
+`directory.registry_for(<test code 1>)["api"]` (step 4). Use it like any other credential.
 
 ## 2. Install the library
 
@@ -124,6 +126,8 @@ hours: answers checked against a directory object older than that are refused.
 `pregen.load_directory(url, previous=saved, steward_public_key_hex=TEST_STEWARD)` or
 `loadDirectory({ url, previous: saved, stewardPublicKeyHex: TEST_STEWARD })`, where `url` is
 the test directory's URL (without it, the public directory is loaded). Never in production.
+A test directory is only about who signed the directory: answers from a non-sandbox registry
+listed in it are checked without `testing`. `testing` is for sandbox answers only (step 10).
 
 **A registry's new key:** if `check_answer` refuses with `… may not sign …: issuer_mismatch`,
 the registry may have just been listed with a new key: load the directory again (with
@@ -134,8 +138,8 @@ the registry may have just been listed with a new key: load the directory again 
 A person's code looks like `PG-ABCD-000001G`; its four letters name the registry.
 `directory.registry_for(code)` / `directory.registryFor(code)` gives that registry's entry
 (`prefix`, `api`, `keys` = the URL of its key set, `key_fingerprints`, …). If it gives
-`None` / `null`, no listed registry holds the code: you have no `allow`, so do not generate
-that person under PRE-GEN.
+`None` / `null`, no listed registry holds the code: you have no `allow`: do not generate
+that person.
 
 ```
 POST {api}/v2/requests
@@ -150,7 +154,8 @@ Authorization: Bearer <token from that registry>
 ```
 
 - These six members are all a request needs. `use.purpose` is what the output is for, not
-  its medium (an ad, image or video, is `commercial`): `personal`, `educational`,
+  its medium (an ad, image or video, is `commercial`; if you do not know what your customer
+  will use it for, ask them, or send `commercial`): `personal`, `educational`,
   `research`, `editorial` or `commercial`; add `territory`, `channel` and `categories`
   (for example `["political"]`) when they apply, honestly: fixed protections are checked
   against them.
@@ -162,7 +167,8 @@ Authorization: Bearer <token from that registry>
   each at the registry that holds them. **Every job has a new `job_id`** (random, not a
   timestamp): once a person in a job is reported, asking again under that id is refused
   (409 `PG_ASK_CLOSED`, which carries the earlier acknowledgement as `ack`: keep it if you
-  lost yours). Within one job, every request carries the same `job_hash`.
+  lost yours). Within one job, every request carries the same `job_hash`; a reused `job_id`
+  with a different `job_hash` gets 409 `PG_JOB_CONFLICT` first. Both mean no answer.
 - `pregen.sign_envelope("pg.request.v1", body)` / `signEnvelope("pg.request.v1", body)`
   makes the envelope (no key: `signatures` stays empty; the token authenticates you).
 
@@ -192,9 +198,9 @@ status: read `body["reason"]` there. The statuses:
 
 | `status` | Meaning | Do |
 |---|---|---|
-| `allow` | permitted, with a `basis` (a policy rule or a grant) | generate, applying any `obligations`; if one is listed that you do not understand, do not generate |
+| `allow` | permitted, with a `basis` (a policy rule or a grant) | generate, applying any `obligations` (`[]` or missing: none); if one is listed that you do not understand, do not generate |
 | `deny` | refused, with a `reason` (with `PG_UNKNOWN_SUBJECT`: this registry holds no such person) | do not generate |
-| `review` | held for a person | do not generate now |
+| `review` | held for a person | do not generate in this job; a later job (new `job_id`) may ask again |
 | `not_blocked` | nothing grants it | not a permission: do not generate on it |
 
 `check_answer` does not look at `obligations`: you must. If an allow lists obligations your
@@ -263,13 +269,17 @@ const result = await checkProof(bundle, { directory, outputSha256 });
 **Always pass the SHA-256 of the file you hold.** Without it, the check says nothing about
 that file, and its result must never be shown as a label on it. It returns `{output_hash,
 job_id, subjects: [{code, level, basis}]}` / `{outputHash, jobId, subjects}`, or raises with
-the reason (`str(e)` / `e.message`). It passes when every answer was a valid `allow` at the
+the reason (`str(e)` / `e.message`). Without `output_sha256` it still runs, but says nothing
+about any file. It passes when every answer was a valid `allow` at the
 `occurred_at` the provider reported (the registry bounds it: the report reached it within
 24 hours of the allow's expiry), each acknowledgement is signed by that person's registry
 and names that report and answer, all reports name one output and one job, and the file's
-hash matches. `level` is how far the registry checked the person (`self`, `asserted`,
-`consented`, `verified`): show it with your label, and decide which levels your label
-requires. The result does not name a licensee; a licensee-only grant shows as `licensee_id`
+hash matches. `level` is how far the registry established who holds the person's rights:
+`self` (the registrant's own claim), `asserted` (an agent's claim), `consented` (the
+person's documented consent), `verified` (the registry checked identity and authority).
+Show it with your label, and decide which levels your label requires; below `consented`, no
+one but the registrant vouched. `check_proof` does not look at `obligations`: they are in
+each `answer.body`. The result does not name a licensee; a licensee-only grant shows as `licensee_id`
 in that person's `request.body`. With no file to hash, record the proof as not checked: it
 is never a label. A proof made in a sandbox passes only with `testing` and is never a label.
 
@@ -287,11 +297,14 @@ saved_key_sets = {r["keys"]: json.loads(urllib.request.urlopen(r["keys"]).read()
 
 ```js
 const savedDirectory = directory.toJSON();
-const savedKeySets = Object.fromEntries(await Promise.all(directory.registries.map(
-  async (r) => [r.keys, await (await fetch(r.keys)).json()])));
+const savedKeySets = Object.fromEntries(await Promise.all(directory.registries.map(async (r) => {
+  const res = await fetch(r.keys);
+  if (!res.ok) throw new Error(`${r.keys}: HTTP ${res.status}`);
+  return [r.keys, await res.json()];
+})));
 ```
 
-Keep each as one JSON file.
+Keep each as one JSON file. A test directory's steward key is a constant you keep with them.
 
 Later, check with no network:
 
@@ -322,16 +335,28 @@ From the registry, get its sandbox `api`, the sandbox's eight test codes, and th
 directory (its URL and test steward key). A sandbox is its own registry with its own prefix
 (for example `ABCE` beside `ABCD`): take credentials from `{sandbox api}/v2/sandbox/access`,
 store them under that prefix in `CREDENTIALS`, and register your key there (step 3). Test
-code `N` is `PG-<prefix>-00000N` plus its check character. Each answers one way: `1` allows;
-`2` no licence; `3` opted out; `4` usage limit; `5` prohibited; `6` review; `7` not blocked;
-`8` unknown. Ask each in a job of its own, and take code `1` through the whole flow (ask,
-check, generate, report, proof), as in production. Check sandbox answers
+code `N` is `PG-<prefix>-00000N` plus its check character. Each answers one way:
+
+| Code | Answer |
+|---|---|
+| `1` | `allow` |
+| `2` | `deny` `PG_NO_LICENSE` |
+| `3` | `deny` `PG_SUBJECT_OPTED_OUT` |
+| `4` | `deny` `PG_USAGE_LIMIT` |
+| `5` | `deny` `PG_PROHIBITED_USE` |
+| `6` | `review` `PG_REVIEW_REQUIRED` |
+| `7` | `not_blocked` `PG_NO_LICENSE` (nothing blocks it, and nothing grants it) |
+| `8` | `deny` `PG_UNKNOWN_SUBJECT` |
+
+Ask each in a job of its own, and take code `1` through the whole flow (ask, check,
+generate, report, proof), as in production: the complete examples below do, with
+`TESTING = True` / `const TESTING = true`. Check sandbox answers
 and proofs with `testing`: `check_answer(answer, request, directory, testing=True)`,
 `check_proof(…, testing=True)`; JS `checkAnswer(answer, request, { directory, testing: true })`.
 
 ## Complete example (Python)
 
-One job, one or more people, each at their own registry. Fill in the five constants.
+One job, one or more people, each at their own registry. Fill in the six constants.
 
 ```python
 import hashlib
@@ -349,6 +374,7 @@ KEY = "<your private key hex>"                                             # ste
 DIRECTORY_URL, TEST_STEWARD = pregen.DIRECTORY_URL, None                    # testing: the test directory and its key
 CODES = ["PG-ABCD-000001G"]                                                # the people in this job
 SAVED = "directory.json"                                                   # where the last directory is kept
+TESTING = False                                                            # True only against a sandbox (step 10)
 
 pub = pregen.public_key_hex(KEY)
 key_id = pregen.fingerprint(pub)
@@ -416,7 +442,7 @@ try:
         answer = post(entry, "/v2/requests", request)["answer"]
         if answer.get("body", {}).get("status") == "allow":
             allowed.append((entry, request, answer))                      # given back below if anything fails
-        pregen.check_answer(answer, request, directory)                  # raises unless a valid allow
+        pregen.check_answer(answer, request, directory, testing=TESTING)  # raises unless a valid allow
         if answer["body"].get("obligations"):                             # step 6: obligations this product does not apply
             raise RuntimeError(f"{code}: an allow with obligations this product does not apply")
 except Exception:
@@ -436,11 +462,12 @@ for entry, request, answer in allowed:                                    # step
     subjects.append({"request": request, "answer": answer, "report": rep, "ack": ack})
 
 bundle = {"format": "pg.proof.v1", "subjects": subjects}                  # step 9
-print(pregen.check_proof(bundle, directory, output_sha256=output_hash))
+print(pregen.check_proof(bundle, directory, output_sha256=output_hash, testing=TESTING))
 ```
 
 It prints `{'output_hash': '…', 'job_id': 'job-…', 'subjects': [{'code': 'PG-ABCD-000001G',
-'level': 'verified', 'basis': {'kind': 'grant', …}}]}`.
+'level': 'verified', 'basis': {'kind': 'grant', …}}]}`. Not shown, in either example: the
+identical resend of rule 2, and `verify_answer` to log why a refusal refused (step 6).
 
 ## Complete example (JavaScript)
 
@@ -457,6 +484,7 @@ const KEY = "<your private key hex>";                                          /
 const [url, TEST_STEWARD] = [DIRECTORY_URL, null];                              // testing: the test directory and its key
 const CODES = ["PG-ABCD-000001G"];                                              // the people in this job
 const SAVED = "directory.json";                                                 // where the last directory is kept
+const TESTING = false;                                                          // true only against a sandbox (step 10)
 
 const pub = await publicKeyHex(KEY);
 const keyId = await fingerprint(pub);
@@ -506,7 +534,7 @@ try {
       profile: "likeness/1", use: { purpose: "commercial" }, job_id: jobId, job_hash: jobHash });
     const { answer } = await post(entry, "/v2/requests", request);
     if (answer?.body?.status === "allow") allowed.push({ entry, request, answer }); // given back below if anything fails
-    await checkAnswer(answer, request, { directory });                          // throws unless a valid allow
+    await checkAnswer(answer, request, { directory, testing: TESTING });       // throws unless a valid allow
     if (answer.body.obligations?.length) throw new Error(`${code}: an allow with obligations this product does not apply`);
   }
 } catch (e) {
@@ -528,7 +556,7 @@ for (const { entry, request, answer } of allowed) {                             
   subjects.push({ request, answer, report: rep, ack });
 }
 const bundle = { format: "pg.proof.v1", subjects };                             // step 9
-console.log(await checkProof(bundle, { directory, outputSha256: outputHash }));
+console.log(await checkProof(bundle, { directory, outputSha256: outputHash, testing: TESTING }));
 ```
 
 ## Errors
