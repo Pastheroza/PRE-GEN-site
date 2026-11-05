@@ -309,8 +309,14 @@ test("decideIdentity: not who came first, but who proved it (identity.md I1–I5
   assert.deepEqual(decideIdentity([{ code: "A", confirmed: true, answer: noLicence }, { code: "X", confirmed: false, answer: allow },
     { code: "Y", confirmed: false, answer: out }]), { status: "deny", reason: "PG_NO_LICENSE", code: "A" });
   assert.equal(decideIdentity([{ code: "A", confirmed: true, answer: allow }, { code: "B", confirmed: true, answer: out }]).code, "B");
-  assert.equal(decideIdentity([{ code: "X", confirmed: false, answer: allow }, { code: "Y", confirmed: false, answer: allow }],
-    { allowUnconfirmed: true }).reason, "PG_IDENTITY_CONFLICT");
+  // Before confirmation PRE-GEN says nothing, whatever the policy; and no claim outranks another by its order.
+  assert.deepEqual(decideIdentity([{ code: "X", confirmed: false, answer: allow }, { code: "Y", confirmed: false, answer: out }],
+    { allowUnconfirmed: true }), { status: "not_blocked", reason: "PG_IDENTITY_UNCONFIRMED", code: null });
+  assert.equal(decideIdentity([]).status, "not_blocked");
+  const review = { status: "review", reason: "PG_REVIEW_REQUIRED" };
+  const ab = [{ code: "A", confirmed: true, answer: review }, { code: "B", confirmed: true, answer: noLicence }];
+  assert.deepEqual(decideIdentity(ab), decideIdentity([...ab].reverse()));
+  assert.equal(decideIdentity(ab).status, "deny");
 });
 
 test("checkChannelProof: only the person's own channel counts", async () => {

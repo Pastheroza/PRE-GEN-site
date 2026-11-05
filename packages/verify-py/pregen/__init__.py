@@ -619,23 +619,25 @@ def decide_identity(claims: list, allow_unconfirmed: bool = False) -> dict:
     code the anchor lists name (false claims already removed), {"code", "confirmed", "answer"}: `confirmed` is
     whether the person confirmed this code on their own official channel; `answer` is the body
     verify_answer() returned for this generation. Rule: not who came first, but who proved it.
-    Returns {"status": "allow" | "deny" | "review", "reason", "code"}: generate only on "allow"."""
-    if not claims:
-        return {"status": "deny", "reason": "PG_UNKNOWN_SUBJECT", "code": None}
-    confirmed = [c for c in claims if c["confirmed"]]
-    group = confirmed or claims          # proven claims silence unproven ones (I3, I11)
+    A subject is a person who confirmed; before that PRE-GEN says nothing either way,
+    so an unconfirmed claim neither permits nor refuses (`allow_unconfirmed` no longer permits anything). The
+    verdict never depends on the order of the claims. Returns {"status": "allow" | "deny" | "review" |
+    "not_blocked", "reason", "code"}: generate only on "allow"."""
+    group = sorted((c for c in claims if c["confirmed"]), key=lambda c: c["code"])
+    if not group:
+        return {"status": "not_blocked", "reason": "PG_IDENTITY_UNCONFIRMED" if claims else "PG_UNKNOWN_SUBJECT",
+                "code": None}
     for c in group:                      # one person: a refusal of the person in any registry holds everywhere
         if c["answer"].get("status") != "allow" and c["answer"].get("reason") in FLOOR_REASONS:
             return {"status": "deny", "reason": c["answer"]["reason"], "code": c["code"]}
-    if not confirmed and len(claims) > 1:
-        return {"status": "review", "reason": "PG_IDENTITY_CONFLICT", "code": None}   # freeze until someone proves it
-    if not confirmed and not allow_unconfirmed:
-        return {"status": "review", "reason": "PG_IDENTITY_UNCONFIRMED", "code": claims[0]["code"]}
     allowed = next((c for c in group if c["answer"].get("status") == "allow"), None)
     if allowed:
         return {"status": "allow", "reason": None, "code": allowed["code"]}
-    first = group[0]["answer"]
-    return {"status": first.get("status"), "reason": first.get("reason"), "code": group[0]["code"]}
+    worst = min(group, key=lambda c: _SEVERITY.get(c["answer"].get("status"), len(_SEVERITY)))
+    return {"status": worst["answer"].get("status"), "reason": worst["answer"].get("reason"), "code": worst["code"]}
+
+
+_SEVERITY = {"deny": 0, "review": 1}     # no allow: the strongest refusal, ties by code, never by claim order
 
 
 def check_channel_proof(code: str, proof_url: str, official_urls: list, get_text) -> bool:

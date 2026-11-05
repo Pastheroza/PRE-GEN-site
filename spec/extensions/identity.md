@@ -44,13 +44,13 @@ For one anchor, over the claims that remain after the steward's false claims are
    reason (`PG_SUBJECT_OPTED_OUT`, `PG_SUBJECT_UNAVAILABLE`, `PG_PROHIBITED_USE`,
    `PG_IMMUTABLE_DENIAL`, `PG_PERSONAL_SIGNATURE_REQUIRED`), the result is that refusal. "No
    licence here" is not a refusal of the person.
-3. **No proof, several claims: freeze.** Two or more unconfirmed claims → `review`,
-   `PG_IDENTITY_CONFLICT`. Nobody permits until someone proves it.
-4. **No proof, one claim:** `review`, `PG_IDENTITY_UNCONFIRMED`, unless the provider's
-   own published policy accepts unconfirmed claims.
-5. Otherwise an `allow` from any counted claim permits.
+3. **No proof: PRE-GEN says nothing.** With no confirmed claim the result is `not_blocked`,
+   `PG_IDENTITY_UNCONFIRMED`: it permits nothing and forbids nothing. No provider policy
+   turns an unconfirmed claim into a permission.
+4. Otherwise an `allow` from any counted claim permits; with none, the strongest refusal
+   (`deny`, then `review`), whatever the order of the claims.
 
-An impostor can at most freeze a person who never confirmed anything; it can never permit.
+An impostor can neither permit nor freeze a person who never confirmed anything.
 The libraries implement the rule as `decideIdentity` / `decide_identity`.
 
 ## Disputes and false claims

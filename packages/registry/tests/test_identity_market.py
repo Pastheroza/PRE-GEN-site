@@ -96,7 +96,8 @@ def test_i2_an_unconfirmed_claim_alone_does_not_permit_a_public_person():
     x = w.person("XXXX", confirmed=False)
     claims = w.claims({})
     assert decide_identity(claims)["reason"] == "PG_IDENTITY_UNCONFIRMED"
-    assert decide_identity(claims, allow_unconfirmed=True)["status"] == "allow"   # the provider's own, explicit choice
+    # before confirmation PRE-GEN says nothing, whatever the provider's policy
+    assert decide_identity(claims, allow_unconfirmed=True)["status"] == "not_blocked"
     assert claims[0]["code"] == x
 
 
@@ -117,11 +118,11 @@ def test_i4_one_person_in_two_registries_a_refusal_in_either_holds_everywhere():
     assert (d["status"], d["reason"], d["code"]) == ("deny", "PG_SUBJECT_OPTED_OUT", b)
 
 
-def test_i5_two_unproven_claims_freeze():
-    w = World()
+def test_i5_unproven_claims_freeze_no_one():
+    w = World()                          # an impostor's listing freezes no one
     w.person("XXXX", confirmed=False)
     w.person("YYYY", confirmed=False)
-    assert decide_identity(w.claims({}), allow_unconfirmed=True)["reason"] == "PG_IDENTITY_CONFLICT"
+    assert decide_identity(w.claims({}), allow_unconfirmed=True)["status"] == "not_blocked"
 
 
 def test_a_proof_must_be_on_the_persons_own_channel():

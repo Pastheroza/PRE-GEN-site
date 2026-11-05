@@ -513,19 +513,22 @@ export async function verifyAnchors(envelope, prefix, { directory, fetch: fetchF
  * own official channel; `answer` is the body verifyAnswer returned. Rule: not who came first, but who proved it.
  * Returns {status: "allow" | "deny" | "review", reason, code}: generate only on "allow". */
 export function decideIdentity(claims, { allowUnconfirmed = false } = {}) {
-  if (!claims.length) return { status: "deny", reason: "PG_UNKNOWN_SUBJECT", code: null };
-  const confirmed = claims.filter((c) => c.confirmed);
-  const group = confirmed.length ? confirmed : claims; // proven claims silence unproven ones
+  // Before the person confirmed, PRE-GEN says nothing either way; an unconfirmed claim
+  // neither permits nor refuses (allowUnconfirmed no longer permits anything). Rule 9: never the claims' order.
+  const group = claims.filter((c) => c.confirmed).sort((a, b) => (a.code < b.code ? -1 : a.code > b.code ? 1 : 0));
+  if (!group.length) {
+    return { status: "not_blocked", reason: claims.length ? "PG_IDENTITY_UNCONFIRMED" : "PG_UNKNOWN_SUBJECT", code: null };
+  }
   for (const c of group) {
     if (c.answer.status !== "allow" && FLOOR_REASONS.includes(c.answer.reason)) {
       return { status: "deny", reason: c.answer.reason, code: c.code };
     }
   }
-  if (!confirmed.length && claims.length > 1) return { status: "review", reason: "PG_IDENTITY_CONFLICT", code: null };
-  if (!confirmed.length && !allowUnconfirmed) return { status: "review", reason: "PG_IDENTITY_UNCONFIRMED", code: claims[0].code };
   const allowed = group.find((c) => c.answer.status === "allow");
   if (allowed) return { status: "allow", reason: null, code: allowed.code };
-  return { status: group[0].answer.status, reason: group[0].answer.reason ?? null, code: group[0].code };
+  const severity = (c) => ({ deny: 0, review: 1 })[c.answer.status] ?? 2; // the strongest refusal, ties by code
+  const worst = group.reduce((w, c) => (severity(c) < severity(w) ? c : w));
+  return { status: worst.answer.status, reason: worst.answer.reason ?? null, code: worst.code };
 }
 
 /** Did the person confirm `code` on an official channel? `proofUrl` must lie on one of `officialUrls`

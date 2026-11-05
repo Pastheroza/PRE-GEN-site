@@ -81,7 +81,7 @@ export function verifyAnchors(envelope: Record<string, unknown>, prefix: string,
   options: { directory: Directory; fetch?: Fetch; now?: number }): Promise<AnchorEntry[]>;
 /** Not who came first, but who proved it (identity.md). Generate only on status "allow". */
 export function decideIdentity(claims: { code: string; confirmed: boolean; answer: Record<string, unknown> }[],
-  options?: { allowUnconfirmed?: boolean }): { status: "allow" | "deny" | "review"; reason: string | null; code: string | null };
+  options?: { allowUnconfirmed?: boolean }): { status: "allow" | "deny" | "review" | "not_blocked"; reason: string | null; code: string | null };
 /** True when `proofUrl` lies on one of the person's official channels and shows "PRE-GEN: <code>". */
 export function checkChannelProof(code: string, proofUrl: string, officialUrls: string[],
   getText: (url: string) => Promise<string> | string): Promise<boolean>;
