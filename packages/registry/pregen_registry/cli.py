@@ -186,8 +186,9 @@ def main(argv=None):
             if not next_path.exists():
                 _write_key(next_path, Key())
             nxt = Key(next_path.read_text().strip())
-            print(f"next operator key id: {nxt.id}\n  public key: {nxt.public_hex}\nGive both to the steward to announce "
-                  f"in the directory. When the directory lists it, run `pregen-registry key rotate`.")
+            print(f"next operator key id: {nxt.id}\n  public key: {nxt.public_hex}\nGive the key id to the steward to "
+                  f"announce in the directory. When the directory lists it, stop the server, run "
+                  f"`pregen-registry key rotate`, and start it again.")
         else:
             if not next_path.exists():
                 sys.exit("no next key: run `pregen-registry key next` and have the steward announce it first")
