@@ -181,7 +181,9 @@ def test_licensee_must_be_connected_outside_a_sandbox():
     assert p.ask(p.body(s, purpose="commercial", licensee_id="user-1")).status_code == 401
     reg.connect(p.id, "user-1")
     assert p.answer(p.body(s, purpose="commercial", licensee_id="user-1"))["body"]["status"] == "allow"
-    assert p.answer(p.body(s, job="j2", purpose="commercial"))["body"]["reason"] == "PG_NO_LICENSE"   # the grant is user-1's
+    assert p.answer(p.body(s, job="j2", purpose="commercial"))["body"]["reason"] == "PG_NOT_CONNECTED"   # user-1's grant
+    other = reg.add_subject("Theo")
+    assert p.answer(p.body(other, job="j3", purpose="commercial"))["body"]["reason"] == "PG_NO_LICENSE"   # no grant at all
 
 
 def test_opt_out_revoke_and_remove_take_effect_from_the_next_answer(tmp_path, capsys):

@@ -341,6 +341,10 @@ class Registry:
                    and intimate <= set(json.loads(g["categories"]))]
         if not fitting:
             reason = "PG_SCOPE_VIOLATION" if grants else "PG_NO_LICENSE"
+            if not grants and not licensee and db.execute(  # licensee.md: only a connected end user's grant would do
+                    "SELECT 1 FROM grants WHERE subject_code = ? AND not_before <= ? AND expires_at > ? "
+                    "AND licensee_id NOT IN ('', ?)", (s["code"], now, now, provider)).fetchone():
+                reason = "PG_NOT_CONNECTED"
             return s["no_grant_status"], reason, None, level
         for g in fitting:                                   # extensions/limits.md: reserve a use if any is left
             if g["max_uses"] is None:

@@ -143,12 +143,14 @@ the listed keys), then stop the server, wait until it has exited, rotate, and st
 again at once.** Providers may check answers against a directory they loaded up to 24 hours earlier;
 until they reload, they refuse what a key it does not list signs. Every answer the old
 process signs after `rotate` is refused by every client, hence the restart. Stop the server
-the way you started it (your service manager; for `nohup … &`, `kill` the process id you
-saved with `echo $! > registry.pid`, then
-`while kill -0 "$(cat registry.pid)" 2>/dev/null; do sleep 1; done`, so the port is free):
+the way you started it (your service manager, or, for `nohup … &`, the first two lines below),
+rotate, and start it again. Run each line on its own, not chained with `&&`:
 
 ```bash
+kill "$(cat registry.pid)"
+while kill -0 "$(cat registry.pid)" 2>/dev/null; do sleep 1; done
 pregen-registry key rotate --dir ./data
+nohup pregen-registry serve --dir ./data --host 127.0.0.1 --port 8000 >> registry.log 2>&1 & echo $! > registry.pid
 ```
 
 ```
@@ -277,7 +279,8 @@ Until you hand it over, keep it only in a file readable by you
 once it is sent.
 
 `pregen-registry connect --dir ./data --provider frame-ai --licensee frame-ai:user-1` lets that
-provider ask on behalf of its end customer `user-1`; it prints `connected`. **A licensee id names one customer of
+provider ask on behalf of its end customer `user-1`; it prints `connected`. Run `provider add`
+first: `connect` does not check that the provider exists, so a typo connects nobody. **A licensee id names one customer of
 one provider, so always write it as `<provider id>:<the customer's id at that provider>`.**
 `connect` refuses any other shape: a grant to a licensee covers every provider connected to
 that id, so two providers' `user-1` written bare would share each other's grants. The grant
@@ -368,8 +371,9 @@ The extra line reads `PASS POST /v2/requests for PG-ABCE-000001…, purpose comm
 200, allow`; with test code 2 it reads `… deny PG_NO_LICENSE`. To try a grant of your own
 (purposes, a licensee), add a test person and that grant to the sandbox (`subject add`,
 `grant add --dir ./sandbox …`) and ask for it the same way; for a licensee-only grant, give
-it `--licensee test:t1` and add `--licensee test:t1` to `check`. Then change the line in
-`./sandbox/policy.md` that says it holds only the eight test subjects.
+it `--licensee test:t1` and add `--licensee test:t1` to `check`. If you added your own test
+people, also change the line in `./sandbox/policy.md` that says it holds only the eight test
+subjects.
 
 **If you wrote your own registry,** also run conformance Level 1 against your signing
 library (`spec/conformance/README.md`; `spec/` is in `git clone https://github.com/Pastheroza/PRE-GEN-site`). It requires the v5 operations by default:

@@ -13,13 +13,15 @@ step returns. Where it and the specification differ, the specification wins:
 
 1. **Only `allow` permits.** `deny`, `review`, `not_blocked`, an unknown status or reason,
    or no valid answer at all: do not generate. Never ask again to get another answer to a
-   refusal. (A new job for a new output, with a new `job_id`, is not asking again.)
+   refusal. (A new job for a different output is not asking again; the same `job_input`
+   under a new `job_id` after a `deny` is.)
 2. **No answer is not a refusal and not a permission.** After a timeout or an HTTP 5xx you
    may send the **identical** request again (same `job_id`, same bytes): a registry answers
    it with the answer it already gave. The same goes for a connection error with no HTTP
    response, and for `/v2/keys` and `/v2/reports`. Wait 10 s for an answer; on none, wait
-   3 s and send the same bytes again, up to 3 more times (4 sends in all). Any 4xx is final:
-   no answer, do not resend. After that, you have no allow for
+   3 s and send the same bytes again, up to 3 more times (4 sends in all). Any 4xx is final
+   for those bytes: no answer; do not resend them unless the Errors table says to. After
+   that, you have no allow for
    that person. Skipping the resend can leave an allow you never saw
    counted against the grant.
 3. **Never send the prompt or the output.** You send `job_hash`: a SHA-256 of what you
@@ -29,8 +31,8 @@ step returns. Where it and the specification differ, the specification wins:
    later, to whoever you choose (never a registry), what the hash stands for.
 4. **Keep your clock synced** with your system's time service (NTP: `timedatectl`, `chronyc
    tracking`, `sntp time.apple.com` on macOS, or Windows Time; without a time server, compare
-   with a registry's HTTP `Date` header, `curl -sI {api}/keys`): answers live minutes, and one issued more than 60 s in your
-   future is refused.
+   with a registry's HTTP `Date` header, `curl -s -o /dev/null -D - {api}/keys | grep -i '^date'`):
+   answers live minutes, and one issued more than 60 s in your future is refused.
 5. **Secrets stay server-side:** registry tokens and your private key never go to a browser,
    a URL, a log or client code. Your secret store is wherever only your servers can read
    them: a secrets manager, environment variables, or a file readable only by the service.
@@ -78,6 +80,8 @@ hours: answers checked against a directory object older than that are refused.
 `pregen.load_directory(url, previous=saved, steward_public_key_hex=TEST_STEWARD)` or
 `loadDirectory({ url, previous: saved, stewardPublicKeyHex: TEST_STEWARD })`, where `url` is
 the test directory's URL (without it, the public directory is loaded). Never in production.
+Keep a saved test directory in its own file: passed as `previous` to the real directory, it is
+refused (`sequence … is older` / `namespace … was removed`).
 A test directory is only about who signed the directory: answers from a non-sandbox registry
 listed in it are checked without `testing`. `testing` is for sandbox answers only (step 10).
 
@@ -108,7 +112,8 @@ urllib.request.Request(sandbox_api + "/v2/sandbox/access", data=b"", method="POS
 JS: `await (await fetch(sandboxApi + "/v2/sandbox/access", { method: "POST" })).json()`).
 The token is shown once: store the pair at once, under the sandbox's prefix (the four
 letters of its test codes). Once you have loaded the test directory (step 2), check that
-`registry` equals `directory.registry_for(<test code 1>)["api"]`. A directory entry does not
+`registry` equals `directory.registry_for(<test code 1>)["api"]`; if it differs, delete the
+stored pair and ask the registry before using it. A directory entry does not
 say it is a sandbox; the registry's document does (`GET {api}/.well-known/pregen-registry.json`
 → `"sandbox": true`; if it says `false`, it is not a sandbox: do not use `testing` with it).
 Use the credential like any other.
@@ -136,7 +141,8 @@ Register it **once at each registry**, with that registry's credential, before y
 request there (a report without a registered key is refused with 401, and the allow would
 stay counted), and remember which registries are done (persist that list with your secrets,
 and each job's `job_input` with the job record). `PROVIDER_ID` is the provider id
-that registry gave you; for JavaScript, see the complete example:
+that registry gave you; in JavaScript, `await signEnvelope("pg.keyset.v1", { …the same body… },
+KEY)` (the complete example has it in full):
 
 ```python
 keyset = pregen.sign_envelope("pg.keyset.v1", {
@@ -188,11 +194,9 @@ Authorization: Bearer <token from that registry>
   only one licensee. Send exactly the licensee id the registry gave you. An id the registry
   did not connect to you is refused (401 `PG_NOT_AUTHENTICATED`).
 - **One request per code.** A job with two people asks twice, under the same `job_id`,
-  each code at the registry its prefix names. A public person may hold codes in several
-  registries: the `identity` extension (`spec/extensions/identity.md`) says how a client
-  asks each and combines the answers (`decide_identity` / `decideIdentity`). **Every job has a new `job_id`** (random, not a
+  each code at the registry its prefix names (a public person: see below). **Every job has a new `job_id`** (random, not a
   timestamp), and `job_input` holds everything you fixed, the customer included (for example
-  `{"prompt": …, "settings": …, "customer": "<licensee id, or null>"}`): once a
+  `{"prompt": …, "settings": …, "customer": "<the licensee_id you send, or null>"}`): once a
   person in a job is reported, asking again under that id is refused
   (409 `PG_ASK_CLOSED`, which carries the acknowledgement you were given before: keep it if
   you lost yours; otherwise nothing to do). Within one job, every request carries the same `job_hash`; a reused `job_id`
@@ -202,11 +206,41 @@ Authorization: Bearer <token from that registry>
 
 The registry answers HTTP 200 `{"answer": {"type": "pg.answer.v1", "body": {…}, "signatures": […]}}`.
 
+**A public person** (extension `identity`, `spec/extensions/identity.md`) may be claimed by
+several registries, and a refusal of the person by any of them holds everywhere. So:
+
+1. At least daily, fetch every listed registry's anchor list and check it (a registry
+   without the extension answers 404: skip it):
+
+   ```python
+   anchors = {}                                      # anchor -> [{code, proof_url, …}, …]
+   for r in directory.registries:
+       try:
+           env = json.loads(urllib.request.urlopen(r["api"] + "/v2/anchors", timeout=10).read())
+       except urllib.error.HTTPError:
+           continue
+       for e in pregen.verify_anchors(env, r["prefix"], directory):   # refuses a list over a day old
+           anchors.setdefault(e["anchor"], []).append(e)
+   ```
+
+   JS: `await verifyAnchors(env, prefix, { directory })` returns the same entries.
+2. If a person's code is in a list, ask **every** code listed under the same anchor, each at
+   its registry, in the same job.
+3. For each code, decide whether the person confirmed it on their own channel:
+   `pregen.check_channel_proof(code, entry["proof_url"], pregen.wikidata_official_urls(anchor),
+   get_text)`, where `get_text(url)` returns the page's text (JS: `await checkChannelProof(code,
+   proofUrl, await wikidataOfficialUrls(anchor), getText)`). Only `wikidata:` anchors have a
+   defined list of official channels today; any other anchor counts as unconfirmed.
+4. Combine: `pregen.decide_identity([{"code": c, "confirmed": …, "answer":
+   pregen.verify_answer(answer, request, directory)}, …])` / `decideIdentity([...])`. Generate
+   only if its `status` is `allow`. With no confirmed claim it is `not_blocked`
+   (`PG_IDENTITY_UNCONFIRMED`): no permission. Report every allow you received, as usual.
+
 ## 6. Check the answer
 
-If you learn that another listed registry holds the same person and refuses them, keep both
-answers and never present the output as permitted while that refusal stands: a refusal of the
-person in any registry holds everywhere (`spec/extensions/identity.md`, `decide_identity`).
+If you learn of another registry's claim to the same person only later, apply step 5's
+public-person rule then: keep every answer, and never present the output as permitted while a
+refusal of the person stands.
 
 ```python
 pregen.check_answer(answer, request, directory)     # raises PregenError; str(e) is the reason
@@ -225,7 +259,9 @@ says `allow` all the same (expired, badly signed, for another request), still re
 `not_generated` for it (step 8), so a registry that did issue it frees the use; one that did
 not refuses the report: log that and go on. To log why a valid answer refused, the same
 arguments to `pregen.verify_answer(answer, request, directory)` /
-`await verifyAnswer(answer, request, { directory })` (plus `testing` for a sandbox answer)
+`await verifyAnswer(answer, request, { directory })` (for a sandbox answer,
+`verify_answer(answer, request, directory, testing=True)` / `verifyAnswer(answer, request, {
+directory, testing: true })`)
 return the checked body whatever its status: read `body["reason"]` there. Like `check_answer`,
 they raise when the answer itself is not valid; then log that reason. The statuses:
 
@@ -247,7 +283,8 @@ one time, `began`, right before generation starts: it is the `occurred_at` of ev
 in the job (step 8), even if rendering ends later. If generation cannot start before the
 earliest `expires_at`, ask again under a new `job_id` and give back the old allows (step 8).
 Write the output only after every check passed and `began` is taken. Hash it:
-`output_hash = sha256(file bytes)` in hex.
+`output_hash` = SHA-256, in hex, of the exact bytes you write or deliver (read back from the
+file if you write one).
 
 ## 8. Report the output
 
@@ -357,9 +394,12 @@ the two files as `saved_at.json` = `{"saved_at": <unix seconds>}`: the library c
 `saved_at` is more than 24 hours ago, do not
 label: go online, load and save again.
 
-Later, check with no network:
+Later, check with no network (the files: `directory.json`, `key_sets.json`, `saved_at.json`, and
+for a test directory its steward key):
 
 ```python
+if time.time() - json.load(open("saved_at.json"))["saved_at"] > 86_400:
+    raise SystemExit("the saved copy is more than 24 hours old: go online, load and save again")
 directory = pregen.verify_directory(saved_directory)       # test directory: steward_public_key_hex=TEST_STEWARD
 result = pregen.check_proof(bundle, directory, get_json=lambda url: saved_key_sets.get(url, {}),
                             output_sha256=sha256_of_the_file)          # a sandbox proof: testing=True
@@ -367,6 +407,9 @@ result = pregen.check_proof(bundle, directory, get_json=lambda url: saved_key_se
 
 ```js
 import { verifyDirectory, checkProof } from "@pregen/verify";
+if (Date.now() / 1000 - JSON.parse(readFileSync("saved_at.json", "utf8")).saved_at > 86_400) {
+  throw new Error("the saved copy is more than 24 hours old: go online, load and save again");
+}
 const directory = await verifyDirectory(savedDirectory);    // test directory: verifyDirectory(savedDirectory, { stewardPublicKeyHex: TEST_STEWARD })
 const offlineFetch = async (url) => ({ ok: url in savedKeySets, status: url in savedKeySets ? 200 : 404,
                                        json: async () => savedKeySets[url] });
@@ -427,7 +470,7 @@ CREDENTIALS = {"ABCD": {"provider_id": "frame-ai", "token": "<secret>"}}   # one
 KEY = "<your private key hex>"                                             # step 4, from your secret store
 DIRECTORY_URL, TEST_STEWARD = pregen.DIRECTORY_URL, None                    # testing: the test directory and its key
 CODES = ["PG-ABCD-000001G"]                                                # the people in this job
-SAVED = "directory.json"                                                   # where the last directory is kept
+SAVED = "directory-test.json" if TEST_STEWARD else "directory.json"          # never a test directory as previous to the real one
 TESTING = False                                                            # True only against a sandbox (step 10)
 
 pub = pregen.public_key_hex(KEY)
@@ -525,7 +568,8 @@ print(pregen.check_proof(bundle, directory, output_sha256=output_hash, testing=T
 
 It prints `{'output_hash': '…', 'job_id': 'job-…', 'subjects': [{'code': 'PG-ABCD-000001G',
 'level': 'verified', 'basis': {'kind': 'grant', …}}]}`. Not shown, in either example: the
-identical resend of rule 2, the directory reload on `issuer_mismatch` (step 2),
+identical resend of rule 2, the directory reload on `issuer_mismatch` (step 2), the
+public-person rule (step 5),
 `verify_answer` to log why a refusal refused (step 6), and saving the key sets for offline
 checks (step 9).
 
@@ -543,7 +587,7 @@ const CREDENTIALS = { ABCD: { provider_id: "frame-ai", token: "<secret>" } };   
 const KEY = "<your private key hex>";                                          // step 4, from your secret store
 const [url, TEST_STEWARD] = [DIRECTORY_URL, null];                              // testing: the test directory and its key
 const CODES = ["PG-ABCD-000001G"];                                              // the people in this job
-const SAVED = "directory.json";                                                 // where the last directory is kept
+const SAVED = TEST_STEWARD ? "directory-test.json" : "directory.json";         // never a test directory as previous to the real one
 const TESTING = false;                                                          // true only against a sandbox (step 10)
 
 const pub = await publicKeyHex(KEY);
@@ -644,7 +688,7 @@ A refusal about a person is a signed answer (step 6). HTTP errors carry
 
 Answer reasons you will meet: `PG_UNKNOWN_SUBJECT` (this registry holds no such person:
 not a prohibition, and not a permission), `PG_OTHER_REGISTRY`, `PG_NO_LICENSE`, `PG_NOT_CONNECTED`
-(this use needs a connected end user),
+(only a connected end user's grant would do: show "connect your account"),
 `PG_USAGE_LIMIT`, `PG_SCOPE_VIOLATION` (the grant does not cover this purpose or use),
 `PG_REVIEW_REQUIRED` (held for a person), and
 the fixed protections no grant overrides: `PG_SUBJECT_OPTED_OUT`, `PG_SUBJECT_UNAVAILABLE`,
@@ -657,6 +701,7 @@ reason you do not know as a refusal.
 - [ ] Your provider key is in your secret store and registered at every registry you ask
 - [ ] If you check proofs offline, the directory and every key set are saved with `saved_at`, at least every 24 hours
 - [ ] Every generation of a listed person is preceded by a request for each of their codes, to the registry each code names
+- [ ] A public person is asked at every code their anchor names, and generated only on `decide_identity`'s `allow`
 - [ ] `check_answer` / `checkAnswer` passes for every person in the job before generating
 - [ ] Every allow is reported: `generated` with `occurred_at` = when generation began, or `not_generated`
 - [ ] The proof bundle is checked with `check_proof` / `checkProof` and kept with the output
