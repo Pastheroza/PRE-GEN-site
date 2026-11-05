@@ -196,7 +196,8 @@ curl -s https://registry.example/keys
 ```
 
 The first returns your document: `prefix`, `name`, `api`, `keys`, `profiles`
-(`["likeness/1"]`), `extensions`, `policy`, `complaints`, `sandbox`, `spec`. The second
+(`["likeness/1"]`: fixed names of vocabularies of uses, never versions of your policy; when
+your policy changes, the profile names stay), `extensions`, `policy`, `complaints`, `sandbox`, `spec`. The second
 returns `{"current_key_id": "pg-ed25519:…", "keys": [{"key_id", "public_key_hex",
 "activated_at", "deactivated_at", "status", …}], "signature": "…"}`.
 

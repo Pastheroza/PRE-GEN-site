@@ -484,7 +484,8 @@ function checkStatusShape(body) {
 }
 
 /** Is this a genuine, current answer to this request, whatever its status? Everything checkAnswer checks
- * except that it is an allow: use it to weigh refusals from several registries (decideIdentity). */
+ * except that it is an allow: use it to weigh refusals from several registries (decideIdentity). Like
+ * checkAnswer, it compares `profile` only as a name, and nothing about a version of a registry's rules. */
 export async function verifyAnswer(answer, request, { directory, fetch: fetchFn = globalThis.fetch,
   now = Math.floor(Date.now() / 1000), testing = false } = {}) {
   if (!request || request.type !== "pg.request.v1" || !request.body || typeof request.body !== "object") {
@@ -511,8 +512,10 @@ export async function verifyAnswer(answer, request, { directory, fetch: fetchFn 
 /** PRE-GEN-CORE.md rule 5: may I generate on this answer? `request` is the pg.request.v1 envelope you
  * sent. Checks that a key the directory lists for the subject's prefix signed it (and is not revoked),
  * that it answers exactly this request under the same profile, that it is within its lifetime, that it
- * is not a sandbox answer outside testing, and that it is an `allow`. Throws PregenError with the
- * reason; returns the answer body when you may generate. Keep the answer with the output. */
+ * is not a sandbox answer outside testing, and that it is an `allow`. `profile` is compared as a name: the
+ * fixed name of a vocabulary of uses (`likeness/1`), never a version of anyone's policy; nothing that names
+ * a version, hash or counter of a registry's rules is carried or compared. Throws PregenError with the reason; returns the answer body when you
+ * may generate. Keep the answer with the output. */
 export async function checkAnswer(answer, request, options = {}) {
   const body = await verifyAnswer(answer, request, options);
   if (body.status !== "allow") fail(`not an allow: ${body.status} ${body.reason ?? ""}`.trim());

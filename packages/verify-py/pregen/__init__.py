@@ -584,7 +584,8 @@ def _check_status_shape(body: dict) -> None:
 def verify_answer(answer: dict, request: dict, directory: Directory = None, get_json=_get_json, now=None,
                   testing: bool = False) -> dict:
     """Is this a genuine, current answer to this request, whatever its status? Everything check_answer()
-    checks except that it is an allow: use it to weigh refusals from several registries (decide_identity)."""
+    checks except that it is an allow: use it to weigh refusals from several registries (decide_identity).
+    Like check_answer(), it compares `profile` only as a name, and nothing about a version of a registry's rules."""
     import time
     now = int(time.time()) if now is None else now
     if not isinstance(request, dict) or request.get("type") != "pg.request.v1" or not isinstance(request.get("body"), dict):
@@ -619,8 +620,10 @@ def check_answer(answer: dict, request: dict, directory: Directory = None, get_j
     """PRE-GEN-CORE.md rule 5: may I generate on this answer? `request` is the pg.request.v1 envelope you
     sent. Checks that a key the directory lists for the subject's prefix signed it (and is not revoked),
     that it answers exactly this request under the same profile, that it is within its lifetime, that it
-    is not a sandbox answer outside testing, and that it is an `allow`. Raises PregenError with the
-    reason; returns the answer body when you may generate. Keep the answer with the output."""
+    is not a sandbox answer outside testing, and that it is an `allow`. `profile` is compared as a name: the
+    fixed name of a vocabulary of uses (`likeness/1`), never a version of anyone's policy; nothing that names
+    a version, hash or counter of a registry's rules is carried or compared. Raises PregenError with the reason; returns the answer body when you may
+    generate. Keep the answer with the output."""
     body = verify_answer(answer, request, directory, get_json, now, testing)
     if body.get("status") != "allow":
         raise PregenError(f"not an allow: {body.get('status')} {body.get('reason') or ''}".strip())

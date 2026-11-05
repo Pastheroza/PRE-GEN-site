@@ -170,7 +170,10 @@ Authorization: Bearer <token from that registry>
           "licensee_id": "frame-ai:user-1"}}
 ```
 
-- The first six members are required; `licensee_id` and the others below are optional. `use.purpose` is what the output is for, not
+- The first six members are required; `licensee_id` and the others below are optional.
+  `profile` is the fixed name of a vocabulary of uses (`likeness/1`: a person's likeness and
+  voice), never a version of a registry's policy: the answer must name the same profile,
+  compared as a name. No answer carries a version, hash or counter of a registry's rules. `use.purpose` is what the output is for, not
   its medium (an ad, image or video, is `commercial`; if you do not know what your customer
   will use it for, ask them, or send `commercial`): `personal`, `educational`,
   `research`, `editorial` or `commercial`; add `territory`, `channel` and `categories`

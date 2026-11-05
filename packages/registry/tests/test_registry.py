@@ -1,5 +1,6 @@
 """The reference registry against PRE-GEN-CORE.md and the extensions, over HTTP."""
 import json
+import re
 import threading
 
 import pytest
@@ -201,6 +202,49 @@ def test_opt_out_revoke_and_remove_take_effect_from_the_next_answer(tmp_path, ca
     cli(["init", "--dir", str(tmp_path), "--prefix", "TEST", "--name", "T", "--api", "https://t.example"])
     with pytest.raises(SystemExit, match="frame-ai:user-1"):
         cli(["connect", "--dir", str(tmp_path), "--provider", "frame-ai", "--licensee", "user-1"])
+
+
+ANSWER_MEMBERS = {"signers", "request_id", "profile", "status", "level", "obligations", "issued_at", "expires_at",
+                  "basis", "reason", "ext"}
+NOT_IN_AN_ANSWER = re.compile(r"polic|terms|rules|epoch|version|block|chain|ledger|model|manifest|preprocess"
+                              r"|embedding|similarity|face|biometric|wallet|canonical", re.I)
+
+
+def _names(v):
+    if isinstance(v, dict):
+        for k, x in v.items():
+            yield k
+            yield from _names(x)
+    elif isinstance(v, list):
+        for x in v:
+            yield from _names(x)
+
+
+def test_every_answer_carries_only_the_known_members():
+    """A signed answer carries no policy or rules digest, epoch or rules version, ledger reference, model or
+    preprocessing data, nor job_hash: only the members below, whatever the outcome."""
+    sbx, c, _ = make()
+    p = Provider(sbx, c)
+    bodies = [p.answer(p.body(code(n), job=f"j{n}"))["body"] for n in range(1, 9)]
+    reg, c2, _ = make(sandbox=False)
+    q = Provider(reg, c2)
+    maya, theo = reg.add_subject("Maya", level="verified"), reg.add_subject("Theo", level="verified")
+    reg.add_grant(maya, purposes=["commercial"])
+    reg.add_grant(theo, licensee_id=f"{q.id}:u1", purposes=["commercial"])
+    reg.connect(q.id, f"{q.id}:u1")
+    bodies += [q.answer(q.body(maya, job="a", purpose="commercial"))["body"],
+               q.answer(q.body(theo, job="b", purpose="commercial", licensee_id=f"{q.id}:u1"))["body"],
+               q.answer(q.body(theo, job="c", purpose="commercial"))["body"]]
+    assert {b["status"] for b in bodies} == {"allow", "deny", "review", "not_blocked"}
+    for b in bodies:
+        assert set(b) <= ANSWER_MEMBERS, set(b) - ANSWER_MEMBERS
+        assert not [k for k in _names(b) if NOT_IN_AN_ANSWER.search(k)]
+        assert set(b.get("ext", {})) <= {"sandbox"}
+        if b["status"] == "allow":                               # a grant by its id, never a hash of a text
+            assert b["basis"] == {"kind": "grant", "grant": {"format": "pg.grant.v1", "id": b["basis"]["grant"]["id"]}}
+        else:
+            assert "basis" not in b
+        assert b["profile"] == "likeness/1"                     # the name asked for, never a version of a policy
 
 
 # ── extension jobs ──────────────────────────────────────────────────────

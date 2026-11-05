@@ -158,7 +158,10 @@ JSON Schemas: `schemas/`. Byte vectors: `test-vectors/messages.json`.
 ## Profiles make it universal
 
 The core knows nothing about faces, voices or licences. A **profile** says what `use`
-contains, which reasons and obligations exist, and which refusals no grant can override.
+contains, which reasons and obligations exist, and which refusals no grant can override. A
+profile's name is fixed: it names a vocabulary of uses, never a version of anyone's policy, and
+it is compared only as a name. A new vocabulary is a new name. An answer carries nothing that
+names a version, hash or counter of a registry's rules.
 - `profiles/likeness-1.md` is the first profile: a person's likeness and voice.
 - Works, characters and other subjects are profiles to come. The core does not change.
 
