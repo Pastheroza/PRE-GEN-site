@@ -59,7 +59,16 @@ export function verifyDirectory(directory: unknown, options?: { stewardPublicKey
   pinnedKeys?: Record<string, string[]>;
   /** @deprecated use pinnedKeys: {"": [...]} */
   originKeyFingerprints?: string[] | null; now?: number }): Promise<Directory>;
-export function loadDirectory(options?: { url?: string; minSequence?: number; previous?: Directory | Record<string, unknown>; fetch?: Fetch }): Promise<Directory>;
+export function loadDirectory(options?: { url?: string; minSequence?: number; previous?: Directory | Record<string, unknown>; fetch?: Fetch;
+  /** Testing only: a test directory signed by a test steward key. */ stewardPublicKeyHex?: string }): Promise<Directory>;
+/** The bytes a v5 signature covers: "PREGEN-V5" 0x00 type 0x00 canonical(body). */
+export function signingInput(type: string, body: Record<string, unknown>): Uint8Array;
+/** A new Ed25519 private key (the 32-byte RFC 8032 seed) as hex. Keep it secret, server-side. */
+export function newPrivateKeyHex(): string;
+/** The raw 32-byte public key of a private key (seed), as hex. */
+export function publicKeyHex(privateKeyHex: string): Promise<string>;
+/** A v5 envelope {type, body, signatures}: one signature per private key, in the order of body.signers. */
+export function signEnvelope(type: string, body: Record<string, unknown>, ...privateKeyHexes: string[]): Promise<{ type: string; body: Record<string, unknown>; signatures: string[] }>;
 export function verifyDecision(decision: Record<string, unknown>, code: string, options?: { directory?: Directory; fetch?: Fetch }): Promise<boolean>;
 /** Everything to check before generating (V-1 to V-4, V-10, V-13, P-5). Throws PregenError with the
  * reason; returns the decision when you may generate. `request`: the /v1/verify body plus provider_id and licensee_id. */
@@ -90,6 +99,6 @@ export function wikidataOfficialUrls(anchor: string, options?: { fetch?: Fetch }
 /** A pg.proof.v1 bundle: every subject allowed when the output was made, each report acknowledged, and (given its
  * SHA-256) this very file (proof.md). Throws PregenError with the reason. */
 export function checkProof(bundle: Record<string, unknown>, options?: { directory?: Directory; fetch?: Fetch;
-  outputSha256?: string; now?: number }): Promise<{ outputHash: string; jobId: string; subjects: { code: string; level?: string; basis?: unknown }[] }>;
+  outputSha256?: string; now?: number; testing?: boolean }): Promise<{ outputHash: string; jobId: string; subjects: { code: string; level?: string; basis?: unknown }[] }>;
 /** Offline sandbox registry for tests and CI. Never accepted by the real directory. */
 export function createSimulator(options?: { baseUrl?: string }): Promise<{ baseUrl: string; directory: Directory; operatorPublicKeyHex: string; fetch: Fetch & ((url: string, init?: { method?: string; headers?: Record<string, string>; body?: string }) => Promise<Response>) }>;

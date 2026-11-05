@@ -320,10 +320,12 @@ export async function verifyDirectory(directory, { stewardPublicKeyHex = STEWARD
 }
 
 /** Download and verify the directory from pregen.org. Pass the last accepted one as `previous`. */
-export async function loadDirectory({ url = DIRECTORY_URL, minSequence = 0, previous, fetch: fetchFn = globalThis.fetch } = {}) {
+export async function loadDirectory({ url = DIRECTORY_URL, minSequence = 0, previous, fetch: fetchFn = globalThis.fetch,
+  stewardPublicKeyHex = STEWARD_PUBLIC_KEY_HEX } = {}) {
+  // stewardPublicKeyHex is for testing only: a test directory signed by a test steward key (extensions/sandbox.md).
   const res = await fetchFn(url, { redirect: "error" });
   if (!res.ok) fail(`directory: HTTP ${res.status}`);
-  return verifyDirectory(await res.json(), { minSequence, previous });
+  return verifyDirectory(await res.json(), { minSequence, previous, stewardPublicKeyHex });
 }
 
 /** Is this registry decision genuine, and signed by a key of the registry that owns `code`?
@@ -411,6 +413,35 @@ export async function messageId(type, body) {
   return sha256Hex("PREGEN-V5-ID\0" + type + "\0" + canonicalJson(body));
 }
 
+/** The bytes a v5 signature covers: "PREGEN-V5" 0x00 type 0x00 canonical(body) (PRE-GEN-CORE.md, Messages). */
+export function signingInput(type, body) {
+  return utf8.encode(`PREGEN-V5\0${type}\0` + canonicalJson(body));
+}
+
+const PKCS8_ED25519 = "302e020100300506032b657004220420";   // the DER prefix of a raw 32-byte Ed25519 seed
+const privateKey = (hex) => crypto.subtle.importKey("pkcs8", hexBytes(PKCS8_ED25519 + hex, 48), { name: "Ed25519" }, true,
+  ["sign"]);
+
+/** A new Ed25519 private key: 32 random bytes (the RFC 8032 seed), as hex. Keep it secret, server-side. */
+export function newPrivateKeyHex() {
+  return toHex(crypto.getRandomValues(new Uint8Array(32)));
+}
+
+/** The raw 32-byte public key of an Ed25519 private key (seed), as hex. Its key id is fingerprint() of it. */
+export async function publicKeyHex(privateKeyHex) {
+  const jwk = await crypto.subtle.exportKey("jwk", await privateKey(privateKeyHex));
+  return toHex(Uint8Array.from(atob(jwk.x.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0)));
+}
+
+/** A v5 envelope {type, body, signatures}: one signature per private key, in the order of body.signers. With no key,
+ * `signatures` is empty (a request a registry authenticates by its credential). */
+export async function signEnvelope(type, body, ...privateKeyHexes) {
+  const data = signingInput(type, body);
+  const signatures = [];
+  for (const k of privateKeyHexes) signatures.push(toHex(new Uint8Array(await crypto.subtle.sign({ name: "Ed25519" }, await privateKey(k), data))));
+  return { type, body, signatures };
+}
+
 /** PRE-GEN-CORE.md rule 5: may I generate on this answer? `request` is the pg.request.v1 envelope you
  * sent. Checks that a key the directory lists for the subject's prefix signed it (and is not revoked),
  * that it answers exactly this request under the same profile, that it is within its lifetime, that it
@@ -424,7 +455,7 @@ async function registrySigned(env, type, code, directory, fetchFn) {
   if (!Array.isArray(signers) || signers.length !== 1 || signers[0]?.role !== "registry"
       || !Array.isArray(sigs) || sigs.length !== 1) fail(`a ${type} is signed by exactly one registry key`);
   const key = await directory.publicKey(code, signers[0].key_id, { fetch: fetchFn });
-  if (!(await verifyBytes(key, sigs[0], utf8.encode(`PREGEN-V5\0${type}\0` + canonicalJson(body))))) fail("bad signature");
+  if (!(await verifyBytes(key, sigs[0], signingInput(type, body)))) fail("bad signature");
   return body;
 }
 
@@ -568,7 +599,7 @@ export async function wikidataOfficialUrls(anchor, { fetch: fetchFn = globalThis
  * generated, did each registry acknowledge the provider's report of this output, and (given its SHA-256) is it
  * this file? Throws PregenError with the reason; returns {outputHash, jobId, subjects}. */
 export async function checkProof(bundle, { directory, fetch: fetchFn = globalThis.fetch, outputSha256,
-  now = Math.floor(Date.now() / 1000) } = {}) {
+  now = Math.floor(Date.now() / 1000), testing = false } = {}) {
   directory ??= await loadDirectory({ fetch: fetchFn });
   if (now - directory.loadedAt > DIRECTORY_MAX_AGE) fail("the directory was loaded more than 24 hours ago: load it again");
   const items = bundle?.format === "pg.proof.v1" ? bundle.subjects : null;
@@ -578,7 +609,7 @@ export async function checkProof(bundle, { directory, fetch: fetchFn = globalThi
     const code = it.request?.body?.subject_ref, rbody = it.report?.body;
     if (!rbody || typeof rbody !== "object" || it.report.type !== "pg.report.v1") fail("each subject needs its report");
     // The answer had to be valid when the output was made, not today.
-    const answer = await verifyAnswer(it.answer, it.request, { directory, fetch: fetchFn, now: rbody.occurred_at });
+    const answer = await verifyAnswer(it.answer, it.request, { directory, fetch: fetchFn, now: rbody.occurred_at, testing });
     if (answer.status !== "allow") fail(`${code}: not an allow: ${answer.status} ${answer.reason ?? ""}`.trim());
     const ack = await registrySigned(it.ack, "pg.report_ack.v1", code, directory, fetchFn);
     if (ack.report !== (await messageId("pg.report.v1", rbody)) || ack.answer !== (await messageId("pg.answer.v1", answer))

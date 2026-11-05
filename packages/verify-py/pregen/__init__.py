@@ -19,6 +19,7 @@ __all__ = [
     "fingerprint", "check_public_key", "verify_bytes", "verify_signed", "verify_license", "issuer_of", "normalize_code",
     "verify_directory", "load_directory", "verify_decision", "check_decision", "check_answer", "verify_answer", "message_id", "DIRECTORY_MAX_AGE", "decide_identity",
     "verify_anchors", "check_channel_proof", "wikidata_official_urls", "check_proof", "FLOOR_REASONS", "REPORT_GRACE", "STEWARD_SUCCESSOR_PUBLIC_KEY_HEX", "Simulator",
+    "signing_input", "sign_envelope", "new_private_key_hex", "public_key_hex",
 ]
 
 STEWARD_PUBLIC_KEY_HEX = "5cb949aab04186e3e216ec541b847c912fc3f78138c0ec3cb2560b2dad0d1f1b"
@@ -391,10 +392,13 @@ def verify_directory(directory: dict, steward_public_key_hex: str = STEWARD_PUBL
     return Directory(directory, _TOKEN, pins, int(time.time()) if now is None else now)
 
 
-def load_directory(url: str = DIRECTORY_URL, min_sequence: int = 0, get_json=_get_json, previous=None) -> Directory:
+def load_directory(url: str = DIRECTORY_URL, min_sequence: int = 0, get_json=_get_json, previous=None,
+                   steward_public_key_hex: str = STEWARD_PUBLIC_KEY_HEX) -> Directory:
     """Download and verify the directory from pregen.org, or from any mirror: the steward's signature is what
-    counts. Pass the last accepted one as `previous`. Load it again at least once a day (DIRECTORY_MAX_AGE)."""
-    return verify_directory(get_json(url), min_sequence=min_sequence, previous=previous)
+    counts. Pass the last accepted one as `previous`. Load it again at least once a day (DIRECTORY_MAX_AGE).
+    `steward_public_key_hex` is for testing only: a test directory signed by a test steward key
+    (extensions/sandbox.md). Nothing it lists is ever accepted under the real steward key."""
+    return verify_directory(get_json(url), steward_public_key_hex, min_sequence=min_sequence, previous=previous)
 
 
 def verify_decision(decision: dict, code: str, directory: Directory = None, get_json=_get_json) -> bool:
@@ -498,6 +502,34 @@ def message_id(type_: str, body: dict) -> str:
     return hashlib.sha256(b"PREGEN-V5-ID\x00" + type_.encode() + b"\x00" + canonical_json(body)).hexdigest()
 
 
+def signing_input(type_: str, body: dict) -> bytes:
+    """The bytes a v5 signature covers: "PREGEN-V5" 0x00 type 0x00 canonical(body) (PRE-GEN-CORE.md, Messages)."""
+    return b"PREGEN-V5\x00" + type_.encode() + b"\x00" + canonical_json(body)
+
+
+def new_private_key_hex() -> str:
+    """A new Ed25519 private key: 32 random bytes (the RFC 8032 seed), as hex. Keep it secret, server-side."""
+    import os
+    return os.urandom(32).hex()
+
+
+def public_key_hex(private_key_hex: str) -> str:
+    """The raw 32-byte public key of an Ed25519 private key (seed), as hex. Its key id is fingerprint() of it."""
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+    key = Ed25519PrivateKey.from_private_bytes(bytes.fromhex(private_key_hex))
+    return key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw).hex()
+
+
+def sign_envelope(type_: str, body: dict, *private_key_hexes: str) -> dict:
+    """A v5 envelope {type, body, signatures}: one signature per private key, in the order of body["signers"]. With
+    no key, `signatures` is empty (a request a registry authenticates by its credential)."""
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    data = signing_input(type_, body)
+    return {"type": type_, "body": body, "signatures": [
+        Ed25519PrivateKey.from_private_bytes(bytes.fromhex(k)).sign(data).hex() for k in private_key_hexes]}
+
+
 def _registry_signed(env: dict, type_: str, code: str, directory: Directory, get_json) -> dict:
     """A message signed by exactly one registry key that the directory lists for `code`'s prefix
     (core rules 1-2). Returns its body."""
@@ -510,7 +542,7 @@ def _registry_signed(env: dict, type_: str, code: str, directory: Directory, get
             or signers[0].get("role") != "registry" or not isinstance(sigs, list) or len(sigs) != 1:
         raise PregenError(f"a {type_} is signed by exactly one registry key")
     key = directory.public_key(code, signers[0].get("key_id"), get_json=get_json)
-    if not verify_bytes(key, sigs[0], b"PREGEN-V5\x00" + type_.encode() + b"\x00" + canonical_json(body)):
+    if not verify_bytes(key, sigs[0], signing_input(type_, body)):
         raise PregenError("bad signature")
     return body
 
@@ -671,7 +703,7 @@ def wikidata_official_urls(anchor: str, get_json=_get_json) -> list:
 # ── extension proof (spec/extensions/proof.md) ──────────────────────────────────
 
 def check_proof(bundle: dict, directory: Directory = None, get_json=_get_json, output_sha256: str = None,
-                now=None) -> dict:
+                now=None, testing: bool = False) -> dict:
     """A pg.proof.v1 bundle carried with an output: was every subject of the job allowed at the moment it was
     generated, did each registry acknowledge the provider's report of this output, and (given its SHA-256)
     is it this file? Raises PregenError with the reason; returns {"output_hash", "job_id", "subjects"}."""
@@ -691,7 +723,7 @@ def check_proof(bundle: dict, directory: Directory = None, get_json=_get_json, o
         if not isinstance(rbody, dict) or report.get("type") != "pg.report.v1":
             raise PregenError("each subject needs its report")
         # The answer had to be valid when the output was made, not today.
-        answer = verify_answer(it.get("answer"), req, directory, get_json, now=rbody.get("occurred_at"))
+        answer = verify_answer(it.get("answer"), req, directory, get_json, now=rbody.get("occurred_at"), testing=testing)
         if answer.get("status") != "allow":
             raise PregenError(f"{code}: not an allow: {answer.get('status')} {answer.get('reason') or ''}".strip())
         ack = _registry_signed(it.get("ack"), "pg.report_ack.v1", code, directory, get_json)
