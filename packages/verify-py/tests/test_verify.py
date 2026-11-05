@@ -59,9 +59,9 @@ def test_namespaces_are_symmetric():
     dir_ = load(directory())
     assert dir_.check_signer("PG-000042*", origin.id) == "valid"
     assert dir_.check_signer("PG-000042*", other.id) == "issuer_mismatch"
-    assert dir_.check_signer("PG-NWRD-000042-K", other.id) == "valid"
-    assert dir_.check_signer("PG-NWRD-000042-K", origin.id) == "issuer_mismatch"
-    assert dir_.check_signer("PG-ABCD-000042-K", origin.id) == "unknown_issuer"
+    assert dir_.check_signer("PG-NWRD-000042=", other.id) == "valid"
+    assert dir_.check_signer("PG-NWRD-000042=", origin.id) == "issuer_mismatch"
+    assert dir_.check_signer("PG-ABCD-000042W", origin.id) == "unknown_issuer"
 
 
 def test_decision_is_genuine_only_from_the_namespace_owner():
@@ -114,11 +114,11 @@ def test_revoked_registry_or_key_signs_nothing_valid_and_cannot_be_unrevoked():
     revoked = directory(3, [prev["registries"][0],
                             {**prev["registries"][1], "revoked": {"at": "2026-10-04T00:00:00Z", "reason": "fake rights holders"}}])
     dir_ = verify_directory(revoked, steward.pub, previous=prev)
-    assert dir_.check_signer("PG-NWRD-000042-K", other.id) == "revoked"
+    assert dir_.check_signer("PG-NWRD-000042=", other.id) == "revoked"
     assert dir_.check_signer("PG-000042*", origin.id) == "valid"
     decision = other.sign({"decision_id": "d9", "operator_key_id": other.id}, "operator_signature")
     with pytest.raises(PregenError, match="revoked"):
-        verify_decision(decision, "PG-NWRD-000042-K", dir_, KEY_SETS.__getitem__)
+        verify_decision(decision, "PG-NWRD-000042=", dir_, KEY_SETS.__getitem__)
     with pytest.raises(PregenError, match="undone"):
         verify_directory(directory(4, prev["registries"]), steward.pub, previous=revoked)
 
@@ -211,7 +211,7 @@ def test_successor_steward_takes_over_whatever_the_thiefs_sequence():
                          successor_public_key_hex=successor.pub)
     keeps = successor.sign({**body, "sequence": 1, "revoked_keys": rk}, "signature")
     assert verify_directory(keeps, steward.pub, previous=revoked, successor_public_key_hex=successor.pub) \
-        .check_signer("PG-NWRD-000042-K", other.id) == "revoked"
+        .check_signer("PG-NWRD-000042=", other.id) == "revoked"
 
     # A thief's revocation, signed after the declared compromise, can be annulled; an earlier one cannot.
     thief = steward.sign({**{k: v for k, v in directory(6).items() if k != "signature"},
@@ -221,7 +221,7 @@ def test_successor_steward_takes_over_whatever_the_thiefs_sequence():
         return successor.sign({**body, "sequence": 1, "steward_compromised_since": since,
                                "annulled": [{"key_id": other.id, "reason": "stolen steward key"}]}, "signature")
     ok = verify_directory(annul("2026-10-09T00:00:00Z"), steward.pub, previous=thief, successor_public_key_hex=successor.pub)
-    assert ok.check_signer("PG-NWRD-000042-K", other.id) == "valid"
+    assert ok.check_signer("PG-NWRD-000042=", other.id) == "valid"
     with pytest.raises(PregenError, match="undone"):
         verify_directory(annul("2026-10-11T00:00:00Z"), steward.pub, previous=thief, successor_public_key_hex=successor.pub)
 
@@ -269,7 +269,7 @@ def test_no_registry_is_pinned_by_default_and_any_prefix_can_be_pinned():
                        "key_fingerprints": [origin.id]},
                       {"name": "Other", "prefix": "NWRD", "api": "https://other.test", "keys": "https://other.test/keys",
                        "key_fingerprints": [other.id, thief.id]}])
-    assert verify_directory(d, steward.pub).check_signer("PG-NWRD-000042-K", thief.id) == "valid"   # no built-in pins
+    assert verify_directory(d, steward.pub).check_signer("PG-NWRD-000042=", thief.id) == "valid"   # no built-in pins
     pinned = verify_directory(d, steward.pub, pinned_keys={"NWRD": [other.id]})
-    assert pinned.check_signer("PG-NWRD-000042-K", thief.id) == "issuer_mismatch"
-    assert pinned.check_signer("PG-NWRD-000042-K", other.id) == "valid"
+    assert pinned.check_signer("PG-NWRD-000042=", thief.id) == "issuer_mismatch"
+    assert pinned.check_signer("PG-NWRD-000042=", other.id) == "valid"

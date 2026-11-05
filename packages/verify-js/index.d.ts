@@ -51,6 +51,8 @@ export function verifyLicense(license: {
   operatorPublicKeyHex: string; operatorSignatureHex: string;
 }): Promise<{ subjectValid: boolean; operatorValid: boolean }>;
 export function issuerOf(code: string): string;
+/** What a person typed, as the canonical code (trim ASCII spaces, raise lower case, nothing else). Input boundaries only. */
+export function normalizeCode(typed: string): string;
 export function verifyDirectory(directory: unknown, options?: { stewardPublicKeyHex?: string; successorPublicKeyHex?: string | null; minSequence?: number;
   previous?: Directory | Record<string, unknown>;
   /** Your own pins: prefix → key fingerprints ("" for bare codes). No registry is pinned by default. */

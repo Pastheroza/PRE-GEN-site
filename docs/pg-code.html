@@ -180,11 +180,14 @@ check = CHECK_ALPHABET[ sum mod 37 ]</code></pre>
       it was issued defeats the point of a permanent citation.
     </div>
 
-    <h2>6 · Resolution rules</h2>
+    <h2>6 · One code, one string</h2>
     <ul>
-      <li><strong>Case-insensitive.</strong> <code>pg-000042*</code> and <code>PG-000042*</code>
-      are the same code; canonical form is uppercase. People retype these from screenshots.</li>
-      <li><strong>Whitespace is stripped</strong> before matching.</li>
+      <li><strong>In a message a code has one form</strong>: the canonical string, ASCII, upper case, nothing
+      around it. Verifiers and registries never trim, change case or fold look-alikes; a registry answers any other
+      spelling with <code>PG_MALFORMED</code>, never with a signed answer.</li>
+      <li><strong>Only where a person types or pastes a code</strong> may software trim ASCII spaces, fold known
+      look-alikes and raise lower case: people retype codes from screenshots. <code>pg-000042*</code> typed into a
+      search box is <code>PG-000042*</code>.</li>
       <li>A code whose check character fails must be reported as <strong>mistyped</strong>,
       distinctly from <strong>not found</strong> — the two mean different things to whoever
       holds the code.</li>

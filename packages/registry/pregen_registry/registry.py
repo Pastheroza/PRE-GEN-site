@@ -17,7 +17,7 @@ import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
-from pregen import PregenError, check_public_key, fingerprint
+from pregen import PregenError, check_public_key, fingerprint, issuer_of
 
 from .protocol import Key, ProtocolError, canonical, check_body, check_envelope, message_id, mint_code, parse_code, seal
 
@@ -226,6 +226,10 @@ class Registry:
     def request(self, provider_id: str, authorization: str | None, env) -> dict:
         body = check_envelope(env, "pg.request.v1", (), lambda *_: None)
         check_body("request", body)
+        try:                                     # one code, one string: never a signed answer to another spelling (H5)
+            issuer_of(body["subject_ref"])
+        except PregenError:
+            raise ProtocolError("PG_MALFORMED", "subject_ref is not a canonical PG code (PG-CODE.md §7)") from None
         self.authenticate(provider_id, authorization)
         if body["provider_id"] != provider_id:
             raise ProtocolError("PG_NOT_AUTHENTICATED", "provider_id differs from X-Provider-ID", status=401)

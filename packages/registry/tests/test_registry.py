@@ -275,6 +275,18 @@ def test_cli_key_next_then_rotate(tmp_path, capsys):
     assert {k["key_id"] for k in keys["keys"]} == {old.id, new.id}
 
 
+@pytest.mark.parametrize("ref", [code(1) + "\u200d", code(1) + "\n", " " + code(1), code(1).lower(),
+                                 "\ufeff" + code(1), "PG-\ufb06D-000123", "PG-TEST-", code(1) + "\x00"])
+def test_a_non_canonical_subject_ref_gets_no_signed_answer(ref):
+    """Stress test H5: another spelling of a code must not draw a signed answer that a verifier routes to the code's
+    registry (an opt-out turned into not_blocked). It is malformed: 422, no answer."""
+    reg, c, _ = make()
+    p = Provider(reg, c)
+    r = p.ask(p.body(ref))
+    assert r.status_code == 422 and r.json()["error"] == "PG_MALFORMED" and "answer" not in r.json(), r.text
+    assert p.ask(p.body(code(1), job="control")).status_code == 200
+
+
 def test_reports_ack_conflicts_closed_ask_and_key_rules():
     reg, c, _ = make()
     p = Provider(reg, c)

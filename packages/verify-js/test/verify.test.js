@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { canonicalJson, fingerprint, verifyDirectory, verifyDecision, checkDecision, PregenError, issuerOf, sha256Hex, checkPublicKey, verifyBytes } from "../index.js";
+import { canonicalJson, fingerprint, verifyDirectory, verifyDecision, checkDecision, PregenError, issuerOf, sha256Hex, checkPublicKey, verifyBytes, normalizeCode } from "../index.js";
 import { readFileSync } from "node:fs";
 
 const hex = (b) => Buffer.from(b).toString("hex");
@@ -53,10 +53,11 @@ test("namespaces are symmetric: each key signs only in its own namespace", async
   const dir = await load(directory());
   assert.equal(dir.checkSigner("PG-000042*", origin.id), "valid");
   assert.equal(dir.checkSigner("PG-000042*", other.id), "issuer_mismatch");
-  assert.equal(dir.checkSigner("PG-NWRD-000042-K", other.id), "valid");
-  assert.equal(dir.checkSigner("PG-NWRD-000042-K", origin.id), "issuer_mismatch");
-  assert.equal(dir.checkSigner("PG-ABCD-000042-K", origin.id), "unknown_issuer");
-  assert.equal(dir.registryFor("pg-nwrd-000042-k").name, "Other");
+  assert.equal(dir.checkSigner("PG-NWRD-000042=", other.id), "valid");
+  assert.equal(dir.checkSigner("PG-NWRD-000042=", origin.id), "issuer_mismatch");
+  assert.equal(dir.checkSigner("PG-ABCD-000042W", origin.id), "unknown_issuer");
+  assert.equal(dir.registryFor("pg-nwrd-000042="), null);                 // one form only (stress test H5)
+  assert.equal(dir.registryFor(normalizeCode(" pg-nwrd-000042= ")).name, "Other");
   assert.equal(issuerOf("PG-RND-000042-ZZZZZZ1"), "");
 });
 
@@ -145,10 +146,10 @@ test("a revoked registry or key signs nothing valid, and a revocation cannot be 
   const prev = await directory(2);
   const revokedReg = await directory(3, [prev.registries[0], { ...prev.registries[1], revoked: { at: "2026-10-04T00:00:00Z", reason: "fake rights holders" } }]);
   const dir = await verifyDirectory(revokedReg, { stewardPublicKeyHex: steward.pub, previous: prev });
-  assert.equal(dir.checkSigner("PG-NWRD-000042-K", other.id), "revoked");
+  assert.equal(dir.checkSigner("PG-NWRD-000042=", other.id), "revoked");
   assert.equal(dir.checkSigner("PG-000042*", origin.id), "valid");
   const decision = await other.sign({ decision_id: "d9", operator_key_id: other.id }, "operator_signature");
-  await assert.rejects(verifyDecision(decision, "PG-NWRD-000042-K", { directory: dir, fetch: keysFetch(keySets) }), /revoked/);
+  await assert.rejects(verifyDecision(decision, "PG-NWRD-000042=", { directory: dir, fetch: keysFetch(keySets) }), /revoked/);
   const unrevoked = await directory(4, prev.registries);
   await assert.rejects(verifyDirectory(unrevoked, { stewardPublicKeyHex: steward.pub, previous: revokedReg }), /undone/);
 
@@ -193,7 +194,7 @@ test("a successor steward key takes over from a stolen one, whatever the thief's
   const dropsRevocation = await successor.sign({ ...handover, sequence: 1 }, "signature");
   await assert.rejects(verifyDirectory(dropsRevocation, { ...opts, previous: revoked }), /undone/);
   const keeps = await successor.sign({ ...handover, sequence: 1, revoked_keys: revoked.revoked_keys }, "signature");
-  assert.equal((await verifyDirectory(keeps, { ...opts, previous: revoked })).checkSigner("PG-NWRD-000042-K", other.id), "revoked");
+  assert.equal((await verifyDirectory(keeps, { ...opts, previous: revoked })).checkSigner("PG-NWRD-000042=", other.id), "revoked");
 
   // A thief's revocation, signed after the declared compromise, can be annulled; an earlier one cannot.
   const thief = await steward.sign({ ...(await directory(6)), signature: undefined,
@@ -201,7 +202,7 @@ test("a successor steward key takes over from a stolen one, whatever the thief's
   const annul = (since) => successor.sign({ ...handover, sequence: 1, steward_compromised_since: since,
     annulled: [{ key_id: other.id, reason: "signed with the stolen steward key" }] }, "signature");
   const ok = await verifyDirectory(await annul("2026-10-09T00:00:00Z"), { ...opts, previous: thief });
-  assert.equal(ok.checkSigner("PG-NWRD-000042-K", other.id), "valid");
+  assert.equal(ok.checkSigner("PG-NWRD-000042=", other.id), "valid");
   await assert.rejects(verifyDirectory(await annul("2026-10-11T00:00:00Z"), { ...opts, previous: thief }), /undone/);
 });
 
@@ -325,10 +326,10 @@ test("no registry is pinned by default, and any prefix can be pinned", async () 
   const d = await directory(3, [
     { name: "Origin", prefix: "", api: "https://origin.test", keys: "https://origin.test/keys", key_fingerprints: [origin.id] },
     { name: "Other", prefix: "NWRD", api: "https://other.test", keys: "https://other.test/keys", key_fingerprints: [other.id, thief.id] }]);
-  assert.equal((await verifyDirectory(d, { stewardPublicKeyHex: steward.pub })).checkSigner("PG-NWRD-000042-K", thief.id), "valid");
+  assert.equal((await verifyDirectory(d, { stewardPublicKeyHex: steward.pub })).checkSigner("PG-NWRD-000042=", thief.id), "valid");
   const pinned = await verifyDirectory(d, { stewardPublicKeyHex: steward.pub, pinnedKeys: { NWRD: [other.id] } });
-  assert.equal(pinned.checkSigner("PG-NWRD-000042-K", thief.id), "issuer_mismatch");
-  assert.equal(pinned.checkSigner("PG-NWRD-000042-K", other.id), "valid");
+  assert.equal(pinned.checkSigner("PG-NWRD-000042=", thief.id), "issuer_mismatch");
+  assert.equal(pinned.checkSigner("PG-NWRD-000042=", other.id), "valid");
   const legacy = await verifyDirectory(d, { stewardPublicKeyHex: steward.pub, originKeyFingerprints: [other.id] }); // deprecated alias
   assert.equal(legacy.checkSigner("PG-000042*", origin.id), "issuer_mismatch");
 });
@@ -344,4 +345,19 @@ test("stress test C1: a key no one can be held to is refused, and nothing verifi
   const pub = hex(await crypto.subtle.exportKey("raw", k.publicKey));
   assert.equal(hex(checkPublicKey(pub)), pub);
   assert.equal(await verifyBytes(pub, hex(await crypto.subtle.sign({ name: "Ed25519" }, k.privateKey, message)), message), true);
+});
+
+test("stress test H5: one code, one string; only what a person typed is normalised", () => {
+  const canonical = { "PG-000042*": "", "PG-STD-000123": "", "PG-EDT-000012": "", "PG-STD-000001-K7M2QX9": "",
+    "PG-TEST-000001N": "TEST", "PG-NWRD-000042=": "NWRD", "PG-NWRD-RND-000042-ZZZZZZJ": "NWRD" };
+  for (const [code, issuer] of Object.entries(canonical)) assert.equal(issuerOf(code), issuer);
+  for (const spelling of ["PG-TEST-000001N\u200d", "PG-TEST-000001N\x00", "PG-TEST-000001N\n", " PG-TEST-000001N",
+    "\ufeffPG-TEST-000001N", "PG-TEST-000001N\u0085", "\x1cPG-TEST-000001N", "pg-test-000001n", "PG-TEST-", "PG-TEST",
+    "PG-\ufb06D-000123", "PG-\u017fTD-000123", "PG-TEST-000001N-", "PG-NWRD-000042-K"]) {
+    assert.throws(() => issuerOf(spelling), PregenError, JSON.stringify(spelling));
+  }
+  assert.equal(normalizeCode("  pg-test-000001n \n"), "PG-TEST-000001N");
+  for (const typed of ["PG-\ufb06D-000123", "PG-TEST-000001N\u200d", "\ufeffPG-TEST-000001N", "pg-test-"]) {
+    assert.throws(() => normalizeCode(typed), PregenError, JSON.stringify(typed));
+  }
 });

@@ -99,7 +99,8 @@ so nothing it signs is ever accepted by the real directory.
 Also exported: `verifyDecision` (signatures only), `verifyDirectory`,
 `Directory.checkSigner` / `registryFor` / `publicKey`, `verifyLicense` (subject
 signature plus operator countersignature), `verifySigned`, `canonicalJson`,
-`fingerprint`, `issuerOf`.
+`fingerprint`, `checkPublicKey` (refuses keys no one can be held to), `issuerOf` (canonical codes only) and
+`normalizeCode` (for what a person types, never for a code in a message).
 
 Tests: `npm test` runs the unit tests and the PRE-GEN Level 1 conformance
 vectors with every verifier operation required.

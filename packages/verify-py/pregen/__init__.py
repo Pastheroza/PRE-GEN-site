@@ -16,7 +16,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 __version__ = "0.10.0"
 __all__ = [
     "STEWARD_PUBLIC_KEY_HEX", "DIRECTORY_URL", "PregenError", "Directory", "canonical_json",
-    "fingerprint", "check_public_key", "verify_bytes", "verify_signed", "verify_license", "issuer_of",
+    "fingerprint", "check_public_key", "verify_bytes", "verify_signed", "verify_license", "issuer_of", "normalize_code",
     "verify_directory", "load_directory", "verify_decision", "check_decision", "check_answer", "verify_answer", "message_id", "DIRECTORY_MAX_AGE", "decide_identity",
     "verify_anchors", "check_channel_proof", "wikidata_official_urls", "check_proof", "FLOOR_REASONS", "REPORT_GRACE", "STEWARD_SUCCESSOR_PUBLIC_KEY_HEX", "Simulator",
 ]
@@ -30,8 +30,11 @@ SCHEMA = "pregen.registries.v2"
 _MAX_INT = 2**53 - 1
 _PREFIX = re.compile(r"[ABCDEFGHJKMNPQRSTVWXYZ]{4}")
 _FINGERPRINT = re.compile(r"pg-ed25519:[0-9a-f]{32}")
-_ISSUER_IN_CODE = re.compile(r"^PG-([ABCDEFGHJKMNPQRSTVWXYZ]{4})-")
-_BARE_CODE = re.compile(r"^PG-(?:[A-Z]{3}-)?[0-9]")
+# A code has one form in every message (PG-CODE.md §7, stress test H5): the whole string matches, ASCII, upper case,
+# nothing around it. Subject, licence, or a legacy code of the bare namespace (PG-STD-000123: no check character).
+_CHECK = r"[0-9A-HJKMNP-TV-Z*~$=!]"
+_CANONICAL_CODE = re.compile(rf"PG-(?:([ABCDEFGHJKMNPQRSTVWXYZ]{{4}})-)?(?:[0-9]{{6,}}{_CHECK}"
+                             rf"|[A-Z]{{3}}-[0-9]{{6,}}-[0-9A-HJKMNP-TV-Z]{{6}}{_CHECK})|PG-[A-Z]{{3}}-[0-9]{{6,}}")
 # The curve's 8 small-order points, sign bit cleared; y = p and p + 1 are 0 and 1 again (as libsodium lists them).
 # Under such a key a signature checks out for any message with no private key behind it, and OpenSSL takes it
 # (stress test C1, 2026-10-28). The same list as PRAMPTA's verify_ed25519.
@@ -134,16 +137,27 @@ def verify_license(body: dict, license_id: str, subject_public_key_hex: str, sub
 
 
 def issuer_of(code: str) -> str:
-    """The namespace of a PG code: its four-letter prefix, or "" for the bare namespace."""
+    """The namespace of a canonical PG code: its four-letter prefix, or "" for the bare namespace. Anything else —
+    lower case, spaces, invisible or non-ASCII characters — is refused, never repaired: one code, one string
+    (PG-CODE.md §7). Pass what a person typed through normalize_code first."""
     if not isinstance(code, str):
         raise PregenError("PG code must be a string")
-    c = code.strip().upper()
-    m = _ISSUER_IN_CODE.match(c)
-    if m:
-        return m.group(1)
-    if not _BARE_CODE.match(c):
-        raise PregenError("unrecognized PG namespace")
-    return ""
+    m = _CANONICAL_CODE.fullmatch(code)
+    if not m:
+        raise PregenError("not a canonical PG code")
+    return m.group(1) or ""
+
+
+def normalize_code(typed: str) -> str:
+    """What a person typed or pasted, as the canonical code: surrounding ASCII spaces trimmed and lower case raised,
+    nothing else (PG-CODE.md §7). Only at a human input boundary, never on a code taken from a message."""
+    if not isinstance(typed, str):
+        raise PregenError("PG code must be a string")
+    s = typed.strip(" \t\r\n")
+    if not s.isascii():
+        raise PregenError("a PG code is ASCII: retype it")
+    issuer_of(s.upper())
+    return s.upper()
 
 
 def _https_url(value, field):
@@ -588,7 +602,7 @@ def verify_anchors(envelope: dict, prefix: str, directory: Directory, get_json=_
     an old copy cannot hide a new opt-out. Returns its entries, without the codes the steward marked false."""
     import time
     now = int(time.time()) if now is None else now
-    body = _registry_signed(envelope, "pg.anchors.v1", f"PG-{prefix}-000000", directory, get_json)
+    body = _registry_signed(envelope, "pg.anchors.v1", f"PG-{prefix}-0000000", directory, get_json)  # names the prefix
     entries = body.get("anchors")
     if body.get("registry") != prefix or not isinstance(entries, list) or type(body.get("issued_at")) is not int:
         raise PregenError("not an anchor list of this registry")
@@ -742,7 +756,7 @@ class Simulator:
                 "allowed": disposition == "allow", "disposition": disposition, "reason": reason,
                 "is_hard_refusal": reason == "PG_SUBJECT_OPTED_OUT",
                 "subject_id": request.get("subject_id", ""), "provider_id": provider_id, "licensee_id": licensee_id,
-                "license_id": "PG-RND-000001-SIMULAT" if disposition == "allow" else None,
+                "license_id": "PG-RND-000001-SMVTRXK" if disposition == "allow" else None,
                 "prompt_hash": request.get("prompt_hash", ""), "model": request.get("model", ""),
                 "modality": request.get("modality", ""), "intended_use": request.get("intended_use", {}),
                 "generation_id": request.get("generation_id", ""),

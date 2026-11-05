@@ -8,6 +8,23 @@ comments cited throughout `spec/PRE-GEN-SPEC.md`.
 
 See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
 
+## Unreleased — stress-test fixes (2026-10-28, a local branch: not published)
+
+From the hard stress test of 2026-10-28; the founder approved the fix order the same day.
+- **C1 — keys no one can be held to are refused.** Under a small-order Ed25519 key a fixed signature verifies for any
+  message. Such keys (in either sign-bit encoding) and every non-canonical encoding (y ≥ p) are refused wherever a key
+  is recorded, and nothing verifies under them. Core, Messages, Signature; `PG-CODE.md` §9.1 item 4 (the steward
+  takes the key itself); vectors in `test-vectors/small-order-keys.json`.
+- **C2 — the reference registry keeps every key in `/keys`** (as `PRE-GEN-SPEC.md` §2.3 already said); `key next` and
+  `key rotate`.
+- **H1 — a proof's time is bounded by the registry.** `occurred_at` is the provider's word, so a proof also needs the
+  acknowledgement's `received_at` within 24 hours of the answer's expiry (`extensions/proof.md` item 3). A late report is
+  recorded but proves nothing.
+- **H2 — `occurred_at` is when generation began**, when core rule 5 checked the allow (`extensions/reports.md`).
+- **H5 — one code, one string.** A full-match ASCII grammar for codes in messages; no trimming, case change or folding
+  except where a person types a code; a registry answers a non-canonical `subject_ref` with `PG_MALFORMED` (422), never
+  a signed answer (`PG-CODE.md` §7).
+
 ## v5 — 2026-10-12
 
 - **Honest security wording** (2026-10-13, external review; editorial, no rule changes).

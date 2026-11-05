@@ -11,8 +11,9 @@ const SCHEMA = "pregen.registries.v2";
 const MAX_INT = 2 ** 53 - 1;
 const PREFIX = /^[ABCDEFGHJKMNPQRSTVWXYZ]{4}$/;
 const FINGERPRINT = /^pg-ed25519:[0-9a-f]{32}$/;
-const ISSUER_IN_CODE = /^PG-([ABCDEFGHJKMNPQRSTVWXYZ]{4})-/;
-const BARE_CODE = /^PG-(?:[A-Z]{3}-)?[0-9]/;
+// A code has one form in every message (PG-CODE.md §7, stress test H5): the whole string matches, ASCII, upper case,
+// nothing around it. Subject, licence, or a legacy code of the bare namespace (PG-STD-000123: no check character).
+const CANONICAL_CODE = /^(?:PG-(?:([ABCDEFGHJKMNPQRSTVWXYZ]{4})-)?(?:[0-9]{6,}[0-9A-HJKMNP-TV-Z*~$=!]|[A-Z]{3}-[0-9]{6,}-[0-9A-HJKMNP-TV-Z]{6}[0-9A-HJKMNP-TV-Z*~$=!])|PG-[A-Z]{3}-[0-9]{6,})$/;
 
 export class PregenError extends Error {
   constructor(message) { super(message); this.name = "PregenError"; }
@@ -126,14 +127,24 @@ export async function verifyLicense({ body, licenseId, subjectPublicKeyHex, subj
   return { subjectValid, operatorValid };
 }
 
-/** The namespace of a PG code: its four-letter prefix, or "" for the bare namespace. */
+/** The namespace of a canonical PG code: its four-letter prefix, or "" for the bare namespace. Anything else —
+ *  lower case, spaces, invisible or non-ASCII characters — is refused, never repaired: one code, one string
+ *  (PG-CODE.md §7). Pass what a person typed through normalizeCode first. */
 export function issuerOf(code) {
   if (typeof code !== "string") fail("PG code must be a string");
-  const c = code.trim().toUpperCase();
-  const m = ISSUER_IN_CODE.exec(c);
-  if (m) return m[1];
-  if (!BARE_CODE.test(c)) fail("unrecognized PG namespace");
-  return "";
+  const m = CANONICAL_CODE.exec(code);
+  if (!m) fail("not a canonical PG code");
+  return m[1] ?? "";
+}
+
+/** What a person typed or pasted, as the canonical code: surrounding ASCII spaces trimmed and lower case raised,
+ *  nothing else (PG-CODE.md §7). Only at a human input boundary, never on a code taken from a message. */
+export function normalizeCode(typed) {
+  if (typeof typed !== "string") fail("PG code must be a string");
+  const s = typed.replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, "");
+  if (!/^[\x00-\x7f]*$/.test(s)) fail("a PG code is ASCII: retype it");
+  issuerOf(s.toUpperCase());
+  return s.toUpperCase();
 }
 
 function httpsUrl(value, field) {
@@ -484,7 +495,7 @@ export const FLOOR_REASONS = Object.freeze(["PG_SUBJECT_OPTED_OUT", "PG_SUBJECT_
  * old copy cannot hide a new opt-out. Returns its entries, without the codes the steward marked false. */
 export async function verifyAnchors(envelope, prefix, { directory, fetch: fetchFn = globalThis.fetch,
   now = Math.floor(Date.now() / 1000) } = {}) {
-  const body = await registrySigned(envelope, "pg.anchors.v1", `PG-${prefix}-000000`, directory, fetchFn);
+  const body = await registrySigned(envelope, "pg.anchors.v1", `PG-${prefix}-0000000`, directory, fetchFn); // names the prefix
   if (body.registry !== prefix || !Array.isArray(body.anchors) || !Number.isSafeInteger(body.issued_at)) {
     fail("not an anchor list of this registry");
   }
@@ -627,7 +638,7 @@ export async function createSimulator({ baseUrl = "https://simulator.pregen.inva
       const body = { schema_version: "pg.decision.v1", decision_id: `sim-${++n}`, simulator: true,
         allowed: disposition === "allow", disposition, reason, is_hard_refusal: reason === "PG_SUBJECT_OPTED_OUT",
         subject_id: req.subject_id ?? "", provider_id: header(init, "X-Provider-ID"), licensee_id: header(init, "X-Licensee-ID"),
-        license_id: disposition === "allow" ? "PG-RND-000001-SIMULAT" : null,
+        license_id: disposition === "allow" ? "PG-RND-000001-SMVTRXK" : null,
         prompt_hash: req.prompt_hash ?? "", model: req.model ?? "", modality: req.modality ?? "",
         intended_use: req.intended_use ?? {}, generation_id: req.generation_id ?? "",
         provider_user_binding: named ? "verified" : "unbound",

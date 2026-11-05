@@ -92,7 +92,8 @@ real directory.
 Also: `verify_decision` (signatures only), `verify_directory`,
 `Directory.check_signer` / `registry_for` / `public_key`, `verify_license`
 (subject signature plus operator countersignature), `verify_signed`,
-`canonical_json`, `fingerprint`, `issuer_of`.
+`canonical_json`, `fingerprint`, `check_public_key` (refuses keys no one can be held to), `issuer_of` (canonical
+codes only) and `normalize_code` (for what a person types, never for a code in a message).
 
 Tests: `pytest packages/verify-py/tests`, and the PRE-GEN Level 1 vectors with
 `python3 spec/conformance/level1/run_conformance.py --adapter "python3 packages/verify-py/tests/conformance_adapter.py"`.

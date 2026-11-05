@@ -227,14 +227,45 @@ citation.
 
 ---
 
-## 7. Resolution rules
+## 7. One code, one string
 
-- **Case-insensitive.** `pg-000042*` and `PG-000042*` are the same code;
-  canonical form is uppercase. People retype these from screenshots.
-- **Surrounding whitespace is stripped** before matching.
+**In every message a code has exactly one form: its canonical string.** The
+whole string matches this grammar, in ASCII, with nothing before or after it:
+
+```
+code    = "PG-" [ prefix "-" ] ( subject / licence )
+        / "PG-" 3UPPER "-" 6*DIGIT        ; legacy, bare namespace only (§2.1): no check character
+prefix  = 4 letters of the §9 prefix alphabet (ABCDEFGHJKMNPQRSTVWXYZ)
+subject = 6*DIGIT check
+licence = 3UPPER "-" 6*DIGIT "-" 6ALPHA check
+ALPHA   = a character of the §3 alphabet
+check   = ALPHA / "*" / "~" / "$" / "=" / "!"
+UPPER   = "A"–"Z" (ASCII);  DIGIT = "0"–"9" (ASCII)
+```
+
+- **Verifiers and registries never repair a code.** No trimming, no case
+  change, no look-alike folding: a string that does not match is not a code.
+- **A registry answers a request whose `subject_ref` is not canonical with
+  `PG_MALFORMED` (HTTP 422), never with a signed answer.** Otherwise another
+  spelling of a person's code (an invisible character appended, say) could
+  draw a signed `not_blocked` that a verifier routes to that person's
+  registry, and a refusal would turn into permission.
+- **Only where a person types or pastes a code** — a search box, a form, a
+  resolver URL — may software normalise it, because people retype codes from
+  screenshots:
+  1. trim surrounding ASCII spaces (space, tab, CR, LF);
+  2. fold the known look-alikes of §13;
+  3. raise lower case to upper case;
+  4. match the grammar. Anything still non-ASCII is refused.
+
+  So `pg-000042*` typed into a search box is `PG-000042*`; inside a message it
+  is not a code.
 - A code whose check character does not verify must be reported as
   *mistyped*, distinctly from *not found* — the two mean different things to
   whoever is holding the code.
+
+The libraries implement the grammar as `issuer_of` / `issuerOf` and the typing
+rule as `normalize_code` / `normalizeCode` (stress test H5, 2026-10-28).
 
 ---
 
