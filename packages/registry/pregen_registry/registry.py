@@ -153,6 +153,8 @@ class Registry:
         with self.tx() as db:
             if serial is None:
                 serial = (db.execute("SELECT COALESCE(MAX(serial), 0) FROM subjects").fetchone()[0] or 0) + 1
+                if self.config.sandbox:                     # 1-8 are the standard test codes; 8 stays unregistered
+                    serial = max(serial, 9)
             code = mint_code(self.config.prefix, serial)
             key = None if holder_public else Key()
             flags["immutable_denials"] = json.dumps(flags.get("immutable_denials", []))

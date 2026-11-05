@@ -47,8 +47,9 @@ python3 -c "import pregen; print(sorted(r['prefix'] for r in pregen.load_directo
 
 **The public test directory is not online yet** (it will be `https://test.pregen.org/registries.json`,
 with its own test steward key): until it is, a sandbox cannot be listed and providers cannot
-check its answers outside a test network you are given. On such a network, pass its directory: `pregen.load_directory('<test directory url>',
-steward_public_key_hex='<test steward key hex>')`. Pick a prefix that is not listed, and a
+check its answers outside a test network you are given. On such a network, list its prefixes
+with `python3 -c "import pregen; print(sorted(r['prefix'] for r in pregen.load_directory('<test
+directory url>', steward_public_key_hex='<test steward key hex>').registries))"`. Pick a prefix that is not listed, and a
 second choice in case someone asks for yours first. For your sandbox's prefix, also check
 the test directory's list: sandboxes are listed only there, and no prefix is ever reused.
 
@@ -225,17 +226,30 @@ prints every code you hold, with its level and name.
 **Anchor a public person** (extension `identity`; every public person needs one): record their
 public identifier, written exactly as `wikidata:Q42`, `isni:0000000123456789` (16 characters,
 no spaces) or `domain:example.com` (lower case); the command does not check the spelling, and
-a different spelling is a different person to every client. Add the page on their official
-channel where they
-posted the line `PRE-GEN: PG-ABCD-000001G`. Open that page yourself first and see the exact
-line: the command records what you give it and fetches nothing, so do not anchor before you
-have seen it. If you cannot open it yet, anchor without `--proof-url` (the claim stays
-unconfirmed) and run `subject anchor` again with both once you have seen the line. A client weighing
-several registries' claims reads the page itself.
+a different spelling is a different person to every client. **Use `wikidata:Q…` whenever the
+person has one:** clients today confirm only `wikidata:` anchors, so a person anchored as
+`isni:` or `domain:`, or without `--proof-url`, is refused by every provider (`not_blocked`,
+`PG_IDENTITY_UNCONFIRMED`), grant or not, until confirmed.
+
+Add the page where the person posted the line `PRE-GEN: PG-ABCD-000001G`. It must be an
+`https://` page, readable without a login, at or under a channel their Wikidata item lists:
+the official website (preferred), `https://x.com/<handle>/…`, `https://www.instagram.com/<handle>/…`,
+`https://www.youtube.com/channel/<id>/…` or `https://www.tiktok.com/@<handle>/…`. The command
+records what you give it and fetches nothing, so check first; this must print `True`:
+
+```bash
+python3 -c "import pregen, urllib.request as u; print(pregen.check_channel_proof('PG-ABCD-000001G', \
+  'https://mayacole.example/pregen', pregen.wikidata_official_urls('wikidata:Q42'), \
+  lambda x: u.urlopen(x).read().decode()))"
+```
+
+If it does not yet, anchor without `--proof-url` (the claim stays unconfirmed) and run
+`subject anchor` again with both once it does. Re-check every proof page at least daily; once
+the line is gone, anchor again without `--proof-url`.
 
 ```bash
 pregen-registry subject anchor --dir ./data --code 'PG-ABCD-000001G' \
-  --anchor wikidata:Q42 --proof-url https://www.instagram.com/mayacole/p/1
+  --anchor wikidata:Q42 --proof-url https://mayacole.example/pregen
 ```
 
 ```
@@ -262,7 +276,7 @@ pregen-registry grant add --dir ./data --subject 'PG-ABCD-000001G' \
 - `--max-uses` counts allows (without it, no limit); `--days` is how long the grant lasts
   (default 365). Without `--purposes`, only `research` is covered.
 - `grant add` does not check spellings: use the five lower-case purposes and the full
-  `<provider id>:<customer id>`, then try the grant in the sandbox (step 8). To confirm a
+  `<provider id>:<customer id>`, then try such a grant in your sandbox (steps 7–8). To confirm a
   provider's token works without using a grant, `GET {api}/v2/grants/<grant id>` with its
   headers returns 200.
 - **Without `--licensee` the grant is open:** any provider may use it for these purposes. If
@@ -380,8 +394,9 @@ pregen-registry check --api https://sandbox.registry.example \
 
 The extra line reads `PASS POST /v2/requests for PG-ABCE-000001…, purpose commercial: HTTP
 200, allow`; with test code 2 it reads `… deny PG_NO_LICENSE`. To try a grant of your own
-(purposes, a licensee), add a test person and that grant to the sandbox (`subject add`,
-`grant add --dir ./sandbox …`) and ask for it the same way; for a licensee-only grant, give
+(purposes, a licensee), add a test person and that grant to the sandbox (`subject add
+--dir ./sandbox …`, which numbers added people from 9 on, and `grant add --dir ./sandbox …`)
+and ask for it the same way; for a licensee-only grant, give
 it `--licensee test:t1` and add `--licensee test:t1` to `check`. If you added your own test
 people, also change the line in `./sandbox/policy.md` that says it holds only the eight test
 subjects.

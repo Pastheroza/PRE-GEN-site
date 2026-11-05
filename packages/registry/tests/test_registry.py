@@ -249,6 +249,13 @@ def test_every_answer_carries_only_the_known_members():
         assert b["profile"] == "likeness/1"                     # the name asked for, never a version of a policy
 
 
+def test_a_person_added_to_a_sandbox_never_takes_a_standard_test_code():
+    reg, c, _ = make()
+    assert reg.add_subject("Extra test person") == code(9)
+    p = Provider(reg, c)
+    assert p.answer(p.body(code(8), job="j8"))["body"]["reason"] == "PG_UNKNOWN_SUBJECT"
+
+
 @pytest.mark.parametrize("member", [{"model": "m-1"}, {"prompt_hash": "a" * 64}, {"modality": "image"}])
 def test_a_request_carrying_what_job_hash_stands_for_is_refused(member):
     """job_hash is opaque: what the provider fixed about the job never travels beside it."""
