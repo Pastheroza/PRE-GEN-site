@@ -335,6 +335,8 @@ const MAX_DECISION_LIFETIME = 900;
 /** PRE-GEN-CORE.md rule 2: reload the directory at least daily. This bounds how long a copy is kept, not how
  * old its content is: a stale copy can still hide a newer revocation. */
 export const DIRECTORY_MAX_AGE = 86_400;
+/** A proof's occurred_at is the provider's word; the registry-signed received_at bounds it (stress test H1). */
+export const REPORT_GRACE = 86_400;
 const ECHOED = ["subject_id", "provider_id", "licensee_id", "prompt_hash", "model", "modality"];
 const isEmpty = (v) => v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0);
 const same = (a, b) => canonicalJson(a) === canonicalJson(b);
@@ -566,6 +568,9 @@ export async function checkProof(bundle, { directory, fetch: fetchFn = globalThi
     if (ack.report !== (await messageId("pg.report.v1", rbody)) || ack.answer !== (await messageId("pg.answer.v1", answer))
         || rbody.answer !== ack.answer || rbody.outcome !== "generated") {
       fail(`${code}: the registry did not acknowledge this generation`);
+    }
+    if (!Number.isInteger(ack.received_at) || ack.received_at > (answer.expires_at ?? 0) + REPORT_GRACE) {
+      fail(`${code}: reported more than 24 hours after the allow expired, so when the output was made is only the provider's word`);
     }
     outputs.add(rbody.output_hash);
     jobs.add(rbody.job_id);

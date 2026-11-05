@@ -18,7 +18,7 @@ __all__ = [
     "STEWARD_PUBLIC_KEY_HEX", "DIRECTORY_URL", "PregenError", "Directory", "canonical_json",
     "fingerprint", "check_public_key", "verify_bytes", "verify_signed", "verify_license", "issuer_of",
     "verify_directory", "load_directory", "verify_decision", "check_decision", "check_answer", "verify_answer", "message_id", "DIRECTORY_MAX_AGE", "decide_identity",
-    "verify_anchors", "check_channel_proof", "wikidata_official_urls", "check_proof", "FLOOR_REASONS", "STEWARD_SUCCESSOR_PUBLIC_KEY_HEX", "Simulator",
+    "verify_anchors", "check_channel_proof", "wikidata_official_urls", "check_proof", "FLOOR_REASONS", "REPORT_GRACE", "STEWARD_SUCCESSOR_PUBLIC_KEY_HEX", "Simulator",
 ]
 
 STEWARD_PUBLIC_KEY_HEX = "5cb949aab04186e3e216ec541b847c912fc3f78138c0ec3cb2560b2dad0d1f1b"
@@ -398,6 +398,8 @@ _MAX_DECISION_LIFETIME = 900
 # PRE-GEN-CORE.md rule 2: reload the directory at least daily. This bounds how long a copy is kept, not how
 # old its content is: a stale copy can still hide a newer revocation.
 DIRECTORY_MAX_AGE = 86_400
+# A proof's occurred_at is the provider's word; the registry-signed received_at bounds it (stress test H1).
+REPORT_GRACE = 86_400
 
 
 def _empty(v) -> bool:
@@ -679,6 +681,10 @@ def check_proof(bundle: dict, directory: Directory = None, get_json=_get_json, o
         if ack.get("report") != message_id("pg.report.v1", rbody) or ack.get("answer") != message_id("pg.answer.v1", answer) \
                 or rbody.get("answer") != ack.get("answer") or rbody.get("outcome") != "generated":
             raise PregenError(f"{code}: the registry did not acknowledge this generation")
+        received = ack.get("received_at")
+        if type(received) is not int or received > answer.get("expires_at", 0) + REPORT_GRACE:
+            raise PregenError(f"{code}: reported more than 24 hours after the allow expired, so when the output was "
+                              "made is only the provider's word")
         outputs.add(rbody.get("output_hash"))
         jobs.add(rbody.get("job_id"))
         subjects.append({"code": code, "level": answer.get("level"), "basis": answer.get("basis")})

@@ -19,7 +19,7 @@ received it.
 | `job_id` | the request's |
 | `outcome` | `generated` or `not_generated` |
 | `output_hash` | SHA-256 hex of the output when `generated`; `""` otherwise |
-| `occurred_at` | integer time |
+| `occurred_at` | integer time. For `generated`: the moment generation began, when core rule 5 checked the allow, even if the render ends later. For `not_generated`: when the provider decided not to generate |
 
 Members added by other extensions: `mode` ([`observe`](observe.md)) and
 `obligations_applied` (the profile).
@@ -35,7 +35,7 @@ never received.
 | `answer` | as in the report |
 | `answer_status` | that answer's status, or `none` |
 | `provider_key_id` | the provider key the registry verified the report with |
-| `received_at` | integer time |
+| `received_at` | integer time: when the registry received the report. It bounds the provider's `occurred_at` ([`proof`](proof.md)) |
 
 Members added by [`limits`](limits.md): `counted`, `released`.
 

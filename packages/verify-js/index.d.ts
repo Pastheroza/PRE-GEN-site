@@ -40,6 +40,8 @@ export function canonicalJson(value: unknown): string;
 export function sha256Hex(data: string | Uint8Array): Promise<string>;
 export function fingerprint(publicKeyHex: string): Promise<string>;
 /** The raw key, or a PregenError for a small-order or non-canonical key (stress test C1). */
+/** Seconds after an allow expires within which its report must reach the registry for a proof (stress test H1). */
+export const REPORT_GRACE: number;
 export function checkPublicKey(publicKeyHex: string): Uint8Array;
 export function verifyBytes(publicKeyHex: string, signatureHex: string, message: Uint8Array): Promise<boolean>;
 export function verifySigned(obj: Record<string, unknown>, publicKeyHex: string, signatureField: string, exclude?: string[]): Promise<boolean>;

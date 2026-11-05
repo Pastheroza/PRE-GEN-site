@@ -30,10 +30,14 @@ watermark alone a platform recovers the subject it names.
 A platform accepts the bundle when, for every subject:
 
 1. the answer verifies through a directory loaded in the last 24 hours (core rules 2 and 5)
-   and was a valid `allow` **at the report's `occurred_at`** — it is checked as of the moment
-   the output was made, not today;
+   and was a valid `allow` **at the report's `occurred_at`**, the moment generation began —
+   it is checked as of then, not today;
 2. the acknowledgement is signed by a key the directory lists for the subject's prefix, and
    names this report and this answer; the report's outcome is `generated`;
+3. the acknowledgement's `received_at` is **no later than 24 hours after the answer's
+   `expires_at`**. `occurred_at` is the provider's word; the registry's `received_at` is not.
+   A report that arrives later is still recorded (`reports` has no deadline), but it proves
+   nothing: one old allow must not buy a "permitted" output at any later time;
 
 and all reports name one `output_hash` and one `job_id`. Given the file, its SHA-256 must
 equal `output_hash`; after re-encoding the platform matches a soft binding instead.

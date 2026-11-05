@@ -261,3 +261,23 @@ def test_v_a_platform_checks_the_proof_carried_with_the_video():
                                now=later)
     with pytest.raises(PregenError, match="revoked"):                              # V12: every past proof falls too
         check_proof(bundle, revoked, w.get_json, now=later)
+
+
+def test_h1_a_report_received_long_after_the_allow_expired_proves_nothing():
+    """Stress test H1: occurred_at is the provider's word. A report backdated into the allow's lifetime but received
+    more than 24 hours after the allow expired is recorded (reports have no deadline), yet proves nothing."""
+    w = World()
+    reg, http = w.regs["AAAA"]
+    p = Provider(reg, http)
+    p.register()
+    s = reg.add_subject("Creator", level="verified")
+    reg.add_grant(s, purposes=PURPOSES)
+    answer = p.answer(p.body(s, purpose="commercial"))
+    reg.clock = lambda: answer["body"]["expires_at"] + 86_400 + 1               # the output is really made this late
+    report = p.report(answer, occurred_at=NOW + 10)                             # but the provider writes "NOW + 10"
+    assert p.send(report).status_code == 200
+    bundle = http.get(f"/v2/proofs/{message_id('pg.report.v1', report['body'])[:16]}").json()
+    later = NOW + 30 * 86400
+    w.directory = verify_directory(w.directory.to_json(), steward.public_hex, now=later)
+    with pytest.raises(PregenError, match="only the provider's word"):
+        check_proof(bundle, w.directory, w.get_json, now=later)
