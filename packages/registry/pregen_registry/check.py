@@ -1,0 +1,99 @@
+"""pregen-registry check: a registry's live self-test, from the outside, as a provider and a verifier see it.
+
+It checks the registry document, the signed key set, the error shape of an unauthenticated request and, given the
+directory and its steward key, that the steward lists this registry with its current key. With a provider credential
+and a subject code, it also asks and checks the answer as a provider must (core rule 5). It changes nothing.
+"""
+from __future__ import annotations
+
+import json
+import secrets
+import urllib.error
+import urllib.request
+
+import pregen
+
+EXTENSIONS_NEEDED = ("reports", "provider-keys")
+
+
+def _get(url):
+    with urllib.request.urlopen(urllib.request.Request(url, headers={"Accept": "application/json"}), timeout=10) as r:
+        return json.loads(r.read())
+
+
+def _post(url, env, headers):
+    req = urllib.request.Request(url, data=json.dumps(env).encode(), method="POST",
+                                 headers={"Content-Type": "application/json", **headers})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            return r.status, json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        return e.code, json.loads(e.read() or b"{}")
+
+
+def check(api: str, directory_url: str | None = None, steward: str | None = None, provider_id: str | None = None,
+          token: str | None = None, subject: str | None = None):
+    """Yields (ok, what) lines."""
+    api = api.rstrip("/")
+    try:
+        doc = _get(api + "/.well-known/pregen-registry.json")
+    except Exception as e:  # noqa: BLE001 — any failure to reach it is the finding
+        yield False, f"GET {api}/.well-known/pregen-registry.json: {e}"
+        return
+    missing = [k for k in ("prefix", "name", "api", "keys", "profiles", "extensions", "policy", "complaints", "sandbox")
+               if k not in doc]
+    yield not missing, "registry document" + (f": missing {missing}" if missing else
+                                              f": prefix {doc['prefix']}, profiles {doc['profiles']}")
+    yield doc.get("api", "").rstrip("/") == api, f"document api is {doc.get('api')!r}"
+    yield "likeness/1" in doc.get("profiles", []), "answers under likeness/1"
+    yield all(x in doc.get("extensions", []) for x in EXTENSIONS_NEEDED), f"declares {', '.join(EXTENSIONS_NEEDED)}"
+    try:
+        ks = _get(doc["keys"])
+    except Exception as e:  # noqa: BLE001
+        yield False, f"GET {doc.get('keys')}: {e}"
+        return
+    keys = ks.get("keys") or []
+    current = next((k for k in keys if k.get("key_id") == ks.get("current_key_id")), None)
+    yield current is not None, f"key set: current key {ks.get('current_key_id')}, {len(keys)} key(s) in its history"
+    if current is None:
+        return
+    good = True
+    for k in keys:
+        try:
+            pregen.check_public_key(k["public_key_hex"])
+            good &= pregen.fingerprint(k["public_key_hex"]) == k["key_id"]
+        except (pregen.PregenError, KeyError):
+            good = False
+    yield good, "every key id is its key's fingerprint, and no key is small-order"
+    yield pregen.verify_signed(ks, current["public_key_hex"], "signature"), "key set signed by its current key"
+    status, err = _post(api + "/v2/requests", {"type": "pg.request.v1", "body": {}, "signatures": []},
+                        {"X-Provider-ID": "pregen-check", "Authorization": "Bearer " + secrets.token_hex(8)})
+    yield status in (401, 422) and isinstance(err.get("error"), str), \
+        f"an unauthenticated request is refused with an error code: HTTP {status} {err.get('error')}"
+    directory = None
+    if directory_url:
+        try:
+            directory = pregen.load_directory(directory_url, **({"steward_public_key_hex": steward} if steward else {}))
+        except Exception as e:  # noqa: BLE001
+            yield False, f"directory {directory_url}: {e}"
+            return
+        entry = next((r for r in directory.registries if r["prefix"] == doc.get("prefix")), None)
+        yield entry is not None, f"the directory (sequence {directory.sequence}) lists prefix {doc.get('prefix')}"
+        if entry:
+            yield entry["api"].rstrip("/") == api and entry["keys"] == doc["keys"], "listed with this api and keys URL"
+            yield current["key_id"] in entry["key_fingerprints"], "listed with the current key"
+    if provider_id and token and subject:
+        body = {"subject_ref": subject, "provider_id": provider_id, "profile": "likeness/1",
+                "use": {"purpose": "research"}, "job_id": "pregen-check-" + secrets.token_hex(4), "job_hash": "0" * 64}
+        request = pregen.sign_envelope("pg.request.v1", body)
+        status, res = _post(api + "/v2/requests", request, {"X-Provider-ID": provider_id,
+                                                           "Authorization": "Bearer " + token})
+        answer = res.get("answer")
+        yield status == 200 and answer is not None, f"POST /v2/requests: HTTP {status}" + (
+            f", {answer['body']['status']} {answer['body'].get('reason') or ''}".rstrip() if answer else f" {res}")
+        if answer and directory:
+            try:
+                pregen.verify_answer(answer, request, directory, testing=bool(doc.get("sandbox")))
+                yield True, "the answer verifies through the directory (core rule 5)"
+            except pregen.PregenError as e:
+                yield False, f"the answer does not verify: {e}"

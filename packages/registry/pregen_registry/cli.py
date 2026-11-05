@@ -9,6 +9,8 @@
   pregen-registry info --dir DATA
   pregen-registry key next --dir DATA      (makes the next operator key: give it to the steward to announce)
   pregen-registry key rotate --dir DATA    (once the directory lists it: the next key signs, the old one is retired)
+  pregen-registry subject anchor --dir DATA --code PG-… --anchor wikidata:Q… [--proof-url https://…]
+  pregen-registry check --api https://registry.example [--directory URL --steward HEX] [--provider-id ID --token T --subject PG-…]
 """
 from __future__ import annotations
 
@@ -81,7 +83,23 @@ def main(argv=None):
             p.add_argument("--licensee", required=True)
         elif name == "key":
             p.add_argument("action", choices=["next", "rotate"])
+    p = sub.add_parser("check", help="the live self-test: document, key set, errors, listing, and one answer")
+    p.add_argument("--api", required=True, help="this registry's public https URL")
+    p.add_argument("--directory", help="the directory URL to look for this registry in")
+    p.add_argument("--steward", help="the steward public key (hex) of that directory; default: the PRE-GEN steward")
+    p.add_argument("--provider-id")
+    p.add_argument("--token")
+    p.add_argument("--subject", help="a PG code this registry holds, to ask about")
     a = ap.parse_args(argv)
+
+    if a.cmd == "check":
+        from .check import check
+        failed = 0
+        for ok, what in check(a.api, a.directory, a.steward, a.provider_id, a.token, a.subject):
+            print(("PASS " if ok else "FAIL ") + what)
+            failed += not ok
+        print("OK: all checks passed" if not failed else f"{failed} check(s) failed")
+        sys.exit(1 if failed else 0)
 
     if a.cmd == "init":
         cfg_path, key_path, db_path = _paths(a.dir)

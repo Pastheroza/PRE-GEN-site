@@ -28,7 +28,7 @@ labels: registry-application
 
 **5. Keys.** Fingerprints (`pg-ed25519:…`) of every operator key — current, retired and the next one announced. **Do not paste them only here:** send the same list to the steward by a second channel (email from the operator's domain, or a signed message), so a stolen GitHub account cannot list someone else's key.
 
-**6. Conformance.** Paste the summary line of the conformance runner against your registry (`spec/conformance/`):
+**6. Conformance.** Paste the output of `pregen-registry check --api <your api>` (it must end `OK: all checks passed`). If you wrote your own registry, also paste the summary line of conformance Level 1 against your signing library (`spec/conformance/`):
 
 ```
 ```

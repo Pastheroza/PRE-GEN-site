@@ -33,7 +33,13 @@ answers as `spec/extensions/sandbox.md` says.
    - `pregen-registry grant add --subject PG-ABCD-… --purposes commercial --days 365 --max-uses 100`
    - `pregen-registry provider add --id frame-ai` — prints the credential once
    - `pregen-registry connect --provider frame-ai --licensee user-1`
-5. **Serve it behind TLS:** `pregen-registry serve --dir ./data --host 0.0.0.0 --port 8000`
+5. **Serve it behind TLS:** `pregen-registry serve --dir ./data --host 0.0.0.0 --port 8000`, or HTTPS directly with
+   `--ssl-certfile cert.pem --ssl-keyfile key.pem`.
+6. **Anchor public people:** `pregen-registry subject anchor --code PG-ABCD-… --anchor wikidata:Q… --proof-url https://…`
+7. **Check yourself:** `pregen-registry check --api https://registry.example [--directory URL]` ends `OK: all checks
+   passed` when your document, key set and listing are right.
+
+The whole path, step by step with what each command prints: `docs/registry.md`.
 
 `PREGEN_OPERATOR_KEY_HEX` may hold the operator key instead of the file.
 
