@@ -92,7 +92,7 @@ def cases():
     yield "lives longer than 900 s", REQUEST, answer(issued_at=NOW - 10, expires_at=NOW + 900), False, False
     yield "an allow with no basis", REQUEST, answer(basis=None), False, False
     yield "an allow with a reason", REQUEST, answer(reason="PG_NO_LICENSE"), False, False
-    yield "a critical extension not understood", REQUEST, answer(critical=["commerce"]), False, False
+    yield "a critical extension not understood", REQUEST, answer(critical=["x-unknown"]), False, False
     yield "signed by another registry's key", REQUEST, answer(key="other_registry"), False, False
     yield "signed by a revoked key", REQUEST, answer(key="registry_revoked"), False, False
     yield "a small-order key and a forged signature (C1)", REQUEST, answer(key="small_order"), False, False
