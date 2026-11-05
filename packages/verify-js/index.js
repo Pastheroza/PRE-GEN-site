@@ -234,13 +234,17 @@ export class Directory {
 
   /** The public key behind `keyId`, which must belong to the owner of `code`'s namespace.
    * The key comes from the owner's key set and must hash to the listed fingerprint. */
-  async publicKey(code, keyId, { fetch: fetchFn = globalThis.fetch } = {}) {
+  /** Given `at` (the message's signed time), a key its key set retired (`deactivated_at`) before then is refused. */
+  async publicKey(code, keyId, { fetch: fetchFn = globalThis.fetch, at } = {}) {
     const verdict = this.checkSigner(code, keyId);
     if (verdict !== "valid") fail(`${keyId} may not sign ${code}: ${verdict}`);
     const res = await fetchFn(this.registryFor(code).keys, { redirect: "error" });
     if (!res.ok) fail(`key set: HTTP ${res.status}`);
     const entry = ((await res.json()).keys || []).find((k) => k && k.key_id === keyId);
     if (!entry || (await fingerprint(entry.public_key_hex)) !== keyId) fail(`no key ${keyId} in the key set`);
+    if (Number.isInteger(at) && Number.isInteger(entry.deactivated_at) && at >= entry.deactivated_at) {
+      fail(`${keyId} was retired before this was signed`);
+    }
     return entry.public_key_hex;
   }
 }
@@ -454,7 +458,7 @@ async function registrySigned(env, type, code, directory, fetchFn) {
   const body = env.body, signers = body.signers, sigs = env.signatures;
   if (!Array.isArray(signers) || signers.length !== 1 || signers[0]?.role !== "registry"
       || !Array.isArray(sigs) || sigs.length !== 1) fail(`a ${type} is signed by exactly one registry key`);
-  const key = await directory.publicKey(code, signers[0].key_id, { fetch: fetchFn });
+  const key = await directory.publicKey(code, signers[0].key_id, { fetch: fetchFn, at: body.issued_at ?? body.received_at });
   if (!(await verifyBytes(key, sigs[0], signingInput(type, body)))) fail("bad signature");
   return body;
 }

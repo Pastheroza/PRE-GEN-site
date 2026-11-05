@@ -278,8 +278,10 @@ class Directory:
             return "issuer_mismatch"
         return "valid"
 
-    def public_key(self, code: str, key_id: str, get_json=_get_json) -> str:
-        """The owner's public key for key_id, from its key set, checked against the listed fingerprint."""
+    def public_key(self, code: str, key_id: str, get_json=_get_json, at=None) -> str:
+        """The owner's public key for key_id, from its key set, checked against the listed fingerprint. Given `at`
+        (the signed time of the message), a key its key set says was retired (`deactivated_at`) before then is
+        refused: a retired key keeps verifying what it signed while current, and nothing it signs later."""
         verdict = self.check_signer(code, key_id)
         if verdict != "valid":
             raise PregenError(f"{key_id} may not sign {code}: {verdict}")
@@ -287,6 +289,9 @@ class Directory:
         entry = next((k for k in keys if isinstance(k, dict) and k.get("key_id") == key_id), None)
         if entry is None or fingerprint(entry.get("public_key_hex")) != key_id:
             raise PregenError(f"no key {key_id} in the key set")
+        retired = entry.get("deactivated_at")
+        if type(at) is int and type(retired) is int and at >= retired:
+            raise PregenError(f"{key_id} was retired before this was signed")
         return entry["public_key_hex"]
 
 
@@ -541,7 +546,8 @@ def _registry_signed(env: dict, type_: str, code: str, directory: Directory, get
     if not isinstance(signers, list) or len(signers) != 1 or not isinstance(signers[0], dict) \
             or signers[0].get("role") != "registry" or not isinstance(sigs, list) or len(sigs) != 1:
         raise PregenError(f"a {type_} is signed by exactly one registry key")
-    key = directory.public_key(code, signers[0].get("key_id"), get_json=get_json)
+    key = directory.public_key(code, signers[0].get("key_id"), get_json=get_json,
+                               at=body.get("issued_at", body.get("received_at")))
     if not verify_bytes(key, sigs[0], signing_input(type_, body)):
         raise PregenError("bad signature")
     return body

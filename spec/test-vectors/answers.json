@@ -15,7 +15,8 @@
     "key_fingerprints": [
      "pg-ed25519:a5599d87d32efebb2571d65a6848da03",
      "pg-ed25519:61bbe5802b57426ce673cbd94bf45473",
-     "pg-ed25519:01d0fabd251fcbbe2b93b4b927b26ad2"
+     "pg-ed25519:01d0fabd251fcbbe2b93b4b927b26ad2",
+     "pg-ed25519:7e9086c9eceed9cb8a58825a68d7982e"
     ]
    },
    {
@@ -34,7 +35,7 @@
     "at": "2026-10-01T00:00:00Z"
    }
   ],
-  "signature": "249f6dd71a8fb3d3642a2550be59aa2c1ee32c62a00f10cdf1505e96b840a67b4e546117ae72e9727e6765ab56b787c1a5c806c09c40df88ed0a2eb64fe0a709"
+  "signature": "c178fdced891529298ecf7cdbe276fdc881d873292fdb4620638bc187a0a42c7e41d5a7ca1e19e272d5572fd8335e74a26d9232af9c5fa1b32378174e410c90d"
  },
  "key_sets": {
   "https://registry.test.example/keys": {
@@ -50,6 +51,13 @@
     {
      "key_id": "pg-ed25519:01d0fabd251fcbbe2b93b4b927b26ad2",
      "public_key_hex": "0100000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+     "key_id": "pg-ed25519:7e9086c9eceed9cb8a58825a68d7982e",
+     "public_key_hex": "1b881b7c69a9f1b14794be49e18981aa883121f669ebde36033423cbeed2665e",
+     "activated_at": 1787408000,
+     "deactivated_at": 1789913600,
+     "status": "retired"
     }
    ]
   },
@@ -688,6 +696,48 @@
     },
     "signatures": [
      "8b6e7875ba2ce6fd4586a814def8407c6e492482adb7a7c933e2a44e34142a7058b246985f83c96bea9253319416c23ba57b85f30019a984be5cca8e29a11700"
+    ]
+   },
+   "testing": false,
+   "ok": false
+  },
+  {
+   "name": "signed by a key retired before it was issued",
+   "request": {
+    "type": "pg.request.v1",
+    "signatures": [],
+    "body": {
+     "subject_ref": "PG-TEST-000001N",
+     "provider_id": "frame-ai",
+     "profile": "likeness/1",
+     "use": {
+      "purpose": "commercial"
+     },
+     "job_id": "job-8841",
+     "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "answer": {
+    "type": "pg.answer.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:7e9086c9eceed9cb8a58825a68d7982e"
+      }
+     ],
+     "request_id": "9e09f6feb458074af0b91391097be4e60ad3957acc4a14ad3a2312f31cc164ee",
+     "profile": "likeness/1",
+     "status": "allow",
+     "basis": {
+      "kind": "policy",
+      "rule": "test"
+     },
+     "issued_at": 1789999990,
+     "expires_at": 1790000290
+    },
+    "signatures": [
+     "bce710a4191734eecd4fdae7d6d291d462c031979ae1939f3fc35e4b0c1b13005cf4b975fd7a915639f6e4219f292ac739d65cc68cc794916a86b4a54a172c08"
     ]
    },
    "testing": false,

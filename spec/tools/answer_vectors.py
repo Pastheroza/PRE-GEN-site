@@ -27,7 +27,7 @@ def seed(name):
     return hashlib.sha256(f"pregen-answer-vector-{name}".encode()).hexdigest()
 
 
-KEYS = {n: seed(n) for n in ("steward", "registry", "registry_revoked", "other_registry")}
+KEYS = {n: seed(n) for n in ("steward", "registry", "registry_revoked", "registry_retired", "other_registry")}
 PUB = {n: pregen.public_key_hex(k) for n, k in KEYS.items()}
 KID = {n: pregen.fingerprint(p) for n, p in PUB.items()}
 KID["small_order"] = pregen.fingerprint(SMALL_ORDER)
@@ -38,7 +38,8 @@ def directory():
     body = {"schema": pregen.SCHEMA, "sequence": 1, "steward_key_id": KID["steward"],
             "registries": [
                 {"name": "Test registry", "prefix": "TEST", "api": API, "keys": API + "/keys",
-                 "key_fingerprints": [KID["registry"], KID["registry_revoked"], KID["small_order"]]},
+                 "key_fingerprints": [KID["registry"], KID["registry_revoked"], KID["small_order"],
+                                      KID["registry_retired"]]},
                 {"name": "Other registry", "prefix": "NWRD", "api": OTHER, "keys": OTHER + "/keys",
                  "key_fingerprints": [KID["other_registry"]]}],
             "revoked_keys": [{"key_id": KID["registry_revoked"], "at": "2026-10-01T00:00:00Z"}]}
@@ -50,7 +51,9 @@ def directory():
 KEY_SETS = {
     API + "/keys": {"keys": [{"key_id": KID[n], "public_key_hex": p} for n, p in
                              (("registry", PUB["registry"]), ("registry_revoked", PUB["registry_revoked"]),
-                              ("small_order", SMALL_ORDER))]},
+                              ("small_order", SMALL_ORDER))]
+                    + [{"key_id": KID["registry_retired"], "public_key_hex": PUB["registry_retired"],
+                        "activated_at": NOW - 86_400 * 30, "deactivated_at": NOW - 86_400, "status": "retired"}]},
     OTHER + "/keys": {"keys": [{"key_id": KID["other_registry"], "public_key_hex": PUB["other_registry"]}]},
 }
 REQUEST = {"type": "pg.request.v1", "signatures": [], "body": {
@@ -95,6 +98,7 @@ def cases():
     yield "a critical extension not understood", REQUEST, answer(critical=["x-unknown"]), False, False
     yield "signed by another registry's key", REQUEST, answer(key="other_registry"), False, False
     yield "signed by a revoked key", REQUEST, answer(key="registry_revoked"), False, False
+    yield "signed by a key retired before it was issued", REQUEST, answer(key="registry_retired"), False, False
     yield "a small-order key and a forged signature (C1)", REQUEST, answer(key="small_order"), False, False
     yield "no signature", REQUEST, answer(sign=False), False, False
     bad = answer()

@@ -49,8 +49,8 @@ it, with no trailing slash: for example `https://registry.example`.
 **Your policy** is a public page that says how you verify that a rights holder is who they
 claim and may license the person, which anchor you record for public people (step 6), your
 own refusals, how long your answers live, and how long an opt-out waits. The reference
-registry serves it for you: write it to `./data/policy.md` after step 3 and it answers at
-`{api}/policy`. Or publish it on your website. It must answer before you apply.
+registry serves it for you: step 3 writes a template to `./data/policy.md`; fill it in, and it
+answers at `{api}/policy`. Or publish it on your website. It must answer before you apply.
 
 ## 3. Create the registry
 
@@ -69,6 +69,7 @@ Registry created in ./data.
   public key: <64 hex>
 Give the key id and public key to the steward for the directory.
 The private key is in ./data/operator.key (mode 600): back it up offline.
+A policy to edit is in ./data/policy.md; `serve` publishes it at https://registry.example/policy.
 ```
 
 The **key id** (`pg-ed25519:` and 32 hex) is the key's **fingerprint**: it is what the
@@ -77,7 +78,9 @@ itself from your `/keys`.
 
 **Back up the whole `./data` folder offline** (an encrypted drive kept apart): `operator.key`
 is your signing key, and `registry.db` holds your people, grants and provider credentials.
-Back it up again after you add people or grants. Do the same for your sandbox's folder.
+While the server runs, copy the database safely with
+`sqlite3 ./data/registry.db ".backup ./backup/registry.db"` (or stop the server first). Back
+it up again after you add people or grants. Do the same for your sandbox's folder.
 
 ## 4. Keys: one current key, with its whole history
 
@@ -105,8 +108,16 @@ pregen-registry key rotate --dir ./data
 operator key is now pg-ed25519:<new>; pg-ed25519:<old> is retired and stays in /keys, so everything it signed still verifies. Move the retired private key file offline.
 ```
 
-Then restart the server (step 5). If you rotate before the directory lists the new key,
-providers refuse every answer you sign until it does.
+Then restart the server (step 5) and run `pregen-registry check --api … --directory …`: it
+must show `PASS listed with the current key`. If you rotate before the directory lists the new
+key, providers refuse every answer you sign until it does. A retired key cannot sign anything
+new (clients refuse what it signs after it was retired), but keep its file as secret as the
+current one.
+
+**If a key is stolen,** tell the steward at once by both channels (step 9). The steward
+revokes it in the directory: from then on everything it ever signed fails, old proofs
+included. Make a new key with `key next`, have it listed, `key rotate`, and tell your
+providers.
 
 ## 5. Serve it over HTTPS
 
@@ -146,8 +157,9 @@ Add a person you have verified:
 pregen-registry subject add --dir ./data --name "Maya Cole" --level verified
 ```
 
-It prints the person's code, for example `PG-ABCD-000001G`. `pregen-registry subject list
---dir ./data` prints every code you hold, with its level and name.
+It prints the person's code, for example `PG-ABCD-000001G`. `--level` is how far you checked
+them: `self`, `asserted`, `consented` or `verified`. `pregen-registry subject list --dir ./data`
+prints every code you hold, with its level and name.
 
 **Anchor a public person** (extension `identity`): record their public identifier (a
 Wikidata item, an ISNI, or a domain) and the page on their official channel where they
@@ -199,9 +211,10 @@ provider ask on behalf of a named end customer.
 
 ## 7. A sandbox, for providers to test against
 
-A sandbox is a **separate** registry, with its own data folder, key, address and prefix,
-that holds the eight standard test subjects and gives credentials without an account. Use
-the same flags as in step 3, plus `--sandbox`:
+A sandbox is a **separate** registry, with its own data folder, key, address, prefix and
+policy, that holds the standard test subjects and gives credentials without an account. Use
+the same flags as in step 3, plus `--sandbox` (it writes its own `./sandbox/policy.md`; say
+there that it holds no real people):
 
 ```bash
 pregen-registry init --dir ./sandbox --prefix ABCE --name "Example Registry sandbox" \
@@ -209,16 +222,16 @@ pregen-registry init --dir ./sandbox --prefix ABCE --name "Example Registry sand
   --complaints mailto:complaints@registry.example --sandbox
 ```
 
-It prints, after the key lines, the eight test codes:
+After the key and policy lines it prints the eight test codes:
 
 ```
 Sandbox test subjects (copy them; the last character is a check character):
   PG-ABCE-000001…  Test subject 1 (allow)
   …
   PG-ABCE-000007…  Test subject 7 (not blocked)
+  PG-ABCE-000008…  Test subject 8 (not registered: PG_UNKNOWN_SUBJECT)
 ```
 
-Code 8 (`PG-ABCE-000008…`) is deliberately not registered: it answers `PG_UNKNOWN_SUBJECT`.
 Serve it (step 5) and get test credentials:
 
 ```bash
@@ -248,17 +261,19 @@ PASS the policy page answers: https://registry.example/policy
 PASS key set: current key pg-ed25519:<32 hex>, 1 key(s) in its history
 PASS every key id is its key's fingerprint, and no key is small-order
 PASS key set signed by its current key
-PASS an unauthenticated request is refused with an error code: HTTP 422 PG_MALFORMED
+PASS a request with an unknown credential is refused: HTTP 401 PG_NOT_AUTHENTICATED
 OK: all checks passed
 ```
 
 Any `FAIL` line names what to fix; the command exits 1 until everything passes. To see one
 person's answer as a provider would, add a credential, a code and the purpose to ask for
-(default `commercial`):
+(default `commercial`). This asks for real: an `allow` uses one use of that grant. So use a
+credential of your own (`provider add --id self-check`) and a test person with a test
+grant, never a provider's token or a real person's grant:
 
 ```bash
 pregen-registry check --api https://registry.example \
-  --provider-id frame-ai --token '<secret>' --subject 'PG-ABCD-000001G' --purpose commercial
+  --provider-id self-check --token '<secret>' --subject 'PG-ABCD-000002…' --purpose commercial
 ```
 
 The extra line reads `PASS POST /v2/requests for PG-ABCD-000001G, purpose commercial: HTTP
@@ -285,12 +300,15 @@ It asks for:
 3. **Acceptance of the core**, its fixed protections, and the revocation grounds;
 4. **Endpoints:** `api`, `keys` (`{api}/keys`), and that `/.well-known/pregen-registry.json`
    answers;
-5. **Keys:** the key id (fingerprint) of every operator key: current, retired, and the next
+5. **Keys** (the application's `keys` field is the key set URL; this item is the list of
+   key ids): the key id (fingerprint) of every operator key: current, retired, and the next
    one if you made one. **Send the same list to the steward by a second channel** (an email
    from your domain), so a stolen account cannot list someone else's key;
 6. **Your `pregen-registry check --api …` output** (the plain run of step 8, without any
    token), ending `OK: all checks passed`;
-7. **Status:** `production`, or `sandbox` for a sandbox (one application per prefix).
+7. **Status:** `production`, or `sandbox` for a sandbox (one application per prefix). The
+   steward lists a sandbox in its **test directory**, not the real one, and gives you that
+   directory's URL and test steward key.
 
 ## 10. Listed: the steward signs
 
@@ -311,7 +329,9 @@ PASS listed with the current key
 ```
 
 For a test directory, add `--steward <its steward public key hex>`. Then send each provider,
-privately: your `api`, its credential, the codes it may ask about, and your sandbox `api`.
+privately: your `api`, its credential, the codes it may ask about (and any licensee you
+connected for it), your sandbox `api`, the sandbox's eight test codes, and the test
+directory's URL and steward key.
 A listing can be revoked, with notice and reasons; a prefix is never given to anyone else.
 
 ## You are done when
@@ -333,11 +353,12 @@ A listing can be revoked, with notice and reasons; a prefix is never given to an
 | `POST /v2/requests` | ask → `{"answer": <signed pg.answer.v1>}` |
 | `POST /v2/reports` | report → `{"ack": <signed pg.report_ack.v1>}` |
 | `POST /v2/keys`, `GET /v2/keys/{provider_id}` | provider key sets |
-| `GET /v2/grants/{id}` | a signed grant |
+| `GET /v2/grants/{id}` | a signed grant (provider credential required) |
 | `GET /v2/codes/{code}` | public lookup |
 | `GET /v2/anchors` | anchored subjects, signed (extension `identity`) |
 | `GET /v2/proofs/{16 hex}` | this registry's part of a proof |
 | `POST /v2/sandbox/access` | sandbox credentials (sandbox mode only) |
 
-Providers authenticate with `X-Provider-ID: <id>` and `Authorization: Bearer <token>`.
+Providers authenticate with `X-Provider-ID: <id>` and `Authorization: Bearer <token>` on
+`POST /v2/requests`, `/v2/reports`, `/v2/keys` and `GET /v2/grants/…`; the rest is public.
 Errors are `{"error": "PG_…", "error_description": "…"}` with HTTP 401 or 422.

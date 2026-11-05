@@ -25,6 +25,24 @@ from .protocol import Key
 from .registry import Config, Registry
 
 
+POLICY_TEMPLATE = """# {name}: registry policy
+
+Registry prefix: {prefix}. Complaints and disputes: {complaints}, answered within 7 days.
+
+## How we verify a rights holder
+<who may register a person, and how we check they are that person or may act for them>
+
+## Anchors for public people
+<the anchor we record: a Wikidata item, an ISNI or a domain; and how the person confirms on their own channel>
+
+## Our refusals
+We keep the PRE-GEN core's fixed protections. <any refusals of our own, with their reason codes>
+
+## Answers and opt-outs
+An answer lives <300> seconds. An opt-out takes effect <at once / after N days>.
+"""
+
+
 def _paths(d: str):
     p = Path(d)
     return p / "registry.json", p / "operator.key", p / "registry.db"
@@ -118,14 +136,20 @@ def main(argv=None):
         key = Key()
         _write_key(key_path, key)
         reg = Registry(Config(**cfg), key, str(db_path))
+        policy = Path(a.dir) / "policy.md"
+        if not policy.exists():
+            policy.write_text(POLICY_TEMPLATE.format(name=a.name, prefix=a.prefix, complaints=a.complaints or "…"))
+        print(f"Registry created in {a.dir}.\n  prefix: {a.prefix}\n  operator key id: {key.id}\n"
+              f"  public key: {key.public_hex}\nGive the key id and public key to the steward for the directory.\n"
+              f"The private key is in {key_path} (mode 600): back it up offline.\n"
+              f"A policy to edit is in {policy}; `serve` publishes it at {a.api.rstrip('/')}/policy.")
         if a.sandbox:
             reg.seed_sandbox()
             print("Sandbox test subjects (copy them; the last character is a check character):")
             for s in reg._q("SELECT code, name FROM subjects ORDER BY serial"):
                 print(f"  {s['code']}  {s['name']}")
-        print(f"Registry created in {a.dir}.\n  prefix: {a.prefix}\n  operator key id: {key.id}\n"
-              f"  public key: {key.public_hex}\nGive the key id and public key to the steward for the directory.\n"
-              f"The private key is in {key_path} (mode 600): back it up offline.")
+            from .registry import mint_code
+            print(f"  {mint_code(a.prefix, 8)}  Test subject 8 (not registered: PG_UNKNOWN_SUBJECT)")
     elif a.cmd == "serve":
         import uvicorn
         from .app import create_app
