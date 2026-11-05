@@ -18,7 +18,8 @@ step returns. Where it and the specification differ, the specification wins:
    may send the **identical** request again (same `job_id`, same bytes): a registry answers
    it with the answer it already gave. The same goes for a connection error with no HTTP
    response, and for `/v2/keys` and `/v2/reports`. Wait 10 s for an answer; on none, wait
-   3 s and send the same bytes again, at most 3 times; after that, you have no allow for
+   3 s and send the same bytes again, up to 3 more times (4 sends in all). Any 4xx is final:
+   no answer, do not resend. After that, you have no allow for
    that person. Skipping the resend can leave an allow you never saw
    counted against the grant.
 3. **Never send the prompt or the output.** You send `job_hash`: a SHA-256 of what you
@@ -27,7 +28,8 @@ step returns. Where it and the specification differ, the specification wins:
    `canonicalJson` returns a string to hash). Keep that input with the job, so you can show
    later, to whoever you choose (never a registry), what the hash stands for.
 4. **Keep your clock synced** with your system's time service (NTP: `timedatectl`, `chronyc
-   tracking`, `sntp time.apple.com` on macOS, or Windows Time): answers live minutes, and one issued more than 60 s in your
+   tracking`, `sntp time.apple.com` on macOS, or Windows Time; without a time server, compare
+   with a registry's HTTP `Date` header, `curl -sI {api}/keys`): answers live minutes, and one issued more than 60 s in your
    future is refused.
 5. **Secrets stay server-side:** registry tokens and your private key never go to a browser,
    a URL, a log or client code. Your secret store is wherever only your servers can read
@@ -132,7 +134,8 @@ const keyId = await fingerprint(pub);
 
 Register it **once at each registry**, with that registry's credential, before your first
 request there (a report without a registered key is refused with 401, and the allow would
-stay counted), and remember which registries are done. `PROVIDER_ID` is the provider id
+stay counted), and remember which registries are done (persist that list with your secrets,
+and each job's `job_input` with the job record). `PROVIDER_ID` is the provider id
 that registry gave you; for JavaScript, see the complete example:
 
 ```python
@@ -201,6 +204,10 @@ The registry answers HTTP 200 `{"answer": {"type": "pg.answer.v1", "body": {…}
 
 ## 6. Check the answer
 
+If you learn that another listed registry holds the same person and refuses them, keep both
+answers and never present the output as permitted while that refusal stands: a refusal of the
+person in any registry holds everywhere (`spec/extensions/identity.md`, `decide_identity`).
+
 ```python
 pregen.check_answer(answer, request, directory)     # raises PregenError; str(e) is the reason
 ```
@@ -264,7 +271,8 @@ report = pregen.sign_envelope("pg.report.v1", {
   you received, even when that answer was for another request.
 - **Keep the signed report** you sent. If a report gets no answer, send the **same bytes**
   again: you get the same acknowledgement. A different report for the same answer is
-  refused (409 `PG_REPORT_CONFLICT`).
+  refused (409 `PG_REPORT_CONFLICT`). If the `generated` report is refused or never
+  acknowledged, the output has no proof: keep it unlabelled, and never send a different report.
 - **Send reports soon:** a proof needs the registry to have received the report within 24
   hours of the answer's expiry; a later one is recorded but proves nothing.
 
@@ -309,12 +317,12 @@ Show it with your label, and decide which levels your label requires; below `con
 one but the registrant vouched, and a strict default is `verified`. `check_proof` does not
 look at `obligations`: they are in each `answer.body`, and were the provider's to apply;
 show them if your label cares. The result does not name a licensee; a licensee-only grant shows as `licensee_id`
-in that person's `request.body`. With no file to hash, record it as not accepted, reason
-"no file: not checked"; it is never a label. A proof made in a sandbox passes only with `testing` and is never a label.
+in that person's `request.body`. With no file to hash, do not run the check: record it as not
+accepted, reason "no file: not checked"; it is never a label. A proof made in a sandbox passes only with `testing` and is never a label.
 
 **Offline:** while online, save the directory (`directory.to_json()` / `toJSON()`) and the key
 set of every registry it lists: `GET` each entry's `keys` URL and keep the JSON, keyed by that
-exact URL. They are required: `check_proof` reads each registry's key set on every check,
+exact URL. They are required for offline checks: `check_proof` reads each registry's key set on every check,
 so offline it fails without them. Save both every time you load the directory, at least
 every 24 hours while you label, replacing the old copies (a key set keeps its retired keys,
 so the newest copy verifies old proofs too):
@@ -344,8 +352,9 @@ one JSON file, and all key sets in another, as one object keyed by URL; a test d
 steward key is a constant you keep with them. Save key sets as they come: at check time the
 library uses only keys whose ids the directory lists, and refuses small-order keys. It does
 not check the provider's signature on a report: it relies on the registry's signed
-acknowledgement, which names that report. Write the time you saved them (`saved_at`) beside
-the two files: the library cannot tell. If `saved_at` is more than 24 hours ago, do not
+acknowledgement, which names that report. Write the time you saved them beside
+the two files as `saved_at.json` = `{"saved_at": <unix seconds>}`: the library cannot tell. If
+`saved_at` is more than 24 hours ago, do not
 label: go online, load and save again.
 
 Later, check with no network:
@@ -634,7 +643,8 @@ A refusal about a person is a signed answer (step 6). HTTP errors carry
 | any other code | any | no answer: do not generate; if it refused a give-back, log it and go on |
 
 Answer reasons you will meet: `PG_UNKNOWN_SUBJECT` (this registry holds no such person:
-not a prohibition, and not a permission), `PG_OTHER_REGISTRY`, `PG_NO_LICENSE`,
+not a prohibition, and not a permission), `PG_OTHER_REGISTRY`, `PG_NO_LICENSE`, `PG_NOT_CONNECTED`
+(this use needs a connected end user),
 `PG_USAGE_LIMIT`, `PG_SCOPE_VIOLATION` (the grant does not cover this purpose or use),
 `PG_REVIEW_REQUIRED` (held for a person), and
 the fixed protections no grant overrides: `PG_SUBJECT_OPTED_OUT`, `PG_SUBJECT_UNAVAILABLE`,
@@ -645,6 +655,7 @@ reason you do not know as a refusal.
 
 - [ ] The directory is saved after every load, and loaded again (with `previous`) at least every 24 hours
 - [ ] Your provider key is in your secret store and registered at every registry you ask
+- [ ] If you check proofs offline, the directory and every key set are saved with `saved_at`, at least every 24 hours
 - [ ] Every generation of a listed person is preceded by a request for each of their codes, to the registry each code names
 - [ ] `check_answer` / `checkAnswer` passes for every person in the job before generating
 - [ ] Every allow is reported: `generated` with `occurred_at` = when generation began, or `not_generated`

@@ -45,7 +45,9 @@ signature:
 python3 -c "import pregen; print(sorted(r['prefix'] for r in pregen.load_directory().registries))"
 ```
 
-On a test network, pass the test directory: `pregen.load_directory('<test directory url>',
+**The public test directory is not online yet** (it will be `https://test.pregen.org/registries.json`,
+with its own test steward key): until it is, a sandbox cannot be listed and providers cannot
+check its answers outside a test network you are given. On such a network, pass its directory: `pregen.load_directory('<test directory url>',
 steward_public_key_hex='<test steward key hex>')`. Pick a prefix that is not listed, and a
 second choice in case someone asks for yours first. For your sandbox's prefix, also check
 the test directory's list: sandboxes are listed only there, and no prefix is ever reused.
@@ -124,11 +126,12 @@ pregen-registry key next --dir ./data
 ```
 next operator key id: pg-ed25519:<32 hex>
   public key: <64 hex>
-{api}/keys now lists it as `next`. Apply again with this key id added; 24 hours after the directory lists it, stop the server, run `pregen-registry key rotate`, and start it again.
+https://registry.example/keys now lists it as `next`. Apply again with this key id added; 24 hours after the directory lists it, stop the server, run `pregen-registry key rotate`, and start it again.
 ```
 
-`{api}/keys` lists it at once, with `"status": "next"` (no restart needed). Send the steward
-the same application as in step 9 with the new key id added to your key ids, and a fresh
+`{api}/keys` lists it at once, with `"status": "next"` (no restart needed). Send the steward,
+as a new Registry application issue titled `Registry application: ABCD — key update`, the
+same application as in step 9 with the new key id added to your key ids, and a fresh
 plain `check` output; the steward finds the new key id in your live `/keys`. Back up
 `./data/operator.next.key` (step 3). Then confirm the
 steward listed it: `pregen-registry check --api … --directory …` (on a test directory, add
@@ -165,7 +168,8 @@ what it signs after it was retired), but keep its file as secret as the current 
 form: `https://github.com/Pastheroza/PRE-GEN-site/security/advisories/new` (never a public
 issue). A thief may control your domain; that channel stays yours. The steward revokes the
 key in the directory: from then on everything it ever signed fails, old proofs included.
-Make a new key with `key next`, have it listed, `key rotate`, and tell your providers.
+Make a new key with `key next`, have it listed, and run `key rotate` as soon as `check` shows
+it listed (do not wait 24 hours after a theft); then tell your providers.
 
 ## 5. Serve it over HTTPS
 
@@ -183,7 +187,7 @@ pregen-registry serve --dir ./data --host 127.0.0.1 --port 8443 \
   --ssl-certfile cert.pem --ssl-keyfile key.pem
 ```
 
-Keep it running (a service manager, or `nohup … > registry.log 2>&1 & echo $! > registry.pid`,
+Keep it running (a service manager, or `nohup … >> registry.log 2>&1 & echo $! > registry.pid`,
 so you can stop it later with `kill "$(cat registry.pid)"`). A registry and its sandbox are
 two servers on two ports, each with its own pid file and log (`sandbox.pid`,
 `sandbox.log`); each is stopped and started on its own. Only a key rotation needs a restart:
@@ -246,7 +250,15 @@ pregen-registry grant add --dir ./data --subject 'PG-ABCD-000001G' \
 - Without `--licensee`, the grant covers any provider that asks for this person. With
   `--licensee frame-ai:user-1` (exactly the string you pass to `connect` below), it covers
   only requests that name that licensee (extension `licensee`).
-- `--max-uses` counts allows; `--days` is how long the grant lasts.
+- `--max-uses` counts allows (without it, no limit); `--days` is how long the grant lasts
+  (default 365). Without `--purposes`, only `research` is covered.
+- **Without `--licensee` the grant is open:** any provider may use it for these purposes. If
+  the person agreed to one client, pass `--licensee`.
+
+To see what you hold: `subject list` prints your codes; grants and connections are in the
+database (`python3 -c "import sqlite3; [print(r) for r in sqlite3.connect('./data/registry.db')
+.execute('SELECT id, subject_code, licensee_id, purposes FROM grants')]"`, and the same with
+`SELECT provider_id, licensee_id FROM connections`).
 
 **Give a provider its credential.** It is printed once:
 
@@ -315,8 +327,10 @@ curl -s -X POST https://sandbox.registry.example/v2/sandbox/access
 
 It returns `{"provider_id": "sbx-…", "token": "…", "registry": "…", "note": "…"}`. Every
 sandbox answer carries `ext: {"sandbox": true}`, and clients refuse it unless they are
-testing. Apply for the sandbox's prefix too (step 9, status `sandbox`): a sandbox is listed
-only in a **test directory**, never in the real one. The directory entry looks like any
+testing. Replace each `<…>` in `./sandbox/policy.md`, as in step 3. The sandbox accepts any
+licensee without `connect`; in production, run `connect` first or the provider gets 401.
+Apply for the sandbox's prefix too (step 9, status `sandbox`): a sandbox is listed only in a
+**test directory**, never in the real one (step 2: not online yet). The directory entry looks like any
 other; the document's `sandbox` member is only `true` or `false`, and nothing links your
 registry to your sandbox: give providers the sandbox `api` yourself (step 10).
 
@@ -358,7 +372,7 @@ it `--licensee test:t1` and add `--licensee test:t1` to `check`. Then change the
 `./sandbox/policy.md` that says it holds only the eight test subjects.
 
 **If you wrote your own registry,** also run conformance Level 1 against your signing
-library (`spec/conformance/README.md`). It requires the v5 operations by default:
+library (`spec/conformance/README.md`; `spec/` is in `git clone https://github.com/Pastheroza/PRE-GEN-site`). It requires the v5 operations by default:
 
 ```bash
 python3 spec/conformance/level1/run_conformance.py --adapter "<command that runs your adapter>"
@@ -376,7 +390,9 @@ It asks for:
    and the operator's website (any public `https://` page about you or your registry; your
    policy URL will do);
 2. **Policy:** its URL (step 2). The details live on that page;
-3. **Acceptance of the core**, its fixed protections, and the revocation grounds;
+3. **Acceptance of the core**, its fixed protections, the rule for a person held by several
+   registries (a refusal of the person in any of them holds everywhere), and the revocation
+   grounds;
 4. **Endpoints:** `api`, `keys` (`{api}/keys`), that `/.well-known/pregen-registry.json`
    answers, and the profiles you answer under (`likeness/1`);
 5. **Keys** (the application's `keys` field is the key set URL; this item is the list of
@@ -410,7 +426,8 @@ PASS listed with the current key
 ```
 
 For a test directory, add `--steward <its steward public key hex>`. Then send each provider,
-privately: your `api`; its credential in the shape it stores, one entry per prefix,
+privately: your `api`; its credential in the shape it stores, for your production prefix
+(sandbox credentials are self-service),
 `{"ABCD": {"provider_id": "frame-ai", "token": "<secret>"}}`; the codes it may ask about,
 and the exact licensee id of each customer you connected for it; your sandbox `api`, the
 sandbox's eight test codes, and the test directory's URL and steward key. Providers take

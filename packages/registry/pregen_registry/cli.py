@@ -225,8 +225,9 @@ def main(argv=None):
             if not next_path.exists():
                 _write_key(next_path, Key())
             nxt = Key(next_path.read_text().strip())
-            load(a.dir).announce_next_key(nxt.public_hex)                  # /keys lists it as `next` from now on
-            print(f"next operator key id: {nxt.id}\n  public key: {nxt.public_hex}\n{{api}}/keys now lists it as "
+            reg = load(a.dir)
+            reg.announce_next_key(nxt.public_hex)                         # /keys lists it as `next` from now on
+            print(f"next operator key id: {nxt.id}\n  public key: {nxt.public_hex}\n{reg.config.api.rstrip('/')}/keys now lists it as "
                   f"`next`. Apply again with this key id added; 24 hours after the directory lists it, stop the "
                   f"server, run `pregen-registry key rotate`, and start it again.")
         else:
