@@ -27,8 +27,9 @@ from .registry import Config, Registry
 
 POLICY_TEMPLATE = """# {name}: registry policy
 
-Registry prefix: {prefix}. Complaints and disputes: {complaints}, answered within 7 days.
-
+Registry prefix: {prefix}. Operator: <legal name, public address>. Complaints and disputes: {complaints}, answered
+within 7 days.
+{sandbox}
 ## How we verify a rights holder
 <who may register a person, and how we check they are that person or may act for them>
 
@@ -39,7 +40,7 @@ Registry prefix: {prefix}. Complaints and disputes: {complaints}, answered withi
 We keep the PRE-GEN core's fixed protections. <any refusals of our own, with their reason codes>
 
 ## Answers and opt-outs
-An answer lives <300> seconds. An opt-out takes effect <at once / after N days>.
+An answer lives 300 seconds. An opt-out takes effect at once: from the next answer.
 """
 
 
@@ -110,12 +111,13 @@ def main(argv=None):
     p.add_argument("--token")
     p.add_argument("--subject", help="a PG code this registry holds, to ask about")
     p.add_argument("--purpose", default="commercial", help="the use.purpose of that request (default commercial)")
+    p.add_argument("--licensee", default="", help="the licensee_id to ask for (connected to --provider-id)")
     a = ap.parse_args(argv)
 
     if a.cmd == "check":
         from .check import check
         failed = 0
-        for ok, what in check(a.api, a.directory, a.steward, a.provider_id, a.token, a.subject, a.purpose):
+        for ok, what in check(a.api, a.directory, a.steward, a.provider_id, a.token, a.subject, a.purpose, a.licensee):
             print(("PASS " if ok else "FAIL ") + what)
             failed += not ok
         print("OK: all checks passed" if not failed else f"{failed} check(s) failed")
@@ -138,7 +140,9 @@ def main(argv=None):
         reg = Registry(Config(**cfg), key, str(db_path))
         policy = Path(a.dir) / "policy.md"
         if not policy.exists():
-            policy.write_text(POLICY_TEMPLATE.format(name=a.name, prefix=a.prefix, complaints=a.complaints or "…"))
+            policy.write_text(POLICY_TEMPLATE.format(name=a.name, prefix=a.prefix, complaints=a.complaints or "…", sandbox=(
+                "\nThis is a sandbox: it holds no real people, only the eight standard test subjects, and its "
+                "answers are marked as sandbox answers.\n" if a.sandbox else "")))
         print(f"Registry created in {a.dir}.\n  prefix: {a.prefix}\n  operator key id: {key.id}\n"
               f"  public key: {key.public_hex}\nGive the key id and public key to the steward for the directory.\n"
               f"The private key is in {key_path} (mode 600): back it up offline.\n"
@@ -187,7 +191,7 @@ def main(argv=None):
                 _write_key(next_path, Key())
             nxt = Key(next_path.read_text().strip())
             print(f"next operator key id: {nxt.id}\n  public key: {nxt.public_hex}\nGive the key id to the steward to "
-                  f"announce in the directory. When the directory lists it, stop the server, run "
+                  f"announce in the directory. 24 hours after the directory lists it, stop the server, run "
                   f"`pregen-registry key rotate`, and start it again.")
         else:
             if not next_path.exists():

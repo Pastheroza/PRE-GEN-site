@@ -16,11 +16,13 @@ step returns. Where it and the specification differ, the specification wins:
    refusal.
 2. **No answer is not a refusal and not a permission.** After a timeout or an HTTP 5xx you
    may send the **identical** request again (same `job_id`, same bytes): a registry answers
-   it with the answer it already gave.
+   it with the answer it already gave. Resend a few times at most, within a minute; after
+   that, you have no allow for that person.
 3. **Never send the prompt or the output.** You send `job_hash`: a SHA-256 of what you
-   fixed about the job, for example `sha256(pregen.canonical_json(job_input)).hexdigest()`
-   (JS: `canonicalJson`) of the prompt and settings. Keep that input with the job, so you
-   can show later what the hash stands for.
+   fixed about the job: `hashlib.sha256(pregen.canonical_json(job_input)).hexdigest()`, where
+   `job_input` is a dict of the prompt and settings (`canonical_json` returns bytes; in JS,
+   `canonicalJson` returns a string to hash). Keep that input with the job, so you can show
+   later what the hash stands for.
 4. **Keep your clock synced** (NTP): answers live minutes, and one issued more than 60 s in
    your future is refused.
 5. **Secrets stay server-side:** registry tokens and your private key never go to a browser,
@@ -37,8 +39,9 @@ step returns. Where it and the specification differ, the specification wins:
 
 The directory (`https://www.pregen.org/registries.json`, human view
 `https://www.pregen.org/registries`) lists every registry with its prefix and `api`. Each
-registry gives you, privately, a **provider id** and a **token**. Keep one pair per
-registry, keyed by its prefix, for example:
+registry gives you, privately, a **provider id** and a **token**. If a registry sends a token
+without its provider id, ask for the id: do not guess (a wrong one is 401
+`PG_NOT_AUTHENTICATED`). Keep one pair per registry, keyed by its prefix, for example:
 
 ```json
 {"ABCD": {"provider_id": "frame-ai", "token": "<secret>"},
@@ -47,7 +50,9 @@ registry, keyed by its prefix, for example:
 
 A registry's sandbox gives test credentials without an account:
 `curl -s -X POST {sandbox api}/v2/sandbox/access` → `{"provider_id": "sbx-…", "token": "…",
-"registry": "<the sandbox api>", "note": "…"}`. Use `provider_id` and `token` like any other
+"registry": "<the sandbox api>", "note": "…"}`. The token is shown once: store the pair at
+once, under the sandbox's prefix (the four letters of its test codes), and check that
+`registry` equals the `api` of that prefix's directory entry. Use it like any other
 credential.
 
 ## 2. Install the library
@@ -117,15 +122,20 @@ hours: answers checked against a directory object older than that are refused.
 
 **Testing:** a test directory is signed by a test steward key. Load it with
 `pregen.load_directory(url, previous=saved, steward_public_key_hex=TEST_STEWARD)` or
-`loadDirectory({ url, previous: saved, stewardPublicKeyHex: TEST_STEWARD })`. Never in
-production.
+`loadDirectory({ url, previous: saved, stewardPublicKeyHex: TEST_STEWARD })`, where `url` is
+the test directory's URL (without it, the public directory is loaded). Never in production.
+
+**A registry's new key:** if `check_answer` refuses with `… may not sign …: issuer_mismatch`,
+the registry may have just been listed with a new key: load the directory again (with
+`previous`) and check the same answer once more. If it still fails, it is not an answer.
 
 ## 5. Ask
 
 A person's code looks like `PG-ABCD-000001G`; its four letters name the registry.
 `directory.registry_for(code)` / `directory.registryFor(code)` gives that registry's entry
-(`prefix`, `api`, `keys`, …). If it gives `None` / `null`, no listed registry holds the
-code: you have no `allow`, so do not generate that person under PRE-GEN.
+(`prefix`, `api`, `keys` = the URL of its key set, `key_fingerprints`, …). If it gives
+`None` / `null`, no listed registry holds the code: you have no `allow`, so do not generate
+that person under PRE-GEN.
 
 ```
 POST {api}/v2/requests
@@ -139,18 +149,20 @@ Authorization: Bearer <token from that registry>
           "job_id": "job-8841", "job_hash": "<sha-256 hex of what you fixed about the job>"}}
 ```
 
-- These six members are all a request needs. `use.purpose` is `personal`, `educational`,
+- These six members are all a request needs. `use.purpose` is what the output is for, not
+  its medium (an ad, image or video, is `commercial`): `personal`, `educational`,
   `research`, `editorial` or `commercial`; add `territory`, `channel` and `categories`
   (for example `["political"]`) when they apply, honestly: fixed protections are checked
   against them.
 - **`licensee_id`** (optional): your end customer's id, when you generate on their behalf
   and the registry connected that customer to you (extension `licensee`). Some grants cover
-  only one licensee. An id the registry did not connect to you is refused (401
-  `PG_NOT_AUTHENTICATED`).
+  only one licensee. Send exactly the licensee id the registry gave you. An id the registry
+  did not connect to you is refused (401 `PG_NOT_AUTHENTICATED`).
 - **One request per person.** A job with two people asks twice, under the same `job_id`,
   each at the registry that holds them. **Every job has a new `job_id`** (random, not a
   timestamp): once a person in a job is reported, asking again under that id is refused
-  (409 `PG_ASK_CLOSED`, which carries the earlier acknowledgement as `ack`).
+  (409 `PG_ASK_CLOSED`, which carries the earlier acknowledgement as `ack`: keep it if you
+  lost yours). Within one job, every request carries the same `job_hash`.
 - `pregen.sign_envelope("pg.request.v1", body)` / `signEnvelope("pg.request.v1", body)`
   makes the envelope (no key: `signatures` stays empty; the token authenticates you).
 
@@ -159,27 +171,29 @@ The registry answers HTTP 200 `{"answer": {"type": "pg.answer.v1", "body": {…}
 ## 6. Check the answer
 
 ```python
-pregen.check_answer(answer, request, directory)     # raises PregenError with the reason
+pregen.check_answer(answer, request, directory)     # raises PregenError; str(e) is the reason
 ```
 
 ```js
 import { checkAnswer } from "@pregen/verify";
-await checkAnswer(answer, request, { directory });  // throws PregenError with the reason
+await checkAnswer(answer, request, { directory });  // throws PregenError; e.message is the reason
 ```
 
 It passes only when a key the directory lists for the code's prefix signed the answer (and
 was not retired before it signed), the answer names exactly your request and profile, it is
 within its lifetime, it is not a sandbox answer (unless `testing`), and its `status` is
-`allow`. An answer that fails the check is not an answer: never generate on it. If it came
-from the registry you asked and its body says `allow` (an expired one, say), still report
-`not_generated` for it (step 8), so the registry frees the use. To log why a valid answer
-refused, `pregen.verify_answer(...)` / `verifyAnswer(...)` returns the checked body whatever
-its status: read `body["reason"]` there. The statuses:
+`allow`. An answer that fails the check is not an answer: never generate on it. If its body
+says `allow` all the same (expired, badly signed, for another request), still report
+`not_generated` for it (step 8), so a registry that did issue it frees the use; one that did
+not refuses the report: log that and go on. To log why a valid answer refused, the same
+arguments to `pregen.verify_answer(answer, request, directory)` /
+`await verifyAnswer(answer, request, { directory })` return the checked body whatever its
+status: read `body["reason"]` there. The statuses:
 
 | `status` | Meaning | Do |
 |---|---|---|
 | `allow` | permitted, with a `basis` (a policy rule or a grant) | generate, applying any `obligations`; if one is listed that you do not understand, do not generate |
-| `deny` | refused, with a `reason` | do not generate |
+| `deny` | refused, with a `reason` (with `PG_UNKNOWN_SUBJECT`: this registry holds no such person) | do not generate |
 | `review` | held for a person | do not generate now |
 | `not_blocked` | nothing grants it | not a permission: do not generate on it |
 
@@ -249,21 +263,35 @@ const result = await checkProof(bundle, { directory, outputSha256 });
 **Always pass the SHA-256 of the file you hold.** Without it, the check says nothing about
 that file, and its result must never be shown as a label on it. It returns `{output_hash,
 job_id, subjects: [{code, level, basis}]}` / `{outputHash, jobId, subjects}`, or raises with
-the reason. It passes when every answer was a valid `allow` at the moment generation began,
-each acknowledgement is signed by that person's registry and names that report and answer,
-it was received in time, all reports name one output and one job, and the file's hash
-matches. A proof made in a sandbox passes only with `testing` and is never a label.
+the reason (`str(e)` / `e.message`). It passes when every answer was a valid `allow` at the
+`occurred_at` the provider reported (the registry bounds it: the report reached it within
+24 hours of the allow's expiry), each acknowledgement is signed by that person's registry
+and names that report and answer, all reports name one output and one job, and the file's
+hash matches. `level` is how far the registry checked the person (`self`, `asserted`,
+`consented`, `verified`): show it with your label, and decide which levels your label
+requires. The result does not name a licensee; a licensee-only grant shows as `licensee_id`
+in that person's `request.body`. With no file to hash, record the proof as not checked: it
+is never a label. A proof made in a sandbox passes only with `testing` and is never a label.
 
 **Offline:** while online, save the directory (`directory.to_json()` / `toJSON()`) and the key
 set of every registry it lists: `GET` each entry's `keys` URL and keep the JSON, keyed by that
 exact URL. They are required: `check_proof` reads each registry's key set on every check,
-so offline it fails without them. Save both every time you load the directory, so proofs
-signed after a registry's key change still verify:
+so offline it fails without them. Save both every time you load the directory, at least
+every 24 hours while you label, replacing the old copies (a key set keeps its retired keys,
+so the newest copy verifies old proofs too):
 
 ```python
 saved_directory = directory.to_json()
 saved_key_sets = {r["keys"]: json.loads(urllib.request.urlopen(r["keys"]).read()) for r in directory.registries}
 ```
+
+```js
+const savedDirectory = directory.toJSON();
+const savedKeySets = Object.fromEntries(await Promise.all(directory.registries.map(
+  async (r) => [r.keys, await (await fetch(r.keys)).json()])));
+```
+
+Keep each as one JSON file.
 
 Later, check with no network:
 
@@ -281,7 +309,8 @@ const offlineFetch = async (url) => ({ ok: url in savedKeySets, status: url in s
 const result = await checkProof(bundle, { directory, fetch: offlineFetch, outputSha256 });
 ```
 
-A retired registry key stays in its key set, so old proofs keep verifying after a key change.
+The check fetches only through the `get_json` / `fetch` you pass. A retired registry key stays
+in its key set, so old proofs keep verifying after a key change.
 A proof from a revoked registry fails, old ones included. An offline check can only be as
 current as what you saved: a revocation published after that is invisible to it. Use
 `verify_directory(saved)` only for offline proof checks: it counts the saved copy as loaded
@@ -292,9 +321,11 @@ now. For answers, always `load_directory(previous=saved)`.
 From the registry, get its sandbox `api`, the sandbox's eight test codes, and the test
 directory (its URL and test steward key). A sandbox is its own registry with its own prefix
 (for example `ABCE` beside `ABCD`): take credentials from `{sandbox api}/v2/sandbox/access`,
-store them under that prefix in `CREDENTIALS`, and register your key there (step 3). Each test code
-answers one way: `1` allows; `2` no licence; `3` opted out; `4` usage limit; `5` prohibited;
-`6` review; `7` not blocked; `8` unknown. Ask each in a job of its own. Check sandbox answers
+store them under that prefix in `CREDENTIALS`, and register your key there (step 3). Test
+code `N` is `PG-<prefix>-00000N` plus its check character. Each answers one way: `1` allows;
+`2` no licence; `3` opted out; `4` usage limit; `5` prohibited; `6` review; `7` not blocked;
+`8` unknown. Ask each in a job of its own, and take code `1` through the whole flow (ask,
+check, generate, report, proof), as in production. Check sandbox answers
 and proofs with `testing`: `check_answer(answer, request, directory, testing=True)`,
 `check_proof(…, testing=True)`; JS `checkAnswer(answer, request, { directory, testing: true })`.
 
@@ -345,11 +376,11 @@ REGISTERED = set()                             # keep this with your secrets in 
 def register_key(entry):                       # step 3: once per registry
     if entry["prefix"] in REGISTERED:
         return
-    REGISTERED.add(entry["prefix"])
     post(entry, "/v2/keys", pregen.sign_envelope("pg.keyset.v1", {
         "signers": [{"role": "provider", "key_id": key_id}], "kind": "first",
         "provider_id": CREDENTIALS[entry["prefix"]]["provider_id"], "previous": None, "recovery_registry": "",
         "keys": [{"key_id": key_id, "public_key_hex": pub, "status": "current"}]}, KEY))
+    REGISTERED.add(entry["prefix"])
 
 
 def report(entry, request, answer, outcome, output_hash, began):   # step 8
@@ -361,9 +392,18 @@ def report(entry, request, answer, outcome, output_hash, began):   # step 8
     return env, post(entry, "/v2/reports", env)["ack"]
 
 
+def give_back(items, when):                                              # step 8: not_generated, one by one
+    for entry, request, answer in items:
+        try:
+            report(entry, request, answer, "not_generated", "", when)
+        except Exception as e:                                           # e.g. a registry that never issued it
+            print("give-back refused:", e)
+
+
 job_id = "job-" + secrets.token_hex(8)                                   # new for every job
-job_hash = hashlib.sha256(b"what you fixed about this job").hexdigest()
-allowed = []
+job_input = {"prompt": "<the prompt>", "settings": {"model": "<model>", "seed": 1}}   # keep it with the job
+job_hash = hashlib.sha256(pregen.canonical_json(job_input)).hexdigest()
+allowed = []                                                              # every answer whose body says allow
 try:
     for code in CODES:                                                    # steps 5 and 6
         entry = directory.registry_for(code)
@@ -374,19 +414,18 @@ try:
             "subject_ref": code, "provider_id": CREDENTIALS[entry["prefix"]]["provider_id"], "profile": "likeness/1",
             "use": {"purpose": "commercial"}, "job_id": job_id, "job_hash": job_hash})
         answer = post(entry, "/v2/requests", request)["answer"]
+        if answer.get("body", {}).get("status") == "allow":
+            allowed.append((entry, request, answer))                      # given back below if anything fails
         pregen.check_answer(answer, request, directory)                  # raises unless a valid allow
-        allowed.append((entry, request, answer))
         if answer["body"].get("obligations"):                             # step 6: obligations this product does not apply
             raise RuntimeError(f"{code}: an allow with obligations this product does not apply")
 except Exception:
-    for entry, request, answer in allowed:                                # give back what was allowed
-        report(entry, request, answer, "not_generated", "", int(time.time()))
+    give_back(allowed, int(time.time()))
     raise
 
 began = int(time.time())                                                  # step 7: generation begins now
 if began >= min(a["body"]["expires_at"] for _, _, a in allowed):          # an allow ran out: give all back, ask again
-    for entry, request, answer in allowed:
-        report(entry, request, answer, "not_generated", "", began)
+    give_back(allowed, began)
     raise RuntimeError("an allow expired before generation began: ask again under a new job_id")
 output = b"<the generated file>"
 output_hash = hashlib.sha256(output).hexdigest()
@@ -411,7 +450,7 @@ The same, in Node.js 20+ (save as `job.mjs`):
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { loadDirectory, signEnvelope, checkAnswer, checkProof, messageId, publicKeyHex, fingerprint,
-  DIRECTORY_URL } from "@pregen/verify";
+  canonicalJson, DIRECTORY_URL } from "@pregen/verify";
 
 const CREDENTIALS = { ABCD: { provider_id: "frame-ai", token: "<secret>" } };   // one per registry (step 1)
 const KEY = "<your private key hex>";                                          // step 3, from your secret store
@@ -440,38 +479,44 @@ async function report(entry, request, answer, outcome, outputHash, began) {     
   return { report: env, ack: (await post(entry, "/v2/reports", env)).ack };
 }
 
+async function giveBack(items, when) {                                          // step 8: not_generated, one by one
+  for (const { entry, request, answer } of items) {
+    try { await report(entry, request, answer, "not_generated", "", when); }
+    catch (e) { console.log("give-back refused:", e.message); }                 // e.g. a registry that never issued it
+  }
+}
+
 const registered = new Set();                                                   // keep this with your secrets in a real product
 const jobId = `job-${crypto.randomUUID()}`;                                     // new for every job
-const jobHash = createHash("sha256").update("what you fixed about this job").digest("hex");
-const allowed = [];
+const jobInput = { prompt: "<the prompt>", settings: { model: "<model>", seed: 1 } };   // keep it with the job
+const jobHash = createHash("sha256").update(canonicalJson(jobInput)).digest("hex");
+const allowed = [];                                                             // every answer whose body says allow
 try {
   for (const code of CODES) {                                                   // steps 5 and 6
     const entry = directory.registryFor(code);
     if (!entry) throw new Error(`${code}: no listed registry holds it, so no allow: do not generate`);
     const providerId = CREDENTIALS[entry.prefix].provider_id;
     if (!registered.has(entry.prefix)) {                                        // step 3: once per registry
-      registered.add(entry.prefix);
       await post(entry, "/v2/keys", await signEnvelope("pg.keyset.v1", {
         signers: [{ role: "provider", key_id: keyId }], kind: "first", provider_id: providerId, previous: null,
         recovery_registry: "", keys: [{ key_id: keyId, public_key_hex: pub, status: "current" }] }, KEY));
+      registered.add(entry.prefix);
     }
     const request = await signEnvelope("pg.request.v1", { subject_ref: code, provider_id: providerId,
       profile: "likeness/1", use: { purpose: "commercial" }, job_id: jobId, job_hash: jobHash });
     const { answer } = await post(entry, "/v2/requests", request);
+    if (answer?.body?.status === "allow") allowed.push({ entry, request, answer }); // given back below if anything fails
     await checkAnswer(answer, request, { directory });                          // throws unless a valid allow
-    allowed.push({ entry, request, answer });
     if (answer.body.obligations?.length) throw new Error(`${code}: an allow with obligations this product does not apply`);
   }
 } catch (e) {
-  for (const { entry, request, answer } of allowed) {                           // give back what was allowed
-    await report(entry, request, answer, "not_generated", "", Math.floor(Date.now() / 1000));
-  }
+  await giveBack(allowed, Math.floor(Date.now() / 1000));
   throw e;
 }
 
 const began = Math.floor(Date.now() / 1000);                                    // step 7: generation begins now
 if (began >= Math.min(...allowed.map(({ answer }) => answer.body.expires_at))) { // an allow ran out: give all back
-  for (const { entry, request, answer } of allowed) await report(entry, request, answer, "not_generated", "", began);
+  await giveBack(allowed, began);
   throw new Error("an allow expired before generation began: ask again under a new job_id");
 }
 const output = Buffer.from("<the generated file>");
@@ -501,6 +546,7 @@ A refusal about a person is a signed answer (step 6). HTTP errors carry
 | `PG_ASK_CLOSED` | 409 | this person in this job was already reported: use a new `job_id` for a new job |
 | `PG_ASK_CONFLICT` | 409 | this person in this job was asked with a different request: resend the identical one |
 | `PG_JOB_CONFLICT` | 409 | this `job_id` was already used with another `job_hash`: use a new `job_id` |
+| any other code | any | no answer: do not generate; if it refused a give-back, log it and go on |
 
 Answer reasons you will meet: `PG_UNKNOWN_SUBJECT` (this registry holds no such person:
 not a prohibition, and not a permission), `PG_OTHER_REGISTRY`, `PG_NO_LICENSE`,

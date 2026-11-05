@@ -32,7 +32,7 @@ def _post(url, env, headers):
 
 
 def check(api: str, directory_url: str | None = None, steward: str | None = None, provider_id: str | None = None,
-          token: str | None = None, subject: str | None = None, purpose: str = "commercial"):
+          token: str | None = None, subject: str | None = None, purpose: str = "commercial", licensee: str = ""):
     """Yields (ok, what) lines."""
     api = api.rstrip("/")
     try:
@@ -86,18 +86,21 @@ def check(api: str, directory_url: str | None = None, steward: str | None = None
             yield False, f"directory {directory_url}: {e}"
             return
         entry = next((r for r in directory.registries if r["prefix"] == doc.get("prefix")), None)
-        yield entry is not None, f"the directory (sequence {directory.sequence}) lists prefix {doc.get('prefix')}"
+        yield entry is not None, f"the directory (sequence {directory.sequence}) lists prefix {doc.get('prefix')}" + (
+            f" with keys {', '.join(entry['key_fingerprints'])}" if entry else "")
         if entry:
             yield entry["api"].rstrip("/") == api and entry["keys"] == doc["keys"], "listed with this api and keys URL"
             yield current["key_id"] in entry["key_fingerprints"], "listed with the current key"
     if provider_id and token and subject:
         body = {"subject_ref": subject, "provider_id": provider_id, "profile": "likeness/1",
-                "use": {"purpose": purpose}, "job_id": "pregen-check-" + secrets.token_hex(4), "job_hash": "0" * 64}
+                "use": {"purpose": purpose}, "job_id": "pregen-check-" + secrets.token_hex(4), "job_hash": "0" * 64,
+                **({"licensee_id": licensee} if licensee else {})}
         request = pregen.sign_envelope("pg.request.v1", body)
         status, res = _post(api + "/v2/requests", request, {"X-Provider-ID": provider_id,
                                                            "Authorization": "Bearer " + token})
         answer = res.get("answer")
-        yield status == 200 and answer is not None, f"POST /v2/requests for {subject}, purpose {purpose}: HTTP {status}" + (
+        yield status == 200 and answer is not None, f"POST /v2/requests for {subject}, purpose {purpose}" + (
+            f", licensee {licensee}" if licensee else "") + f": HTTP {status}" + (
             f", {answer['body']['status']} {answer['body'].get('reason') or ''}".rstrip() if answer else f" {res}")
         if answer and directory:
             try:
