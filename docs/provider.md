@@ -7,7 +7,7 @@ can check offline. This guide gives every step in Python and JavaScript, with wh
 step returns. Where it and the specification differ, the specification wins:
 `https://www.pregen.org/spec/PRE-GEN-CORE.md`.
 
-**You need:** Python 3.9+ or Node.js 20+, and credentials from each registry you ask (step 1).
+**You need:** Python 3.9+ or Node.js 20+, and credentials from each registry you ask (step 3).
 
 ## Ground rules
 
@@ -17,8 +17,9 @@ step returns. Where it and the specification differ, the specification wins:
 2. **No answer is not a refusal and not a permission.** After a timeout or an HTTP 5xx you
    may send the **identical** request again (same `job_id`, same bytes): a registry answers
    it with the answer it already gave. The same goes for a connection error with no HTTP
-   response. Wait 10 s for an answer, resend at most 3 times, 3 s apart; after that, you
-   have no allow for that person. Skipping the resend can leave an allow you never saw
+   response, and for `/v2/keys` and `/v2/reports`. Wait 10 s for an answer; on none, wait
+   3 s and send the same bytes again, at most 3 times; after that, you have no allow for
+   that person. Skipping the resend can leave an allow you never saw
    counted against the grant.
 3. **Never send the prompt or the output.** You send `job_hash`: a SHA-256 of what you
    fixed about the job: `hashlib.sha256(pregen.canonical_json(job_input)).hexdigest()`, where
@@ -26,7 +27,7 @@ step returns. Where it and the specification differ, the specification wins:
    `canonicalJson` returns a string to hash). Keep that input with the job, so you can show
    later what the hash stands for.
 4. **Keep your clock synced** with your system's time service (NTP: `timedatectl`, `chronyc
-   tracking`, or Windows Time): answers live minutes, and one issued more than 60 s in your
+   tracking`, `sntp time.apple.com` on macOS, or Windows Time): answers live minutes, and one issued more than 60 s in your
    future is refused.
 5. **Secrets stay server-side:** registry tokens and your private key never go to a browser,
    a URL, a log or client code. Your secret store is wherever only your servers can read
@@ -37,17 +38,59 @@ step returns. Where it and the specification differ, the specification wins:
    `$`, `=` or `!`: quote codes in a shell (`'PG-ABCD-000001$'`) and encode them in a URL
    path (`%24` for `$`).
 8. **Ask the person** who runs the product before you create accounts, accept terms or
-   store secrets. Their request to integrate PRE-GEN covers what this guide makes: the
-   sandbox credential and your provider key.
+   store secrets. Their request to integrate PRE-GEN covers what this guide makes and
+   stores: the sandbox credential, the tokens registries give you, and your provider key.
 
-## 1. Credentials from each registry
+## 1. Install the library
 
-Do the steps in this order: install (step 2), load the directory (step 4), then this step
-and step 3; every `api` below comes from the directory. The directory (`https://www.pregen.org/registries.json`, human view
+```bash
+pip install "pregen>=0.11.0"
+```
+
+```bash
+npm init -y && npm pkg set type=module    # in your project folder, if it has no package.json yet
+npm install @pregen/verify@^0.11.0
+```
+
+Both carry the PRE-GEN steward key, check the directory, answers and proofs, and sign your
+messages. Neither needs anything else.
+
+## 2. Load the directory
+
+```python
+directory = pregen.load_directory(previous=saved)     # saved: the last one you accepted, or None
+saved = directory.to_json()                           # the full signed document: store it as JSON
+```
+
+```js
+import { loadDirectory } from "@pregen/verify";
+const directory = await loadDirectory({ previous: saved });
+saved = directory.toJSON();
+```
+
+It is accepted only when the PRE-GEN steward signed it and its `sequence` is not lower than
+the one you saved (so no one can serve you an older one). Load it again at least every 24
+hours: answers checked against a directory object older than that are refused.
+
+**Testing:** a test directory is signed by a test steward key. Load it with
+`pregen.load_directory(url, previous=saved, steward_public_key_hex=TEST_STEWARD)` or
+`loadDirectory({ url, previous: saved, stewardPublicKeyHex: TEST_STEWARD })`, where `url` is
+the test directory's URL (without it, the public directory is loaded). Never in production.
+A test directory is only about who signed the directory: answers from a non-sandbox registry
+listed in it are checked without `testing`. `testing` is for sandbox answers only (step 10).
+
+**A registry's new key:** if `check_answer` refuses with `… may not sign …: issuer_mismatch`,
+the registry may have just been listed with a new key: load the directory again (with
+`previous`) and check the same answer once more. If it still fails, it is not an answer.
+
+## 3. Credentials from each registry
+
+Every `api` below comes from the directory you loaded in step 2. The directory
+(`https://www.pregen.org/registries.json`, human view
 `https://www.pregen.org/registries`) lists every registry with its prefix and `api`. Each
 registry gives you, privately, a **provider id** and a **token**. Always send to the
 `api` in the registry's directory entry; if one a registry gave you differs, ask it before
-sending anything. If a registry sends a token
+sending anything (compare them as exact strings). If a registry sends a token
 without its provider id, ask for the id: do not guess (a wrong one is 401
 `PG_NOT_AUTHENTICATED`). Keep one pair per registry, keyed by its prefix, for example:
 
@@ -62,26 +105,13 @@ A registry's sandbox gives test credentials without an account:
 urllib.request.Request(sandbox_api + "/v2/sandbox/access", data=b"", method="POST")).read())`;
 JS: `await (await fetch(sandboxApi + "/v2/sandbox/access", { method: "POST" })).json()`).
 The token is shown once: store the pair at once, under the sandbox's prefix (the four
-letters of its test codes). Once you have loaded the test directory (step 4), check that
+letters of its test codes). Once you have loaded the test directory (step 2), check that
 `registry` equals `directory.registry_for(<test code 1>)["api"]`. A directory entry does not
 say it is a sandbox; the registry's document does (`GET {api}/.well-known/pregen-registry.json`
-→ `"sandbox": true`). Use the credential like any other.
+→ `"sandbox": true`; if it says `false`, it is not a sandbox: do not use `testing` with it).
+Use the credential like any other.
 
-## 2. Install the library
-
-```bash
-pip install "pregen>=0.11.0"
-```
-
-```bash
-npm init -y && npm pkg set type=module    # in your project folder, if it has no package.json yet
-npm install @pregen/verify@^0.11.0
-```
-
-Both carry the PRE-GEN steward key, check the directory, answers and proofs, and sign your
-messages. Neither needs anything else.
-
-## 3. Your provider key: make it once, register it once per registry
+## 4. Your provider key: make it once, register it once per registry
 
 Reports are signed with **your** key, so a registry can tell your reports from anyone
 else's. Make the key once and keep it with your other secrets:
@@ -114,36 +144,10 @@ keyset = pregen.sign_envelope("pg.keyset.v1", {
 ```
 
 The registry answers HTTP 200 `{"keyset": …}`, and the same keyset again returns the same.
-A *different* first keyset is refused (409 `PG_KEYSET_CONFLICT`): to change your key later,
+`recovery_registry: ""` means only the registry that holds your key set may co-sign a
+recovery if you lose your key (`spec/extensions/provider-keys.md`). A *different* first
+keyset is refused (409 `PG_KEYSET_CONFLICT`): to change your key later,
 send a `rotation` keyset (`spec/extensions/provider-keys.md`).
-
-## 4. Load the directory
-
-```python
-directory = pregen.load_directory(previous=saved)     # saved: the last one you accepted, or None
-saved = directory.to_json()                           # the full signed document: store it as JSON
-```
-
-```js
-import { loadDirectory } from "@pregen/verify";
-const directory = await loadDirectory({ previous: saved });
-saved = directory.toJSON();
-```
-
-It is accepted only when the PRE-GEN steward signed it and its `sequence` is not lower than
-the one you saved (so no one can serve you an older one). Load it again at least every 24
-hours: answers checked against a directory object older than that are refused.
-
-**Testing:** a test directory is signed by a test steward key. Load it with
-`pregen.load_directory(url, previous=saved, steward_public_key_hex=TEST_STEWARD)` or
-`loadDirectory({ url, previous: saved, stewardPublicKeyHex: TEST_STEWARD })`, where `url` is
-the test directory's URL (without it, the public directory is loaded). Never in production.
-A test directory is only about who signed the directory: answers from a non-sandbox registry
-listed in it are checked without `testing`. `testing` is for sandbox answers only (step 10).
-
-**A registry's new key:** if `check_answer` refuses with `… may not sign …: issuer_mismatch`,
-the registry may have just been listed with a new key: load the directory again (with
-`previous`) and check the same answer once more. If it still fails, it is not an answer.
 
 ## 5. Ask
 
@@ -210,7 +214,8 @@ says `allow` all the same (expired, badly signed, for another request), still re
 not refuses the report: log that and go on. To log why a valid answer refused, the same
 arguments to `pregen.verify_answer(answer, request, directory)` /
 `await verifyAnswer(answer, request, { directory })` (plus `testing` for a sandbox answer)
-return the checked body whatever its status: read `body["reason"]` there. The statuses:
+return the checked body whatever its status: read `body["reason"]` there. Like `check_answer`,
+they raise when the answer itself is not valid; then log that reason. The statuses:
 
 | `status` | Meaning | Do |
 |---|---|---|
@@ -229,7 +234,8 @@ An answer lives a short time (`expires_at`, at most 15 minutes; often 5). Genera
 one time, `began`, right before generation starts: it is the `occurred_at` of every report
 in the job (step 8), even if rendering ends later. If generation cannot start before the
 earliest `expires_at`, ask again under a new `job_id` and give back the old allows (step 8).
-Hash the output: `output_hash = sha256(file bytes)` in hex.
+Write the output only after every check passed and `began` is taken. Hash it:
+`output_hash = sha256(file bytes)` in hex.
 
 ## 8. Report the output
 
@@ -298,8 +304,8 @@ Show it with your label, and decide which levels your label requires; below `con
 one but the registrant vouched, and a strict default is `verified`. `check_proof` does not
 look at `obligations`: they are in each `answer.body`, and were the provider's to apply;
 show them if your label cares. The result does not name a licensee; a licensee-only grant shows as `licensee_id`
-in that person's `request.body`. With no file to hash, record the proof as not checked: it
-is never a label. A proof made in a sandbox passes only with `testing` and is never a label.
+in that person's `request.body`. With no file to hash, record it as not accepted, reason
+"no file: not checked"; it is never a label. A proof made in a sandbox passes only with `testing` and is never a label.
 
 **Offline:** while online, save the directory (`directory.to_json()` / `toJSON()`) and the key
 set of every registry it lists: `GET` each entry's `keys` URL and keep the JSON, keyed by that
@@ -333,8 +339,9 @@ one JSON file, and all key sets in another, as one object keyed by URL; a test d
 steward key is a constant you keep with them. Save key sets as they come: at check time the
 library uses only keys whose ids the directory lists, and refuses small-order keys. It does
 not check the provider's signature on a report: it relies on the registry's signed
-acknowledgement, which names that report. If your saved copy is more than 24 hours old, do
-not label: go online, load and save again.
+acknowledgement, which names that report. Write the time you saved them (`saved_at`) beside
+the two files: the library cannot tell. If `saved_at` is more than 24 hours ago, do not
+label: go online, load and save again.
 
 Later, check with no network:
 
@@ -365,7 +372,7 @@ now. For answers, always `load_directory(previous=saved)`.
 From the registry, get its sandbox `api`, the sandbox's eight test codes, and the test
 directory (its URL and test steward key). A sandbox is its own registry with its own prefix
 (for example `ABCE` beside `ABCD`): take credentials from `{sandbox api}/v2/sandbox/access`,
-store them under that prefix in `CREDENTIALS`, and register your key there (step 3). Copy
+store them under that prefix in `CREDENTIALS`, and register your key there (step 4). Copy
 the eight test codes the registry gives you (code `N` is `PG-<prefix>-00000N` plus a check
 character that cannot be guessed). Each answers one way:
 
@@ -402,8 +409,8 @@ import urllib.request
 
 import pregen
 
-CREDENTIALS = {"ABCD": {"provider_id": "frame-ai", "token": "<secret>"}}   # one per registry (step 1)
-KEY = "<your private key hex>"                                             # step 3, from your secret store
+CREDENTIALS = {"ABCD": {"provider_id": "frame-ai", "token": "<secret>"}}   # one per registry (step 3)
+KEY = "<your private key hex>"                                             # step 4, from your secret store
 DIRECTORY_URL, TEST_STEWARD = pregen.DIRECTORY_URL, None                    # testing: the test directory and its key
 CODES = ["PG-ABCD-000001G"]                                                # the people in this job
 SAVED = "directory.json"                                                   # where the last directory is kept
@@ -432,7 +439,7 @@ def post(entry, path, envelope):
 REGISTERED = set()                             # keep this with your secrets in a real product
 
 
-def register_key(entry):                       # step 3: once per registry
+def register_key(entry):                       # step 4: once per registry
     if entry["prefix"] in REGISTERED:
         return
     post(entry, "/v2/keys", pregen.sign_envelope("pg.keyset.v1", {
@@ -460,7 +467,7 @@ def give_back(items, when):                                              # step 
 
 
 job_id = "job-" + secrets.token_hex(8)                                   # new for every job
-job_input = {"prompt": "<the prompt>", "settings": {"model": "<model>", "seed": 1}}   # keep it with the job
+job_input = {"prompt": "<the prompt>", "settings": {"model": "<model>", "seed": 1}, "customer": None}   # keep it
 job_hash = hashlib.sha256(pregen.canonical_json(job_input)).hexdigest()
 allowed = []                                                              # every answer whose body says allow
 try:
@@ -504,8 +511,9 @@ print(pregen.check_proof(bundle, directory, output_sha256=output_hash, testing=T
 
 It prints `{'output_hash': '…', 'job_id': 'job-…', 'subjects': [{'code': 'PG-ABCD-000001G',
 'level': 'verified', 'basis': {'kind': 'grant', …}}]}`. Not shown, in either example: the
-identical resend of rule 2, the directory reload on `issuer_mismatch` (step 4), and
-`verify_answer` to log why a refusal refused (step 6).
+identical resend of rule 2, the directory reload on `issuer_mismatch` (step 2),
+`verify_answer` to log why a refusal refused (step 6), and saving the key sets for offline
+checks (step 9).
 
 ## Complete example (JavaScript)
 
@@ -517,8 +525,8 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { loadDirectory, signEnvelope, checkAnswer, checkProof, messageId, publicKeyHex, fingerprint,
   canonicalJson, DIRECTORY_URL } from "@pregen/verify";
 
-const CREDENTIALS = { ABCD: { provider_id: "frame-ai", token: "<secret>" } };   // one per registry (step 1)
-const KEY = "<your private key hex>";                                          // step 3, from your secret store
+const CREDENTIALS = { ABCD: { provider_id: "frame-ai", token: "<secret>" } };   // one per registry (step 3)
+const KEY = "<your private key hex>";                                          // step 4, from your secret store
 const [url, TEST_STEWARD] = [DIRECTORY_URL, null];                              // testing: the test directory and its key
 const CODES = ["PG-ABCD-000001G"];                                              // the people in this job
 const SAVED = "directory.json";                                                 // where the last directory is kept
@@ -554,7 +562,7 @@ async function giveBack(items, when) {                                          
 
 const registered = new Set();                                                   // keep this with your secrets in a real product
 const jobId = `job-${crypto.randomUUID()}`;                                     // new for every job
-const jobInput = { prompt: "<the prompt>", settings: { model: "<model>", seed: 1 } };   // keep it with the job
+const jobInput = { prompt: "<the prompt>", settings: { model: "<model>", seed: 1 }, customer: null };   // keep it
 const jobHash = createHash("sha256").update(canonicalJson(jobInput)).digest("hex");
 const allowed = [];                                                             // every answer whose body says allow
 try {
@@ -562,7 +570,7 @@ try {
     const entry = directory.registryFor(code);
     if (!entry) throw new Error(`${code}: no listed registry holds it, so no allow: do not generate`);
     const providerId = CREDENTIALS[entry.prefix].provider_id;
-    if (!registered.has(entry.prefix)) {                                        // step 3: once per registry
+    if (!registered.has(entry.prefix)) {                                        // step 4: once per registry
       await post(entry, "/v2/keys", await signEnvelope("pg.keyset.v1", {
         signers: [{ role: "provider", key_id: keyId }], kind: "first", provider_id: providerId, previous: null,
         recovery_registry: "", keys: [{ key_id: keyId, public_key_hex: pub, status: "current" }] }, KEY));
@@ -613,7 +621,7 @@ A refusal about a person is a signed answer (step 6). HTTP errors carry
 | `PG_MALFORMED` | 422 | the request does not follow the core (a member, a type, a code's spelling) |
 | `PG_NOT_AUTHENTICATED` | 401 | the provider id, token or licensee is not accepted, or no provider key is registered yet (reports) |
 | `PG_PROFILE_UNSUPPORTED` | 422 | the registry does not answer under this profile |
-| `PG_KEYSET_CONFLICT` | 409 | a different first keyset was already registered: rotate instead (step 3) |
+| `PG_KEYSET_CONFLICT` | 409 | a different first keyset was already registered: rotate instead (step 4) |
 | `PG_REPORT_CONFLICT` | 409 | another report for the same answer was already filed: resend the report you kept |
 | `PG_ASK_CLOSED` | 409 | this person in this job was already reported: use a new `job_id` for a new job |
 | `PG_ASK_CONFLICT` | 409 | this person in this job was asked with a different request: resend the identical one |

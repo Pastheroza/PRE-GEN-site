@@ -47,7 +47,8 @@ python3 -c "import pregen; print(sorted(r['prefix'] for r in pregen.load_directo
 
 On a test network, pass the test directory: `pregen.load_directory('<test directory url>',
 steward_public_key_hex='<test steward key hex>')`. Pick a prefix that is not listed, and a
-second choice in case someone asks for yours first.
+second choice in case someone asks for yours first. For your sandbox's prefix, also check
+the test directory's list: sandboxes are listed only there, and no prefix is ever reused.
 
 **A sandbox is a separate registry with its own prefix** (step 7), applied for the same way.
 Any free prefix will do; one close to yours (`ABCE` beside `ABCD`) helps people recognise it.
@@ -134,12 +135,14 @@ steward listed it: `pregen-registry check --api … --directory …` (on a test 
 `--steward <its key hex>`) prints `PASS the directory (sequence <n>) lists prefix ABCD with
 keys …`, and the new key id must be among them.
 
-**Wait 24 hours after the listing, then stop the server, rotate, and start it again at
-once.** Providers may check answers against a directory they loaded up to 24 hours earlier;
+**Wait 24 hours after the listing (note the time `check` first shows the new key id among
+the listed keys), then stop the server, wait until it has exited, rotate, and start it
+again at once.** Providers may check answers against a directory they loaded up to 24 hours earlier;
 until they reload, they refuse what a key it does not list signs. Every answer the old
 process signs after `rotate` is refused by every client, hence the restart. Stop the server
 the way you started it (your service manager; for `nohup … &`, `kill` the process id you
-saved with `echo $! > registry.pid`):
+saved with `echo $! > registry.pid`, then
+`while kill -0 "$(cat registry.pid)" 2>/dev/null; do sleep 1; done`, so the port is free):
 
 ```bash
 pregen-registry key rotate --dir ./data
@@ -213,7 +216,8 @@ prints every code you hold, with its level and name.
 Wikidata item, an ISNI, or a domain) and the page on their official channel where they
 posted the line `PRE-GEN: PG-ABCD-000001G`. Open that page yourself first and see the exact
 line: the command records what you give it and fetches nothing, so do not anchor before you
-have seen it. If you cannot open it, leave the person unanchored and try again later. Providers' clients read the page themselves.
+have seen it. If you cannot open it, leave the person unanchored and try again later. A client weighing
+several registries' claims reads the page itself.
 
 ```bash
 pregen-registry subject anchor --dir ./data --code 'PG-ABCD-000001G' \
@@ -224,8 +228,9 @@ pregen-registry subject anchor --dir ./data --code 'PG-ABCD-000001G' \
 PG-ABCD-000001G anchored to wikidata:Q42; GET /v2/anchors lists it
 ```
 
-A confirmation on the person's own channel is what lets clients count your record when
-several registries claim the same person. A matching name is never evidence.
+When several registries claim the same person, a client counts only a record whose anchor
+the person confirmed on their own channel (the libraries' `decide_identity`). A matching
+name is never evidence.
 
 **Grant a use** the person agreed to. It prints the grant id (64 hex):
 
@@ -259,7 +264,7 @@ Until you hand it over, keep it only in a file readable by you
 once it is sent.
 
 `pregen-registry connect --dir ./data --provider frame-ai --licensee frame-ai:user-1` lets that
-provider ask on behalf of its end customer `user-1`. **A licensee id names one customer of
+provider ask on behalf of its end customer `user-1`; it prints `connected`. **A licensee id names one customer of
 one provider, so always write it as `<provider id>:<the customer's id at that provider>`.**
 `connect` refuses any other shape: a grant to a licensee covers every provider connected to
 that id, so two providers' `user-1` written bare would share each other's grants. The grant
