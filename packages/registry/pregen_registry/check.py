@@ -78,6 +78,17 @@ def check(api: str, directory_url: str | None = None, steward: str | None = None
                         {"X-Provider-ID": "pregen-check-nobody", "Authorization": "Bearer " + secrets.token_hex(8)})
     yield status == 401 and err.get("error") == "PG_NOT_AUTHENTICATED", \
         f"a request with an unknown credential is refused: HTTP {status} {err.get('error')}"
+    if "identity" in doc.get("extensions", []):           # a hidden list would hide an opt-out from every provider
+        try:
+            env = _get(api + "/v2/anchors")
+            b = env.get("body") or {}
+            signed = env.get("type") == "pg.anchors.v1" and b.get("registry") == doc.get("prefix") and \
+                [s.get("key_id") for s in b.get("signers", [])] == [current["key_id"]] and \
+                pregen.verify_bytes(current["public_key_hex"], (env.get("signatures") or [""])[0],
+                                    pregen.signing_input(env["type"], b))
+            yield signed, f"anchors list signed by the current key: {len(b.get('anchors') or [])} public person(s)"
+        except Exception as e:  # noqa: BLE001
+            yield False, f"GET {api}/v2/anchors: {e}"
     directory = None
     if directory_url:
         try:

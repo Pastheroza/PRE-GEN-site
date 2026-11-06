@@ -156,11 +156,11 @@ rotate, and start it again. Run each line on its own, not chained with `&&`:
 kill "$(cat registry.pid)"
 while kill -0 "$(cat registry.pid)" 2>/dev/null; do sleep 1; done
 pregen-registry key rotate --dir ./data
-nohup pregen-registry serve --dir ./data --host 127.0.0.1 --port 8000 >> registry.log 2>&1 & echo $! > registry.pid
+nohup <the exact serve command you used in step 5> >> registry.log 2>&1 & echo $! > registry.pid
 ```
 
-The last line is exactly the serve command you started with in step 5: the same port, and
-the same `--ssl-certfile`/`--ssl-keyfile` if you serve HTTPS directly.
+The last line is your own step 5 command: the same port, and the same
+`--ssl-certfile`/`--ssl-keyfile` if you serve HTTPS directly.
 
 ```
 operator key is now pg-ed25519:<new>; pg-ed25519:<old> is retired and stays in /keys, so everything it signed still verifies. Move the retired private key file offline.
@@ -169,7 +169,7 @@ operator key is now pg-ed25519:<new>; pg-ed25519:<old> is retired and stays in /
 Then run `pregen-registry check --api … --directory …` (test
 directory: add `--steward <its key hex>`): it must show `PASS listed with the current key`.
 The directory does not change, so nothing goes to the steward.
-The retired key's file is `./data/operator.retired.<hex>.key`: the server does not need it;
+The retired key's file is `./data/operator.retired.<the 32 hex of the old key id>.key`: the server does not need it;
 move it to its own offline folder (for example `./offline/retired/`) first, then back up
 (step 3): the recipe copies every `*.key` still in `./data`, and empties `./backup/data` each
 time. If you rotate before the directory lists the new key, providers refuse
@@ -209,15 +209,20 @@ shell:
 ```bash
 curl -s https://registry.example/.well-known/pregen-registry.json
 curl -s https://registry.example/keys
+curl -s https://registry.example/v2/anchors
 ```
 
 The first returns your document: `prefix`, `name`, `api`, `keys`, `profiles`
 (`["likeness/1"]`: fixed names of vocabularies of uses, never versions of your policy; when
 your policy changes, the profile names stay), `extensions`, `policy`, `complaints`, `sandbox`, `spec`. The second
 returns `{"current_key_id": "pg-ed25519:…", "keys": [{"key_id", "public_key_hex",
-"activated_at", "deactivated_at", "status", …}], "signature": "…"}`.
+"activated_at", "deactivated_at", "status", …}], "signature": "…"}`. The third returns your signed
+anchor list (`{"type": "pg.anchors.v1", …}`), never a 404, through your proxy too: a provider
+that cannot read it stops generating your people.
 
 ## 6. People, anchors, grants and providers
+
+Set up and try your sandbox first (steps 7–8); add only real people here.
 
 Add a person you have verified:
 
@@ -251,7 +256,7 @@ python3 -c "import pregen, urllib.request as u; print(pregen.check_channel_proof
   lambda x: u.urlopen(u.Request(x, headers={'User-Agent': '<registry name> (<contact URL>)'})).read().decode()))"
 ```
 
-If it does not yet, anchor without `--proof-url` (the claim stays unconfirmed) and run
+If it prints `False` or raises (page unreadable, Wikidata 403), anchor without `--proof-url` (the claim stays unconfirmed) and run
 `subject anchor` again with both once it does. Re-check every proof page at least daily; once
 the line is gone, anchor again without `--proof-url`.
 
@@ -390,6 +395,7 @@ PASS key set: current key pg-ed25519:<32 hex>, 1 key(s) in its history
 PASS every key id is its key's fingerprint, and no key is small-order
 PASS key set signed by its current key
 PASS a request with an unknown credential is refused: HTTP 401 PG_NOT_AUTHENTICATED
+PASS anchors list signed by the current key: 0 public person(s)
 OK: all checks passed
 ```
 
@@ -471,7 +477,8 @@ privately: your `api`; its credential in the shape it stores, for your productio
 (sandbox credentials are self-service),
 `{"ABCD": {"provider_id": "frame-ai", "token": "<secret>"}}`; the codes it may ask about,
 and the exact licensee id of each customer you connected for it; your sandbox `api`, the
-sandbox's eight test codes, and the test directory's URL and steward key. Providers take
+sandbox's eight test codes (and any test people you added, with what each is for), and the
+test directory's URL and steward key. Providers take
 sandbox credentials themselves (`POST {sandbox api}/v2/sandbox/access`).
 A listing can be revoked, with notice and reasons; a prefix is never given to anyone else.
 
@@ -494,7 +501,7 @@ A listing can be revoked, with notice and reasons; a prefix is never given to an
 | `POST /v2/requests` | ask → `{"answer": <signed pg.answer.v1>}` |
 | `POST /v2/reports` | report → `{"ack": <signed pg.report_ack.v1>}` |
 | `POST /v2/keys`, `GET /v2/keys/{provider_id}` | provider key sets |
-| `GET /v2/grants/{id}` | a signed grant (provider credential required) |
+| `GET /v2/grants/{id}` | a signed grant (provider credential required in production; a sandbox answers without one) |
 | `GET /v2/codes/{code}` | public lookup |
 | `GET /v2/anchors` | anchored subjects, signed (extension `identity`) |
 | `GET /v2/proofs/{16 hex}` | this registry's part of a proof |
@@ -502,4 +509,4 @@ A listing can be revoked, with notice and reasons; a prefix is never given to an
 
 Providers authenticate with `X-Provider-ID: <id>` and `Authorization: Bearer <token>` on
 `POST /v2/requests`, `/v2/reports`, `/v2/keys` and `GET /v2/grants/…`; the rest is public.
-Errors are `{"error": "PG_…", "error_description": "…"}` with HTTP 401, 409 or 422.
+Errors are `{"error": "PG_…", "error_description": "…"}` with HTTP 401, 404, 409, 422 or 429.
