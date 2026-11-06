@@ -88,6 +88,8 @@ hours: answers checked against a directory object older than that are refused.
 `pregen.load_directory(url, previous=saved, steward_public_key_hex=TEST_STEWARD)` or
 `loadDirectory({ url, previous: saved, stewardPublicKeyHex: TEST_STEWARD })`, where `url` is
 the test directory's URL (without it, the public directory is loaded). Never in production.
+The public test directory is `https://test.pregen.org/registries.json`, signed by the test
+steward key `78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0`.
 Keep a saved test directory in its own folder (`pregen-test/`, step 9): passed as `previous` to
 the real directory, it is refused (`sequence … is older` / `namespace … was removed`).
 A test directory is only about who signed the directory: answers from a non-sandbox registry
@@ -554,7 +556,9 @@ now. For answers, always `load_directory(previous=saved)`.
 ## 10. Try it in a sandbox first
 
 From the registry, get its sandbox `api`, the sandbox's eight test codes, and the test
-directory (its URL and test steward key). A sandbox is its own registry with its own prefix
+directory (its URL and test steward key). To start before any registry gives you one, use
+PRE-GEN's own: the PRE-GEN Test Registry, prefix `TEST`, `api` `https://sandbox.pregen.org`,
+listed in the public test directory (step 2), codes 1 to 8: `PG-TEST-000001N` `PG-TEST-000002Z` `PG-TEST-0000034` `PG-TEST-000004E` `PG-TEST-000005R` `PG-TEST-000006$` `PG-TEST-0000077` `PG-TEST-000008H`. A sandbox is its own registry with its own prefix
 (for example `ABCE` beside `ABCD`): take credentials from `{sandbox api}/v2/sandbox/access`,
 store them under that prefix in `CREDENTIALS`, and register your key there (step 4; the same
 provider key for sandbox and production is fine). Copy

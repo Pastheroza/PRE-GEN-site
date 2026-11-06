@@ -49,13 +49,11 @@ signature:
 python3 -c "import pregen; print(sorted(r['prefix'] for r in pregen.load_directory().registries))"
 ```
 
-**The public test directory is not online yet** (it will be `https://test.pregen.org/registries.json`,
-with its own test steward key): until it is, a sandbox cannot be listed and providers cannot
-check its answers outside a test network you are given. On such a network, list its prefixes
-with this one line instead:
+**The public test directory** is `https://test.pregen.org/registries.json`, signed by the test
+steward key `78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0`; it lists sandboxes only. List its prefixes with this one line:
 
 ```bash
-python3 -c "import pregen; print(sorted(r['prefix'] for r in pregen.load_directory('<test directory url>', steward_public_key_hex='<test steward key hex>').registries))"
+python3 -c "import pregen; print(sorted(r['prefix'] for r in pregen.load_directory('https://test.pregen.org/registries.json', steward_public_key_hex='78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0').registries))"
 ```
 
 Pick a prefix that is not listed in either directory (the test one once you have its key), and a
@@ -443,7 +441,7 @@ licensee without `connect`; in production, run `connect` first or the provider g
 licensee-only grant still needs `licensee_id` in the request (without it: `deny PG_NO_LICENSE`
 in the sandbox, where `test:t1` names no sandbox provider; in production, `deny PG_NOT_CONNECTED`).
 Apply for the sandbox's prefix too (step 9, status `sandbox`): a sandbox is listed only in a
-**test directory**, never in the real one (step 2: not online yet). The directory entry looks like any
+**test directory**, never in the real one (step 2). The directory entry looks like any
 other; the document's `sandbox` member is only `true` or `false`, and nothing links your
 registry to your sandbox: give providers the sandbox `api` yourself (step 10).
 

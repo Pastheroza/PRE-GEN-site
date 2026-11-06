@@ -212,8 +212,11 @@ categories need the person's own signed grant).
   ```
 
   Its keys are not in the real directory, so `checkAnswer` refuses its signatures; that is
-  expected. A shared test directory signed by a separate test steward key is specified
-  (`extensions/sandbox.md`) but not online yet.
+  expected. The shared test directory is online: `https://test.pregen.org/registries.json`,
+  signed by the test steward key `78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0`. It lists PRE-GEN's own
+  sandbox, the PRE-GEN Test Registry (`https://sandbox.pregen.org`, prefix `TEST`, codes
+  `PG-TEST-000001N` to `PG-TEST-000008H`): with it, `checkAnswer(…, { directory, testing: true })`
+  accepts sandbox answers end to end.
 - **Bytes.** `spec/test-vectors/messages.json` gives eight messages with their canonical
   body, signing input, message id and signatures. Reproduce every one.
 
