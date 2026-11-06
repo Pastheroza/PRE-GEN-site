@@ -213,6 +213,14 @@ class Registry:
         with self.tx() as db:
             db.execute("INSERT OR IGNORE INTO connections VALUES (?, ?)", (provider_id, licensee_id))
 
+    def set_level(self, code: str, level: str):
+        """How far the registry has established who holds the person's rights; answers carry it from now on."""
+        if level not in ("self", "asserted", "consented", "verified"):
+            raise ValueError(f"unknown level {level}")
+        with self.tx() as db:
+            if not db.execute("UPDATE subjects SET level = ? WHERE code = ?", (level, code)).rowcount:
+                raise ValueError(f"no subject {code} in this registry")
+
     def opt_out(self, code: str):
         """The person opted out or withdrew: every answer from now on is PG_SUBJECT_OPTED_OUT (core rule 3)."""
         with self.tx() as db:

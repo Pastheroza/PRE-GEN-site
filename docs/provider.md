@@ -112,7 +112,7 @@ A registry's sandbox gives test credentials without an account:
 "registry": "<the sandbox api>", "note": "…"}` (Python: `json.loads(urllib.request.urlopen(
 urllib.request.Request(sandbox_api + "/v2/sandbox/access", data=b"", method="POST")).read())`;
 JS: `const res = await fetch(sandboxApi + "/v2/sandbox/access", { method: "POST" }); if (!res.ok)
-throw new Error(`HTTP ${res.status}`); const access = await res.json()`).
+throw new Error("HTTP " + res.status); const access = await res.json()`).
 Never resend this call: each one mints a new credential (at most 10 an hour per address, then
 429). The token is shown once: store the pair at once, under the sandbox's prefix (the four
 letters of its test codes). Once you have loaded the test directory (step 2), check that
@@ -147,8 +147,7 @@ request there (a report without a registered key is refused with 401, and the al
 stay counted), and remember which registries are done (persist that list with your secrets,
 and each job's `job_id` and `job_input` with the job record, saved before its first request,
 so a resend after a crash is the identical request). `PROVIDER_ID` is the provider id
-that registry gave you; anything but HTTP 200 with `keyset` means: do not ask that registry. In JavaScript, `await signEnvelope("pg.keyset.v1", { …the same body… },
-KEY)` (the complete example has it in full):
+that registry gave you; anything but HTTP 200 with `keyset` means: do not ask that registry:
 
 ```python
 keyset = pregen.sign_envelope("pg.keyset.v1", {
@@ -157,6 +156,9 @@ keyset = pregen.sign_envelope("pg.keyset.v1", {
     "keys": [{"key_id": key_id, "public_key_hex": pub, "status": "current"}]}, key)
 # POST {api}/v2/keys with this envelope as the JSON body (headers: step 5)
 ```
+
+In JavaScript, `await signEnvelope("pg.keyset.v1", { …the same body… }, KEY)` (the complete
+example has it in full).
 
 The registry answers HTTP 200 `{"keyset": …}`, and the same keyset again returns the same.
 `recovery_registry: ""` means only the registry that holds your key set may co-sign a
@@ -475,9 +477,10 @@ writeFileSync(path("saved_at.json"), JSON.stringify({ saved_at: Math.floor(Date.
 if (TEST_STEWARD) writeFileSync(path("test_steward.json"), JSON.stringify({ steward_public_key_hex: TEST_STEWARD }));
 ```
 
-**A proof checked against a test directory is never a label, sandbox or not:** record it
-`accepted: false`, reason `test directory: never a label` (with no file, `no file: not checked`
-comes first). If one registry
+**A proof checked against a test directory is never a label, sandbox or not.** The verdict, in
+this order: 1. no file: `no file: not checked`; 2. the check raises: its message; 3. a level
+below your policy: `level <x>`; 4. obligations you do not show: not a label; 5. a test
+directory or sandbox: `test directory: never a label`; 6. otherwise a label. If one registry
 does not answer, keep its previous copy and go on. Save key sets as they come: at check time the
 library uses only keys whose ids the directory lists, and refuses small-order keys; the
 directory never removes a listed key id (the libraries refuse a directory that does), a key is
@@ -553,7 +556,9 @@ A registry may give you more codes (9 and up) for its own test grants, and tells
 answers: ask them like the others. Ask each in a job of its own, and take code `1` through the whole flow (ask, check,
 generate, report, proof), as in production: the complete examples below do, with
 `TESTING = True` / `const TESTING = true`. Keep sandbox outputs and proofs apart from
-production ones: they are never labels. Check sandbox answers
+production ones: they are never labels (record `accepted: false`, reason `test directory: never a
+label`, step 9). A sandbox accepts any `licensee_id` without connecting it: ask a licensee-only
+test code with the licensee id the registry names for it. Check sandbox answers
 and proofs with `testing`: `check_answer(answer, request, directory, testing=True)`,
 `check_proof(…, testing=True)`; JS `checkAnswer(answer, request, { directory, testing: true })`.
 
@@ -717,7 +722,7 @@ def ask(code):                                                            # step
 
 for code in CODES:                                                        # rule out locally first (step 5)
     entry = directory.registry_for(code)
-    if entry is None or entry["prefix"] in FAILED or (code not in ANCHOR_OF and entry["prefix"] not in CREDENTIALS):
+    if entry is None or entry.get("revoked") or entry["prefix"] in FAILED or (code not in ANCHOR_OF and entry["prefix"] not in CREDENTIALS):
         raise SystemExit(f"{code}: no listed registry, no credential there, or its anchor list failed")
     if directory.is_false_claim(code):
         raise SystemExit(f"{code}: the steward recorded it as a false claim")
@@ -859,7 +864,7 @@ async function post(entry, path, envelope, member) {                          //
     try {
       res = await fetch(entry.api + path, { method: "POST", body: data, signal: AbortSignal.timeout(10000), headers: {
         "Content-Type": "application/json", "X-Provider-ID": cred.provider_id, Authorization: `Bearer ${cred.token}` } });
-      body = res.ok ? await res.json() : await res.text();
+      body = res.ok ? await res.json().catch(() => ({})) : await res.text();
     } catch { await new Promise((r) => setTimeout(r, 3000)); continue; }        // no answer: send the same bytes again
     if (res.ok) {
       if (!(member in body)) throw new Error(`${path}: HTTP 200 without ${member}: no answer`);
@@ -913,7 +918,7 @@ async function ask(code) {                                                      
 
 for (const code of CODES) {                                                     // rule out locally first (step 5)
   const entry = directory.registryFor(code);
-  if (!entry || FAILED.has(entry.prefix) || (!ANCHOR_OF.has(code) && !CREDENTIALS[entry.prefix])) {
+  if (!entry || entry.revoked || FAILED.has(entry.prefix) || (!ANCHOR_OF.has(code) && !CREDENTIALS[entry.prefix])) {
     throw new Error(`${code}: no listed registry, no credential there, or its anchor list failed`);
   }
   if (directory.isFalseClaim(code)) throw new Error(`${code}: the steward recorded it as a false claim`);
@@ -998,11 +1003,11 @@ A refusal about a person is a signed answer (step 6). HTTP errors carry
 | `PG_ASK_CONFLICT` | 409 | this person in this job was asked with a different request: resend the identical one |
 | `PG_JOB_CONFLICT` | 409 | this `job_id` was already used with another `job_hash`: use a new `job_id` |
 | `PG_RATE_LIMITED` | 429 | not answered yet: wait (`Retry-After` if sent), then send the same bytes again |
+| any other code | any | no answer: do not generate; if it refused a give-back, log it and go on |
+| HTTP 200 without `answer` / `ack` / `keyset` | 200 | no answer, as a 4xx |
 
 To keep the acknowledgement a 409 `PG_ASK_CLOSED` carries, parse that response's body
 (`json.loads(e.read())["ack"]`) instead of raising; the examples' `post()` simply raises.
-| any other code | any | no answer: do not generate; if it refused a give-back, log it and go on |
-| HTTP 200 without `answer` / `ack` / `keyset` | 200 | no answer, as a 4xx |
 
 Answer reasons you will meet: `PG_UNKNOWN_SUBJECT` (this registry holds no such person:
 not a prohibition, and not a permission), `PG_OTHER_REGISTRY`, `PG_NO_LICENSE`, `PG_NOT_CONNECTED`

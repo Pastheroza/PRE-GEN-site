@@ -15,12 +15,14 @@
   pregen-registry subject list --dir DATA      (every code, with its check character)
   pregen-registry subject anchor --dir DATA --code PG-… --anchor wikidata:Q… [--proof-url https://…]
   pregen-registry subject opt-out --dir DATA --code PG-…  (the person opted out or withdrew: refused from the next answer)
+  pregen-registry subject level --dir DATA --code PG-… --level verified   (after you checked identity and authority)
   pregen-registry check --api https://registry.example [--directory URL --steward HEX] [--provider-id ID --token T --subject PG-… [--purpose P] [--licensee ID]]
 """
 from __future__ import annotations
 
 import argparse
 import json
+import re
 import os
 import sys
 from pathlib import Path
@@ -86,7 +88,7 @@ def main(argv=None):
             p.add_argument("--ssl-certfile", help="serve HTTPS directly (a local test); in production, use a TLS proxy")
             p.add_argument("--ssl-keyfile")
         elif name == "subject":
-            p.add_argument("action", choices=["add", "anchor", "list", "opt-out"])
+            p.add_argument("action", choices=["add", "anchor", "list", "opt-out", "level"])
             p.add_argument("--name", help="add: the subject's name")
             p.add_argument("--code", help="anchor, opt-out: the subject's PG code")
             p.add_argument("--anchor", help="anchor: wikidata:Q…, isni:…, or a domain (identity.md)")
@@ -149,8 +151,8 @@ def main(argv=None):
                 {"verify": "Not applicable: this sandbox holds only test subjects.",
                  "anchors": "Not applicable: this sandbox holds only test subjects."} if a.sandbox else
                 {"verify": "<who may register a person, and how we check they are that person or may act for them>",
-                 "anchors": "<the anchor we record: a Wikidata item, an ISNI or a domain; and how the person confirms "
-                            "on their own channel>"}), sandbox=(
+                 "anchors": "<the anchor we record: a Wikidata item (clients confirm only these today); and how the "
+                            "person confirms on their own channel>"}), sandbox=(
                 "\nThis is a sandbox: it holds no real people, only the eight standard test subjects, and its "
                 "answers are marked as sandbox answers.\n" if a.sandbox else "")))
         print(f"Registry created in {a.dir}.\n  prefix: {a.prefix}\n  operator key id: {key.id}\n"
@@ -177,6 +179,14 @@ def main(argv=None):
     elif a.cmd == "subject" and a.action == "list":
         for s in load(a.dir)._q("SELECT code, name, level FROM subjects ORDER BY serial"):
             print(f"{s['code']}  {s['level']}  {s['name']}")
+    elif a.cmd == "subject" and a.action == "level":
+        if not a.code:
+            sys.exit("subject level needs --code and --level")
+        try:
+            load(a.dir).set_level(a.code, a.level)
+        except ValueError as e:
+            sys.exit(str(e))
+        print(f"{a.code} is now level {a.level}")
     elif a.cmd == "subject" and a.action == "opt-out":
         if not a.code:
             sys.exit("subject opt-out needs --code")
@@ -211,6 +221,8 @@ def main(argv=None):
             sys.exit(str(e))
         print(f"provider {a.id} removed: its token no longer works")
     elif a.cmd == "provider":
+        if a.id and not re.fullmatch(r"[A-Za-z0-9-]+", a.id):              # ":" separates provider and customer
+            sys.exit("a provider id is letters, digits and -")
         pid, token = load(a.dir).add_provider(a.id)
         print(f"provider_id: {pid}\ntoken: {token}\nShown once. Give it to the provider over a private channel.")
     elif a.cmd == "connect":

@@ -60,7 +60,8 @@ python3 -c "import pregen; print(sorted(r['prefix'] for r in pregen.load_directo
 
  Pick a prefix that is not listed, and a
 second choice in case someone asks for yours first. For your sandbox's prefix, also check
-the test directory's list: sandboxes are listed only there, and no prefix is ever reused.
+the test directory's list: sandboxes are listed only there, and no prefix is ever reused. Until
+you have its steward key, give a second choice: the steward checks the sandbox prefix for you.
 
 **A sandbox is a separate registry with its own prefix** (step 7), applied for the same way.
 Any free prefix will do; one close to yours (`ABCE` beside `ABCD`) helps people recognise it.
@@ -100,7 +101,8 @@ A policy to edit is in ./data/policy.md; `serve` publishes it at https://registr
 ```
 
 Keep the folder private: `chmod 700 ./data` (the database holds your people, grants and
-provider credentials). Replace each `<…>` in `./data/policy.md`, the operator line included.
+provider credentials). Replace each `<…>` in `./data/policy.md`, the operator line included;
+under "Anchors for public people", name Wikidata: clients confirm no other anchor today (step 6).
 
 The **key id** (`pg-ed25519:` and 32 hex) is the key's **fingerprint**: it is what the
 directory lists and what the steward asks for (step 9). The directory lists key ids only;
@@ -146,7 +148,8 @@ plain `check` output; the steward finds the new key id in your live `/keys`. Bac
 `./data/operator.next.key` (step 3). Then confirm the
 steward listed it: `pregen-registry check --api … --directory …` (on a test directory, add
 `--steward <its key hex>`) prints `PASS the directory (sequence <n>) lists prefix ABCD with
-keys …`, and the new key id must be among them.
+keys …`, the new key id must be among them, and the sequence must be higher than in your
+previous `check`.
 
 **Wait 24 hours after the listing (note the time `check` first shows the new key id among
 the listed keys), then stop the server, wait until it has exited, rotate, and start it
@@ -175,8 +178,8 @@ directory: add `--steward <its key hex>`): it must show `PASS listed with the cu
 The directory does not change, so nothing goes to the steward.
 The retired key's file is `./data/operator.retired.<the 32 hex of the old key id>.key`. Nothing
 needs it any more, but whoever holds it could sign acknowledgements dated before it
-was retired: keep it only in the offline backup, encrypted, in its own folder (for example
-`./offline/retired/`), and remove it from `./data` before the next step 3 backup (the recipe
+was retired: keep it only in the offline backup, encrypted, in its own folder beside `./backup`
+(for example `./offline/retired/`, never inside `./backup/data`), and remove it from `./data` before the next step 3 backup (the recipe
 copies every `*.key` still in `./data` and empties `./backup/data` each time). To encrypt it:
 `openssl enc -aes-256-cbc -pbkdf2 -salt -in <file> -out <file>.enc`, then delete the plain
 file; openssl asks for a passphrase: keep it in a password manager, never beside the `.enc` file. If you rotate before the directory lists the new key, providers refuse
@@ -232,7 +235,8 @@ your policy changes, the profile names stay), `extensions`, `policy`, `complaint
 returns `{"current_key_id": "pg-ed25519:…", "keys": [{"key_id", "public_key_hex",
 "activated_at", "deactivated_at", "status", …}], "signature": "…"}`. The third returns your signed
 anchor list (`{"type": "pg.anchors.v1", …}`), never a 404, through your proxy too: a provider
-that cannot read it stops generating your people.
+that cannot read it stops generating your people, and every public person at any registry,
+until it reads it again.
 
 ## 6. People, anchors, grants and providers
 
@@ -245,7 +249,10 @@ pregen-registry subject add --dir ./data --name "Maya Cole" --level verified
 ```
 
 It prints the person's code, for example `PG-ABCD-000001G`. `--level` is how far you checked
-them: `self`, `asserted`, `consented` or `verified`. `pregen-registry subject list --dir ./data`
+them: `self`, `asserted`, `consented` or `verified`. Without `--level` the person is `self`, and
+proof checkers label only `verified` by default (provider.md step 9): give `--level verified` once
+you have checked identity and authority, or raise it later with `pregen-registry subject level
+--dir ./data --code '<code>' --level verified`. `pregen-registry subject list --dir ./data`
 prints every code you hold, with its level and name.
 
 **Anchor a public person** (extension `identity`; every public person needs one): record their
@@ -323,6 +330,9 @@ database (`python3 -c "import sqlite3; [print(r) for r in sqlite3.connect('./dat
 ```bash
 pregen-registry provider add --dir ./data --id frame-ai
 ```
+
+A provider id is letters, digits and `-`, never `:` (it separates provider and customer in a
+licensee id).
 
 ```
 provider_id: frame-ai
@@ -432,9 +442,10 @@ pregen-registry check --api https://sandbox.registry.example \
 The extra line reads `PASS POST /v2/requests for PG-ABCE-000001…, purpose commercial: HTTP
 200, allow`; with test code 2 it reads `… deny PG_NO_LICENSE`. To try a grant of your own
 (purposes, a licensee), add a test person and that grant to the sandbox (`subject add
---dir ./sandbox --name "Test subject 9 (allow, licensee test:t1, commercial)"`, named by what it
+--dir ./sandbox --level verified --name "Test subject 9 (allow, licensee test:t1, commercial)"`, named by what it
 answers, which numbers added people from 9 on, and `grant add --dir ./sandbox …`)
-and ask for it the same way; for a licensee-only grant, give
+and ask for it the same way (give sandbox test grants no `--max-uses`: every provider shares
+them, and each allow, a `check` included, uses one for good); for a licensee-only grant, give
 it `--licensee test:t1` and add `--licensee test:t1` to `check`. If you added your own test
 people, also change the line in `./sandbox/policy.md` that says it holds only the eight test
 subjects.

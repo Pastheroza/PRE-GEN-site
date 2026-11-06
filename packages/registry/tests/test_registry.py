@@ -249,6 +249,19 @@ def test_every_answer_carries_only_the_known_members():
         assert b["profile"] == "likeness/1"                     # the name asked for, never a version of a policy
 
 
+def test_a_level_can_be_raised_and_provider_ids_hold_no_colon(tmp_path):
+    reg, c, _ = make(sandbox=False)
+    s = reg.add_subject("Maya")
+    reg.add_grant(s, purposes=["commercial"])
+    p = Provider(reg, c)
+    assert p.answer(p.body(s, purpose="commercial"))["body"]["level"] == "self"
+    reg.set_level(s, "verified")
+    assert p.answer(p.body(s, job="j2", purpose="commercial"))["body"]["level"] == "verified"
+    cli(["init", "--dir", str(tmp_path), "--prefix", "TEST", "--name", "T", "--api", "https://t.example"])
+    with pytest.raises(SystemExit, match="letters, digits"):
+        cli(["provider", "add", "--dir", str(tmp_path), "--id", "a:b"])
+
+
 def test_a_person_added_to_a_sandbox_never_takes_a_standard_test_code():
     reg, c, _ = make()
     assert reg.add_subject("Extra test person") == code(9)
