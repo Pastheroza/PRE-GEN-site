@@ -49,6 +49,9 @@ step returns. Where it and the specification differ, the specification wins:
 8. **Ask the person** who runs the product before you create accounts, accept terms or
    store secrets. Their request to integrate PRE-GEN covers what this guide makes and
    stores: the sandbox credential, the tokens registries give you, and your provider key.
+9. **An `allow` is a registry's signed answer, not legal advice.** It records what that
+   registry decided under its own published policy; you stay responsible under the law
+   that applies to you (`https://www.pregen.org/legal.html`).
 
 ## 1. Install the library
 

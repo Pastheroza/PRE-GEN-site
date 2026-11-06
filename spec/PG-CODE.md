@@ -479,7 +479,7 @@ same path, and a new successor is published at once. The bare namespace cannot b
 reassigned by any steward: rule 3 above is part of the standard.
 
 *Reference implementation:* `spec/tools/pregen_directory.py`; the steward's
-signing tool is `spec/tools/steward.py`. The vectors' `namespace` section
+signing tool is `spec/tools/steward.py`, its runbook `spec/tools/STEWARD.md`. The vectors' `namespace` section
 fixes the directory checks and the issuer check in both directions.
 
 ---

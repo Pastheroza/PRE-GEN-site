@@ -125,6 +125,10 @@ def check_invariants(directory: dict) -> None:
             isinstance(k, dict) and _FINGERPRINT.fullmatch(str(k.get("key_id", ""))) and isinstance(k.get("at"), str)
             for k in rk)):
         raise DirectoryError("revoked_keys must list {key_id, at}")
+    fc = directory.get("false_claims")
+    if fc is not None and not (isinstance(fc, list) and all(
+            isinstance(f, dict) and isinstance(f.get("code"), str) and isinstance(f.get("at"), str) for f in fc)):
+        raise DirectoryError("false_claims must list {anchor, code, at, reason}")
 
 
 def sign_directory(directory: dict, private_key: Ed25519PrivateKey) -> dict:

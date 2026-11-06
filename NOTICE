@@ -3,10 +3,12 @@ Copyright 2026 Valerii Egorov
 
 The PRE-GEN standard — everything in the spec/ directory: the specification
 texts, the test vectors, the conformance runner and the paper — is licensed
-under the Apache License, Version 2.0 (spec/LICENSE, spec/NOTICE).
+under the Apache License, Version 2.0 (spec/LICENSE, spec/NOTICE). So are the
+libraries and the reference registry in packages/ (each with its own LICENSE)
+and the code examples in docs/provider.md and docs/registry.md.
 
 The rest of this repository (the pregen.org website: its pages, styles,
-scripts and logo) is not covered by that licence. The Geist font in
+scripts and logo, and the prose of the guides) is not covered by that licence. The Geist font in
 assets/fonts/ is Vercel's, under the SIL Open Font License 1.1
 (assets/fonts/Geist-LICENSE.txt).
 

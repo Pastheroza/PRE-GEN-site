@@ -8,16 +8,20 @@ from __future__ import annotations
 
 import json
 import secrets
+import time
 import urllib.error
 import urllib.request
+from email.utils import parsedate_to_datetime
 
 import pregen
 
 EXTENSIONS_NEEDED = ("reports", "provider-keys")
 
 
-def _get(url):
+def _get(url, headers=None):
     with urllib.request.urlopen(urllib.request.Request(url, headers={"Accept": "application/json"}), timeout=10) as r:
+        if headers is not None:
+            headers["Date"] = r.headers.get("Date")                  # HTTPMessage looks names up in any case
         return json.loads(r.read())
 
 
@@ -35,11 +39,15 @@ def check(api: str, directory_url: str | None = None, steward: str | None = None
           token: str | None = None, subject: str | None = None, purpose: str = "commercial", licensee: str = ""):
     """Yields (ok, what) lines."""
     api = api.rstrip("/")
+    served = {}
     try:
-        doc = _get(api + "/.well-known/pregen-registry.json")
+        doc = _get(api + "/.well-known/pregen-registry.json", served)
     except Exception as e:  # noqa: BLE001 — any failure to reach it is the finding
         yield False, f"GET {api}/.well-known/pregen-registry.json: {e}"
         return
+    if served.get("Date"):                                # answers and give-back windows are timed by its clock
+        skew = round(parsedate_to_datetime(served["Date"]).timestamp() - time.time())
+        yield abs(skew) <= 60, f"the registry's clock is {abs(skew)} s {'ahead of' if skew > 0 else 'behind'} this one"
     missing = [k for k in ("prefix", "name", "api", "keys", "profiles", "extensions", "policy", "complaints", "sandbox")
                if k not in doc]
     yield not missing, "registry document" + (f": missing {missing}" if missing else

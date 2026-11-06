@@ -250,6 +250,9 @@ def main(argv=None):
             if not next_path.exists():
                 _write_key(next_path, Key())
             nxt = Key(next_path.read_text().strip())
+            if not key_path.exists() and not os.environ.get("PREGEN_OPERATOR_KEY_HEX"):   # the current key is lost
+                sys.exit(f"{key_path} is missing: run `pregen-registry key rotate` now to make {nxt.id} the current "
+                         "key, then apply as a key update; the steward confirms it is you before listing it.")
             reg = load(a.dir)
             reg.announce_next_key(nxt.public_hex)                         # /keys lists it as `next` from now on
             print(f"next operator key id: {nxt.id}\n  public key: {nxt.public_hex}\n{reg.config.api.rstrip('/')}/keys now lists it as "
@@ -258,6 +261,11 @@ def main(argv=None):
         else:
             if not next_path.exists():
                 sys.exit("no next key: run `pregen-registry key next` and have the steward announce it first")
+            if not key_path.exists():                                     # lost: the history in the database stays
+                next_path.rename(key_path)
+                print(f"operator key is now {load(a.dir).key.id}; the lost key is retired and stays in /keys. Apply "
+                      "as a key update with this key id; until the steward lists it, providers refuse what it signs.")
+                return
             old = Key(key_path.read_text().strip())
             key_path.rename(key_path.with_name(f"operator.retired.{old.id.split(':')[1]}.key"))
             next_path.rename(key_path)

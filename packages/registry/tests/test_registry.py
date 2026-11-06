@@ -265,6 +265,8 @@ def test_a_name_is_public_only_when_published(tmp_path, capsys):
     assert c.get(f"/v2/codes/{private}").json() == {"code": private, "registry": "TEST", "status": "unknown"}
     cli(["subject", "publish", "--dir", d, "--code", private])
     assert TestClient(create_app(load(d))).get(f"/v2/codes/{private}").json()["name"] == "Private Person"
+    reg, _, _ = make(sandbox=False)                            # the Python API too, not only the CLI
+    assert reg.lookup(reg.add_subject("Scripted Person"))["status"] == "unknown"
 
 
 def test_a_level_can_be_raised_and_provider_ids_hold_no_colon(tmp_path):
@@ -540,3 +542,36 @@ def test_the_policy_page_is_served_from_policy_md(tmp_path):
     (tmp_path / "policy.md").write_text("# Policy\nHow we verify rights holders.\n")
     r = c.get("/policy")
     assert r.status_code == 200 and r.text.startswith("# Policy") and r.headers["content-type"].startswith("text/markdown")
+
+
+@pytest.mark.parametrize("offset,ok", [(0, True), (300, False), (-300, False)])
+def test_check_reports_a_registry_clock_that_is_off(monkeypatch, offset, ok):
+    import time
+    from email.utils import formatdate
+    from pregen_registry import check as chk
+    def get(url, headers=None):
+        if headers is None:
+            raise OSError("stop after the clock line")
+        headers["Date"] = formatdate(time.time() + offset, usegmt=True)
+        return {"prefix": "TEST", "api": "https://t.example", "keys": "https://t.example/keys", "policy": ""}
+    monkeypatch.setattr(chk, "_get", get)
+    line = next(r for r in chk.check("https://t.example") if "clock" in r[1])
+    assert line[0] is ok
+
+
+def test_a_lost_operator_key_is_replaced_and_its_history_kept(tmp_path, capsys):
+    """registry.md, step 3: lose operator.key and every copy, and `key next` then `key rotate` make a new current key."""
+    d = tmp_path / "r"
+    cli(["init", "--dir", str(d), "--prefix", "TEST", "--name", "T", "--api", "https://t.example"])
+    from pregen_registry.cli import load
+    lost = load(str(d)).key.id
+    (d / "operator.key").unlink()
+    with pytest.raises(SystemExit, match="key rotate"):
+        cli(["key", "next", "--dir", str(d)])
+    cli(["key", "rotate", "--dir", str(d)])
+    reg = load(str(d))
+    ks = reg.key_set()
+    assert ks["current_key_id"] == reg.key.id != lost
+    assert [k["key_id"] for k in ks["keys"]][:2] == [lost, reg.key.id]
+    import pregen
+    assert pregen.verify_signed(ks, reg.key.public_hex, "signature")

@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS operator_keys (key_id TEXT PRIMARY KEY, public_key_he
   activated_at INTEGER NOT NULL, deactivated_at INTEGER);
 CREATE TABLE IF NOT EXISTS subjects (
   code TEXT PRIMARY KEY, serial INTEGER UNIQUE NOT NULL, name TEXT NOT NULL DEFAULT '',
-  status TEXT NOT NULL DEFAULT 'active', level TEXT NOT NULL DEFAULT 'self', published INTEGER NOT NULL DEFAULT 1,
+  status TEXT NOT NULL DEFAULT 'active', level TEXT NOT NULL DEFAULT 'self', published INTEGER NOT NULL DEFAULT 0,
   opted_out INTEGER NOT NULL DEFAULT 0, minor INTEGER NOT NULL DEFAULT 0, review INTEGER NOT NULL DEFAULT 0,
   fixed_refusal TEXT, immutable_denials TEXT NOT NULL DEFAULT '[]', no_grant_status TEXT NOT NULL DEFAULT 'deny',
   custody TEXT NOT NULL DEFAULT 'managed', key_public TEXT NOT NULL, key_private TEXT,
@@ -150,6 +150,8 @@ class Registry:
         """`holder_public`: the person holds their own key (custody self); the registry never sees it."""
         if holder_public:
             check_public_key(holder_public)          # a small-order key would let anyone sign as the person (C1)
+        # A real person's name is public at /v2/codes only by their choice; a sandbox holds no real people.
+        flags.setdefault("published", int(self.config.sandbox))
         with self.tx() as db:
             if serial is None:
                 serial = (db.execute("SELECT COALESCE(MAX(serial), 0) FROM subjects").fetchone()[0] or 0) + 1

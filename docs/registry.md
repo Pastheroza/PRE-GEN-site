@@ -126,6 +126,15 @@ For the sandbox, the same with `./sandbox` and `./backup/sandbox`. Then move `./
 the offline drive. Back up again after you add people or grants, and after every `key next`
 or `key rotate`.
 
+**Lose `operator.key` and every copy of it,** and nothing can sign for your prefix until the
+steward lists a new key. Keep `registry.db` (it holds your key history), run
+`pregen-registry key next --dir ./data` and then `pregen-registry key rotate --dir ./data`:
+the new key is current and the lost one stays in `/keys` as retired. Start the server, and
+apply as a key update (step 4) with the new key id; write through the security advisory form
+too, and the steward confirms it is you through the operator contact in your application.
+Proofs your lost key signed keep verifying from the key sets providers saved (provider guide,
+step 9).
+
 ## 4. Keys: one current key, with its whole history
 
 `GET {api}/keys` is your signed key set: the current key, every key you ever signed with,
@@ -209,6 +218,10 @@ The proxy must pass the client's address: in nginx, `proxy_set_header X-Forwarde
 $proxy_add_x_forwarded_for;` (Caddy does it by default). If the proxy runs on another host,
 start `serve` with `FORWARDED_ALLOW_IPS=<proxy address>`. Without this, your sandbox counts every
 provider as one address: 10 credentials an hour for everyone.
+
+Rate-limit requests per address at the proxy as well: the registry itself limits only sandbox
+credentials. Keep the machine's clock synced (NTP, the default on most servers): answers and
+the 24-hour give-back window are timed by it, and `check` (step 8) shows how far off it is.
 
 To serve HTTPS directly, for example on a test machine with your own certificate:
 
@@ -443,6 +456,7 @@ pregen-registry check --api https://registry.example
 ```
 
 ```
+PASS the registry's clock is 0 s behind this one
 PASS registry document: prefix ABCD, profiles ['likeness/1']
 PASS document api is 'https://registry.example'
 PASS answers under likeness/1
