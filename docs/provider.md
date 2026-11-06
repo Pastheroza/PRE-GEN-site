@@ -687,7 +687,8 @@ def post(entry, path, envelope, member):                                  # rule
             if e.code < 500 and e.code != 429:                            # any other 4xx is final for these bytes
                 raise RuntimeError(f"{path}: HTTP {e.code} {e.read().decode()}") from None
             if e.code == 429:
-                time.sleep(min(int(e.headers.get("Retry-After") or 3), 60))
+                wait = e.headers.get("Retry-After") or ""                 # seconds, or an HTTP date
+                time.sleep(min(int(wait), 60) if wait.isdigit() else 3)
                 continue
         except (urllib.error.URLError, OSError, http.client.HTTPException):
             pass                                                          # no answer: send the same bytes again
