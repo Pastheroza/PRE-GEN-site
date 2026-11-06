@@ -517,35 +517,63 @@ do not label (reason `saved copy over 24 hours old: not checked`): go online, lo
 Later, check with no network (`verify_directory` / `verifyDirectory` fetch nothing):
 
 ```python
-FOLDER = "pregen"                                    # "pregen-test" only when testing
+import hashlib, json, os, time
+import pregen
+
+FOLDER, MIN_LEVEL = "pregen", "self"                 # "pregen-test" for sandbox proofs; your policy's lowest level
+RANK = ["self", "asserted", "consented", "verified"]
 path = lambda name: os.path.join(FOLDER, name)
+bundle = json.load(open("output.bin.proof.json"))
+output_sha256 = hashlib.sha256(open("output.bin", "rb").read()).hexdigest()
 test = json.load(open(path("test_steward.json")))["steward_public_key_hex"] if os.path.exists(path("test_steward.json")) else None
 saved_key_sets = json.load(open(path("key_sets.json")))
 if time.time() - json.load(open(path("saved_at.json")))["saved_at"] > 86_400:
-    raise SystemExit("the saved copy is more than 24 hours old: go online, load and save again")
+    raise SystemExit("saved copy over 24 hours old: not checked")
 directory = pregen.verify_directory(json.load(open(path("directory.json"))),
                                     **({"steward_public_key_hex": test} if test else {}))
-result = pregen.check_proof(bundle, directory, get_json=lambda url: saved_key_sets.get(url, {}),
-                            output_sha256=sha256_of_the_file)          # testing=True only for a sandbox proof
+sandbox = any(s["answer"]["body"].get("ext", {}).get("sandbox") for s in bundle["subjects"])
+try:
+    result = pregen.check_proof(bundle, directory, get_json=lambda url: saved_key_sets.get(url, {}),
+                                output_sha256=output_sha256, testing=bool(test) and sandbox)
+    low = [s["level"] for s in result["subjects"] if RANK.index(s["level"]) < RANK.index(MIN_LEVEL)]
+    if low:
+        verdict = f"level {low[0]}"
+    elif any(s["answer"]["body"].get("obligations") for s in bundle["subjects"]):
+        verdict = "obligations not shown: not a label"                  # unless you show them
+    else:
+        verdict = "test directory: never a label" if test else "label"
+except pregen.PregenError as e:
+    verdict = str(e)
+print({"accepted": verdict == "label", "reason": verdict})
 ```
 
 ```js
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { verifyDirectory, checkProof } from "@pregen/verify";
-const FOLDER = "pregen";                                                       // "pregen-test" only when testing
-const bundle = JSON.parse(readFileSync("<the proof>.json", "utf8"));
-const outputSha256 = createHash("sha256").update(readFileSync("<the file>")).digest("hex");
+const FOLDER = "pregen", MIN_LEVEL = "self";               // "pregen-test" for sandbox proofs; your policy's lowest level
+const RANK = ["self", "asserted", "consented", "verified"];
+const bundle = JSON.parse(readFileSync("output.bin.proof.json", "utf8"));
+const outputSha256 = createHash("sha256").update(readFileSync("output.bin")).digest("hex");
 const read = (name) => JSON.parse(readFileSync(`${FOLDER}/${name}`, "utf8"));
 const TEST = existsSync(`${FOLDER}/test_steward.json`) ? read("test_steward.json").steward_public_key_hex : null;
 const savedKeySets = read("key_sets.json");
 if (Date.now() / 1000 - read("saved_at.json").saved_at > 86_400) {
-  throw new Error("the saved copy is more than 24 hours old: go online, load and save again");
+  throw new Error("saved copy over 24 hours old: not checked");
 }
 const directory = await verifyDirectory(read("directory.json"), TEST ? { stewardPublicKeyHex: TEST } : {});
 const offlineFetch = async (url) => ({ ok: url in savedKeySets, status: url in savedKeySets ? 200 : 404,
                                        json: async () => savedKeySets[url] });
-const result = await checkProof(bundle, { directory, fetch: offlineFetch, outputSha256 });   // testing: true if any answer.body.ext.sandbox
+const sandbox = bundle.subjects.some((s) => s.answer.body.ext?.sandbox);
+let verdict;
+try {
+  const result = await checkProof(bundle, { directory, fetch: offlineFetch, outputSha256, testing: Boolean(TEST) && sandbox });
+  const low = result.subjects.map((s) => s.level).filter((l) => RANK.indexOf(l) < RANK.indexOf(MIN_LEVEL));
+  if (low.length) verdict = `level ${low[0]}`;
+  else if (bundle.subjects.some((s) => s.answer.body.obligations?.length)) verdict = "obligations not shown: not a label";
+  else verdict = TEST ? "test directory: never a label" : "label";
+} catch (e) { verdict = e.message; }
+console.log({ accepted: verdict === "label", reason: verdict });
 ```
 
 The check fetches only through the `get_json` / `fetch` you pass. A retired registry key stays
@@ -583,7 +611,9 @@ character computed from it: copy it, never retype it). Each answers one way:
 code whose registry's document says `"sandbox": true`, and for `check_proof` (offline included)
 when any `answer.body.ext.sandbox` is true. With the real directory it is always false, whatever
 a registry's document says, and the libraries refuse it there. A sandbox proof is never a label. A registry may give you more codes (9 and up) for its own test grants, and tells you what each
-answers (if not, `GET {sandbox api}/v2/codes/<code>`: the name says): ask them like the others. Ask each in a job of its own, and take code `1` through the whole flow (ask, check,
+answers (if not, `GET {sandbox api}/v2/codes/<code>`: the name says): ask them like the others. Ask each in a job of its own: run the complete example once per code (`CODES = [that code]`).
+For codes 2 to 8 it stops at the check with `not an allow: <status> <reason>`, and that line is
+the outcome to compare with the table (nothing was allowed, so nothing to give back). Take code `1` through the whole flow (ask, check,
 generate, report, proof), as in production: the complete examples below do, with
 `TESTING = True` / `const TESTING = true`. Keep sandbox outputs and proofs apart from
 production ones: they are never labels (record `accepted: false`, reason `test directory: never a
@@ -824,6 +854,7 @@ if unreported:                                                            # no p
     raise SystemExit(f"no proof for {unreported}: keep output.bin unlabelled")
 bundle = {"format": "pg.proof.v1", "subjects": subjects}                  # step 9
 print(pregen.check_proof(bundle, directory, output_sha256=output_hash, testing=TESTING))
+json.dump(bundle, open("output.bin.proof.json", "w"))                    # kept with the file
 ```
 
 It prints `{'output_hash': '…', 'job_id': 'job-…', 'subjects': [{'code': 'PG-ABCD-000001G',
@@ -1027,6 +1058,7 @@ for (const { entry, request, answer } of allowed) {                             
 if (unreported.length) throw new Error(`no proof for ${unreported}: keep output.bin unlabelled`);
 const bundle = { format: "pg.proof.v1", subjects };                             // step 9
 console.log(await checkProof(bundle, { directory, outputSha256: outputHash, testing: TESTING }));
+writeFileSync("output.bin.proof.json", JSON.stringify(bundle));                 // kept with the file
 ```
 
 ## Errors
