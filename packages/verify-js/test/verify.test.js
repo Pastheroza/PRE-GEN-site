@@ -325,7 +325,8 @@ test("checkChannelProof: only the person's own channel counts", async () => {
   assert.equal(await checkChannelProof("PG-XXXX-000001V", "https://www.instagram.com/cristiano/p/1", official, text), true);
   assert.equal(await checkChannelProof("PG-XXXX-000001V", "https://www.instagram.com/cristiano_fan/p/1", official, text), false);
   for (const sneaky of ["https://www.instagram.com/cristiano/../attacker/p/1", "https://www.instagram.com/cristiano/%2e%2e/attacker",
-    "https://www.instagram.com/cristiano/%2E./attacker", "https://www.instagram.com/cristiano%2f..%2fattacker", "https://www.instagram.com/cristiano/./p/1"]) {
+    "https://www.instagram.com/cristiano/%2E./attacker", "https://www.instagram.com/cristiano%2f..%2fattacker", "https://www.instagram.com/cristiano/./p/1",
+    "https://www.instagram.com/cristiano/?s=PRE-GEN:+PG-XXXX-000001V", "https://www.instagram.com/cristiano/p/1#x"]) {
     assert.equal(await checkChannelProof("PG-XXXX-000001V", sneaky, official, text), false, sneaky);
   }
   assert.equal(await checkChannelProof("PG-AAAA-000001V", "https://www.instagram.com/cristiano/p/1", official, text), false);

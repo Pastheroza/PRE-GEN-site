@@ -16,6 +16,8 @@ def test_the_persons_own_channel_counts():
                                  "https://www.instagram.com/cristiano/%2e%2e/attacker",
                                  "https://www.instagram.com/cristiano/%2E./attacker",
                                  "https://www.instagram.com/cristiano%2f..%2fattacker",
-                                 "https://www.instagram.com/cristiano/./p/1"])
-def test_a_dot_segment_or_an_encoded_slash_confirms_nothing(url):
+                                 "https://www.instagram.com/cristiano/./p/1",
+                                 "https://www.instagram.com/cristiano/?s=PRE-GEN:+PG-XXXX-000001V",
+                                 "https://www.instagram.com/cristiano/p/1#x"])
+def test_a_dot_segment_an_encoded_slash_a_query_or_a_fragment_confirms_nothing(url):
     assert not pregen.check_channel_proof("PG-XXXX-000001V", url, OFFICIAL, TEXT)

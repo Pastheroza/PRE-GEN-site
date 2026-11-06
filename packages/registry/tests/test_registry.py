@@ -175,13 +175,17 @@ def test_floor_minor_and_immutable_denial():
 
 def test_licensee_must_be_connected_outside_a_sandbox():
     reg, c, _ = make(sandbox=False)
-    s = reg.add_subject("Maya")
-    reg.add_grant(s, licensee_id="user-1", purposes=["commercial"])
     p = Provider(reg, c)
-    assert p.ask(p.body(s, purpose="commercial", licensee_id="user-1")).status_code == 401
-    reg.connect(p.id, "user-1")
-    assert p.answer(p.body(s, purpose="commercial", licensee_id="user-1"))["body"]["status"] == "allow"
+    user = f"{p.id}:user-1"
+    s = reg.add_subject("Maya")
+    reg.add_grant(s, licensee_id=user, purposes=["commercial"])
+    assert p.ask(p.body(s, purpose="commercial", licensee_id=user)).status_code == 401
+    reg.connect(p.id, user)
+    assert p.answer(p.body(s, purpose="commercial", licensee_id=user))["body"]["status"] == "allow"
     assert p.answer(p.body(s, job="j2", purpose="commercial"))["body"]["reason"] == "PG_NOT_CONNECTED"   # user-1's grant
+    rival = reg.add_subject("Rival's customer only")
+    reg.add_grant(rival, licensee_id="someone-else:u", purposes=["commercial"])
+    assert p.answer(p.body(rival, job="j4", purpose="commercial"))["body"]["reason"] == "PG_NO_LICENSE"   # not ours to connect
     other = reg.add_subject("Theo")
     assert p.answer(p.body(other, job="j3", purpose="commercial"))["body"]["reason"] == "PG_NO_LICENSE"   # no grant at all
 

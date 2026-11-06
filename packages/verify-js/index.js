@@ -587,6 +587,7 @@ export async function checkChannelProof(code, proofUrl, officialUrls, getText) {
   if (/%2f|%5c|\\/i.test(rawPath) || rawPath.split("/").some((s) => { try { return [".", ".."].includes(decodeURIComponent(s)); } catch { return true; } })) {
     return false;
   }
+  if (/[?#]/.test(String(proofUrl))) return false;                             // a page that echoes its query shows what anyone types
   let p;
   try { p = new URL(proofUrl); } catch { return false; }
   const under = (u) => { // same host, and the official path itself or below it ("/cristiano", not "/cristiano_fan")

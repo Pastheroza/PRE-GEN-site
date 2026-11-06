@@ -13,7 +13,8 @@ step returns. Where it and the specification differ, the specification wins:
 
 1. **Only `allow` permits.** `deny`, `review`, `not_blocked`, an unknown status or reason,
    or no valid answer at all: do not generate. Never ask again to get another answer to a
-   refusal. (A new job for a different output is not asking again; the same `job_input`
+   refusal; an answer that fails `check_answer` is no answer, not a refusal. (A new job for a
+   different output is not asking again; the same `job_input`
    under a new `job_id` after a `deny` is, unless something you can name changed since: a new
    grant you were told of, the customer connected, a different purpose.)
 2. **No answer is not a refusal and not a permission.** After a timeout or an HTTP 5xx you
@@ -113,7 +114,7 @@ A registry's sandbox gives test credentials without an account:
 `curl -s -X POST {sandbox api}/v2/sandbox/access` → `{"provider_id": "sbx-…", "token": "…",
 "registry": "<the sandbox api>", "note": "…"}` (Python: `json.loads(urllib.request.urlopen(
 urllib.request.Request(sandbox_api + "/v2/sandbox/access", data=b"", method="POST")).read())`;
-JS: `const res = await fetch(sandboxApi + "/v2/sandbox/access", { method: "POST" }); if (!res.ok)
+JS: `const res = await fetch(sandboxApi + "/v2/sandbox/access", { method: "POST", signal: AbortSignal.timeout(10000) }); if (!res.ok)
 throw new Error("HTTP " + res.status); const access = await res.json()`).
 This call is outside rule 2: each one mints a new credential (at most 10 an hour per address,
 then 429), so do not repeat it; if it got no answer, call it once more (a credential you never
@@ -279,7 +280,9 @@ whose claim the person confirmed holds everywhere; "no licence here" does not. S
    `async (url) => string`). `confirmed` is the boolean it returns, and comes only from it: never
    set it by hand or on anyone's word, a person's look included (a cached result of
    `check_channel_proof` may be reused as item 4 says; item 5 if it cannot run). A `proof_url`
-   whose path has a `.` or `..` segment (or `%2e`, or an encoded slash) confirms nothing. Only `wikidata:` anchors have
+   whose path has a `.` or `..` segment (or `%2e`, or an encoded slash) confirms nothing, and so
+   does one with a `?` or `#`. `get_text` must not follow redirects: treat a 3xx like a 404
+   (unconfirmed); the complete examples show how. Only `wikidata:` anchors have
    a defined list of official channels today: for any other anchor, `confirmed` is `False` (do
    not call `wikidata_official_urls`, which raises). Both complete examples below do all of
    step 5. In Python, pass `get_text` (and a `get_json` if you fetch
@@ -298,14 +301,14 @@ whose claim the person confirmed holds everywhere; "no licence here" does not. S
    from a claim the person confirmed; give back (step 8) allows from unconfirmed claims. Apply
    step 6's obligations rule to every allow you report. Codes that did not answer `allow` are
    neither reported nor put in the proof. If the status is not `allow`, give back every allow.
-5. **Unknown is not unconfirmed.** If any listed registry's anchor list fails (anything but
-   404, or `verify_anchors` raises, with no verified copy of it under 24 hours old), if Wikidata
+5. **Unknown is not unconfirmed.** If any listed registry's anchor list fails (anything but a
+   404 from a registry whose document does not list `identity`, or `verify_anchors` raises, with no verified copy of it under 24 hours old), if Wikidata
    or a proof page cannot be read (a timeout, a connection error, 403, 429 or 5xx; a 404 or 410
    means the page and its line are gone, so that claim is simply unconfirmed), or if any code
    under the anchor **whose claim the person confirmed** gets no valid answer (no credentials
    there, a 4xx, or `verify_answer` raises), you have no decision for this person: do not
    generate them, and give back their allows. A failure at an unconfirmed claim changes nothing:
-   `decide_identity` ignores it. While any registry's anchor list (except a 404) has not verified within the last 24
+   `decide_identity` ignores it. While any registry's anchor list (except such a 404) has not verified within the last 24
    hours (`failed` above), generate no one whose code has that registry's prefix, and no public
    person at all (no code that is in any anchor list): the failed list may hold their opt-out.
    Everyone else may go on. A code the steward recorded as a false claim
@@ -331,8 +334,9 @@ was not retired before it signed), the answer names exactly your request and pro
 within its lifetime, it is not a sandbox answer (unless `testing`), and its `status` is
 `allow`. An answer that fails the check is not an answer: never generate on it. If its body
 says `allow` all the same (expired, badly signed, for another request), still report
-`not_generated` for it (step 8), so a registry that did issue it frees the use; one that did
-not refuses the report: log that and go on. To log why a valid answer refused, the same
+`not_generated` for it (step 8), so a registry that did issue it frees the use where it can
+(the reference registry refuses a give-back for an answer bound to another request); a refused
+give-back is logged, and you go on. To log why a valid answer refused, the same
 arguments to `pregen.verify_answer(answer, request, directory)` /
 `await verifyAnswer(answer, request, { directory })` (for a sandbox answer,
 `verify_answer(answer, request, directory, testing=True)` / `verifyAnswer(answer, request, {
@@ -486,7 +490,8 @@ if (TEST_STEWARD) writeFileSync(path("test_steward.json"), JSON.stringify({ stew
 ```
 
 **A proof checked against a test directory is never a label, sandbox or not.** The verdict, in
-this order: 1. no file: `no file: not checked`; 2. the check raises: its message; 3. a level
+this order: 1. no file: `no file: not checked`; 1b. a saved copy over 24 hours old: `saved copy
+over 24 hours old: not checked`; 2. the check raises: its message; 3. a level
 below your policy (levels rank `self` < `asserted` < `consented` < `verified`): `level <x>`; 4.
 obligations you do not show: `obligations not shown: not a label`; 5. a test directory or
 sandbox: `test directory: never a label` (which means every check passed); 6. otherwise a
@@ -530,7 +535,7 @@ if (Date.now() / 1000 - read("saved_at.json").saved_at > 86_400) {
 const directory = await verifyDirectory(read("directory.json"), TEST ? { stewardPublicKeyHex: TEST } : {});
 const offlineFetch = async (url) => ({ ok: url in savedKeySets, status: url in savedKeySets ? 200 : 404,
                                        json: async () => savedKeySets[url] });
-const result = await checkProof(bundle, { directory, fetch: offlineFetch, outputSha256 });   // a sandbox proof: testing: true
+const result = await checkProof(bundle, { directory, fetch: offlineFetch, outputSha256 });   // testing: true if any answer.body.ext.sandbox
 ```
 
 The check fetches only through the `get_json` / `fetch` you pass. A retired registry key stays
@@ -613,12 +618,18 @@ def get_json(url):
     return json.loads(urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=10).read())
 
 
-def get_text(url):
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        return None                                                       # a redirect is not the page: HTTPError 3xx
+
+
+def get_text(url):                                                        # a proof page, never followed through a redirect
     try:
-        return urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=10).read().decode("utf-8", "replace")
+        res = urllib.request.build_opener(NoRedirect).open(urllib.request.Request(url, headers=UA), timeout=10)
+        return res.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as e:
-        if e.code in (404, 410):
-            return ""                                                     # the page is gone: the line is gone, unconfirmed
+        if e.code in (404, 410) or 300 <= e.code < 400:
+            return ""                                                     # gone, or elsewhere: unconfirmed
         raise                                                             # unreadable: no decision (step 5)
 
 
@@ -822,7 +833,7 @@ const [url, TEST_STEWARD] = [DIRECTORY_URL, null];                              
 const CODES = ["PG-ABCD-000001G"];                                              // the people in this job
 const FOLDER = TEST_STEWARD ? "pregen-test" : "pregen";                       // test and production never share a file (step 9)
 const TESTING = false;                                                          // true only against a sandbox (step 10)
-const UA = "frame-js (https://frame-js.example/contact)";                       // who you are: Wikidata refuses anonymous clients
+const UA = "frame-ai (https://frame-ai.example/contact)";                       // who you are: Wikidata refuses anonymous clients
 const LICENSEES = {};                                                           // prefix -> the licensee_id that registry gave this customer
 
 mkdirSync(`${FOLDER}/jobs`, { recursive: true });
@@ -834,9 +845,9 @@ const directory = await loadDirectory({ url, previous, ...(TEST_STEWARD ? { stew
 writeFileSync(SAVED, JSON.stringify(directory.toJSON()));
 
 const fetchUA = (u, o = {}) => fetch(u, { ...o, signal: AbortSignal.timeout(10000), headers: { ...o.headers, "User-Agent": UA } });
-const getText = async (u) => {
-  const res = await fetchUA(u);
-  if (res.status === 404 || res.status === 410) return "";                      // the page is gone: unconfirmed
+const getText = async (u) => {                                                  // a proof page, never through a redirect
+  const res = await fetchUA(u, { redirect: "manual" });
+  if (res.status === 404 || res.status === 410 || (res.status >= 300 && res.status < 400)) return "";   // gone, or elsewhere: unconfirmed
   if (!res.ok) throw new Error(`${u}: HTTP ${res.status}`);                     // unreadable: no decision (step 5)
   return res.text();
 };
@@ -1026,7 +1037,8 @@ message instead.
 
 Answer reasons you will meet: `PG_UNKNOWN_SUBJECT` (this registry holds no such person:
 not a prohibition, and not a permission), `PG_OTHER_REGISTRY`, `PG_NO_LICENSE`, `PG_NOT_CONNECTED`
-(only a connected end user's grant would do: show "connect your account"),
+(only a connected end user's grant would do: show "connect your account" if your customer could
+hold this registry's grant),
 `PG_USAGE_LIMIT`, `PG_SCOPE_VIOLATION` (the grant does not cover this purpose or use),
 `PG_REVIEW_REQUIRED` (held for a person), and
 the fixed protections no grant overrides: `PG_SUBJECT_OPTED_OUT`, `PG_SUBJECT_UNAVAILABLE`,

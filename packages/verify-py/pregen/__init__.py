@@ -697,11 +697,14 @@ _SEVERITY = {"deny": 0, "review": 1}     # no allow: the strongest refusal, ties
 def check_channel_proof(code: str, proof_url: str, official_urls: list, get_text) -> bool:
     """Did the person confirm `code` on an official channel? `proof_url` must lie on one of `official_urls`
     (for example from wikidata_official_urls()) and its text must contain "PRE-GEN: <code>", the whole code: a longer
-    code that starts the same way (a legacy code has six or more digits) confirms nothing."""
+    code that starts the same way (a legacy code has six or more digits) confirms nothing. A URL with a query, a
+    fragment or a dot segment confirms nothing; `get_text` must not follow redirects (a redirect is not the page)."""
     from urllib.parse import unquote, urlsplit
     p = urlsplit(proof_url or "")
     # A host may resolve "/@person/../@other" (or %2e, or an encoded slash) to another profile: such a path proves nothing.
     if re.search(r"%2f|%5c|\\", p.path, re.I) or any(unquote(s) in (".", "..") for s in p.path.split("/")):
+        return False
+    if "?" in (proof_url or "") or "#" in (proof_url or ""):     # a page that echoes its query shows what anyone types
         return False
     def under(o):  # same host, and the official path itself or below it ("/cristiano", not "/cristiano_fan")
         base = o.path.rstrip("/")

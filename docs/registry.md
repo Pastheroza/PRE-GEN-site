@@ -184,7 +184,8 @@ was retired: keep it only in the offline backup, encrypted, in its own folder be
 (for example `./offline/retired/`, never inside `./backup/data`), and remove it from `./data` before the next step 3 backup (the recipe
 copies every `*.key` still in `./data` and empties `./backup/data` each time). To encrypt it:
 `openssl enc -aes-256-cbc -pbkdf2 -salt -in <file> -out <file>.enc`, then delete the plain
-file; openssl asks for a passphrase: keep it in a password manager, never beside the `.enc` file. If you rotate before the directory lists the new key, providers refuse
+file; openssl asks for a passphrase (or reads it with `-pass file:<a path outside the backup>`
+when no one is at the keyboard): keep it in a password manager, never beside the `.enc` file. If you rotate before the directory lists the new key, providers refuse
 every answer you sign until it does. A retired key cannot sign anything new (clients refuse
 what it signs after it was retired), but keep its file as secret as the current one.
 
@@ -217,7 +218,9 @@ pregen-registry serve --dir ./data --host 127.0.0.1 --port 8443 \
 ```
 
 Keep it running (a service manager, or `nohup … >> registry.log 2>&1 & echo $! > registry.pid`;
-the sandbox likewise, for example `nohup pregen-registry serve --dir ./sandbox --host 127.0.0.1
+the sandbox likewise, as a second site (point `sandbox.registry.example`, DNS and certificate, at
+your proxy and forward it to its port, not a path under the first), for example
+`nohup pregen-registry serve --dir ./sandbox --host 127.0.0.1
 --port 8001 >> sandbox.log 2>&1 & echo $! > sandbox.pid`, with the same `--ssl-certfile`/`--ssl-keyfile`
 to serve it over HTTPS directly,
 so you can stop it later with `kill "$(cat registry.pid)"`). A registry and its sandbox are
@@ -263,7 +266,9 @@ you have checked identity and authority, or raise it later with `pregen-registry
 --dir ./data --code '<code>' --level verified`. `pregen-registry subject list --dir ./data`
 prints every code you hold, with its level and name.
 
-**Anchor a public person** (extension `identity`; every public person needs one): record their
+**Anchor a public person** (extension `identity`): a public person is anyone with a Wikidata item,
+and every one needs an anchor; before adding one, look for their anchor in every listed
+registry's `/v2/anchors` and use the same id. Record their
 public identifier, written exactly as `wikidata:Q42`, `isni:0000000123456789` (16 characters,
 no spaces) or `domain:example.com` (lower case); the command does not check the spelling, and
 a different spelling is a different person to every client. **Use `wikidata:Q…` whenever the
@@ -281,14 +286,19 @@ host Wikidata lists (`www.` counts). The command records what you give it and fe
 so check first; this must print `True`. The page's HTML source (view-source) must contain
 `PRE-GEN: <code>` exactly (one plain space, no tags or entities inside it, the whole code), and a
 handle in the URL must match Wikidata's spelling, case included; a path with a `.` or `..`
-segment (or `%2e`, or an encoded slash) confirms nothing:
+segment (or `%2e`, or an encoded slash) confirms nothing, and neither does a URL with a `?`
+query or a `#` fragment, nor one that answers with a redirect. Use a page on the official
+website that scripts can read: a proof page that later answers 403, 429 or 5xx blocks the
+person at every provider. The check (it follows no redirect):
 
 ```bash
 CODE='PG-ABCD-000001G' URL='https://mayacole.example/pregen' ANCHOR='wikidata:Q42' python3 -c "
 import os, pregen, urllib.request as u
 ua = {'User-Agent': 'Example Registry (https://registry.example/contact)'}
-print(pregen.check_channel_proof(os.environ['CODE'], os.environ['URL'], pregen.wikidata_official_urls(os.environ['ANCHOR']),
-      lambda x: u.urlopen(u.Request(x, headers=ua)).read().decode('utf-8', 'replace')))"
+class Stay(u.HTTPRedirectHandler):
+    def redirect_request(self, *a, **k): return None
+page = lambda x: u.build_opener(Stay).open(u.Request(x, headers=ua), timeout=10).read().decode('utf-8', 'replace')
+print(pregen.check_channel_proof(os.environ['CODE'], os.environ['URL'], pregen.wikidata_official_urls(os.environ['ANCHOR']), page))"
 ```
 
 If it prints `False`, the page answers 404, or it raises (page unreadable, Wikidata 403), anchor without `--proof-url` (the claim stays unconfirmed) and run
@@ -463,7 +473,8 @@ and ask for it the same way (give sandbox test grants no `--max-uses`: every pro
 them, and each allow, a `check` included, uses one for good); for a licensee-only grant, give
 it `--licensee test:t1` and add `--licensee test:t1` to `check`. If you added your own test
 people, also change the line in `./sandbox/policy.md` that says it holds only the standard test
-subjects.
+subjects, for example to "It holds no real people: the standard test subjects (codes 1-7) and
+test people of our own (codes 9 and up)."
 
 **If you wrote your own registry,** also run conformance Level 1 against your signing
 library (`spec/conformance/README.md`; `spec/` is in `git clone https://github.com/Pastheroza/PRE-GEN-site`).
