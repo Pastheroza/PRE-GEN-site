@@ -179,7 +179,7 @@ was retired: keep it only in the offline backup, encrypted, in its own folder (f
 `./offline/retired/`), and remove it from `./data` before the next step 3 backup (the recipe
 copies every `*.key` still in `./data` and empties `./backup/data` each time). To encrypt it:
 `openssl enc -aes-256-cbc -pbkdf2 -salt -in <file> -out <file>.enc`, then delete the plain
-file. If you rotate before the directory lists the new key, providers refuse
+file; openssl asks for a passphrase: keep it in a password manager, never beside the `.enc` file. If you rotate before the directory lists the new key, providers refuse
 every answer you sign until it does. A retired key cannot sign anything new (clients refuse
 what it signs after it was retired), but keep its file as secret as the current one.
 
@@ -273,7 +273,7 @@ print(pregen.check_channel_proof(os.environ['CODE'], os.environ['URL'], pregen.w
       lambda x: u.urlopen(u.Request(x, headers=ua)).read().decode()))"
 ```
 
-If it prints `False` or raises (page unreadable, Wikidata 403), anchor without `--proof-url` (the claim stays unconfirmed) and run
+If it prints `False`, the page answers 404, or it raises (page unreadable, Wikidata 403), anchor without `--proof-url` (the claim stays unconfirmed) and run
 `subject anchor` again with both once it does. Re-check every proof page at least daily; once
 the line is gone, anchor again without `--proof-url`.
 
@@ -315,7 +315,7 @@ pregen-registry grant add --dir ./data --subject 'PG-ABCD-000001G' \
 
 To see what you hold: `subject list` prints your codes; grants and connections are in the
 database (`python3 -c "import sqlite3; [print(r) for r in sqlite3.connect('./data/registry.db')
-.execute('SELECT id, subject_code, licensee_id, purposes FROM grants')]"`, and the same with
+.execute('SELECT id, subject_code, licensee_id, purposes, expires_at, max_uses FROM grants')]"`, and the same with
 `SELECT provider_id, licensee_id FROM connections`).
 
 **Give a provider its credential.** It is printed once:
@@ -349,8 +349,11 @@ what they were:
 ```bash
 pregen-registry subject opt-out --dir ./data --code 'PG-ABCD-000001G'   # the person opted out or withdrew
 pregen-registry grant revoke --dir ./data --id <grant id>                # the grant ends now
-pregen-registry provider remove --dir ./data --id frame-ai               # a leaked token: then `provider add` again
+pregen-registry provider remove --dir ./data --id frame-ai               # a leaked token: see below
 ```
+
+After `provider remove` for a leaked token: `provider add` again, run `connect` again for each
+of its licensees (removal drops them), and send the new token privately.
 
 Nothing you publish can be deleted afterwards, so add no test records to this registry:
 test in your sandbox (step 7).
@@ -527,5 +530,6 @@ A listing can be revoked, with notice and reasons; a prefix is never given to an
 | `POST /v2/sandbox/access` | sandbox credentials (sandbox mode only) |
 
 Providers authenticate with `X-Provider-ID: <id>` and `Authorization: Bearer <token>` on
-`POST /v2/requests`, `/v2/reports`, `/v2/keys` and `GET /v2/grants/…`; the rest is public.
+`POST /v2/requests`, `/v2/reports`, `/v2/keys` and `GET /v2/grants/…`; the rest of this table
+is public. The server also answers endpoints of extensions this guide does not cover.
 Errors are `{"error": "PG_…", "error_description": "…"}` with HTTP 401, 404, 409, 422 or 429.

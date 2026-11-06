@@ -82,8 +82,8 @@ hours: answers checked against a directory object older than that are refused.
 `pregen.load_directory(url, previous=saved, steward_public_key_hex=TEST_STEWARD)` or
 `loadDirectory({ url, previous: saved, stewardPublicKeyHex: TEST_STEWARD })`, where `url` is
 the test directory's URL (without it, the public directory is loaded). Never in production.
-Keep a saved test directory in its own file: passed as `previous` to the real directory, it is
-refused (`sequence … is older` / `namespace … was removed`).
+Keep a saved test directory in its own folder (`pregen-test/`, step 9): passed as `previous` to
+the real directory, it is refused (`sequence … is older` / `namespace … was removed`).
 A test directory is only about who signed the directory: answers from a non-sandbox registry
 listed in it are checked without `testing`. `testing` is for sandbox answers only (step 10).
 
@@ -206,7 +206,7 @@ Authorization: Bearer <token from that registry>
 - **One request per code.** A job with two people asks twice, under the same `job_id`,
   each code at the registry its prefix names (a public person: see below). **Every job has a new `job_id`** (random, not a
   timestamp), and `job_input` holds everything you fixed, the customer included (for example
-  `{"prompt": …, "settings": …, "customer": "<the licensee_id you send, or null>"}`): once a
+  `{"prompt": …, "settings": …, "customer": <the prefix → licensee_id map you send, or null>}`): once a
   person in a job is reported, asking again under that id is refused
   (409 `PG_ASK_CLOSED`, whose body's `ack` member is the acknowledgement you were given before: keep it if
   you lost yours; otherwise nothing to do). Within one job, every request carries the same `job_hash`; a reused `job_id`
@@ -291,7 +291,9 @@ whose claim the person confirmed holds everywhere; "no licence here" does not. S
    step 6's obligations rule to every allow you report. Codes that did not answer `allow` are
    neither reported nor put in the proof. If the status is not `allow`, give back every allow.
 5. **Unknown is not unconfirmed.** If any listed registry's anchor list fails (anything but
-   404, or `verify_anchors` raises), if a proof page or Wikidata cannot be read, or if any code
+   404, or `verify_anchors` raises, with no verified copy of it under 24 hours old), if Wikidata
+   or a proof page cannot be read (a timeout, a connection error, 403, 429 or 5xx; a 404 or 410
+   means the page and its line are gone, so that claim is simply unconfirmed), or if any code
    under the anchor **whose claim the person confirmed** gets no valid answer (no credentials
    there, a 4xx, or `verify_answer` raises), you have no decision for this person: do not
    generate them, and give back their allows. A failure at an unconfirmed claim changes nothing:
@@ -473,7 +475,9 @@ writeFileSync(path("saved_at.json"), JSON.stringify({ saved_at: Math.floor(Date.
 if (TEST_STEWARD) writeFileSync(path("test_steward.json"), JSON.stringify({ steward_public_key_hex: TEST_STEWARD }));
 ```
 
-**A proof checked against a test directory is never a label, sandbox or not.** If one registry
+**A proof checked against a test directory is never a label, sandbox or not:** record it
+`accepted: false`, reason `test directory: never a label` (with no file, `no file: not checked`
+comes first). If one registry
 does not answer, keep its previous copy and go on. Save key sets as they come: at check time the
 library uses only keys whose ids the directory lists, and refuses small-order keys; the
 directory never removes a listed key id (the libraries refuse a directory that does), a key is
@@ -498,9 +502,12 @@ result = pregen.check_proof(bundle, directory, get_json=lambda url: saved_key_se
 ```
 
 ```js
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { verifyDirectory, checkProof } from "@pregen/verify";
 const FOLDER = "pregen";                                                       // "pregen-test" only when testing
+const bundle = JSON.parse(readFileSync("<the proof>.json", "utf8"));
+const outputSha256 = createHash("sha256").update(readFileSync("<the file>")).digest("hex");
 const read = (name) => JSON.parse(readFileSync(`${FOLDER}/${name}`, "utf8"));
 const TEST = existsSync(`${FOLDER}/test_steward.json`) ? read("test_steward.json").steward_public_key_hex : null;
 const savedKeySets = read("key_sets.json");
@@ -570,11 +577,13 @@ CREDENTIALS = {"ABCD": {"provider_id": "frame-ai", "token": "<secret>"}}   # one
 KEY = "<your private key hex>"                                             # step 4, from your secret store
 DIRECTORY_URL, TEST_STEWARD = pregen.DIRECTORY_URL, None                    # testing: the test directory and its key
 CODES = ["PG-ABCD-000001G"]                                                # the people in this job
-SAVED = "directory-test.json" if TEST_STEWARD else "directory.json"          # never a test directory as previous to the real one
+FOLDER = "pregen-test" if TEST_STEWARD else "pregen"                       # test and production never share a file (step 9)
 TESTING = False                                                            # True only against a sandbox (step 10)
 UA = {"User-Agent": "frame-ai (https://frame-ai.example/contact)"}        # who you are: Wikidata refuses anonymous clients
 LICENSEES = {}                                                             # prefix -> the licensee_id that registry gave this customer
 
+os.makedirs(os.path.join(FOLDER, "jobs"), exist_ok=True)
+SAVED, ANCHORS = os.path.join(FOLDER, "directory.json"), os.path.join(FOLDER, "anchors.json")
 pub = pregen.public_key_hex(KEY)
 key_id = pregen.fingerprint(pub)
 saved = json.load(open(SAVED)) if os.path.exists(SAVED) else None
@@ -588,26 +597,46 @@ def get_json(url):
 
 
 def get_text(url):
-    return urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=10).read().decode()
+    try:
+        return urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=10).read().decode()
+    except urllib.error.HTTPError as e:
+        if e.code in (404, 410):
+            return ""                                                     # the page is gone: the line is gone, unconfirmed
+        raise                                                             # unreadable: no decision (step 5)
 
 
-ANCHOR_OF, CLAIMS, FAILED = {}, {}, set()                                  # step 5.1 (refresh at least daily)
+saved_anchors = json.load(open(ANCHORS)) if os.path.exists(ANCHORS) else {}   # prefix -> last verified list
+
+
+def anchor_list(r):                                                       # step 5.1: entries, or None (no list)
+    try:
+        env = get_json(r["api"] + "/v2/anchors")
+    except urllib.error.HTTPError as e:
+        if e.code == 404:                                                 # "no list" only without identity
+            try:
+                if "identity" not in get_json(r["api"] + "/.well-known/pregen-registry.json").get("extensions", []):
+                    return None
+            except Exception:
+                pass
+        env = saved_anchors.get(r["prefix"])                              # a blip: the last verified list
+    except Exception:
+        env = saved_anchors.get(r["prefix"])
+    entries = pregen.verify_anchors(env, r["prefix"], directory)          # raises on none, or on one over a day old
+    saved_anchors[r["prefix"]] = env
+    return entries
+
+
+ANCHOR_OF, CLAIMS, FAILED = {}, {}, set()
 for r in directory.registries:
     if r.get("revoked") or not r["prefix"]:
         continue                                                          # revoked, or the legacy bare namespace
     try:
-        for e in pregen.verify_anchors(get_json(r["api"] + "/v2/anchors"), r["prefix"], directory):
+        for e in anchor_list(r) or []:
             ANCHOR_OF[e["code"]] = e["anchor"]
             CLAIMS.setdefault(e["anchor"], []).append(e)
-    except urllib.error.HTTPError as e:                                   # 404 is "no list" only without identity
-        try:
-            declared = "identity" in get_json(r["api"] + "/.well-known/pregen-registry.json").get("extensions", [])
-        except Exception:
-            declared = True
-        if e.code != 404 or declared:
-            FAILED.add(r["prefix"])
     except Exception:
         FAILED.add(r["prefix"])
+json.dump(saved_anchors, open(ANCHORS, "w"))
 
 
 def post(entry, path, envelope, member):                                  # rule 2: the same bytes, at most 4 sends
@@ -634,7 +663,7 @@ def post(entry, path, envelope, member):                                  # rule
     raise RuntimeError(f"{path}: no answer after 4 sends")
 
 
-REGISTERED = set()                             # keep this with your secrets in a real product
+REGISTERED = set()                             # load and save it with your secrets in a real product
 
 
 def register_key(entry):                       # step 4: once per registry
@@ -667,11 +696,14 @@ def give_back(items, when):                                              # step 
 job_id = "job-" + secrets.token_hex(8)                                   # new for every job
 job_input = {"prompt": "<the prompt>", "settings": {"model": "<model>", "seed": 1}, "customer": LICENSEES or None}   # keep it
 job_hash = hashlib.sha256(pregen.canonical_json(job_input)).hexdigest()
+json.dump({"job_id": job_id, "job_input": job_input}, open(os.path.join(FOLDER, "jobs", job_id + ".json"), "w"))
 allowed = []                                                              # every answer whose body says allow
 
 
 def ask(code):                                                            # step 5: one code, in this job
     entry = directory.registry_for(code)
+    if entry["prefix"] not in CREDENTIALS:
+        raise RuntimeError(f"{code}: no credential at {entry['prefix']}")
     register_key(entry)
     request = pregen.sign_envelope("pg.request.v1", {
         "subject_ref": code, "provider_id": CREDENTIALS[entry["prefix"]]["provider_id"], "profile": "likeness/1",
@@ -762,7 +794,7 @@ The same, in Node.js 20+ (save as `job.mjs`):
 
 ```js
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { loadDirectory, signEnvelope, checkAnswer, verifyAnswer, checkProof, messageId, publicKeyHex, fingerprint,
   canonicalJson, verifyAnchors, wikidataOfficialUrls, checkChannelProof, decideIdentity, DIRECTORY_URL } from "@pregen/verify";
 
@@ -770,11 +802,13 @@ const CREDENTIALS = { ABCD: { provider_id: "frame-ai", token: "<secret>" } };   
 const KEY = "<your private key hex>";                                          // step 4, from your secret store
 const [url, TEST_STEWARD] = [DIRECTORY_URL, null];                              // testing: the test directory and its key
 const CODES = ["PG-ABCD-000001G"];                                              // the people in this job
-const SAVED = TEST_STEWARD ? "directory-test.json" : "directory.json";         // never a test directory as previous to the real one
+const FOLDER = TEST_STEWARD ? "pregen-test" : "pregen";                       // test and production never share a file (step 9)
 const TESTING = false;                                                          // true only against a sandbox (step 10)
 const UA = "frame-js (https://frame-js.example/contact)";                       // who you are: Wikidata refuses anonymous clients
 const LICENSEES = {};                                                           // prefix -> the licensee_id that registry gave this customer
 
+mkdirSync(`${FOLDER}/jobs`, { recursive: true });
+const SAVED = `${FOLDER}/directory.json`, ANCHORS = `${FOLDER}/anchors.json`;
 const pub = await publicKeyHex(KEY);
 const keyId = await fingerprint(pub);
 const previous = existsSync(SAVED) ? JSON.parse(readFileSync(SAVED, "utf8")) : undefined;
@@ -782,26 +816,41 @@ const directory = await loadDirectory({ url, previous, ...(TEST_STEWARD ? { stew
 writeFileSync(SAVED, JSON.stringify(directory.toJSON()));
 
 const fetchUA = (u, o = {}) => fetch(u, { ...o, signal: AbortSignal.timeout(10000), headers: { ...o.headers, "User-Agent": UA } });
-const getText = async (u) => { const res = await fetchUA(u); if (!res.ok) throw new Error(`${u}: HTTP ${res.status}`); return res.text(); };
+const getText = async (u) => {
+  const res = await fetchUA(u);
+  if (res.status === 404 || res.status === 410) return "";                      // the page is gone: unconfirmed
+  if (!res.ok) throw new Error(`${u}: HTTP ${res.status}`);                     // unreadable: no decision (step 5)
+  return res.text();
+};
 
-const ANCHOR_OF = new Map(), CLAIMS = new Map(), FAILED = new Set();            // step 5.1 (refresh at least daily)
-for (const r of directory.registries) {
-  if (r.revoked || !r.prefix) continue;                                         // revoked, or the legacy bare namespace
+const savedAnchors = existsSync(ANCHORS) ? JSON.parse(readFileSync(ANCHORS, "utf8")) : {};   // prefix -> last verified list
+async function anchorList(r) {                                                  // step 5.1: entries, or null (no list)
+  let env;
   try {
     const res = await fetchUA(r.api + "/v2/anchors");
     if (res.status === 404) {                                                   // "no list" only without identity
       const doc = await fetchUA(r.api + "/.well-known/pregen-registry.json").then((d) => d.json()).catch(() => null);
-      if (!doc || (doc.extensions ?? []).includes("identity")) FAILED.add(r.prefix);
-      continue;
+      if (doc && !(doc.extensions ?? []).includes("identity")) return null;
     }
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    for (const e of await verifyAnchors(await res.json(), r.prefix, { directory })) {
+    env = res.ok ? await res.json() : savedAnchors[r.prefix];                  // a blip: the last verified list
+  } catch { env = savedAnchors[r.prefix]; }
+  const entries = await verifyAnchors(env, r.prefix, { directory });           // throws on none, or on one over a day old
+  savedAnchors[r.prefix] = env;
+  return entries;
+}
+
+const ANCHOR_OF = new Map(), CLAIMS = new Map(), FAILED = new Set();
+for (const r of directory.registries) {
+  if (r.revoked || !r.prefix) continue;                                         // revoked, or the legacy bare namespace
+  try {
+    for (const e of (await anchorList(r)) ?? []) {
       ANCHOR_OF.set(e.code, e.anchor);
       if (!CLAIMS.has(e.anchor)) CLAIMS.set(e.anchor, []);
       CLAIMS.get(e.anchor).push(e);
     }
   } catch { FAILED.add(r.prefix); }
 }
+writeFileSync(ANCHORS, JSON.stringify(savedAnchors));
 
 async function post(entry, path, envelope, member) {                          // rule 2: the same bytes, at most 4 sends
   const cred = CREDENTIALS[entry.prefix], data = JSON.stringify(envelope);
@@ -837,14 +886,16 @@ async function giveBack(items, when) {                                          
   }
 }
 
-const registered = new Set();                                                   // keep this with your secrets in a real product
+const registered = new Set();                                                   // load and save it with your secrets in a real product
 const jobId = `job-${crypto.randomUUID()}`;                                     // new for every job
 const jobInput = { prompt: "<the prompt>", settings: { model: "<model>", seed: 1 }, customer: Object.keys(LICENSEES).length ? LICENSEES : null };   // keep it
 const jobHash = createHash("sha256").update(canonicalJson(jobInput)).digest("hex");
+writeFileSync(`${FOLDER}/jobs/${jobId}.json`, JSON.stringify({ job_id: jobId, job_input: jobInput }));
 const allowed = [];                                                             // every answer whose body says allow
 
 async function ask(code) {                                                      // step 5: one code, in this job
   const entry = directory.registryFor(code);
+  if (!CREDENTIALS[entry.prefix]) throw new Error(`${code}: no credential at ${entry.prefix}`);
   const providerId = CREDENTIALS[entry.prefix].provider_id;
   if (!registered.has(entry.prefix)) {                                          // step 4: once per registry
     await post(entry, "/v2/keys", await signEnvelope("pg.keyset.v1", {
@@ -947,6 +998,9 @@ A refusal about a person is a signed answer (step 6). HTTP errors carry
 | `PG_ASK_CONFLICT` | 409 | this person in this job was asked with a different request: resend the identical one |
 | `PG_JOB_CONFLICT` | 409 | this `job_id` was already used with another `job_hash`: use a new `job_id` |
 | `PG_RATE_LIMITED` | 429 | not answered yet: wait (`Retry-After` if sent), then send the same bytes again |
+
+To keep the acknowledgement a 409 `PG_ASK_CLOSED` carries, parse that response's body
+(`json.loads(e.read())["ack"]`) instead of raising; the examples' `post()` simply raises.
 | any other code | any | no answer: do not generate; if it refused a give-back, log it and go on |
 | HTTP 200 without `answer` / `ack` / `keyset` | 200 | no answer, as a 4xx |
 
