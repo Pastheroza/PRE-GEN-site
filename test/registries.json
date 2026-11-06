@@ -1,0 +1,21 @@
+{
+  "schema": "pregen.registries.v2",
+  "sequence": 1,
+  "note": "TEST directory (extensions/sandbox.md): sandbox registries only, signed by the test steward key, never by the real one. Nothing it lists is ever accepted in production.",
+  "providers": [],
+  "registries": [
+    {
+      "name": "PRE-GEN Test Registry",
+      "prefix": "TEST",
+      "api": "https://sandbox.pregen.org",
+      "keys": "https://sandbox.pregen.org/keys",
+      "key_fingerprints": [
+        "pg-ed25519:9877356cb20b71a0f0553994358021e4",
+        "pg-ed25519:2b11cd840056d3a6661b7e743ed64cd0"
+      ]
+    }
+  ],
+  "issued_at": "2026-11-06T07:37:18Z",
+  "steward_key_id": "pg-ed25519:7a3396f858493f51a81e0753a98f1f6b",
+  "signature": "12db51adfc5733f653ab020e37bd0fbe56c6cebf1ad9967b34a3992e5623e08c321b01965346b25beea6f383852e2895aad3b9e9cfdab60e0062ffa9c80cc408"
+}

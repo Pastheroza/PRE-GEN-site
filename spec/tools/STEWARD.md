@@ -93,6 +93,10 @@ directory in git (`origin/main`, else `HEAD`) and refuses to sign if anything wa
 
 ## The test directory
 
-Same commands, with a separate test steward key that signs nothing production accepts. Only
+`test/registries.json`, served at `https://test.pregen.org/registries.json` (a host rewrite in
+`vercel.json`). Test steward key `~/PRE-GEN-test-steward.pem`, public key in its `.pub`, its
+passphrase in `~/PRE-GEN-test-steward.passphrase`. It lists sandbox registries only (the
+application's Status: sandbox). Same commands, with `--steward <the test key hex>` for `verify`;
+the test steward key signs nothing production accepts. Only
 for that key a script may pass the passphrase in `PREGEN_STEWARD_PASSPHRASE`; never the real
 steward's.
