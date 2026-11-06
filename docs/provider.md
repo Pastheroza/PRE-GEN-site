@@ -116,7 +116,8 @@ throw new Error(`HTTP ${res.status}`); const access = await res.json()`).
 Never resend this call: each one mints a new credential (at most 10 an hour per address, then
 429). The token is shown once: store the pair at once, under the sandbox's prefix (the four
 letters of its test codes). Once you have loaded the test directory (step 2), check that
-`registry` equals `directory.registry_for(<test code 1>)["api"]`; if it differs, delete the
+`registry` equals `directory.registry_for(<test code 1>)["api"]` (by prefix: `next(r for r in directory.registries if
+r["prefix"] == "ABCE")["api"]`); if it differs, delete the
 stored pair and ask the registry before using it. A directory entry does not
 say it is a sandbox; the registry's document does (`GET {api}/.well-known/pregen-registry.json`
 → `"sandbox": true`; if it says `false`, it is not a sandbox: do not use `testing` with it).
@@ -195,11 +196,13 @@ Authorization: Bearer <token from that registry>
   against them.
 - **`licensee_id`** (optional, a member of `body` beside `job_id`): your end customer's id,
   when you generate on their behalf and the registry connected that customer to you
-  (extension `licensee`). Leave it out otherwise. Some grants cover
+  (extension `licensee`). Leave it out otherwise. A licensee id belongs to one registry: send it
+  only to the registry that connected it, and none to the other registries in the job. Some grants cover
   only one licensee. Send exactly the licensee id the registry gave you. An id the registry
   did not connect to you is refused (401 `PG_NOT_AUTHENTICATED`).
 - **Rule out what you can locally first** (no listed registry, no credential, a failed anchor
-  list), then ask in order and stop at the first refusal, giving back every allow.
+  list), then ask in any order you like and stop at the first refusal, giving back every allow
+  received before it.
 - **One request per code.** A job with two people asks twice, under the same `job_id`,
   each code at the registry its prefix names (a public person: see below). **Every job has a new `job_id`** (random, not a
   timestamp), and `job_input` holds everything you fixed, the customer included (for example
@@ -281,7 +284,8 @@ whose claim the person confirmed holds everywhere; "no licence here" does not. S
    `{status, reason, code}`. A confirmation may be reused until the next daily anchor fetch,
    while the entry's `proof_url` is unchanged. Generate only if its `status` is `allow`. With no confirmed claim
    it is `not_blocked` (`PG_IDENTITY_UNCONFIRMED`): no permission. `check_answer` must pass for
-   the code it returns; `verify_answer` must pass for every other code under the anchor. Report
+   the code it returns; `verify_answer` must pass for every other code whose claim the person
+   confirmed. Report
    as `generated`, and put in the proof, the allow of the code it returns and every other allow
    from a claim the person confirmed; give back (step 8) allows from unconfirmed claims. Apply
    step 6's obligations rule to every allow you report. Codes that did not answer `allow` are
@@ -413,8 +417,8 @@ and names that report and answer, all reports name one output and one job, and t
 hash matches. `level` is how far the registry established who holds the person's rights:
 `self` (the registrant's own claim), `asserted` (an agent's claim), `consented` (the
 person's documented consent), `verified` (the registry checked identity and authority).
-Show it with your label, and decide which levels your label requires; below `consented`, no
-one but the registrant vouched, and a strict default is `verified`. `check_proof` does not
+Show it with your label. By default require `verified`; accept less only under a policy of your
+own that you publish (below `consented`, no one but the registrant vouched). `check_proof` does not
 look at `obligations`: they are in each `answer.body`, and were the provider's to apply;
 show them if your label cares. The result does not name a licensee; a licensee-only grant shows as `licensee_id`
 in that person's `request.body`. With no file to hash, do not run the check: record it as not
@@ -430,63 +434,65 @@ so offline it fails without them. Save both every time you load the directory, a
 every 24 hours while you label, replacing the old copies (a key set keeps its retired keys,
 so the newest copy verifies old proofs too):
 
+Production and testing each keep their own folder, so a test file can never stand in for a
+production one: `pregen/`, or `pregen-test/` with the test steward key beside the rest.
+
 ```python
-saved_directory = directory.to_json()
-for r in directory.registries:                       # saved_key_sets: the previous copy, or {}
+FOLDER = "pregen-test" if TEST_STEWARD else "pregen"
+os.makedirs(FOLDER, exist_ok=True)
+path = lambda name: os.path.join(FOLDER, name)
+saved_key_sets = json.load(open(path("key_sets.json"))) if os.path.exists(path("key_sets.json")) else {}
+for r in directory.registries:
     try:
         saved_key_sets[r["keys"]] = json.loads(urllib.request.urlopen(r["keys"], timeout=10).read())
     except Exception as e:
         print("kept the previous key set for", r["keys"], e)
-json.dump(saved_directory, open("directory-test.json" if TEST_STEWARD else "directory.json", "w"))
-json.dump(saved_key_sets, open("key_sets.json", "w"))
-json.dump({"saved_at": int(time.time())}, open("saved_at.json", "w"))
+json.dump(directory.to_json(), open(path("directory.json"), "w"))
+json.dump(saved_key_sets, open(path("key_sets.json"), "w"))
+json.dump({"saved_at": int(time.time())}, open(path("saved_at.json"), "w"))
 if TEST_STEWARD:
-    json.dump({"steward_public_key_hex": TEST_STEWARD}, open("test_steward.json", "w"))
-elif os.path.exists("test_steward.json"):
-    os.remove("test_steward.json")                   # production: never check against a leftover test directory
+    json.dump({"steward_public_key_hex": TEST_STEWARD}, open(path("test_steward.json"), "w"))
 ```
 
 ```js
-import { writeFileSync, rmSync } from "node:fs";
-const savedDirectory = directory.toJSON();
-for (const r of directory.registries) {              // savedKeySets: the previous copy, or {}
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+const FOLDER = TEST_STEWARD ? "pregen-test" : "pregen";
+mkdirSync(FOLDER, { recursive: true });
+const path = (name) => `${FOLDER}/${name}`;
+const savedKeySets = existsSync(path("key_sets.json")) ? JSON.parse(readFileSync(path("key_sets.json"), "utf8")) : {};
+for (const r of directory.registries) {
   try {
     const res = await fetch(r.keys, { signal: AbortSignal.timeout(10000) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     savedKeySets[r.keys] = await res.json();
   } catch (e) { console.log("kept the previous key set for", r.keys, e.message); }
 }
-writeFileSync(TEST_STEWARD ? "directory-test.json" : "directory.json", JSON.stringify(savedDirectory));
-writeFileSync("key_sets.json", JSON.stringify(savedKeySets));
-writeFileSync("saved_at.json", JSON.stringify({ saved_at: Math.floor(Date.now() / 1000) }));
-if (TEST_STEWARD) writeFileSync("test_steward.json", JSON.stringify({ steward_public_key_hex: TEST_STEWARD }));
-else rmSync("test_steward.json", { force: true });   // production: never check against a leftover test directory
+writeFileSync(path("directory.json"), JSON.stringify(directory.toJSON()));
+writeFileSync(path("key_sets.json"), JSON.stringify(savedKeySets));
+writeFileSync(path("saved_at.json"), JSON.stringify({ saved_at: Math.floor(Date.now() / 1000) }));
+if (TEST_STEWARD) writeFileSync(path("test_steward.json"), JSON.stringify({ steward_public_key_hex: TEST_STEWARD }));
 ```
 
-**A proof checked against a test directory is never a label, sandbox or not:** keep test and
-production files in separate folders. If one registry does not answer, keep its previous copy and go on. Keep the directory in
-one JSON file, and all key sets in another, as one object keyed by URL; a test directory's
-steward key is a constant you keep with them. Save key sets as they come: at check time the
+**A proof checked against a test directory is never a label, sandbox or not.** If one registry
+does not answer, keep its previous copy and go on. Save key sets as they come: at check time the
 library uses only keys whose ids the directory lists, and refuses small-order keys; the
 directory never removes a listed key id (the libraries refuse a directory that does), a key is
-only ever revoked, so old proofs keep their keys. It does
-not check the provider's signature on a report: it relies on the registry's signed
-acknowledgement, which names that report. Write the time you saved them beside
-the two files as `saved_at.json` = `{"saved_at": <unix seconds>}`: the library cannot tell. If
-`saved_at` is more than 24 hours ago, do not
-label: go online, load and save again.
+only ever revoked, so old proofs keep their keys. It does not check the provider's signature on
+a report: it relies on the registry's signed acknowledgement, which names that report. The
+library cannot tell when you saved: `saved_at.json` does, and if it is more than 24 hours old,
+do not label: go online, load and save again.
 
-Later, check with no network (the files: `directory.json` (`directory-test.json` for a test
-directory), `key_sets.json`, `saved_at.json`, and for a test directory `test_steward.json` =
-`{"steward_public_key_hex": …}`):
+Later, check with no network (`verify_directory` / `verifyDirectory` fetch nothing):
 
 ```python
-test = json.load(open("test_steward.json"))["steward_public_key_hex"] if os.path.exists("test_steward.json") else None
-saved_directory = json.load(open("directory-test.json" if test else "directory.json"))
-saved_key_sets = json.load(open("key_sets.json"))
-if time.time() - json.load(open("saved_at.json"))["saved_at"] > 86_400:
+FOLDER = "pregen"                                    # "pregen-test" only when testing
+path = lambda name: os.path.join(FOLDER, name)
+test = json.load(open(path("test_steward.json")))["steward_public_key_hex"] if os.path.exists(path("test_steward.json")) else None
+saved_key_sets = json.load(open(path("key_sets.json")))
+if time.time() - json.load(open(path("saved_at.json")))["saved_at"] > 86_400:
     raise SystemExit("the saved copy is more than 24 hours old: go online, load and save again")
-directory = pregen.verify_directory(saved_directory, **({"steward_public_key_hex": test} if test else {}))
+directory = pregen.verify_directory(json.load(open(path("directory.json"))),
+                                    **({"steward_public_key_hex": test} if test else {}))
 result = pregen.check_proof(bundle, directory, get_json=lambda url: saved_key_sets.get(url, {}),
                             output_sha256=sha256_of_the_file)          # a sandbox proof: testing=True
 ```
@@ -494,13 +500,14 @@ result = pregen.check_proof(bundle, directory, get_json=lambda url: saved_key_se
 ```js
 import { existsSync, readFileSync } from "node:fs";
 import { verifyDirectory, checkProof } from "@pregen/verify";
-const TEST = existsSync("test_steward.json") ? JSON.parse(readFileSync("test_steward.json", "utf8")).steward_public_key_hex : null;
-const savedDirectory = JSON.parse(readFileSync(TEST ? "directory-test.json" : "directory.json", "utf8"));
-const savedKeySets = JSON.parse(readFileSync("key_sets.json", "utf8"));
-if (Date.now() / 1000 - JSON.parse(readFileSync("saved_at.json", "utf8")).saved_at > 86_400) {
+const FOLDER = "pregen";                                                       // "pregen-test" only when testing
+const read = (name) => JSON.parse(readFileSync(`${FOLDER}/${name}`, "utf8"));
+const TEST = existsSync(`${FOLDER}/test_steward.json`) ? read("test_steward.json").steward_public_key_hex : null;
+const savedKeySets = read("key_sets.json");
+if (Date.now() / 1000 - read("saved_at.json").saved_at > 86_400) {
   throw new Error("the saved copy is more than 24 hours old: go online, load and save again");
 }
-const directory = await verifyDirectory(savedDirectory, TEST ? { stewardPublicKeyHex: TEST } : {});
+const directory = await verifyDirectory(read("directory.json"), TEST ? { stewardPublicKeyHex: TEST } : {});
 const offlineFetch = async (url) => ({ ok: url in savedKeySets, status: url in savedKeySets ? 200 : 404,
                                        json: async () => savedKeySets[url] });
 const result = await checkProof(bundle, { directory, fetch: offlineFetch, outputSha256 });   // a sandbox proof: testing: true
@@ -519,7 +526,8 @@ now. For answers, always `load_directory(previous=saved)`.
 From the registry, get its sandbox `api`, the sandbox's eight test codes, and the test
 directory (its URL and test steward key). A sandbox is its own registry with its own prefix
 (for example `ABCE` beside `ABCD`): take credentials from `{sandbox api}/v2/sandbox/access`,
-store them under that prefix in `CREDENTIALS`, and register your key there (step 4). Copy
+store them under that prefix in `CREDENTIALS`, and register your key there (step 4; the same
+provider key for sandbox and production is fine). Copy
 the eight test codes the registry gives you (code `N` is `PG-<prefix>-00000N` plus a check
 character that cannot be guessed). Each answers one way:
 
@@ -548,6 +556,7 @@ One job, one or more people (private or public), each at their own registry. Fil
 
 ```python
 import hashlib
+import http.client
 import json
 import os
 import secrets
@@ -564,7 +573,7 @@ CODES = ["PG-ABCD-000001G"]                                                # the
 SAVED = "directory-test.json" if TEST_STEWARD else "directory.json"          # never a test directory as previous to the real one
 TESTING = False                                                            # True only against a sandbox (step 10)
 UA = {"User-Agent": "frame-ai (https://frame-ai.example/contact)"}        # who you are: Wikidata refuses anonymous clients
-LICENSEE = None                                                            # the licensee_id a registry gave you for this customer
+LICENSEES = {}                                                             # prefix -> the licensee_id that registry gave this customer
 
 pub = pregen.public_key_hex(KEY)
 key_id = pregen.fingerprint(pub)
@@ -616,7 +625,10 @@ def post(entry, path, envelope, member):                                  # rule
         except urllib.error.HTTPError as e:
             if e.code < 500 and e.code != 429:                            # any other 4xx is final for these bytes
                 raise RuntimeError(f"{path}: HTTP {e.code} {e.read().decode()}") from None
-        except (urllib.error.URLError, TimeoutError):
+            if e.code == 429:
+                time.sleep(min(int(e.headers.get("Retry-After") or 3), 60))
+                continue
+        except (urllib.error.URLError, OSError, http.client.HTTPException):
             pass                                                          # no answer: send the same bytes again
         time.sleep(3)
     raise RuntimeError(f"{path}: no answer after 4 sends")
@@ -653,7 +665,7 @@ def give_back(items, when):                                              # step 
 
 
 job_id = "job-" + secrets.token_hex(8)                                   # new for every job
-job_input = {"prompt": "<the prompt>", "settings": {"model": "<model>", "seed": 1}, "customer": LICENSEE}   # keep it
+job_input = {"prompt": "<the prompt>", "settings": {"model": "<model>", "seed": 1}, "customer": LICENSEES or None}   # keep it
 job_hash = hashlib.sha256(pregen.canonical_json(job_input)).hexdigest()
 allowed = []                                                              # every answer whose body says allow
 
@@ -664,7 +676,7 @@ def ask(code):                                                            # step
     request = pregen.sign_envelope("pg.request.v1", {
         "subject_ref": code, "provider_id": CREDENTIALS[entry["prefix"]]["provider_id"], "profile": "likeness/1",
         "use": {"purpose": "commercial"}, "job_id": job_id, "job_hash": job_hash,
-        **({"licensee_id": LICENSEE} if LICENSEE else {})})
+        **({"licensee_id": LICENSEES[entry["prefix"]]} if entry["prefix"] in LICENSEES else {})})
     answer = post(entry, "/v2/requests", request, "answer")
     if answer.get("body", {}).get("status") == "allow":
         allowed.append((entry, request, answer))                          # given back below if anything fails
@@ -673,7 +685,7 @@ def ask(code):                                                            # step
 
 for code in CODES:                                                        # rule out locally first (step 5)
     entry = directory.registry_for(code)
-    if entry is None or entry["prefix"] not in CREDENTIALS or entry["prefix"] in FAILED:
+    if entry is None or entry["prefix"] in FAILED or (code not in ANCHOR_OF and entry["prefix"] not in CREDENTIALS):
         raise SystemExit(f"{code}: no listed registry, no credential there, or its anchor list failed")
     if directory.is_false_claim(code):
         raise SystemExit(f"{code}: the steward recorded it as a false claim")
@@ -761,7 +773,7 @@ const CODES = ["PG-ABCD-000001G"];                                              
 const SAVED = TEST_STEWARD ? "directory-test.json" : "directory.json";         // never a test directory as previous to the real one
 const TESTING = false;                                                          // true only against a sandbox (step 10)
 const UA = "frame-js (https://frame-js.example/contact)";                       // who you are: Wikidata refuses anonymous clients
-const LICENSEE = null;                                                          // the licensee_id a registry gave you for this customer
+const LICENSEES = {};                                                           // prefix -> the licensee_id that registry gave this customer
 
 const pub = await publicKeyHex(KEY);
 const keyId = await fingerprint(pub);
@@ -794,18 +806,19 @@ for (const r of directory.registries) {
 async function post(entry, path, envelope, member) {                          // rule 2: the same bytes, at most 4 sends
   const cred = CREDENTIALS[entry.prefix], data = JSON.stringify(envelope);
   for (let i = 0; i < 4; i++) {
-    let res;
+    let res, body;
     try {
       res = await fetch(entry.api + path, { method: "POST", body: data, signal: AbortSignal.timeout(10000), headers: {
         "Content-Type": "application/json", "X-Provider-ID": cred.provider_id, Authorization: `Bearer ${cred.token}` } });
+      body = res.ok ? await res.json() : await res.text();
     } catch { await new Promise((r) => setTimeout(r, 3000)); continue; }        // no answer: send the same bytes again
     if (res.ok) {
-      const body = await res.json();
       if (!(member in body)) throw new Error(`${path}: HTTP 200 without ${member}: no answer`);
       return body[member];
     }
-    if (res.status < 500 && res.status !== 429) throw new Error(`${path}: HTTP ${res.status} ${await res.text()}`);
-    await new Promise((r) => setTimeout(r, 3000));
+    if (res.status < 500 && res.status !== 429) throw new Error(`${path}: HTTP ${res.status} ${body}`);
+    const wait = res.status === 429 ? Math.min(Number(res.headers.get("Retry-After")) || 3, 60) : 3;
+    await new Promise((r) => setTimeout(r, wait * 1000));
   }
   throw new Error(`${path}: no answer after 4 sends`);
 }
@@ -826,7 +839,7 @@ async function giveBack(items, when) {                                          
 
 const registered = new Set();                                                   // keep this with your secrets in a real product
 const jobId = `job-${crypto.randomUUID()}`;                                     // new for every job
-const jobInput = { prompt: "<the prompt>", settings: { model: "<model>", seed: 1 }, customer: LICENSEE };   // keep it
+const jobInput = { prompt: "<the prompt>", settings: { model: "<model>", seed: 1 }, customer: Object.keys(LICENSEES).length ? LICENSEES : null };   // keep it
 const jobHash = createHash("sha256").update(canonicalJson(jobInput)).digest("hex");
 const allowed = [];                                                             // every answer whose body says allow
 
@@ -841,7 +854,7 @@ async function ask(code) {                                                      
   }
   const request = await signEnvelope("pg.request.v1", { subject_ref: code, provider_id: providerId,
     profile: "likeness/1", use: { purpose: "commercial" }, job_id: jobId, job_hash: jobHash,
-    ...(LICENSEE ? { licensee_id: LICENSEE } : {}) });
+    ...(entry.prefix in LICENSEES ? { licensee_id: LICENSEES[entry.prefix] } : {}) });
   const answer = await post(entry, "/v2/requests", request, "answer");
   if (answer?.body?.status === "allow") allowed.push({ entry, request, answer }); // given back below if anything fails
   return { answer, request };
@@ -849,7 +862,7 @@ async function ask(code) {                                                      
 
 for (const code of CODES) {                                                     // rule out locally first (step 5)
   const entry = directory.registryFor(code);
-  if (!entry || !CREDENTIALS[entry.prefix] || FAILED.has(entry.prefix)) {
+  if (!entry || FAILED.has(entry.prefix) || (!ANCHOR_OF.has(code) && !CREDENTIALS[entry.prefix])) {
     throw new Error(`${code}: no listed registry, no credential there, or its anchor list failed`);
   }
   if (directory.isFalseClaim(code)) throw new Error(`${code}: the steward recorded it as a false claim`);

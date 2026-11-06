@@ -177,7 +177,9 @@ The retired key's file is `./data/operator.retired.<the 32 hex of the old key id
 needs it any more, but whoever holds it could sign acknowledgements dated before it
 was retired: keep it only in the offline backup, encrypted, in its own folder (for example
 `./offline/retired/`), and remove it from `./data` before the next step 3 backup (the recipe
-copies every `*.key` still in `./data` and empties `./backup/data` each time). If you rotate before the directory lists the new key, providers refuse
+copies every `*.key` still in `./data` and empties `./backup/data` each time). To encrypt it:
+`openssl enc -aes-256-cbc -pbkdf2 -salt -in <file> -out <file>.enc`, then delete the plain
+file. If you rotate before the directory lists the new key, providers refuse
 every answer you sign until it does. A retired key cannot sign anything new (clients refuse
 what it signs after it was retired), but keep its file as secret as the current one.
 
@@ -197,6 +199,11 @@ forwards `https://registry.example` to it:
 pregen-registry serve --dir ./data --host 127.0.0.1 --port 8000
 ```
 
+The proxy must pass the client's address: in nginx, `proxy_set_header X-Forwarded-For
+$proxy_add_x_forwarded_for;` (Caddy does it by default). If the proxy runs on another host,
+start `serve` with `FORWARDED_ALLOW_IPS=<proxy address>`. Without this, your sandbox counts every
+provider as one address: 10 credentials an hour for everyone.
+
 To serve HTTPS directly, for example on a test machine with your own certificate:
 
 ```bash
@@ -204,7 +211,9 @@ pregen-registry serve --dir ./data --host 127.0.0.1 --port 8443 \
   --ssl-certfile cert.pem --ssl-keyfile key.pem
 ```
 
-Keep it running (a service manager, or `nohup … >> registry.log 2>&1 & echo $! > registry.pid`,
+Keep it running (a service manager, or `nohup … >> registry.log 2>&1 & echo $! > registry.pid`;
+the sandbox likewise, for example `nohup pregen-registry serve --dir ./sandbox --host 127.0.0.1
+--port 8001 >> sandbox.log 2>&1 & echo $! > sandbox.pid`,
 so you can stop it later with `kill "$(cat registry.pid)"`). A registry and its sandbox are
 two servers on two ports, each with its own pid file and log (`sandbox.pid`,
 `sandbox.log`); each is stopped and started on its own. Only a key rotation needs a restart:
@@ -257,9 +266,11 @@ host Wikidata lists (`www.` counts). The command records what you give it and fe
 so check first; this must print `True`:
 
 ```bash
-python3 -c "import pregen, urllib.request as u; print(pregen.check_channel_proof('PG-ABCD-000001G', \
-  'https://mayacole.example/pregen', pregen.wikidata_official_urls('wikidata:Q42'), \
-  lambda x: u.urlopen(u.Request(x, headers={'User-Agent': '<registry name> (<contact URL>)'})).read().decode()))"
+CODE='PG-ABCD-000001G' URL='https://mayacole.example/pregen' ANCHOR='wikidata:Q42' python3 -c "
+import os, pregen, urllib.request as u
+ua = {'User-Agent': 'Example Registry (https://registry.example/contact)'}
+print(pregen.check_channel_proof(os.environ['CODE'], os.environ['URL'], pregen.wikidata_official_urls(os.environ['ANCHOR']),
+      lambda x: u.urlopen(u.Request(x, headers=ua)).read().decode()))"
 ```
 
 If it prints `False` or raises (page unreadable, Wikidata 403), anchor without `--proof-url` (the claim stays unconfirmed) and run
@@ -297,7 +308,8 @@ pregen-registry grant add --dir ./data --subject 'PG-ABCD-000001G' \
 - `grant add` does not check spellings: use the five lower-case purposes and the full
   `<provider id>:<customer id>`, then try such a grant in your sandbox (steps 7–8). To confirm a
   provider's token works without using a grant, `GET {api}/v2/grants/<grant id>` with its
-  headers returns 200.
+  headers returns 200. Any provider with a credential can read any grant by its id, licensee
+  included: give a grant id only to the provider it concerns.
 - **Without `--licensee` the grant is open:** any provider may use it for these purposes. If
   the person agreed to one client, pass `--licensee`.
 
@@ -417,7 +429,8 @@ pregen-registry check --api https://sandbox.registry.example \
 The extra line reads `PASS POST /v2/requests for PG-ABCE-000001…, purpose commercial: HTTP
 200, allow`; with test code 2 it reads `… deny PG_NO_LICENSE`. To try a grant of your own
 (purposes, a licensee), add a test person and that grant to the sandbox (`subject add
---dir ./sandbox …`, which numbers added people from 9 on, and `grant add --dir ./sandbox …`)
+--dir ./sandbox --name "Test subject 9 (allow, licensee test:t1, commercial)"`, named by what it
+answers, which numbers added people from 9 on, and `grant add --dir ./sandbox …`)
 and ask for it the same way; for a licensee-only grant, give
 it `--licensee test:t1` and add `--licensee test:t1` to `check`. If you added your own test
 people, also change the line in `./sandbox/policy.md` that says it holds only the eight test
