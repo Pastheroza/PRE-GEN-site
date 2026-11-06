@@ -7,6 +7,17 @@
       "has": [
         {
           "type": "host",
+          "value": "test.pregen.org"
+        }
+      ],
+      "destination": "https://www.pregen.org/test/registries.json",
+      "permanent": false
+    },
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
           "value": "pregen.org"
         }
       ],
@@ -32,18 +43,6 @@
       "source": "/for-brands",
       "destination": "/registries",
       "permanent": true
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/registries.json",
-      "has": [
-        {
-          "type": "host",
-          "value": "test.pregen.org"
-        }
-      ],
-      "destination": "/test/registries.json"
     }
   ],
   "headers": [

@@ -88,7 +88,7 @@ hours: answers checked against a directory object older than that are refused.
 `pregen.load_directory(url, previous=saved, steward_public_key_hex=TEST_STEWARD)` or
 `loadDirectory({ url, previous: saved, stewardPublicKeyHex: TEST_STEWARD })`, where `url` is
 the test directory's URL (without it, the public directory is loaded). Never in production.
-The public test directory is `https://test.pregen.org/registries.json`, signed by the test
+The public test directory is `https://www.pregen.org/test/registries.json`, signed by the test
 steward key `78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0`.
 Keep a saved test directory in its own folder (`pregen-test/`, step 9): passed as `previous` to
 the real directory, it is refused (`sequence … is older` / `namespace … was removed`).
@@ -98,6 +98,9 @@ listed in it are checked without `testing`. `testing` is for sandbox answers onl
 **A registry's new key:** if `check_answer` refuses with `… may not sign …: issuer_mismatch`,
 the registry may have just been listed with a new key: load the directory again (with
 `previous`) and check the same answer once more. If it still fails, it is not an answer.
+`unknown_issuer` means no registry in that directory holds the code's prefix: it is not an
+answer, and reloading will not help. A test directory that fails to load is no test directory:
+stop, never check sandbox answers without it, and report it through the steward's issue tracker.
 
 ## 3. Credentials from each registry
 

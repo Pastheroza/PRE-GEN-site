@@ -49,11 +49,11 @@ signature:
 python3 -c "import pregen; print(sorted(r['prefix'] for r in pregen.load_directory().registries))"
 ```
 
-**The public test directory** is `https://test.pregen.org/registries.json`, signed by the test
+**The public test directory** is `https://www.pregen.org/test/registries.json`, signed by the test
 steward key `78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0`; it lists sandboxes only. List its prefixes with this one line:
 
 ```bash
-python3 -c "import pregen; print(sorted(r['prefix'] for r in pregen.load_directory('https://test.pregen.org/registries.json', steward_public_key_hex='78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0').registries))"
+python3 -c "import pregen; print(sorted(r['prefix'] for r in pregen.load_directory('https://www.pregen.org/test/registries.json', steward_public_key_hex='78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0').registries))"
 ```
 
 Pick a prefix that is not listed in either directory (the test one once you have its key), and a

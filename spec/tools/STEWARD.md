@@ -93,8 +93,8 @@ directory in git (`origin/main`, else `HEAD`) and refuses to sign if anything wa
 
 ## The test directory
 
-`test/registries.json`, served at `https://test.pregen.org/registries.json` (a host rewrite in
-`vercel.json`). Test steward key `~/PRE-GEN-test-steward.pem`, public key in its `.pub`, its
+`test/registries.json`, served at `https://www.pregen.org/test/registries.json` (`test.pregen.org` redirects there:
+a host rewrite would lose to the real `registries.json`, which Vercel serves first). Test steward key `~/PRE-GEN-test-steward.pem`, public key in its `.pub`, its
 passphrase in `~/PRE-GEN-test-steward.passphrase`. It lists sandbox registries only (the
 application's Status: sandbox). Same commands, with `--steward <the test key hex>` for `verify`;
 the test steward key signs nothing production accepts. Only
