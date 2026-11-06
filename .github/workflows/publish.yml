@@ -1,0 +1,69 @@
+# Publishes a package when its tag is pushed, through trusted publishing (no token is stored anywhere):
+#   pregen-v0.11.0           -> PyPI "pregen"           (packages/verify-py)
+#   pregen-registry-v0.2.0   -> PyPI "pregen-registry"  (packages/registry)
+#   verify-js-v0.11.0        -> npm "@pregen/verify"    (packages/verify-js)
+# The tag's version must equal the package's version, and the package's tests must pass first.
+name: publish
+
+on:
+  push:
+    tags: ["pregen-v*", "pregen-registry-v*", "verify-js-v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  pypi:
+    if: startsWith(github.ref_name, 'pregen-')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Which package, and does the tag match its version
+        run: |
+          case "$GITHUB_REF_NAME" in
+            pregen-registry-v*) dir=packages/registry; version=${GITHUB_REF_NAME#pregen-registry-v} ;;
+            pregen-v*)          dir=packages/verify-py; version=${GITHUB_REF_NAME#pregen-v} ;;
+          esac
+          declared=$(python -c "import tomllib;print(tomllib.load(open('$dir/pyproject.toml','rb'))['project']['version'])")
+          test "$declared" = "$version" || { echo "tag $version, but $dir declares $declared"; exit 1; }
+          echo "DIR=$dir" >> "$GITHUB_ENV"
+      - name: Test
+        run: |
+          pip install ./packages/verify-py pytest httpx
+          if [ "$DIR" = packages/registry ]; then pip install ./packages/registry; fi
+          (cd "$DIR" && python -m pytest -q tests)
+          if [ "$DIR" = packages/verify-py ]; then
+            python spec/conformance/level1/run_conformance.py --adapter "python packages/verify-py/tests/conformance_adapter.py"
+          fi
+      - name: Build
+        run: pip install build && python -m build --outdir dist "$DIR"
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  npm:
+    if: startsWith(github.ref_name, 'verify-js-v')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+      - name: Does the tag match the version
+        working-directory: packages/verify-js
+        run: test "$(node -p "require('./package.json').version")" = "${GITHUB_REF_NAME#verify-js-v}"
+      - name: Test (the suite and conformance Level 1)
+        working-directory: packages/verify-js
+        run: npm test
+      - name: Publish
+        working-directory: packages/verify-js
+        run: npx --yes npm@latest publish --provenance --access public
