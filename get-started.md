@@ -5,6 +5,10 @@ PRE-GEN proof, or to run a PRE-GEN registry. This one file is enough to start. E
 below comes from the specification; where the two differ, the specification wins:
 `https://www.pregen.org/spec/PRE-GEN-CORE.md`.
 
+Step by step, with complete tested examples: for an AI provider
+`https://www.pregen.org/docs/provider.md`, for a registry
+`https://www.pregen.org/docs/registry.md`.
+
 PRE-GEN v5 (12 October 2026) · open standard by Valerii Egorov · Apache-2.0 ·
 concept DOI 10.5281/zenodo.20129901 · owned by no registry.
 
@@ -56,11 +60,11 @@ guide. Today one registry is in production: PRAMPTA (`https://api2.prampta.com`,
 ### A2. Install a verification library
 
 ```bash
-npm install @pregen/verify@^0.10.0
+npm install @pregen/verify@^0.11.0
 ```
 
 ```bash
-pip install "pregen>=0.10.0"
+pip install "pregen>=0.11.0"
 ```
 
 Both libraries carry the steward key, load and check the directory, and check answers and
@@ -201,7 +205,7 @@ categories need the person's own signed grant).
   and answer shapes:
 
   ```bash
-  pip install "git+https://github.com/Pastheroza/PRE-GEN-site#subdirectory=packages/registry"
+  pip install "pregen-registry>=0.2.0"
   pregen-registry init --dir ./data --prefix TEST --name "My sandbox" --api http://127.0.0.1:8000 --sandbox
   pregen-registry serve --dir ./data
   curl -X POST http://127.0.0.1:8000/v2/sandbox/access     # a provider id and token, no account
@@ -278,9 +282,10 @@ Any company or person can run a registry on the same terms; the first one has no
 rights.
 
 1. **Run one.** The open reference registry:
-   `pip install "git+https://github.com/Pastheroza/PRE-GEN-site#subdirectory=packages/registry"`,
+   `pip install "pregen-registry>=0.2.0"`,
    then `pregen-registry init --dir ./data --prefix ABCD --name "…" --api https://… --policy https://… --complaints mailto:…`.
-   Or implement the core yourself from `PRE-GEN-CORE.md`.
+   Step by step: `https://www.pregen.org/docs/registry.md`. Or implement the core yourself
+   from `PRE-GEN-CORE.md`.
 2. **Publish:** `GET {api}/keys` (your signing keys) and
    `GET {api}/.well-known/pregen-registry.json` (`prefix`, `name`, `profiles`,
    `extensions`, `policy`, `complaints`, `sandbox`).
