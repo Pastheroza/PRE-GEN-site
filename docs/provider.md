@@ -29,7 +29,9 @@ step returns. Where it and the specification differ, the specification wins:
 3. **Never send the prompt or the output.** You send `job_hash`: a SHA-256 of what you
    fixed about the job: `hashlib.sha256(pregen.canonical_json(job_input)).hexdigest()`, where
    `job_input` is a dict of the prompt and settings (`canonical_json` returns bytes; in JS,
-   `canonicalJson` returns a string to hash). Keep that input with the job, so you can show
+   `canonicalJson` returns a string to hash). It accepts only strings, booleans, null, lists,
+   objects and whole numbers up to 2^53: write every other number as a string
+   (`"temperature": "0.7"`, `"seed": "18446744073709551615"`). Keep that input with the job, so you can show
    later, to whoever you choose (never a registry), what the hash stands for.
 4. **Keep your clock synced** with your system's time service (NTP: `timedatectl`, `chronyc
    tracking`, `sntp time.apple.com` on macOS, or Windows Time; without a time server, compare
@@ -113,8 +115,9 @@ A registry's sandbox gives test credentials without an account:
 urllib.request.Request(sandbox_api + "/v2/sandbox/access", data=b"", method="POST")).read())`;
 JS: `const res = await fetch(sandboxApi + "/v2/sandbox/access", { method: "POST" }); if (!res.ok)
 throw new Error("HTTP " + res.status); const access = await res.json()`).
-Never resend this call: each one mints a new credential (at most 10 an hour per address, then
-429). The token is shown once: store the pair at once, under the sandbox's prefix (the four
+This call is outside rule 2: each one mints a new credential (at most 10 an hour per address,
+then 429), so do not repeat it; if it got no answer, call it once more (a credential you never
+received is never used). The token is shown once: store the pair at once, under the sandbox's prefix (the four
 letters of its test codes). Once you have loaded the test directory (step 2), check that
 `registry` equals `directory.registry_for(<test code 1>)["api"]` (by prefix: `next(r for r in directory.registries if
 r["prefix"] == "ABCE")["api"]`); if it differs, delete the
@@ -274,7 +277,9 @@ whose claim the person confirmed holds everywhere; "no licence here" does not. S
    get_text)`, where `get_text(url)` returns the page's text (JS: `await checkChannelProof(code,
    proofUrl, await wikidataOfficialUrls(anchor, { fetch }), getText)`, with `getText` an
    `async (url) => string`). `confirmed` is the boolean it returns, and comes only from it: never
-   set it by hand or on anyone's word, your own earlier look included (item 5 if it cannot run). Only `wikidata:` anchors have
+   set it by hand or on anyone's word, a person's look included (a cached result of
+   `check_channel_proof` may be reused as item 4 says; item 5 if it cannot run). A `proof_url`
+   whose path has a `.` or `..` segment (or `%2e`, or an encoded slash) confirms nothing. Only `wikidata:` anchors have
    a defined list of official channels today: for any other anchor, `confirmed` is `False` (do
    not call `wikidata_official_urls`, which raises). Both complete examples below do all of
    step 5. In Python, pass `get_text` (and a `get_json` if you fetch
@@ -306,11 +311,11 @@ whose claim the person confirmed holds everywhere; "no licence here" does not. S
    Everyone else may go on. A code the steward recorded as a false claim
    (`directory.is_false_claim(code)`) is never generated, and the libraries refuse its answers.
 
-## 6. Check the answer
-
 If you learn of another registry's claim to the same person only later, apply step 5's
 public-person rule then: keep every answer, and never present the output as permitted while a
 refusal of the person stands.
+
+## 6. Check the answer
 
 ```python
 pregen.check_answer(answer, request, directory)     # raises pregen.PregenError (a ValueError); str(e) is the reason
@@ -440,7 +445,8 @@ so offline it fails without them. Save both every time you load the directory, a
 every 24 hours while you label, replacing the old copies (a key set keeps its retired keys,
 so the newest copy verifies old proofs too):
 
-Production and testing each keep their own folder, so a test file can never stand in for a
+Run the snippets from your product's own folder; the save snippet follows step 2's
+`load_directory`. Production and testing each keep their own folder, so a test file can never stand in for a
 production one: `pregen/`, or `pregen-test/` with the test steward key beside the rest.
 
 ```python
@@ -481,8 +487,10 @@ if (TEST_STEWARD) writeFileSync(path("test_steward.json"), JSON.stringify({ stew
 
 **A proof checked against a test directory is never a label, sandbox or not.** The verdict, in
 this order: 1. no file: `no file: not checked`; 2. the check raises: its message; 3. a level
-below your policy: `level <x>`; 4. obligations you do not show: not a label; 5. a test
-directory or sandbox: `test directory: never a label`; 6. otherwise a label. If one registry
+below your policy (levels rank `self` < `asserted` < `consented` < `verified`): `level <x>`; 4.
+obligations you do not show: `obligations not shown: not a label`; 5. a test directory or
+sandbox: `test directory: never a label` (which means every check passed); 6. otherwise a
+label. If one registry
 does not answer, keep its previous copy and go on. Save key sets as they come: at check time the
 library uses only keys whose ids the directory lists, and refuses small-order keys; the
 directory never removes a listed key id (the libraries refuse a directory that does), a key is
@@ -554,7 +562,8 @@ character computed from it: copy it, never retype it). Each answers one way:
 | `7` | `not_blocked` `PG_NO_LICENSE` (nothing blocks it, and nothing grants it) |
 | `8` | `deny` `PG_UNKNOWN_SUBJECT` |
 
-A registry may give you more codes (9 and up) for its own test grants, and tells you what each
+`testing` is per code: true only for a code whose registry's document says `"sandbox": true`;
+pass `testing=True` to `check_proof` if any code in the job is. A registry may give you more codes (9 and up) for its own test grants, and tells you what each
 answers (if not, `GET {sandbox api}/v2/codes/<code>`: the name says): ask them like the others. Ask each in a job of its own, and take code `1` through the whole flow (ask, check,
 generate, report, proof), as in production: the complete examples below do, with
 `TESTING = True` / `const TESTING = true`. Keep sandbox outputs and proofs apart from
@@ -702,7 +711,8 @@ def give_back(items, when):                                              # step 
 
 
 job_id = "job-" + secrets.token_hex(8)                                   # new for every job
-job_input = {"prompt": "<the prompt>", "settings": {"model": "<model>", "seed": 1}, "customer": LICENSEES or None}   # keep it
+job_input = {"prompt": "<the prompt>", "settings": {"model": "<model>", "seed": 1, "temperature": "0.7"},  # keep it
+             "customer": LICENSEES or None}                               # numbers other than whole ones as strings
 job_hash = hashlib.sha256(pregen.canonical_json(job_input)).hexdigest()
 json.dump({"job_id": job_id, "job_input": job_input}, open(os.path.join(FOLDER, "jobs", job_id + ".json"), "w"))
 allowed = []                                                              # every answer whose body says allow
@@ -896,7 +906,8 @@ async function giveBack(items, when) {                                          
 
 const registered = new Set();                                                   // load and save it with your secrets in a real product
 const jobId = `job-${crypto.randomUUID()}`;                                     // new for every job
-const jobInput = { prompt: "<the prompt>", settings: { model: "<model>", seed: 1 }, customer: Object.keys(LICENSEES).length ? LICENSEES : null };   // keep it
+const jobInput = { prompt: "<the prompt>", settings: { model: "<model>", seed: 1, temperature: "0.7" },     // keep it; non-whole
+  customer: Object.keys(LICENSEES).length ? LICENSEES : null };                                            // numbers as strings
 const jobHash = createHash("sha256").update(canonicalJson(jobInput)).digest("hex");
 writeFileSync(`${FOLDER}/jobs/${jobId}.json`, JSON.stringify({ job_id: jobId, job_input: jobInput }));
 const allowed = [];                                                             // every answer whose body says allow

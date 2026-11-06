@@ -698,8 +698,11 @@ def check_channel_proof(code: str, proof_url: str, official_urls: list, get_text
     """Did the person confirm `code` on an official channel? `proof_url` must lie on one of `official_urls`
     (for example from wikidata_official_urls()) and its text must contain "PRE-GEN: <code>", the whole code: a longer
     code that starts the same way (a legacy code has six or more digits) confirms nothing."""
-    from urllib.parse import urlsplit
+    from urllib.parse import unquote, urlsplit
     p = urlsplit(proof_url or "")
+    # A host may resolve "/@person/../@other" (or %2e, or an encoded slash) to another profile: such a path proves nothing.
+    if re.search(r"%2f|%5c|\\", p.path, re.I) or any(unquote(s) in (".", "..") for s in p.path.split("/")):
+        return False
     def under(o):  # same host, and the official path itself or below it ("/cristiano", not "/cristiano_fan")
         base = o.path.rstrip("/")
         return p.hostname == o.hostname and (p.path.rstrip("/") == base or p.path.startswith(base + "/"))

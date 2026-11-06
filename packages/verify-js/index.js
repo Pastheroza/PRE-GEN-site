@@ -582,6 +582,11 @@ export function decideIdentity(claims, { allowUnconfirmed = false } = {}) {
 /** Did the person confirm `code` on an official channel? `proofUrl` must lie on one of `officialUrls`
  * (for example from wikidataOfficialUrls) and its text must contain "PRE-GEN: <code>". */
 export async function checkChannelProof(code, proofUrl, officialUrls, getText) {
+  // A host may resolve "/@person/../@other" (or %2e, or an encoded slash) to another profile: such a path proves nothing.
+  const rawPath = String(proofUrl).split(/[?#]/)[0].replace(/^[a-z]+:\/\/[^/]*/i, "");
+  if (/%2f|%5c|\\/i.test(rawPath) || rawPath.split("/").some((s) => { try { return [".", ".."].includes(decodeURIComponent(s)); } catch { return true; } })) {
+    return false;
+  }
   let p;
   try { p = new URL(proofUrl); } catch { return false; }
   const under = (u) => { // same host, and the official path itself or below it ("/cristiano", not "/cristiano_fan")

@@ -96,13 +96,14 @@ Registry created in ./data.
   operator key id: pg-ed25519:<32 hex>
   public key: <64 hex>
 Give the key id to the steward (step 9 of docs/registry.md); it reads the public key from https://registry.example/keys.
-The private key is in ./data/operator.key (mode 600): back it up offline.
-A policy to edit is in ./data/policy.md; `serve` publishes it at https://registry.example/policy.
+The private key is in data/operator.key (mode 600): back it up offline.
+A policy to edit is in data/policy.md; `serve` publishes it at https://registry.example/policy.
 ```
 
 Keep the folder private: `chmod 700 ./data` (the database holds your people, grants and
 provider credentials). Replace each `<…>` in `./data/policy.md`, the operator line included
-(`grep -n '<' ./data/policy.md` must then print nothing);
+(`grep -nE '<(legal name|any refusals|who may|the anchor)' ./data/policy.md` must then print
+nothing; with no refusals of your own, write `We add no refusals of our own.`);
 under "Anchors for public people", name Wikidata: clients confirm no other anchor today (step 6).
 
 The **key id** (`pg-ed25519:` and 32 hex) is the key's **fingerprint**: it is what the
@@ -253,7 +254,9 @@ pregen-registry subject add --dir ./data --name "Maya Cole" --level verified
 It prints the person's code, for example `PG-ABCD-000001G`. Codes can be computed by anyone (serials
 count from 1; the last character is a checksum), so `GET {api}/v2/codes/<code>` shows the person's
 name and level only if you add `--publish`, which you do only when the person chose to be
-public (`subject publish --code … [--off]` changes it later). `--level` is how far you checked
+public (`subject publish --code … [--off]` changes it later). Anchoring publishes the code,
+its level and its anchor (so who the person is) at `/v2/anchors`, whatever `--publish` says:
+anchor only a person who chose to be public. `--level` is how far you checked
 them: `self`, `asserted`, `consented` or `verified`. Without `--level` the person is `self`, and
 proof checkers label only `verified` by default (provider.md step 9): give `--level verified` once
 you have checked identity and authority, or raise it later with `pregen-registry subject level
@@ -277,7 +280,8 @@ the official website (use it: social posts are mostly scripts a plain fetch cann
 host Wikidata lists (`www.` counts). The command records what you give it and fetches nothing,
 so check first; this must print `True`. The page's HTML source (view-source) must contain
 `PRE-GEN: <code>` exactly (one plain space, no tags or entities inside it, the whole code), and a
-handle in the URL must match Wikidata's spelling, case included:
+handle in the URL must match Wikidata's spelling, case included; a path with a `.` or `..`
+segment (or `%2e`, or an encoded slash) confirms nothing:
 
 ```bash
 CODE='PG-ABCD-000001G' URL='https://mayacole.example/pregen' ANCHOR='wikidata:Q42' python3 -c "
@@ -324,6 +328,8 @@ pregen-registry grant add --dir ./data --subject 'PG-ABCD-000001G' \
   provider's token works without using a grant, `GET {api}/v2/grants/<grant id>` with its
   headers returns 200. Any provider with a credential can read any grant by its id, licensee
   included: give a grant id only to the provider it concerns.
+- `--licensee <provider id>` (no customer part) covers only that provider's requests sent
+  without `licensee_id`: a grant to one company rather than one of its customers.
 - **Without `--licensee` the grant is open:** any provider may use it for these purposes. If
   the person agreed to one client, pass `--licensee`.
 
@@ -370,7 +376,9 @@ pregen-registry provider remove --dir ./data --id frame-ai               # a lea
 ```
 
 After `provider remove` for a leaked token: `provider add` again, run `connect` again for each
-of its licensees (removal drops them), and send the new token privately.
+of its licensees (removal drops them), and send the new token privately. If a provider lost its
+signing key, this registry cannot replace it: `provider add` a new id, re-`connect` its
+customers under that id, and re-issue licensee-only grants to the new licensee ids.
 
 Nothing you publish can be deleted afterwards, so add no test records to this registry:
 test in your sandbox (step 7).
@@ -528,7 +536,7 @@ A listing can be revoked, with notice and reasons; a prefix is never given to an
 - [ ] The `./data` folder (key and database) is backed up offline; the server is the only place the key is in use
 - [ ] `GET {api}/keys` lists every key you ever used; a rotation waits 24 hours after the directory lists the next key
 - [ ] `{api}/.well-known/pregen-registry.json` and your policy page answer over HTTPS
-- [ ] Every public person has an anchor and a proof URL you opened; every grant matches what the person agreed
+- [ ] Every public person has an anchor, with a proof URL once `check_channel_proof` prints `True` (until then anchored without one: nobody can generate them); every grant matches what the person agreed
 - [ ] Providers got their credentials over a private channel; your sandbox is a separate registry
 - [ ] `pregen-registry check --api … --directory …` ends `OK: all checks passed`, listing included
 
