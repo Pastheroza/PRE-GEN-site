@@ -32,6 +32,7 @@ PUB = {n: pregen.public_key_hex(k) for n, k in KEYS.items()}
 KID = {n: pregen.fingerprint(p) for n, p in PUB.items()}
 KID["small_order"] = pregen.fingerprint(SMALL_ORDER)
 API, OTHER = "https://registry.test.example", "https://other.test.example"
+FALSE_CLAIM = "PG-TEST-000002Z"                                 # the steward recorded it as a false claim
 
 
 def directory():
@@ -42,7 +43,9 @@ def directory():
                                       KID["registry_retired"]]},
                 {"name": "Other registry", "prefix": "NWRD", "api": OTHER, "keys": OTHER + "/keys",
                  "key_fingerprints": [KID["other_registry"]]}],
-            "revoked_keys": [{"key_id": KID["registry_revoked"], "at": "2026-10-01T00:00:00Z"}]}
+            "revoked_keys": [{"key_id": KID["registry_revoked"], "at": "2026-10-01T00:00:00Z"}],
+            "false_claims": [{"anchor": "wikidata:Q42", "code": FALSE_CLAIM, "at": "2026-10-02T00:00:00Z",
+                              "reason": "not the person"}]}
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
     sig = Ed25519PrivateKey.from_private_bytes(bytes.fromhex(KEYS["steward"])).sign(pregen.canonical_json(body))
     return {**body, "signature": sig.hex()}
@@ -97,6 +100,8 @@ def cases():
     yield "an allow with a reason", REQUEST, answer(reason="PG_NO_LICENSE"), False, False
     yield "a critical extension not understood", REQUEST, answer(critical=["x-unknown"]), False, False
     yield "a member the core does not define (a registry's own go in ext)", REQUEST, answer(note="x"), False, False
+    yield "a code the steward recorded as a false claim", other_request(subject_ref=FALSE_CLAIM), answer(
+        request=other_request(subject_ref=FALSE_CLAIM)), False, False
     yield "signed by another registry's key", REQUEST, answer(key="other_registry"), False, False
     yield "signed by a revoked key", REQUEST, answer(key="registry_revoked"), False, False
     yield "signed by a key retired before it was issued", REQUEST, answer(key="registry_retired"), False, False

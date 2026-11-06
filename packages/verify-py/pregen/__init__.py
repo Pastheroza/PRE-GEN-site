@@ -602,6 +602,8 @@ def verify_answer(answer: dict, request: dict, directory: Directory = None, get_
     directory = directory or load_directory(get_json=get_json)
     if now - directory.loaded_at > DIRECTORY_MAX_AGE:
         raise PregenError("the directory was loaded more than 24 hours ago: load it again")
+    if directory.is_false_claim(asked.get("subject_ref")):        # identity.md: the steward ruled it false
+        raise PregenError(f"{asked.get('subject_ref')} is a false claim the steward recorded: no answer counts")
     body = _registry_signed(answer, "pg.answer.v1", asked.get("subject_ref"), directory, get_json)
     unknown = sorted(set(body) - _ANSWER_MEMBERS)
     if unknown:

@@ -35,7 +35,15 @@
     "at": "2026-10-01T00:00:00Z"
    }
   ],
-  "signature": "c178fdced891529298ecf7cdbe276fdc881d873292fdb4620638bc187a0a42c7e41d5a7ca1e19e272d5572fd8335e74a26d9232af9c5fa1b32378174e410c90d"
+  "false_claims": [
+   {
+    "anchor": "wikidata:Q42",
+    "code": "PG-TEST-000002Z",
+    "at": "2026-10-02T00:00:00Z",
+    "reason": "not the person"
+   }
+  ],
+  "signature": "7841bad4e3f322440e3f97f25ab869f1902cbbfec5dec3dad139e86801871c4afaef927f0864d2d2c875740be04b5485f8f239575c1a2bf0135184c5a1119f03"
  },
  "key_sets": {
   "https://registry.test.example/keys": {
@@ -655,6 +663,48 @@
     },
     "signatures": [
      "39865c60bd2e8e88f2c0882a28f655000d79c67624e1804022b1d7960fdc881af45c5dafac8b33583e811f1ecce93fba62be78eb953f41b34e97203f8dd98d07"
+    ]
+   },
+   "testing": false,
+   "ok": false
+  },
+  {
+   "name": "a code the steward recorded as a false claim",
+   "request": {
+    "type": "pg.request.v1",
+    "signatures": [],
+    "body": {
+     "subject_ref": "PG-TEST-000002Z",
+     "provider_id": "frame-ai",
+     "profile": "likeness/1",
+     "use": {
+      "purpose": "commercial"
+     },
+     "job_id": "job-8841",
+     "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "answer": {
+    "type": "pg.answer.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "request_id": "165ac87d1a80973ea115821449df90640c2ec93f2f023356ff79950d61ae3837",
+     "profile": "likeness/1",
+     "status": "allow",
+     "basis": {
+      "kind": "policy",
+      "rule": "test"
+     },
+     "issued_at": 1789999990,
+     "expires_at": 1790000290
+    },
+    "signatures": [
+     "797780501f83100fafc1c98ef79c466cde7e836f9aa049fcdeff4009f9c592e838c175e198f5230483ab39ebde08f901af3ceb020ef0ef681dcc192fe8b82c0a"
     ]
    },
    "testing": false,

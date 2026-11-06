@@ -22,6 +22,10 @@ Any company or person can run a registry on the same terms.
    `!`. In a shell, put codes in single quotes (`'PG-ABCD-000001$'`); in a URL path, encode
    them (`$` is `%24`, `*` is `%2A`). Always copy codes, never retype them.
 
+**Order on a first run:** steps 1–3, 5, 7–8, 9 for the sandbox, then 6, 9 for production,
+then 10. Step 4 only when you rotate. Run every command from the folder that holds `./data`
+(`registry.pid`, `registry.log` and `./backup` are relative to it).
+
 ## 1. Install
 
 ```bash
@@ -169,10 +173,11 @@ operator key is now pg-ed25519:<new>; pg-ed25519:<old> is retired and stays in /
 Then run `pregen-registry check --api … --directory …` (test
 directory: add `--steward <its key hex>`): it must show `PASS listed with the current key`.
 The directory does not change, so nothing goes to the steward.
-The retired key's file is `./data/operator.retired.<the 32 hex of the old key id>.key`: the server does not need it;
-move it to its own offline folder (for example `./offline/retired/`) first, then back up
-(step 3): the recipe copies every `*.key` still in `./data`, and empties `./backup/data` each
-time. If you rotate before the directory lists the new key, providers refuse
+The retired key's file is `./data/operator.retired.<the 32 hex of the old key id>.key`. Nothing
+needs it any more, but whoever holds it could sign acknowledgements dated before it
+was retired: keep it only in the offline backup, encrypted, in its own folder (for example
+`./offline/retired/`), and remove it from `./data` before the next step 3 backup (the recipe
+copies every `*.key` still in `./data` and empties `./backup/data` each time). If you rotate before the directory lists the new key, providers refuse
 every answer you sign until it does. A retired key cannot sign anything new (clients refuse
 what it signs after it was retired), but keep its file as secret as the current one.
 
@@ -240,7 +245,8 @@ no spaces) or `domain:example.com` (lower case); the command does not check the 
 a different spelling is a different person to every client. **Use `wikidata:Q…` whenever the
 person has one:** clients today confirm only `wikidata:` anchors, so a person anchored as
 `isni:` or `domain:`, or without `--proof-url`, is refused by every provider (`not_blocked`,
-`PG_IDENTITY_UNCONFIRMED`), grant or not, until confirmed.
+`PG_IDENTITY_UNCONFIRMED`), grant or not, until confirmed. An anchor that cannot be confirmed
+means nobody can generate that person.
 
 Add the page where the person posted the line `PRE-GEN: PG-ABCD-000001G`. It must be an
 `https://` page, readable without a login, at or under a channel their Wikidata item lists:

@@ -499,6 +499,9 @@ export async function verifyAnswer(answer, request, { directory, fetch: fetchFn 
   const asked = request.body;
   directory ??= await loadDirectory({ fetch: fetchFn });
   if (now - directory.loadedAt > DIRECTORY_MAX_AGE) fail("the directory was loaded more than 24 hours ago: load it again");
+  if (directory.isFalseClaim(asked.subject_ref)) {                              // identity.md: the steward ruled it false
+    fail(`${asked.subject_ref} is a false claim the steward recorded: no answer counts`);
+  }
   const body = await registrySigned(answer, "pg.answer.v1", asked.subject_ref, directory, fetchFn);
   const unknown = Object.keys(body).filter((k) => !ANSWER_MEMBERS.has(k)).sort();
   if (unknown.length) fail(`the answer carries members the core does not define: ${unknown.join(", ")}`);
