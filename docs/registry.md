@@ -22,7 +22,7 @@ Any company or person can run a registry on the same terms.
    `!`. In a shell, put codes in single quotes (`'PG-ABCD-000001$'`); in a URL path, encode
    them (`$` is `%24`, `*` is `%2A`). Always copy codes, never retype them.
 
-**Order on a first run:** steps 1–3, 5, 7–8, 9 for the sandbox, then 6, 9 for production,
+**Order on a first run:** steps 1–3, 5, 7–8, 9 for the sandbox, then 6, the step 3 backup, 8, 9 for production,
 then 10. Step 4 only when you rotate. Run every command from the folder that holds `./data`
 (`registry.pid`, `registry.log` and `./backup` are relative to it).
 
@@ -268,7 +268,8 @@ prints every code you hold, with its level and name.
 
 **Anchor a public person** (extension `identity`): a public person is anyone with a Wikidata item,
 and every one needs an anchor; before adding one, look for their anchor in every listed
-registry's `/v2/anchors` and use the same id. Record their
+registry's `/v2/anchors` (provider.md step 5.1's loop; a 404 is fine only from a registry whose
+document does not list `identity`) and use the same id. Record their
 public identifier, written exactly as `wikidata:Q42`, `isni:0000000123456789` (16 characters,
 no spaces) or `domain:example.com` (lower case); the command does not check the spelling, and
 a different spelling is a different person to every client. **Use `wikidata:Q…` whenever the
@@ -351,11 +352,11 @@ database (`python3 -c "import sqlite3; [print(r) for r in sqlite3.connect('./dat
 **Give a provider its credential.** It is printed once:
 
 ```bash
-pregen-registry provider add --dir ./data --id frame-ai
+umask 077; pregen-registry provider add --dir ./data --id frame-ai > frame-ai.credential
 ```
 
 A provider id is letters, digits and `-`, never `:` (it separates provider and customer in a
-licensee id).
+licensee id). The file `frame-ai.credential` then holds (shown once):
 
 ```
 provider_id: frame-ai
@@ -363,9 +364,7 @@ token: <secret>
 Shown once. Give it to the provider over a private channel.
 ```
 
-Until you hand it over, keep it only in a file readable by you
-(`umask 077; pregen-registry provider add … > frame-ai.credential`), and delete that file
-once it is sent.
+Keep that file readable only by you until you hand it over, and delete it once it is sent.
 
 `pregen-registry connect --dir ./data --provider frame-ai --licensee frame-ai:user-1` lets that
 provider ask on behalf of its end customer `user-1`; it prints `connected`. Run `provider add`
@@ -416,6 +415,8 @@ Sandbox test subjects (copy them; the last character is a check character):
   PG-ABCE-000008…  Test subject 8 (not registered: PG_UNKNOWN_SUBJECT)
 ```
 
+Save this output: code 8 is never stored, so `subject list` shows only 1–7 and your own.
+
 Serve it (step 5) and get test credentials:
 
 ```bash
@@ -426,8 +427,8 @@ It returns `{"provider_id": "sbx-…", "token": "…", "registry": "…", "note"
 sandbox answer carries `ext: {"sandbox": true}`, and clients refuse it unless they are
 testing. Replace each `<…>` in `./sandbox/policy.md`, as in step 3. The sandbox accepts any
 licensee without `connect`; in production, run `connect` first or the provider gets 401. A
-licensee-only grant still needs `licensee_id` in the request (without it: `deny
-PG_NOT_CONNECTED`).
+licensee-only grant still needs `licensee_id` in the request (without it: `deny PG_NO_LICENSE`
+in the sandbox, where `test:t1` names no sandbox provider; in production, `deny PG_NOT_CONNECTED`).
 Apply for the sandbox's prefix too (step 9, status `sandbox`): a sandbox is listed only in a
 **test directory**, never in the real one (step 2: not online yet). The directory entry looks like any
 other; the document's `sandbox` member is only `true` or `false`, and nothing links your
@@ -472,9 +473,10 @@ answers, which numbers added people from 9 on, and `grant add --dir ./sandbox �
 and ask for it the same way (give sandbox test grants no `--max-uses`: every provider shares
 them, and each allow, a `check` included, uses one for good); for a licensee-only grant, give
 it `--licensee test:t1` and add `--licensee test:t1` to `check`. If you added your own test
-people, also change the line in `./sandbox/policy.md` that says it holds only the standard test
-subjects, for example to "It holds no real people: the standard test subjects (codes 1-7) and
-test people of our own (codes 9 and up)."
+people, also change the template's sentence in `./sandbox/policy.md`, "it holds no real people,
+only the standard test subjects (codes 1-7; code 8 is deliberately unregistered)", for example
+to "It holds no real people: the standard test subjects (codes 1-7) and test people of our own
+(codes 9 and up)."
 
 **If you wrote your own registry,** also run conformance Level 1 against your signing
 library (`spec/conformance/README.md`; `spec/` is in `git clone https://github.com/Pastheroza/PRE-GEN-site`).

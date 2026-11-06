@@ -117,7 +117,8 @@ urllib.request.Request(sandbox_api + "/v2/sandbox/access", data=b"", method="POS
 JS: `const res = await fetch(sandboxApi + "/v2/sandbox/access", { method: "POST", signal: AbortSignal.timeout(10000) }); if (!res.ok)
 throw new Error("HTTP " + res.status); const access = await res.json()`).
 This call is outside rule 2: each one mints a new credential (at most 10 an hour per address,
-then 429), so do not repeat it; if it got no answer, call it once more (a credential you never
+then 429), so do not repeat it; if it got no answer (a timeout or a connection error; any HTTP
+status, 5xx included, is final), call it once more (a credential you never
 received is never used). The token is shown once: store the pair at once, under the sandbox's prefix (the four
 letters of its test codes). Once you have loaded the test directory (step 2), check that
 `registry` equals `directory.registry_for(<test code 1>)["api"]` (by prefix: `next(r for r in directory.registries if
@@ -164,7 +165,8 @@ keyset = pregen.sign_envelope("pg.keyset.v1", {
 In JavaScript, `await signEnvelope("pg.keyset.v1", { …the same body… }, KEY)` (the complete
 example has it in full).
 
-The registry answers HTTP 200 `{"keyset": …}`, and the same keyset again returns the same.
+The registry answers HTTP 200 `{"keyset": …}`, and the same keyset again returns the same, so
+re-sending it from a new process is harmless.
 `recovery_registry: ""` means only the registry that holds your key set may co-sign a
 recovery if you lose your key (`https://www.pregen.org/spec/extensions/provider-keys.md`). A *different* first
 keyset is refused (409 `PG_KEYSET_CONFLICT`): to change your key later,
@@ -494,8 +496,8 @@ this order: 1. no file: `no file: not checked`; 1b. a saved copy over 24 hours o
 over 24 hours old: not checked`; 2. the check raises: its message; 3. a level
 below your policy (levels rank `self` < `asserted` < `consented` < `verified`): `level <x>`; 4.
 obligations you do not show: `obligations not shown: not a label`; 5. a test directory or
-sandbox: `test directory: never a label` (which means every check passed); 6. otherwise a
-label. If one registry
+sandbox: `test directory: never a label` (which means every check passed); 6. otherwise
+`accepted: true`, reason `label`. If one registry
 does not answer, keep its previous copy and go on. Save key sets as they come: at check time the
 library uses only keys whose ids the directory lists, and refuses small-order keys; the
 directory never removes a listed key id (the libraries refuse a directory that does), a key is
@@ -567,8 +569,10 @@ character computed from it: copy it, never retype it). Each answers one way:
 | `7` | `not_blocked` `PG_NO_LICENSE` (nothing blocks it, and nothing grants it) |
 | `8` | `deny` `PG_UNKNOWN_SUBJECT` |
 
-`testing` is per code: true only for a code whose registry's document says `"sandbox": true`;
-pass `testing=True` to `check_proof` if any code in the job is. A registry may give you more codes (9 and up) for its own test grants, and tells you what each
+`testing` is only ever used with a test directory (`TEST_STEWARD` set): there it is true for a
+code whose registry's document says `"sandbox": true`, and for `check_proof` (offline included)
+when any `answer.body.ext.sandbox` is true. With the real directory it is always false, whatever
+a registry's document says, and the libraries refuse it there. A sandbox proof is never a label. A registry may give you more codes (9 and up) for its own test grants, and tells you what each
 answers (if not, `GET {sandbox api}/v2/codes/<code>`: the name says): ask them like the others. Ask each in a job of its own, and take code `1` through the whole flow (ask, check,
 generate, report, proof), as in production: the complete examples below do, with
 `TESTING = True` / `const TESTING = true`. Keep sandbox outputs and proofs apart from
@@ -600,7 +604,7 @@ KEY = "<your private key hex>"                                             # ste
 DIRECTORY_URL, TEST_STEWARD = pregen.DIRECTORY_URL, None                    # testing: the test directory and its key
 CODES = ["PG-ABCD-000001G"]                                                # the people in this job
 FOLDER = "pregen-test" if TEST_STEWARD else "pregen"                       # test and production never share a file (step 9)
-TESTING = False                                                            # True only against a sandbox (step 10)
+TESTING = False                                                            # True only for a job whose every code is at a sandbox, under a test directory
 UA = {"User-Agent": "frame-ai (https://frame-ai.example/contact)"}        # who you are: Wikidata refuses anonymous clients
 LICENSEES = {}                                                             # prefix -> the licensee_id that registry gave this customer
 
@@ -815,7 +819,9 @@ It prints `{'output_hash': '…', 'job_id': 'job-…', 'subjects': [{'code': 'PG
 'level': 'verified', 'basis': {'kind': 'grant', …}}]}`. Not shown, in either example: the
 identical resend of rule 2, the directory reload on `issuer_mismatch` (step 2),
 `verify_answer` to log why a refusal refused (step 6), and saving the key sets for offline
-checks (step 9).
+checks (step 9: if you check proofs offline in the same folder, run its save right after
+`load_directory`, since `directory.json`, `key_sets.json` and `saved_at.json` must be written
+together).
 
 ## Complete example (JavaScript)
 
@@ -832,7 +838,7 @@ const KEY = "<your private key hex>";                                          /
 const [url, TEST_STEWARD] = [DIRECTORY_URL, null];                              // testing: the test directory and its key
 const CODES = ["PG-ABCD-000001G"];                                              // the people in this job
 const FOLDER = TEST_STEWARD ? "pregen-test" : "pregen";                       // test and production never share a file (step 9)
-const TESTING = false;                                                          // true only against a sandbox (step 10)
+const TESTING = false;                                                          // true only for a job whose every code is at a sandbox, under a test directory
 const UA = "frame-ai (https://frame-ai.example/contact)";                       // who you are: Wikidata refuses anonymous clients
 const LICENSEES = {};                                                           // prefix -> the licensee_id that registry gave this customer
 

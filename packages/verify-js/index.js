@@ -499,6 +499,10 @@ export async function verifyAnswer(answer, request, { directory, fetch: fetchFn 
   const asked = request.body;
   directory ??= await loadDirectory({ fetch: fetchFn });
   if (now - directory.loadedAt > DIRECTORY_MAX_AGE) fail("the directory was loaded more than 24 hours ago: load it again");
+  if (testing && [await fingerprint(STEWARD_PUBLIC_KEY_HEX), await fingerprint(STEWARD_SUCCESSOR_PUBLIC_KEY_HEX)]
+    .includes(directory.toJSON().steward_key_id)) {
+    fail("testing is for a test directory only: the PRE-GEN steward's directory never accepts a sandbox answer");
+  }
   if (directory.isFalseClaim(asked.subject_ref)) {                              // identity.md: the steward ruled it false
     fail(`${asked.subject_ref} is a false claim the steward recorded: no answer counts`);
   }

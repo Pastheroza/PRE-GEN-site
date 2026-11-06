@@ -22,3 +22,12 @@ for (const extra of [{ policy_version: "2026-01-01" }, { policy_version: "2031-1
       new RegExp(`members the core does not define: ${Object.keys(extra)[0]}$`));
   });
 }
+
+test("testing is refused against the PRE-GEN steward's directory", async () => {
+  const { fingerprint, verifyAnswer, STEWARD_PUBLIC_KEY_HEX } = await import("../index.js");
+  const allow = V.cases.find((c) => c.name === "allow");
+  const id = await fingerprint(STEWARD_PUBLIC_KEY_HEX);
+  const real = { loadedAt: 10 ** 12, toJSON: () => ({ steward_key_id: id }) };
+  await assert.rejects(verifyAnswer(allow.answer, allow.request, { directory: real, now: 10 ** 12, testing: true }),
+    /test directory only/);
+});

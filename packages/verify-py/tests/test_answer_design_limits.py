@@ -103,3 +103,14 @@ def test_the_gate_refuses_an_answer_that_carries_them_whatever_their_value(extra
     answer = pregen.sign_envelope("pg.answer.v1", {**allow["answer"]["body"], **extra}, _seed("registry"))
     with pytest.raises(pregen.PregenError, match=f"members the core does not define: {next(iter(extra))}$"):
         pregen.check_answer(answer, allow["request"], d, get_json, now=now)
+
+
+def test_testing_is_refused_against_the_pre_gen_stewards_directory():
+    """A sandbox answer is never accepted with the real directory, whatever a registry's document says."""
+    class RealDirectory:
+        loaded_at = 10**12
+        def to_json(self):
+            return {"steward_key_id": pregen.fingerprint(pregen.STEWARD_PUBLIC_KEY_HEX)}
+    allow = next(c for c in VECTORS["cases"] if c["name"] == "allow")
+    with pytest.raises(pregen.PregenError, match="test directory only"):
+        pregen.verify_answer(allow["answer"], allow["request"], RealDirectory(), now=10**12, testing=True)
