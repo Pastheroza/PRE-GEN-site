@@ -16,6 +16,7 @@
   pregen-registry subject anchor --dir DATA --code PG-… --anchor wikidata:Q… [--proof-url https://…]
   pregen-registry subject opt-out --dir DATA --code PG-…  (the person opted out or withdrew: refused from the next answer)
   pregen-registry subject level --dir DATA --code PG-… --level verified   (after you checked identity and authority)
+  pregen-registry subject publish --dir DATA --code PG-… [--off]   (name and level public at /v2/codes, by the person's choice)
   pregen-registry check --api https://registry.example [--directory URL --steward HEX] [--provider-id ID --token T --subject PG-… [--purpose P] [--licensee ID]]
 """
 from __future__ import annotations
@@ -88,12 +89,15 @@ def main(argv=None):
             p.add_argument("--ssl-certfile", help="serve HTTPS directly (a local test); in production, use a TLS proxy")
             p.add_argument("--ssl-keyfile")
         elif name == "subject":
-            p.add_argument("action", choices=["add", "anchor", "list", "opt-out", "level"])
+            p.add_argument("action", choices=["add", "anchor", "list", "opt-out", "level", "publish"])
             p.add_argument("--name", help="add: the subject's name")
             p.add_argument("--code", help="anchor, opt-out: the subject's PG code")
             p.add_argument("--anchor", help="anchor: wikidata:Q…, isni:…, or a domain (identity.md)")
             p.add_argument("--proof-url", help="anchor: where the person posted \"PRE-GEN: <code>\" on an official channel")
             p.add_argument("--level", default="self", choices=["self", "asserted", "consented", "verified"])
+            p.add_argument("--publish", action="store_true",
+                           help="add: show name and level at GET /v2/codes/<code> (only if the person chose to)")
+            p.add_argument("--off", action="store_true", help="publish: stop showing them")
         elif name == "grant":
             p.add_argument("action", choices=["add", "revoke"])
             p.add_argument("--subject", help="add: the subject's PG code")
@@ -153,7 +157,8 @@ def main(argv=None):
                 {"verify": "<who may register a person, and how we check they are that person or may act for them>",
                  "anchors": "<the anchor we record: a Wikidata item (clients confirm only these today); and how the "
                             "person confirms on their own channel>"}), sandbox=(
-                "\nThis is a sandbox: it holds no real people, only the eight standard test subjects, and its "
+                "\nThis is a sandbox: it holds no real people, only the standard test subjects (codes 1-7; code 8 is "
+                "deliberately unregistered), and its "
                 "answers are marked as sandbox answers.\n" if a.sandbox else "")))
         print(f"Registry created in {a.dir}.\n  prefix: {a.prefix}\n  operator key id: {key.id}\n"
               f"  public key: {key.public_hex}\nGive the key id to the steward (step 9 of docs/registry.md); it reads "
@@ -175,7 +180,15 @@ def main(argv=None):
     elif a.cmd == "subject" and a.action == "add":
         if not a.name:
             sys.exit("subject add needs --name")
-        print(load(a.dir).add_subject(a.name, level=a.level))
+        print(load(a.dir).add_subject(a.name, level=a.level, published=int(a.publish)))
+    elif a.cmd == "subject" and a.action == "publish":
+        if not a.code:
+            sys.exit("subject publish needs --code")
+        try:
+            load(a.dir).set_published(a.code, not a.off)
+        except ValueError as e:
+            sys.exit(str(e))
+        print(f"{a.code}: name and level " + ("hidden" if a.off else "public") + " at /v2/codes")
     elif a.cmd == "subject" and a.action == "list":
         for s in load(a.dir)._q("SELECT code, name, level FROM subjects ORDER BY serial"):
             print(f"{s['code']}  {s['level']}  {s['name']}")

@@ -249,6 +249,20 @@ def test_every_answer_carries_only_the_known_members():
         assert b["profile"] == "likeness/1"                     # the name asked for, never a version of a policy
 
 
+def test_a_name_is_public_only_when_published(tmp_path, capsys):
+    """lookup.md: nothing is returned that the rights holder did not choose to publish (codes are guessable)."""
+    d = str(tmp_path)
+    cli(["init", "--dir", d, "--prefix", "TEST", "--name", "T", "--api", "https://t.example"])
+    capsys.readouterr()
+    cli(["subject", "add", "--dir", d, "--name", "Private Person"])
+    private = capsys.readouterr().out.strip()
+    from pregen_registry.cli import load
+    c = TestClient(create_app(load(d)))
+    assert c.get(f"/v2/codes/{private}").json() == {"code": private, "registry": "TEST", "status": "unknown"}
+    cli(["subject", "publish", "--dir", d, "--code", private])
+    assert TestClient(create_app(load(d))).get(f"/v2/codes/{private}").json()["name"] == "Private Person"
+
+
 def test_a_level_can_be_raised_and_provider_ids_hold_no_colon(tmp_path):
     reg, c, _ = make(sandbox=False)
     s = reg.add_subject("Maya")

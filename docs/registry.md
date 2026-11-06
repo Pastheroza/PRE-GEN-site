@@ -58,7 +58,7 @@ with this one line instead:
 python3 -c "import pregen; print(sorted(r['prefix'] for r in pregen.load_directory('<test directory url>', steward_public_key_hex='<test steward key hex>').registries))"
 ```
 
- Pick a prefix that is not listed, and a
+Pick a prefix that is not listed in either directory (the test one once you have its key), and a
 second choice in case someone asks for yours first. For your sandbox's prefix, also check
 the test directory's list: sandboxes are listed only there, and no prefix is ever reused. Until
 you have its steward key, give a second choice: the steward checks the sandbox prefix for you.
@@ -101,7 +101,8 @@ A policy to edit is in ./data/policy.md; `serve` publishes it at https://registr
 ```
 
 Keep the folder private: `chmod 700 ./data` (the database holds your people, grants and
-provider credentials). Replace each `<…>` in `./data/policy.md`, the operator line included;
+provider credentials). Replace each `<…>` in `./data/policy.md`, the operator line included
+(`grep -n '<' ./data/policy.md` must then print nothing);
 under "Anchors for public people", name Wikidata: clients confirm no other anchor today (step 6).
 
 The **key id** (`pg-ed25519:` and 32 hex) is the key's **fingerprint**: it is what the
@@ -177,7 +178,7 @@ Then run `pregen-registry check --api … --directory …` (test
 directory: add `--steward <its key hex>`): it must show `PASS listed with the current key`.
 The directory does not change, so nothing goes to the steward.
 The retired key's file is `./data/operator.retired.<the 32 hex of the old key id>.key`. Nothing
-needs it any more, but whoever holds it could sign acknowledgements dated before it
+needs it any more, but whoever holds it could forge answers and acknowledgements, whole proofs, dated before it
 was retired: keep it only in the offline backup, encrypted, in its own folder beside `./backup`
 (for example `./offline/retired/`, never inside `./backup/data`), and remove it from `./data` before the next step 3 backup (the recipe
 copies every `*.key` still in `./data` and empties `./backup/data` each time). To encrypt it:
@@ -216,7 +217,8 @@ pregen-registry serve --dir ./data --host 127.0.0.1 --port 8443 \
 
 Keep it running (a service manager, or `nohup … >> registry.log 2>&1 & echo $! > registry.pid`;
 the sandbox likewise, for example `nohup pregen-registry serve --dir ./sandbox --host 127.0.0.1
---port 8001 >> sandbox.log 2>&1 & echo $! > sandbox.pid`,
+--port 8001 >> sandbox.log 2>&1 & echo $! > sandbox.pid`, with the same `--ssl-certfile`/`--ssl-keyfile`
+to serve it over HTTPS directly,
 so you can stop it later with `kill "$(cat registry.pid)"`). A registry and its sandbox are
 two servers on two ports, each with its own pid file and log (`sandbox.pid`,
 `sandbox.log`); each is stopped and started on its own. Only a key rotation needs a restart:
@@ -248,7 +250,10 @@ Add a person you have verified:
 pregen-registry subject add --dir ./data --name "Maya Cole" --level verified
 ```
 
-It prints the person's code, for example `PG-ABCD-000001G`. `--level` is how far you checked
+It prints the person's code, for example `PG-ABCD-000001G`. Codes can be computed by anyone (serials
+count from 1; the last character is a checksum), so `GET {api}/v2/codes/<code>` shows the person's
+name and level only if you add `--publish`, which you do only when the person chose to be
+public (`subject publish --code … [--off]` changes it later). `--level` is how far you checked
 them: `self`, `asserted`, `consented` or `verified`. Without `--level` the person is `self`, and
 proof checkers label only `verified` by default (provider.md step 9): give `--level verified` once
 you have checked identity and authority, or raise it later with `pregen-registry subject level
@@ -270,14 +275,16 @@ the official website (use it: social posts are mostly scripts a plain fetch cann
 `https://x.com/<handle>/…`, `https://www.instagram.com/<handle>/…`,
 `https://www.youtube.com/channel/<id>/…` or `https://www.tiktok.com/@<handle>/…`, on exactly the
 host Wikidata lists (`www.` counts). The command records what you give it and fetches nothing,
-so check first; this must print `True`:
+so check first; this must print `True`. The page's HTML source (view-source) must contain
+`PRE-GEN: <code>` exactly (one plain space, no tags or entities inside it, the whole code), and a
+handle in the URL must match Wikidata's spelling, case included:
 
 ```bash
 CODE='PG-ABCD-000001G' URL='https://mayacole.example/pregen' ANCHOR='wikidata:Q42' python3 -c "
 import os, pregen, urllib.request as u
 ua = {'User-Agent': 'Example Registry (https://registry.example/contact)'}
 print(pregen.check_channel_proof(os.environ['CODE'], os.environ['URL'], pregen.wikidata_official_urls(os.environ['ANCHOR']),
-      lambda x: u.urlopen(u.Request(x, headers=ua)).read().decode()))"
+      lambda x: u.urlopen(u.Request(x, headers=ua)).read().decode('utf-8', 'replace')))"
 ```
 
 If it prints `False`, the page answers 404, or it raises (page unreadable, Wikidata 403), anchor without `--proof-url` (the claim stays unconfirmed) and run
@@ -442,16 +449,17 @@ pregen-registry check --api https://sandbox.registry.example \
 The extra line reads `PASS POST /v2/requests for PG-ABCE-000001…, purpose commercial: HTTP
 200, allow`; with test code 2 it reads `… deny PG_NO_LICENSE`. To try a grant of your own
 (purposes, a licensee), add a test person and that grant to the sandbox (`subject add
---dir ./sandbox --level verified --name "Test subject 9 (allow, licensee test:t1, commercial)"`, named by what it
+--dir ./sandbox --level verified --publish --name "Test subject 9 (allow, licensee test:t1, commercial)"`, named by what it
 answers, which numbers added people from 9 on, and `grant add --dir ./sandbox …`)
 and ask for it the same way (give sandbox test grants no `--max-uses`: every provider shares
 them, and each allow, a `check` included, uses one for good); for a licensee-only grant, give
 it `--licensee test:t1` and add `--licensee test:t1` to `check`. If you added your own test
-people, also change the line in `./sandbox/policy.md` that says it holds only the eight test
+people, also change the line in `./sandbox/policy.md` that says it holds only the standard test
 subjects.
 
 **If you wrote your own registry,** also run conformance Level 1 against your signing
-library (`spec/conformance/README.md`; `spec/` is in `git clone https://github.com/Pastheroza/PRE-GEN-site`). It requires the v5 operations by default:
+library (`spec/conformance/README.md`; `spec/` is in `git clone https://github.com/Pastheroza/PRE-GEN-site`).
+Write the adapter yourself, on the pattern of `packages/verify-py/tests/conformance_adapter.py`. It requires the v5 operations by default:
 
 ```bash
 python3 spec/conformance/level1/run_conformance.py --adapter "<command that runs your adapter>"

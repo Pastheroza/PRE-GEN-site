@@ -203,8 +203,8 @@ Authorization: Bearer <token from that registry>
   only one licensee. Send exactly the licensee id the registry gave you. An id the registry
   did not connect to you is refused (401 `PG_NOT_AUTHENTICATED`).
 - **Rule out what you can locally first** (no listed registry, no credential, a failed anchor
-  list), then ask in any order you like and stop at the first refusal, giving back every allow
-  received before it.
+  list), then ask in any order you like and stop at the first refusal of a private person, or
+  the first `decide_identity` verdict that is not `allow`, giving back every allow received before it.
 - **One request per code.** A job with two people asks twice, under the same `job_id`,
   each code at the registry its prefix names (a public person: see below). **Every job has a new `job_id`** (random, not a
   timestamp), and `job_input` holds everything you fixed, the customer included (for example
@@ -273,7 +273,8 @@ whose claim the person confirmed holds everywhere; "no licence here" does not. S
    `pregen.check_channel_proof(code, entry["proof_url"], pregen.wikidata_official_urls(anchor),
    get_text)`, where `get_text(url)` returns the page's text (JS: `await checkChannelProof(code,
    proofUrl, await wikidataOfficialUrls(anchor, { fetch }), getText)`, with `getText` an
-   `async (url) => string`). `confirmed` is the boolean it returns. Only `wikidata:` anchors have
+   `async (url) => string`). `confirmed` is the boolean it returns, and comes only from it: never
+   set it by hand or on anyone's word, your own earlier look included (item 5 if it cannot run). Only `wikidata:` anchors have
    a defined list of official channels today: for any other anchor, `confirmed` is `False` (do
    not call `wikidata_official_urls`, which raises). Both complete examples below do all of
    step 5. In Python, pass `get_text` (and a `get_json` if you fetch
@@ -399,7 +400,8 @@ Store it with the file: alongside it as JSON, or in the file's C2PA manifest as 
 labelled `org.pregen.proof`. **An output made without a valid `allow` is never presented as
 permitted.**
 
-**Checking someone's proof** (a platform, a distributor, an auditor):
+**Checking someone's proof** (a platform, a distributor, an auditor; if that is all you do, you
+need steps 1, 2 and 9 only):
 
 ```python
 result = pregen.check_proof(bundle, directory, output_sha256=sha256_of_the_file)
@@ -487,7 +489,7 @@ directory never removes a listed key id (the libraries refuse a directory that d
 only ever revoked, so old proofs keep their keys. It does not check the provider's signature on
 a report: it relies on the registry's signed acknowledgement, which names that report. The
 library cannot tell when you saved: `saved_at.json` does, and if it is more than 24 hours old,
-do not label: go online, load and save again.
+do not label (reason `saved copy over 24 hours old: not checked`): go online, load and save again.
 
 Later, check with no network (`verify_directory` / `verifyDirectory` fetch nothing):
 
@@ -501,7 +503,7 @@ if time.time() - json.load(open(path("saved_at.json")))["saved_at"] > 86_400:
 directory = pregen.verify_directory(json.load(open(path("directory.json"))),
                                     **({"steward_public_key_hex": test} if test else {}))
 result = pregen.check_proof(bundle, directory, get_json=lambda url: saved_key_sets.get(url, {}),
-                            output_sha256=sha256_of_the_file)          # a sandbox proof: testing=True
+                            output_sha256=sha256_of_the_file)          # testing=True only for a sandbox proof
 ```
 
 ```js
@@ -539,7 +541,7 @@ directory (its URL and test steward key). A sandbox is its own registry with its
 store them under that prefix in `CREDENTIALS`, and register your key there (step 4; the same
 provider key for sandbox and production is fine). Copy
 the eight test codes the registry gives you (code `N` is `PG-<prefix>-00000N` plus a check
-character that cannot be guessed). Each answers one way:
+character computed from it: copy it, never retype it). Each answers one way:
 
 | Code | Answer |
 |---|---|
@@ -553,7 +555,7 @@ character that cannot be guessed). Each answers one way:
 | `8` | `deny` `PG_UNKNOWN_SUBJECT` |
 
 A registry may give you more codes (9 and up) for its own test grants, and tells you what each
-answers: ask them like the others. Ask each in a job of its own, and take code `1` through the whole flow (ask, check,
+answers (if not, `GET {sandbox api}/v2/codes/<code>`: the name says): ask them like the others. Ask each in a job of its own, and take code `1` through the whole flow (ask, check,
 generate, report, proof), as in production: the complete examples below do, with
 `TESTING = True` / `const TESTING = true`. Keep sandbox outputs and proofs apart from
 production ones: they are never labels (record `accepted: false`, reason `test directory: never a
@@ -564,7 +566,8 @@ and proofs with `testing`: `check_answer(answer, request, directory, testing=Tru
 
 ## Complete example (Python)
 
-One job, one or more people (private or public), each at their own registry. Fill in the eight constants.
+One job, one or more people (private or public), each at their own registry. Fill in the eight constants,
+and list each person once (a public person by one code: the example asks the others).
 
 ```python
 import hashlib
@@ -603,7 +606,7 @@ def get_json(url):
 
 def get_text(url):
     try:
-        return urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=10).read().decode()
+        return urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=10).read().decode("utf-8", "replace")
     except urllib.error.HTTPError as e:
         if e.code in (404, 410):
             return ""                                                     # the page is gone: the line is gone, unconfirmed
@@ -1007,7 +1010,8 @@ A refusal about a person is a signed answer (step 6). HTTP errors carry
 | HTTP 200 without `answer` / `ack` / `keyset` | 200 | no answer, as a 4xx |
 
 To keep the acknowledgement a 409 `PG_ASK_CLOSED` carries, parse that response's body
-(`json.loads(e.read())["ack"]`) instead of raising; the examples' `post()` simply raises.
+(`json.loads(body)["ack"]`) before raising; the examples' `post()` puts that body in its error
+message instead.
 
 Answer reasons you will meet: `PG_UNKNOWN_SUBJECT` (this registry holds no such person:
 not a prohibition, and not a permission), `PG_OTHER_REGISTRY`, `PG_NO_LICENSE`, `PG_NOT_CONNECTED`
