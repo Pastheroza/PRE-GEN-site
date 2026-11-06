@@ -110,7 +110,8 @@ A registry's sandbox gives test credentials without an account:
 `curl -s -X POST {sandbox api}/v2/sandbox/access` → `{"provider_id": "sbx-…", "token": "…",
 "registry": "<the sandbox api>", "note": "…"}` (Python: `json.loads(urllib.request.urlopen(
 urllib.request.Request(sandbox_api + "/v2/sandbox/access", data=b"", method="POST")).read())`;
-JS: `await (await fetch(sandboxApi + "/v2/sandbox/access", { method: "POST" })).json()`).
+JS: `const res = await fetch(sandboxApi + "/v2/sandbox/access", { method: "POST" }); if (!res.ok)
+throw new Error(`HTTP ${res.status}`); const access = await res.json()`).
 The token is shown once: store the pair at once, under the sandbox's prefix (the four
 letters of its test codes). Once you have loaded the test directory (step 2), check that
 `registry` equals `directory.registry_for(<test code 1>)["api"]`; if it differs, delete the
@@ -143,7 +144,7 @@ request there (a report without a registered key is refused with 401, and the al
 stay counted), and remember which registries are done (persist that list with your secrets,
 and each job's `job_id` and `job_input` with the job record, saved before its first request,
 so a resend after a crash is the identical request). `PROVIDER_ID` is the provider id
-that registry gave you; in JavaScript, `await signEnvelope("pg.keyset.v1", { …the same body… },
+that registry gave you; anything but HTTP 200 with `keyset` means: do not ask that registry. In JavaScript, `await signEnvelope("pg.keyset.v1", { …the same body… },
 KEY)` (the complete example has it in full):
 
 ```python
@@ -209,36 +210,40 @@ Authorization: Bearer <token from that registry>
 The registry answers HTTP 200 `{"answer": {"type": "pg.answer.v1", "body": {…}, "signatures": […]}}`.
 
 **A public person** (extension `identity`, `https://www.pregen.org/spec/extensions/identity.md`) may be claimed by
-several registries, and a refusal by any registry whose claim the person confirmed holds
-everywhere. So:
+several registries. A refusal of the person (`PG_SUBJECT_OPTED_OUT`, `PG_SUBJECT_UNAVAILABLE`,
+`PG_PROHIBITED_USE`, `PG_IMMUTABLE_DENIAL`, `PG_PERSONAL_SIGNATURE_REQUIRED`) by any registry
+whose claim the person confirmed holds everywhere; "no licence here" does not. So:
 
 1. At least daily, fetch every listed registry's anchor list and check it:
 
    ```python
-   anchors = {}                                      # anchor -> [{code, proof_url, …}, …]
+   anchors, failed = {}, set()                       # anchor -> [{code, proof_url, …}]; prefixes whose list failed
    for r in directory.registries:
        if r.get("revoked") or not r["prefix"]:
            continue                                  # revoked, or the legacy bare namespace
        try:
            env = json.loads(urllib.request.urlopen(r["api"] + "/v2/anchors", timeout=10).read())
+           for e in pregen.verify_anchors(env, r["prefix"], directory):   # refuses a list over a day old
+               anchors.setdefault(e["anchor"], []).append(e)
        except urllib.error.HTTPError as e:
-           if e.code == 404:
-               continue                              # no identity extension
-           raise                                     # anything else: no decision (item 5)
-       for e in pregen.verify_anchors(env, r["prefix"], directory):   # refuses a list over a day old
-           anchors.setdefault(e["anchor"], []).append(e)
+           if e.code != 404:                         # 404: no identity extension
+               failed.add(r["prefix"])               # anything else: item 5
+       except Exception:
+           failed.add(r["prefix"])
    ```
 
    In JS (`fetch` does not throw on a 404):
 
    ```js
-   const anchors = {};
+   const anchors = {}, failed = new Set();
    for (const r of directory.registries) {
      if (r.revoked || !r.prefix) continue;
-     const res = await fetch(r.api + "/v2/anchors", { signal: AbortSignal.timeout(10000) });
-     if (res.status === 404) continue;
-     if (!res.ok) throw new Error(`${r.api}/v2/anchors: HTTP ${res.status}`);   // no decision (item 5)
-     for (const e of await verifyAnchors(await res.json(), r.prefix, { directory })) (anchors[e.anchor] ??= []).push(e);
+     try {
+       const res = await fetch(r.api + "/v2/anchors", { signal: AbortSignal.timeout(10000) });
+       if (res.status === 404) continue;                                 // no identity extension
+       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+       for (const e of await verifyAnchors(await res.json(), r.prefix, { directory })) (anchors[e.anchor] ??= []).push(e);
+     } catch { failed.add(r.prefix); }                                    // item 5
    }
    ```
 
@@ -251,7 +256,9 @@ everywhere. So:
    get_text)`, where `get_text(url)` returns the page's text (JS: `await checkChannelProof(code,
    proofUrl, await wikidataOfficialUrls(anchor), getText)`, with `getText` an `async (url) =>
    string`). Only `wikidata:` anchors have a defined list of official channels today; any other
-   anchor counts as unconfirmed.
+   anchor counts as unconfirmed. In Python, pass `get_text` (and a `get_json` if you fetch
+   yourself) that send a `User-Agent: <product> (<contact URL>)` header: Wikidata answers 403
+   to an anonymous client (the library's own fetcher sends one).
 4. Combine: `pregen.decide_identity([{"code": c, "confirmed": …, "answer":
    pregen.verify_answer(answer, request, directory)}, …])` / `decideIdentity([...])` (synchronous;
    `answer` is the checked body `verify_answer` / `await verifyAnswer` returns) gives
@@ -259,16 +266,17 @@ everywhere. So:
    while the entry's `proof_url` is unchanged. Generate only if its `status` is `allow`. With no confirmed claim
    it is `not_blocked` (`PG_IDENTITY_UNCONFIRMED`): no permission. `check_answer` must pass for
    the code it returns; `verify_answer` must pass for every other code under the anchor. Report
-   each `allow` under the anchor as `generated` and put each in the proof; codes that did not
-   answer `allow` are neither reported nor put in the proof. If the status is not `allow`, give
-   back every allow (step 8).
+   as `generated`, and put in the proof, the allow of the code it returns and every other allow
+   from a claim the person confirmed; give back (step 8) allows from unconfirmed claims. Apply
+   step 6's obligations rule to every allow you report. Codes that did not answer `allow` are
+   neither reported nor put in the proof. If the status is not `allow`, give back every allow.
 5. **Unknown is not unconfirmed.** If any listed registry's anchor list fails (anything but
    404, or `verify_anchors` raises), if a proof page or Wikidata cannot be read, or if any code
    under the anchor gets no valid answer (no credentials there, a 4xx, or `verify_answer`
    raises), you have no decision for this person: do not generate them, and give back their
    allows. While any registry's anchor list (except a 404) has not verified within the last 24
-   hours, generate no one whose code has that registry's prefix, and no one whose code appears
-   in any list. Everyone else may go on.
+   hours (`failed` above), generate no one whose code has that registry's prefix, and no one
+   whose code appears in any list that verified. Everyone else may go on.
 
 ## 6. Check the answer
 
@@ -408,6 +416,11 @@ for r in directory.registries:                       # saved_key_sets: the previ
         saved_key_sets[r["keys"]] = json.loads(urllib.request.urlopen(r["keys"], timeout=10).read())
     except Exception as e:
         print("kept the previous key set for", r["keys"], e)
+json.dump(saved_directory, open("directory-test.json" if TEST_STEWARD else "directory.json", "w"))
+json.dump(saved_key_sets, open("key_sets.json", "w"))
+json.dump({"saved_at": int(time.time())}, open("saved_at.json", "w"))
+if TEST_STEWARD:
+    json.dump({"steward_public_key_hex": TEST_STEWARD}, open("test_steward.json", "w"))
 ```
 
 ```js
@@ -419,6 +432,10 @@ for (const r of directory.registries) {              // savedKeySets: the previo
     savedKeySets[r.keys] = await res.json();
   } catch (e) { console.log("kept the previous key set for", r.keys, e.message); }
 }
+writeFileSync(TEST_STEWARD ? "directory-test.json" : "directory.json", JSON.stringify(savedDirectory));
+writeFileSync("key_sets.json", JSON.stringify(savedKeySets));
+writeFileSync("saved_at.json", JSON.stringify({ saved_at: Math.floor(Date.now() / 1000) }));
+if (TEST_STEWARD) writeFileSync("test_steward.json", JSON.stringify({ steward_public_key_hex: TEST_STEWARD }));
 ```
 
 If one registry does not answer, keep its previous copy and go on. Keep the directory in
@@ -458,7 +475,7 @@ if (Date.now() / 1000 - JSON.parse(readFileSync("saved_at.json", "utf8")).saved_
 const directory = await verifyDirectory(savedDirectory, TEST ? { stewardPublicKeyHex: TEST } : {});
 const offlineFetch = async (url) => ({ ok: url in savedKeySets, status: url in savedKeySets ? 200 : 404,
                                        json: async () => savedKeySets[url] });
-const result = await checkProof(bundle, { directory, fetch: offlineFetch, outputSha256 });
+const result = await checkProof(bundle, { directory, fetch: offlineFetch, outputSha256 });   // a sandbox proof: testing: true
 ```
 
 The check fetches only through the `get_json` / `fetch` you pass. A retired registry key stays
@@ -498,7 +515,7 @@ and proofs with `testing`: `check_answer(answer, request, directory, testing=Tru
 
 ## Complete example (Python)
 
-One job, one or more people, each at their own registry. Fill in the seven constants.
+One job, one or more people, each at their own registry. Fill in the six constants.
 
 ```python
 import hashlib
@@ -515,7 +532,6 @@ CREDENTIALS = {"ABCD": {"provider_id": "frame-ai", "token": "<secret>"}}   # one
 KEY = "<your private key hex>"                                             # step 4, from your secret store
 DIRECTORY_URL, TEST_STEWARD = pregen.DIRECTORY_URL, None                    # testing: the test directory and its key
 CODES = ["PG-ABCD-000001G"]                                                # the people in this job
-ANCHORED = set()                                                           # every code in a verified anchor list (step 5), refreshed daily
 SAVED = "directory-test.json" if TEST_STEWARD else "directory.json"          # never a test directory as previous to the real one
 TESTING = False                                                            # True only against a sandbox (step 10)
 
@@ -525,6 +541,19 @@ saved = json.load(open(SAVED)) if os.path.exists(SAVED) else None
 directory = pregen.load_directory(DIRECTORY_URL, previous=saved,
                                   **({"steward_public_key_hex": TEST_STEWARD} if TEST_STEWARD else {}))
 json.dump(directory.to_json(), open(SAVED, "w"))
+
+ANCHORED, FAILED = set(), set()                                            # step 5.1: codes of public persons; failed lists
+for r in directory.registries:
+    if r.get("revoked") or not r["prefix"]:
+        continue
+    try:
+        env = json.loads(urllib.request.urlopen(r["api"] + "/v2/anchors", timeout=10).read())
+        ANCHORED |= {e["code"] for e in pregen.verify_anchors(env, r["prefix"], directory)}
+    except urllib.error.HTTPError as e:
+        if e.code != 404:
+            FAILED.add(r["prefix"])
+    except Exception:
+        FAILED.add(r["prefix"])
 
 
 def post(entry, path, envelope):
@@ -578,8 +607,8 @@ try:
         entry = directory.registry_for(code)
         if entry is None:
             raise RuntimeError(f"{code}: no listed registry holds it, so no allow: do not generate")
-        if code in ANCHORED:
-            raise RuntimeError(f"{code}: a public person: decide with step 5")
+        if code in ANCHORED or entry["prefix"] in FAILED:
+            raise RuntimeError(f"{code}: a public person, or its registry's anchor list failed: decide with step 5")
         register_key(entry)
         request = pregen.sign_envelope("pg.request.v1", {
             "subject_ref": code, "provider_id": CREDENTIALS[entry["prefix"]]["provider_id"], "profile": "likeness/1",
@@ -599,25 +628,31 @@ if began >= min(a["body"]["expires_at"] for _, _, a in allowed):          # an a
     give_back(allowed, began)
     raise RuntimeError("an allow expired before generation began: ask again under a new job_id")
 try:
-    output = b"<the generated file>"                                      # your generation
+    open("output.bin", "wb").write(b"<the generated file>")               # your generation
 except Exception:
     give_back(allowed, int(time.time()))                                  # it failed: free every use
     raise
-output_hash = hashlib.sha256(output).hexdigest()
+output_hash = hashlib.sha256(open("output.bin", "rb").read()).hexdigest()  # the bytes delivered
 
-subjects = []
-for entry, request, answer in allowed:                                    # step 8
-    rep, ack = report(entry, request, answer, "generated", output_hash, began)
-    subjects.append({"request": request, "answer": answer, "report": rep, "ack": ack})
+subjects, unreported = [], []
+for entry, request, answer in allowed:                                    # step 8: every report, one by one
+    try:
+        rep, ack = report(entry, request, answer, "generated", output_hash, began)
+        subjects.append({"request": request, "answer": answer, "report": rep, "ack": ack})
+    except Exception as e:
+        unreported.append(request["body"]["subject_ref"])
+        print("report refused:", e)
 
+if unreported:                                                            # no proof: keep the output unlabelled
+    raise SystemExit(f"no proof for {unreported}: keep output.bin unlabelled")
 bundle = {"format": "pg.proof.v1", "subjects": subjects}                  # step 9
 print(pregen.check_proof(bundle, directory, output_sha256=output_hash, testing=TESTING))
 ```
 
 It prints `{'output_hash': '…', 'job_id': 'job-…', 'subjects': [{'code': 'PG-ABCD-000001G',
 'level': 'verified', 'basis': {'kind': 'grant', …}}]}`. Not shown, in either example: the
-identical resend of rule 2, the directory reload on `issuer_mismatch` (step 2), the
-public-person rule (step 5),
+identical resend of rule 2, the directory reload on `issuer_mismatch` (step 2), deciding a
+public person (step 5: the examples stop at one),
 `verify_answer` to log why a refusal refused (step 6), and saving the key sets for offline
 checks (step 9).
 
@@ -629,13 +664,12 @@ The same, in Node.js 20+ (save as `job.mjs`):
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { loadDirectory, signEnvelope, checkAnswer, checkProof, messageId, publicKeyHex, fingerprint,
-  canonicalJson, DIRECTORY_URL } from "@pregen/verify";
+  canonicalJson, verifyAnchors, DIRECTORY_URL } from "@pregen/verify";
 
 const CREDENTIALS = { ABCD: { provider_id: "frame-ai", token: "<secret>" } };   // one per registry (step 3)
 const KEY = "<your private key hex>";                                          // step 4, from your secret store
 const [url, TEST_STEWARD] = [DIRECTORY_URL, null];                              // testing: the test directory and its key
 const CODES = ["PG-ABCD-000001G"];                                              // the people in this job
-const ANCHORED = new Set();                                                     // every code in a verified anchor list (step 5), refreshed daily
 const SAVED = TEST_STEWARD ? "directory-test.json" : "directory.json";         // never a test directory as previous to the real one
 const TESTING = false;                                                          // true only against a sandbox (step 10)
 
@@ -644,6 +678,17 @@ const keyId = await fingerprint(pub);
 const previous = existsSync(SAVED) ? JSON.parse(readFileSync(SAVED, "utf8")) : undefined;
 const directory = await loadDirectory({ url, previous, ...(TEST_STEWARD ? { stewardPublicKeyHex: TEST_STEWARD } : {}) });
 writeFileSync(SAVED, JSON.stringify(directory.toJSON()));
+
+const ANCHORED = new Set(), FAILED = new Set();                                 // step 5.1: codes of public persons; failed lists
+for (const r of directory.registries) {
+  if (r.revoked || !r.prefix) continue;
+  try {
+    const res = await fetch(r.api + "/v2/anchors", { signal: AbortSignal.timeout(10000) });
+    if (res.status === 404) continue;
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    for (const e of await verifyAnchors(await res.json(), r.prefix, { directory })) ANCHORED.add(e.code);
+  } catch { FAILED.add(r.prefix); }
+}
 
 async function post(entry, path, envelope) {
   const cred = CREDENTIALS[entry.prefix];
@@ -676,7 +721,7 @@ try {
   for (const code of CODES) {                                                   // steps 5 and 6
     const entry = directory.registryFor(code);
     if (!entry) throw new Error(`${code}: no listed registry holds it, so no allow: do not generate`);
-    if (ANCHORED.has(code)) throw new Error(`${code}: a public person: decide with step 5`);
+    if (ANCHORED.has(code) || FAILED.has(entry.prefix)) throw new Error(`${code}: a public person, or its registry's anchor list failed: decide with step 5`);
     const providerId = CREDENTIALS[entry.prefix].provider_id;
     if (!registered.has(entry.prefix)) {                                        // step 4: once per registry
       await post(entry, "/v2/keys", await signEnvelope("pg.keyset.v1", {
@@ -701,20 +746,22 @@ if (began >= Math.min(...allowed.map(({ answer }) => answer.body.expires_at))) {
   await giveBack(allowed, began);
   throw new Error("an allow expired before generation began: ask again under a new job_id");
 }
-let output;
 try {
-  output = Buffer.from("<the generated file>");                                 // your generation
+  writeFileSync("output.bin", Buffer.from("<the generated file>"));             // your generation
 } catch (e) {
   await giveBack(allowed, Math.floor(Date.now() / 1000));                       // it failed: free every use
   throw e;
 }
-const outputHash = createHash("sha256").update(output).digest("hex");
+const outputHash = createHash("sha256").update(readFileSync("output.bin")).digest("hex");   // the bytes delivered
 
-const subjects = [];
-for (const { entry, request, answer } of allowed) {                             // step 8
-  const { report: rep, ack } = await report(entry, request, answer, "generated", outputHash, began);
-  subjects.push({ request, answer, report: rep, ack });
+const subjects = [], unreported = [];
+for (const { entry, request, answer } of allowed) {                             // step 8: every report, one by one
+  try {
+    const { report: rep, ack } = await report(entry, request, answer, "generated", outputHash, began);
+    subjects.push({ request, answer, report: rep, ack });
+  } catch (e) { unreported.push(request.body.subject_ref); console.log("report refused:", e.message); }
 }
+if (unreported.length) throw new Error(`no proof for ${unreported}: keep output.bin unlabelled`);
 const bundle = { format: "pg.proof.v1", subjects };                             // step 9
 console.log(await checkProof(bundle, { directory, outputSha256: outputHash, testing: TESTING }));
 ```
@@ -727,7 +774,7 @@ A refusal about a person is a signed answer (step 6). HTTP errors carry
 | Code | HTTP | Meaning |
 |---|---|---|
 | `PG_MALFORMED` | 422 | the request does not follow the core (a member, a type, a code's spelling) |
-| `PG_NOT_AUTHENTICATED` | 401 | the provider id, token or licensee is not accepted, or no provider key is registered yet (reports) |
+| `PG_NOT_AUTHENTICATED` | 401 | the provider id, token or licensee is not accepted, or no provider key is registered yet (reports: register it, step 4, then send the same report again) |
 | `PG_PROFILE_UNSUPPORTED` | 422 | the registry does not answer under this profile |
 | `PG_KEYSET_CONFLICT` | 409 | a different first keyset was already registered: rotate instead (step 4) |
 | `PG_REPORT_CONFLICT` | 409 | another report for the same answer was already filed: resend the report you kept |

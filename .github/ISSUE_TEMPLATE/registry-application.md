@@ -1,7 +1,7 @@
 ---
 name: Registry application
 about: Ask for a four-letter prefix and a listing in the signed registry directory (PG-CODE.md §9.1)
-title: "Registry application: <PREFIX> — <operator name>"
+title: "Registry application: <PREFIX> — <operator name> (or: <PREFIX> — key update)"
 labels: registry-application
 ---
 

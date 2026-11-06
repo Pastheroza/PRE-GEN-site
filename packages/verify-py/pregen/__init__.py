@@ -223,7 +223,9 @@ def _get_json(url: str):
         def redirect_request(self, *args, **kwargs):
             raise PregenError(f"refusing redirect from {url}")
     opener = urllib.request.build_opener(_NoRedirect)
-    with opener.open(urllib.request.Request(url, headers={"Accept": "application/json"}), timeout=10) as res:
+    # Wikidata (identity) answers 403 to an anonymous Python client: say who is asking.
+    headers = {"Accept": "application/json", "User-Agent": f"pregen-python/{__version__} (+https://www.pregen.org)"}
+    with opener.open(urllib.request.Request(url, headers=headers), timeout=10) as res:
         return json.loads(res.read().decode("utf-8"))
 
 

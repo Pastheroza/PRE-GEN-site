@@ -48,8 +48,13 @@ python3 -c "import pregen; print(sorted(r['prefix'] for r in pregen.load_directo
 **The public test directory is not online yet** (it will be `https://test.pregen.org/registries.json`,
 with its own test steward key): until it is, a sandbox cannot be listed and providers cannot
 check its answers outside a test network you are given. On such a network, list its prefixes
-with `python3 -c "import pregen; print(sorted(r['prefix'] for r in pregen.load_directory('<test
-directory url>', steward_public_key_hex='<test steward key hex>').registries))"`. Pick a prefix that is not listed, and a
+with this one line instead:
+
+```bash
+python3 -c "import pregen; print(sorted(r['prefix'] for r in pregen.load_directory('<test directory url>', steward_public_key_hex='<test steward key hex>').registries))"
+```
+
+ Pick a prefix that is not listed, and a
 second choice in case someone asks for yours first. For your sandbox's prefix, also check
 the test directory's list: sandboxes are listed only there, and no prefix is ever reused.
 
@@ -165,8 +170,9 @@ Then run `pregen-registry check --api … --directory …` (test
 directory: add `--steward <its key hex>`): it must show `PASS listed with the current key`.
 The directory does not change, so nothing goes to the steward.
 The retired key's file is `./data/operator.retired.<hex>.key`: the server does not need it;
-move it to its own offline folder (for example `./offline/retired/`), not into
-`./backup/data`, which the step 3 recipe empties each time. If you rotate before the directory lists the new key, providers refuse
+move it to its own offline folder (for example `./offline/retired/`) first, then back up
+(step 3): the recipe copies every `*.key` still in `./data`, and empties `./backup/data` each
+time. If you rotate before the directory lists the new key, providers refuse
 every answer you sign until it does. A retired key cannot sign anything new (clients refuse
 what it signs after it was retired), but keep its file as secret as the current one.
 
@@ -233,14 +239,16 @@ person has one:** clients today confirm only `wikidata:` anchors, so a person an
 
 Add the page where the person posted the line `PRE-GEN: PG-ABCD-000001G`. It must be an
 `https://` page, readable without a login, at or under a channel their Wikidata item lists:
-the official website (preferred), `https://x.com/<handle>/…`, `https://www.instagram.com/<handle>/…`,
-`https://www.youtube.com/channel/<id>/…` or `https://www.tiktok.com/@<handle>/…`. The command
-records what you give it and fetches nothing, so check first; this must print `True`:
+the official website (use it: social posts are mostly scripts a plain fetch cannot read),
+`https://x.com/<handle>/…`, `https://www.instagram.com/<handle>/…`,
+`https://www.youtube.com/channel/<id>/…` or `https://www.tiktok.com/@<handle>/…`, on exactly the
+host Wikidata lists (`www.` counts). The command records what you give it and fetches nothing,
+so check first; this must print `True`:
 
 ```bash
 python3 -c "import pregen, urllib.request as u; print(pregen.check_channel_proof('PG-ABCD-000001G', \
   'https://mayacole.example/pregen', pregen.wikidata_official_urls('wikidata:Q42'), \
-  lambda x: u.urlopen(x).read().decode()))"
+  lambda x: u.urlopen(u.Request(x, headers={'User-Agent': '<registry name> (<contact URL>)'})).read().decode()))"
 ```
 
 If it does not yet, anchor without `--proof-url` (the claim stays unconfirmed) and run
@@ -356,7 +364,9 @@ curl -s -X POST https://sandbox.registry.example/v2/sandbox/access
 It returns `{"provider_id": "sbx-…", "token": "…", "registry": "…", "note": "…"}`. Every
 sandbox answer carries `ext: {"sandbox": true}`, and clients refuse it unless they are
 testing. Replace each `<…>` in `./sandbox/policy.md`, as in step 3. The sandbox accepts any
-licensee without `connect`; in production, run `connect` first or the provider gets 401.
+licensee without `connect`; in production, run `connect` first or the provider gets 401. A
+licensee-only grant still needs `licensee_id` in the request (without it: `deny
+PG_NOT_CONNECTED`).
 Apply for the sandbox's prefix too (step 9, status `sandbox`): a sandbox is listed only in a
 **test directory**, never in the real one (step 2: not online yet). The directory entry looks like any
 other; the document's `sandbox` member is only `true` or `false`, and nothing links your
@@ -421,8 +431,8 @@ It asks for:
    policy URL will do);
 2. **Policy:** its URL (step 2). The details live on that page;
 3. **Acceptance of the core**, its fixed protections, the rule for a person held by several
-   registries (a refusal by any registry whose claim the person confirmed holds everywhere),
-   and the revocation
+   registries (a refusal of the person, such as an opt-out, by any registry whose claim the
+   person confirmed holds everywhere; "no licence here" does not), and the revocation
    grounds;
 4. **Endpoints:** `api`, `keys` (`{api}/keys`), that `/.well-known/pregen-registry.json`
    answers, and the profiles you answer under (`likeness/1`);
