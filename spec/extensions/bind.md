@@ -95,5 +95,5 @@ app's interface. Only an `allow` permits.
 
 ## Status
 
-Specified for interoperability; the open reference registry (`packages/registry`) does not
-implement `bind` yet and lists it under its limits.
+A registry that offers it lists `bind` in its document, with its endpoints. The open reference
+registry (`packages/registry`) does not implement `bind` yet and lists it under its limits.

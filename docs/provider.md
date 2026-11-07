@@ -654,8 +654,8 @@ contract. A provider that has PRE-GEN connects to any registry's commerce direct
 that sells nothing is still a complete registry. Two layers, one picture:
 `https://www.pregen.org/docs/two-layers`.
 
-- **A person's licence, used in your app.** When a customer holds a licence at a registry, they will connect it to your app once, with one consent screen at their registry
-  (extension `bind`, specified, not yet offered by a listed registry; `https://www.pregen.org/spec/extensions/bind.md`: OAuth 2.0 code + PKCE,
+- **A person's licence, used in your app.** When a customer holds a licence at a registry, they connect it to your app once, with one consent screen at their registry
+  (extension `bind`, where the registry's document lists it; `https://www.pregen.org/spec/extensions/bind.md`: OAuth 2.0 code + PKCE,
   your `redirect_uris` from your party document). You receive a signed binding with a random
   `licensee_id`, and send it in requests about that person (step 4). HTTP 403 `PG_NOT_BOUND`
   means "connect your licence", never a refusal. A registry's own connect procedure (extension
