@@ -1,0 +1,37 @@
+{
+  "party_id": "https://pregen.org",
+  "name": "PRE-GEN demo app",
+  "roles": [
+    "provider"
+  ],
+  "keysets": [
+    {
+      "type": "pg.keyset.v1",
+      "body": {
+        "signers": [
+          {
+            "role": "provider",
+            "key_id": "pg-ed25519:24947d5f4a839283a807c42cf4aaa1b4"
+          }
+        ],
+        "kind": "first",
+        "provider_id": "https://pregen.org",
+        "previous": null,
+        "recovery_registry": "",
+        "keys": [
+          {
+            "key_id": "pg-ed25519:24947d5f4a839283a807c42cf4aaa1b4",
+            "public_key_hex": "2558f30505060f3c4c73a58c363aa89885db7c59461baaf2edbda1097ab6644e",
+            "status": "current"
+          }
+        ]
+      },
+      "signatures": [
+        "681b07e2a9c92f5b275cdab6077879e6dcd8ae713c1e6c14e2d25737585a5d668ad4a5938fbb0f81f4add5512a43eeee41ffb63479710555ec2b50623f23350c"
+      ]
+    }
+  ],
+  "redirect_uris": [
+    "https://pregen.org/demo/callback"
+  ]
+}

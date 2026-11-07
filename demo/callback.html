@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demo app: connect — PRE-GEN</title>
+<meta name="description" content="Where the PRE-GEN demo app comes back after you connect a licence.">
+<meta property="og:title" content="Demo app — PRE-GEN">
+<meta property="og:description" content="Where the PRE-GEN demo app comes back after you connect a licence.">
+<meta property="og:image" content="https://www.pregen.org/assets/og-image.png">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.pregen.org/demo/callback">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="/assets/pregen-logo.png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="stylesheet" href="/styles.css">
+<script src="/theme.js"></script>
+<script src="/site.js" defer></script>
+<script src="/demo/callback.js" defer></script>
+</head>
+<body>
+<header class="top"><div class="wrap">
+<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt="PRE-GEN"></a>
+<button class="menu-btn" type="button" aria-controls="site-menu" aria-expanded="false" aria-label="Open menu"><span></span><span></span></button>
+<div class="menu" id="site-menu">
+<nav aria-label="Main"><a href="/connect">Connect your AI</a><a href="/create-registry">Create a registry</a><a href="/docs">How it works</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a></nav>
+</div>
+</div></header>
+<main><div class="wrap guide">
+<h1>Back from your registry</h1>
+<p class="lede">This page belongs to the PRE-GEN demo app. Copy this page's address and paste it into the command below within 60 seconds.</p>
+<pre><code>python bind.py exchange "&lt;the address&gt;"</code></pre>
+<p class="then">This page's address:</p>
+<textarea id="addr" class="addr" readonly rows="4" aria-label="This page's address"></textarea>
+<p class="then">The address holds a one-time code. This page sends it nowhere; keep it to yourself.</p>
+</div></main>
+<footer class="foot"><div class="wrap">
+<p>PRE-GEN is an open standard by Valerii Egorov, Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
+<nav aria-label="Site"><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification source</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
+</div></footer>
+</body>
+</html>

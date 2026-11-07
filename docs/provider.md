@@ -117,7 +117,8 @@ writeFileSync("pregen-party.json", JSON.stringify(doc));             // publish 
 
 Check it: `curl -s https://frame.example/.well-known/pregen-party.json | python3 -m json.tool`
 prints `party_id`, `name`, `roles` and one `keysets` entry. The file must answer over HTTPS
-without a redirect and without a login. A registry reads it the first time you ask, pins your
+without a redirect and without a login. If your site sends `example.com` to `www.example.com`, exempt
+`/.well-known/pregen-party.json` from that redirect. A registry reads it the first time you ask, pins your
 key chain, and reads it again at least daily; **whoever takes over your domain does not get
 your key**: a later document must extend the chain (a `rotation` keyset signed by the old key,
 `https://www.pregen.org/spec/extensions/provider-keys.md`), or it is refused.

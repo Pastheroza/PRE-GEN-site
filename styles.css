@@ -265,3 +265,4 @@ details p { margin: 10px 0 0; }
   :root { --bg: #fff; --fg: #000; --muted: #333; --rule: #000; --soft: #ccc; --tint: #f4f4f4; color-scheme: light; }
   .top, .menu-btn, .copy { display: none; }
 }
+.addr { display: block; width: 100%; margin: 0 0 16px; padding: 12px 14px; border: 1px solid var(--fg); background: var(--tint); color: var(--fg); font: 14px/1.5 var(--mono); resize: none; overflow-wrap: anywhere; border-radius: 0; }
