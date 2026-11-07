@@ -45,9 +45,6 @@
     /* subject legacy with class: PG-STD-000123 / PG-SUB-000123 */
     m = /^(STD|SUB|PRM|RND)-([0-9]{4,})$/.exec(rest);
     if (m) return { kind: "subject", code: "PG-" + rest };
-    /* subject legacy all digits */
-    m = /^([0-9]{4,})$/.exec(rest);
-    if (m) return { kind: "subject", code: "PG-" + rest };
     /* subject current: body + check */
     m = /^([0-9A-Z]{6,})([0-9A-Z*~$=!])$/.exec(rest);
     if (m) {
@@ -99,7 +96,7 @@
       + row("Rules", d.rules_text ? esc(d.rules_text) : "")
       + row("Registered", fmtDate(d.registered_at))
       + "</dl>"
-      + '<div class="pg-card-foot">Resolved live from the PRE-GEN registry. This is public metadata — it is not a generation permission. Providers need a signed <span class="mono">/v1/verify/</span> decision.</div>'
+      + '<div class="pg-card-foot">Resolved live from the registry that holds the code. This is public metadata — it is not a generation permission. Providers need a signed allow from <span class="mono">POST /v2/requests</span>.</div>'
       + "</article>";
     return html;
   }
@@ -124,7 +121,7 @@
       + badge(d.status || "unknown", d.status === "active" ? "ok" : d.status === "revoked" ? "warn" : "")
       + (d.license_class ? badge(d.license_class) : "") + "</div>"
       + '<dl class="pg-rows">' + rows + "</dl>"
-      + '<div class="pg-card-foot">Resolved live from the PRE-GEN registry. Scope fields define what this license permits — see <a href="/docs/versions">versioning</a> for semantics.</div>'
+      + '<div class="pg-card-foot">Resolved live from the registry that holds the code. Scope fields define what this license permits — see <a href="/docs/versions">versioning</a> for semantics.</div>'
       + "</article>";
   }
 

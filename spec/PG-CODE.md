@@ -412,7 +412,15 @@ a fake registry out, so the steward lists a registry only when it has:
 4. an operator key set published at its `keys` URL, its fingerprints given to
    the steward out of band, and its next key announced (above). The steward
    takes each public key itself, not only its fingerprint, and refuses a
-   small-order or non-canonical one (`PRE-GEN-CORE.md`, Messages, Signature).
+   small-order or non-canonical one (`PRE-GEN-CORE.md`, Messages, Signature);
+5. open access for AI services: it answers any AI service known by its domain,
+   with no account, on the same terms for every service (`extensions/provider-identity.md`,
+   `"providers": "open"` in its registry document). It may also issue its own
+   credentials, and it may check a service under its published procedure before it
+   answers beyond the person's refusals, its published subjects and that service's
+   own users (provider-identity P-5a, P-6). A registry listed before this condition
+   was published meets it within 90 days of its publication; the steward does not
+   revoke for it before then.
 
 A listing is not a certificate that the registry's rights holders are
 genuine; it is the steward's statement that the registry met these

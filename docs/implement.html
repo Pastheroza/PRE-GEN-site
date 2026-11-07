@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Implement — PRE-GEN</title>
+<title>Build PRE-GEN yourself</title>
 <meta name="description" content="Everything an independent team needs to implement a PRE-GEN verifier from the text alone and prove it with the conformance runner.">
 <meta property="og:title" content="Implement — PRE-GEN">
 <meta property="og:description" content="Everything an independent team needs to implement a PRE-GEN verifier from the text alone and prove it with the conformance runner.">
@@ -20,25 +20,24 @@
 </head>
 <body>
 <header class="top"><div class="wrap">
-<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="40" height="32" alt="PRE-GEN"></a>
+<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt="PRE-GEN"></a>
 <button class="menu-btn" type="button" aria-controls="site-menu" aria-expanded="false" aria-label="Open menu"><span></span><span></span></button>
 <div class="menu" id="site-menu">
-<nav aria-label="Main"><a href="/docs">Protocol</a><a href="/docs/sdk">Integrate</a><a href="/registries">Registries</a><a href="/lookup">Lookup</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a><a href="https://github.com/sponsors/Pastheroza">Support</a></nav>
-<div class="theme" role="group" aria-label="Theme"><button type="button" data-set-theme="system" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" class="fill"/></svg><span>System</span></button><button type="button" data-set-theme="light" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg><span>Light</span></button><button type="button" data-set-theme="dark" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><span>Dark</span></button></div>
+<nav aria-label="Main"><a href="/connect">Connect your AI</a><a href="/create-registry">Create a registry</a><a href="/docs">How it works</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a></nav>
 </div>
 </div></header>
 <main><div class="wrap">
-<div class="doc"><aside><ul><li><a href="/docs">Overview</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versioning</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Integrate</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement" aria-current="page">Implement</a></li></ul></aside><article><h1>Implement</h1>
+<div class="doc"><aside><ul><li><a href="/docs">How it works</a></li><li><a href="/docs/two-layers">Two layers</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versions</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Add it to your service</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement" aria-current="page">Build it</a></li></ul></aside><article><h1>Build it yourself</h1>
 <p class="meta">PRE-GEN v5 · 12 October 2026 · implementation kit</p>
-<p>No team other than the author has yet implemented PRE-GEN from the text alone. That is the main thing standing between a careful specification and a standard, and no amount of writing by the author can close it. This page is everything you need to do it.</p>
+<p>Nobody but the author has yet built PRE-GEN from the text alone. That is what separates a careful specification from a standard, and only someone else can close the gap. This page is everything you need.</p>
 
-<h2>Version 5: implement the core</h2>
+<h2>Build the core</h2>
 <ol>
 <li><strong>Read one page:</strong> <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/PRE-GEN-CORE.md">PRE-GEN-CORE.md</a>, then the profile <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/profiles/likeness-1.md">likeness/1</a> and only the <a href="/docs">extensions</a> you need.</li>
 <li><strong>Reproduce the bytes.</strong> <a href="/spec/test-vectors/messages.json">messages.json</a> gives eight messages — request, grant, answer (allow and deny), key sets, report and acknowledgement — with their canonical body, signing input, message id and signatures from fixed test keys. Match every one.</li>
 <li><strong>Validate the shapes</strong> against the JSON Schemas in <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec/schemas">spec/schemas</a>.</li>
-<li><strong>Talk to a real registry.</strong> The open reference registry (<a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/packages/registry">pregen-registry</a>) runs a sandbox with the eight standard test subjects: <code>pregen-registry init --dir data --prefix TEST --name "Test" --api https://… --sandbox</code>, then <code>serve</code>; <code>POST /v2/sandbox/access</code> issues test credentials. Your provider should get the documented answer for each subject and generate only on subject 1.</li>
-<li><strong>Report</strong> what took long or was unclear, as an <a href="https://github.com/Pastheroza/PRE-GEN-site/issues">issue</a>.</li>
+<li><strong>Talk to a real registry.</strong> The open reference registry (<a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/packages/registry">pregen-registry</a>) runs a sandbox with the eight standard test subjects: <code>pregen-registry init --dir data --prefix TEST --name "Test" --api https://… --sandbox</code>, then <code>serve</code>; <code>POST /v2/sandbox/party</code> takes your provider's party document (its domain and key; no credential), or <code>POST /v2/sandbox/access</code> issues a test credential. Your provider should get the documented answer for each subject and generate only on subject 1.</li>
+<li><strong>Tell us</strong> what took long or was unclear, as an <a href="https://github.com/Pastheroza/PRE-GEN-site/issues">issue</a>.</li>
 </ol>
 <p class="note">The level-1 kit below (edition <span class="mono">pre-gen-v5-rc1</span>) checks the foundations every v5 implementation shares — canonical JSON, signatures, the signed directory — and stays valid.</p>
 

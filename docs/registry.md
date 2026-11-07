@@ -15,7 +15,10 @@ Any company or person can run a registry on the same terms.
    hold. Keep it on the server only, never paste it anywhere.
 2. **Never delete a key from your key set.** A retired key stays listed, so every answer
    and proof it signed keeps verifying (step 4).
-3. **A provider credential is shown once.** Give it over a private channel.
+3. **A provider needs no credential from you.** A provider is its domain and its key (extension
+   `provider-identity`); your registry reads its key from its domain and vets it under your
+   published procedure. If you also issue credentials, each is shown once: give it over a
+   private channel.
 4. **HTTPS only.** The directory lists only `https://` addresses, with no credentials,
    query or fragment.
 5. **Quote PG codes.** A code ends with a check character that may be `*`, `~`, `$`, `=` or
@@ -29,7 +32,7 @@ then 10. Step 4 only when you rotate. Run every command from the folder that hol
 ## 1. Install
 
 ```bash
-pip install "pregen-registry>=0.2.0"
+pip install "pregen-registry>=0.3.0"
 pregen-registry --help
 ```
 
@@ -83,8 +86,11 @@ from the next answer); replace each `<…>` with your own text, and it answers a
 ```bash
 pregen-registry init --dir ./data --prefix ABCD --name "Example Registry" \
   --api https://registry.example --policy https://registry.example/policy \
-  --complaints mailto:complaints@registry.example
+  --complaints mailto:complaints@registry.example --open-providers
 ```
+
+`--open-providers` lets any AI service known by its domain ask you with no account. It is a
+listing condition (`PG-CODE.md` §9.1, item 5), so keep it.
 
 It prints:
 
@@ -265,7 +271,7 @@ Add a person you have verified:
 pregen-registry subject add --dir ./data --name "Maya Cole" --level verified
 ```
 
-It prints the person's code, for example `PG-ABCD-000001G`. Codes can be computed by anyone (serials
+It prints the person's code, for example `PG-ABCD-000001K`. Codes can be computed by anyone (serials
 count from 1; the last character is a checksum), so `GET {api}/v2/codes/<code>` shows the person's
 name and level only if you add `--publish`, which you do only when the person chose to be
 public (`subject publish --code … [--off]` changes it later). Anchoring publishes the code,
@@ -289,7 +295,7 @@ person has one:** clients today confirm only `wikidata:` anchors, so a person an
 `PG_IDENTITY_UNCONFIRMED`), grant or not, until confirmed. An anchor that cannot be confirmed
 means nobody can generate that person.
 
-Add the page where the person posted the line `PRE-GEN: PG-ABCD-000001G`. It must be an
+Add the page where the person posted the line `PRE-GEN: PG-ABCD-000001K`. It must be an
 `https://` page, readable without a login, at or under a channel their Wikidata item lists:
 the official website (use it: social posts are mostly scripts a plain fetch cannot read),
 `https://x.com/<handle>/…`, `https://www.instagram.com/<handle>/…`,
@@ -304,7 +310,7 @@ website that scripts can read: a proof page that later answers 403, 429 or 5xx b
 person at every provider. The check (it follows no redirect):
 
 ```bash
-CODE='PG-ABCD-000001G' URL='https://mayacole.example/pregen' ANCHOR='wikidata:Q42' python3 -c "
+CODE='PG-ABCD-000001K' URL='https://mayacole.example/pregen' ANCHOR='wikidata:Q42' python3 -c "
 import os, pregen, urllib.request as u
 ua = {'User-Agent': 'Example Registry (https://registry.example/contact)'}
 class Stay(u.HTTPRedirectHandler):
@@ -318,12 +324,12 @@ If it prints `False`, the page answers 404, or it raises (page unreadable, Wikid
 the line is gone, anchor again without `--proof-url`.
 
 ```bash
-pregen-registry subject anchor --dir ./data --code 'PG-ABCD-000001G' \
+pregen-registry subject anchor --dir ./data --code 'PG-ABCD-000001K' \
   --anchor wikidata:Q42 --proof-url https://mayacole.example/pregen
 ```
 
 ```
-PG-ABCD-000001G anchored to wikidata:Q42; GET /v2/anchors lists it
+PG-ABCD-000001K anchored to wikidata:Q42; GET /v2/anchors lists it
 ```
 
 When several registries claim the same person, a client counts only a record whose anchor
@@ -333,7 +339,7 @@ name is never evidence.
 **Grant a use** the person agreed to. It prints the grant id (64 hex):
 
 ```bash
-pregen-registry grant add --dir ./data --subject 'PG-ABCD-000001G' \
+pregen-registry grant add --dir ./data --subject 'PG-ABCD-000001K' \
   --purposes commercial,editorial --days 30 --max-uses 10
 ```
 
@@ -359,6 +365,26 @@ To see what you hold: `subject list` prints your codes; grants and connections a
 database (`python3 -c "import sqlite3; [print(r) for r in sqlite3.connect('./data/registry.db')
 .execute('SELECT id, subject_code, licensee_id, purposes, expires_at, max_uses FROM grants')]"`, and the same with
 `SELECT provider_id, licensee_id FROM connections`).
+
+**Providers known by their domain** (extension `provider-identity`,
+`https://www.pregen.org/spec/extensions/provider-identity.md`) need nothing from you. A registry
+created with `--open-providers` (a sandbox always is) says `"providers": "open"` in its document
+and answers any provider whose `provider_id` is `https://<its domain>`: it reads
+`https://<that domain>/.well-known/pregen-party.json` the first time the provider asks, pins the
+key chain in it, checks the signature on every request and report against that chain, and reads
+the document again at least daily. A later document that does not extend the pinned chain is
+refused, so whoever takes over a domain does not get its keys. Until you vet a provider, it
+learns only refusals of the person, your published subjects, and what its own connected
+customers hold; everything else is `deny PG_PROVIDER_NOT_ACCEPTED`. Vetting is your own
+published procedure; once done:
+
+```bash
+pregen-registry provider accept --dir ./data --id https://frame.example
+```
+
+`connect` works for such a provider too: `--provider https://frame.example --licensee
+'https://frame.example:user-1'`. Without `--open-providers`, your document says
+`"providers": "registered"` and every provider needs a credential from you:
 
 **Give a provider its credential.** It is printed once:
 
@@ -390,7 +416,7 @@ provider the exact licensee id (step 10); it sends it as `licensee_id`.
 what they were:
 
 ```bash
-pregen-registry subject opt-out --dir ./data --code 'PG-ABCD-000001G'   # the person opted out or withdrew
+pregen-registry subject opt-out --dir ./data --code 'PG-ABCD-000001K'   # the person opted out or withdrew
 pregen-registry grant revoke --dir ./data --id <grant id>                # the grant ends now
 pregen-registry provider remove --dir ./data --id frame-ai               # a leaked token: see below
 ```
@@ -406,9 +432,9 @@ test in your sandbox (step 7).
 ## 7. A sandbox, for providers to test against
 
 A sandbox is a **separate** registry, with its own data folder, key, address, prefix and
-policy, that holds the standard test subjects and gives credentials without an account. Use
-the same flags as in step 3, plus `--sandbox` (its `./sandbox/policy.md` template already says
-it holds no real people):
+policy, that holds the standard test subjects and answers any provider known by its domain,
+or hands out a credential, without an account. Use the same flags as in step 3, plus
+`--sandbox` (its `./sandbox/policy.md` template already says it holds no real people):
 
 ```bash
 pregen-registry init --dir ./sandbox --prefix ABCE --name "Example Registry sandbox" \
@@ -428,13 +454,17 @@ Sandbox test subjects (copy them; the last character is a check character):
 
 Save this output: code 8 is never stored, so `subject list` shows only 1–7 and your own.
 
-Serve it (step 5) and get test credentials:
+Serve it (step 5). A provider introduces itself by posting its party document (a laptop has
+no domain to serve it on), then asks with signed requests, exactly as it will in production:
 
 ```bash
-curl -s -X POST https://sandbox.registry.example/v2/sandbox/access
+curl -s -X POST https://sandbox.registry.example/v2/sandbox/party -H 'Content-Type: application/json' \
+  --data @pregen-party.json          # → {"party_id": "https://…", "note": "…"}
 ```
 
-It returns `{"provider_id": "sbx-…", "token": "…", "registry": "…", "note": "…"}`. Every
+A sandbox accepts any `https://…` id, a port and `localhost` included, and masks nothing. The
+credential path works too: `curl -s -X POST https://sandbox.registry.example/v2/sandbox/access`
+returns `{"provider_id": "sbx-…", "token": "…", "registry": "…", "note": "…"}`. Every
 sandbox answer carries `ext: {"sandbox": true}`, and clients refuse it unless they are
 testing. Replace each `<…>` in `./sandbox/policy.md`, as in step 3. The sandbox accepts any
 licensee without `connect`; in production, run `connect` first or the provider gets 401. A
@@ -546,15 +576,25 @@ PASS listed with this api and keys URL
 PASS listed with the current key
 ```
 
-For a test directory, add `--steward <its steward public key hex>`. Then send each provider,
-privately: your `api`; its credential in the shape it stores, for your production prefix
-(sandbox credentials are self-service),
-`{"ABCD": {"provider_id": "frame-ai", "token": "<secret>"}}`; the codes it may ask about,
-and the exact licensee id of each customer you connected for it; your sandbox `api`, the
-sandbox's eight test codes (and any test people you added, with what each is for), and the
-test directory's URL and steward key. Providers take
-sandbox credentials themselves (`POST {sandbox api}/v2/sandbox/access`).
+For a test directory, add `--steward <its steward public key hex>`. A provider known by its
+domain needs nothing more from you than the listing: it finds your `api` in the directory and
+asks. Publish for providers: how you vet them (step 6), your sandbox `api`, the sandbox's eight
+test codes (and any test people you added, with what each is for), and the test directory's URL
+and steward key. If you issue credentials, send each provider its credential privately, in the
+shape it stores (`{"ABCD": {"provider_id": "frame-ai", "token": "<secret>"}}`), with the codes
+it may ask about and the exact licensee id of each customer you connected for it.
 A listing can be revoked, with notice and reasons; a prefix is never given to anyone else.
+
+## Selling: your optional commerce
+
+Everything above is the mandatory layer, the same for every registry, free, with no account for
+providers. Selling licences (to people or to providers) is your own,
+optional business: your prices, checkout and contract, on your own site. PRE-GEN names no
+checkout, and a registry that sells nothing is complete. If you sell, publish a
+commerce page and link it from your policy; a provider that already has PRE-GEN connects to it
+directly. A person who bought a licence connects it to an app through extension `bind`
+(`https://www.pregen.org/spec/extensions/bind.md`), which the reference registry does not
+implement yet. Two layers, one picture: `https://www.pregen.org/docs/two-layers`.
 
 ## You are done when
 
@@ -562,7 +602,7 @@ A listing can be revoked, with notice and reasons; a prefix is never given to an
 - [ ] `GET {api}/keys` lists every key you ever used; a rotation waits 24 hours after the directory lists the next key
 - [ ] `{api}/.well-known/pregen-registry.json` and your policy page answer over HTTPS
 - [ ] Every public person has an anchor, with a proof URL once `check_channel_proof` prints `True` (until then anchored without one: nobody can generate them); every grant matches what the person agreed
-- [ ] Providers got their credentials over a private channel; your sandbox is a separate registry
+- [ ] Providers known by their domain are answered (`"providers": "open"`) or your document says `registered`; any credential went over a private channel; your sandbox is a separate registry
 - [ ] `pregen-registry check --api … --directory …` ends `OK: all checks passed`, listing included
 
 ## The HTTP interface
@@ -574,14 +614,17 @@ A listing can be revoked, with notice and reasons; a prefix is never given to an
 | `GET /policy` | `policy.md` from the data folder, if you wrote one |
 | `POST /v2/requests` | ask → `{"answer": <signed pg.answer.v1>}` |
 | `POST /v2/reports` | report → `{"ack": <signed pg.report_ack.v1>}` |
-| `POST /v2/keys`, `GET /v2/keys/{provider_id}` | provider key sets |
-| `GET /v2/grants/{id}` | a signed grant (provider credential required in production; a sandbox answers without one) |
+| `POST /v2/keys`, `GET /v2/keys/{provider_id}` | provider key sets (a provider known by its domain publishes them in its party document instead) |
+| `GET /v2/grants/{id}` | a signed grant (`PG-Access` or a credential in production; a sandbox answers without either) |
 | `GET /v2/codes/{code}` | public lookup |
 | `GET /v2/anchors` | anchored subjects, signed (extension `identity`) |
 | `GET /v2/proofs/{16 hex}` | this registry's part of a proof |
 | `POST /v2/sandbox/access` | sandbox credentials (sandbox mode only) |
+| `POST /v2/sandbox/party` | a provider's party document by post (sandbox mode only) |
 
-Providers authenticate with `X-Provider-ID: <id>` and `Authorization: Bearer <token>` on
-`POST /v2/requests`, `/v2/reports`, `/v2/keys` and `GET /v2/grants/…`; the rest of this table
-is public. The server also answers endpoints of extensions this guide does not cover.
+A provider known by its domain authenticates by its signature: `X-Provider-ID: https://<domain>`,
+no `Authorization`, `signers` and one signature on `POST /v2/requests` and `/v2/reports`, and the
+`PG-Access` header on `GET /v2/grants/…` (extension `provider-identity`). A registered provider
+authenticates with `X-Provider-ID: <id>` and `Authorization: Bearer <token>` on `POST /v2/requests`,
+`/v2/reports`, `/v2/keys` and `GET /v2/grants/…`. The rest of this table is public. The server also answers endpoints of extensions this guide does not cover.
 Errors are `{"error": "PG_…", "error_description": "…"}` with HTTP 401, 404, 409, 422 or 429.

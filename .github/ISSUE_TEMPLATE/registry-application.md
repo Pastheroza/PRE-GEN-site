@@ -22,6 +22,7 @@ labels: registry-application
 - `keys` (key set URL):
 - `{api}/.well-known/pregen-registry.json` returns your `prefix`, `profiles`, `extensions`, `policy`, `complaints`: yes / no
 - Profiles you answer under (e.g. `likeness/1`):
+- Your document says `"providers": "open"` and lists `provider-identity`: any AI service known by its domain can ask you with no account (`PG-CODE.md` §9.1, item 5): yes / no
 
 **5. Keys.** Fingerprints (`pg-ed25519:…`) of every operator key — current, retired and the next one (`pregen-registry key next` lists it in `/keys` as `next`). The steward lists only fingerprints it finds in your live `{api}/keys`, on your own domain, so a stolen GitHub account cannot list someone else's key. A stolen operator key is reported privately, never here: https://github.com/Pastheroza/PRE-GEN-site/security/advisories/new
 

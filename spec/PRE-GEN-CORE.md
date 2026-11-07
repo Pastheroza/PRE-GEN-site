@@ -56,8 +56,9 @@ at `_pregen-steward.pregen.org`. Admission, revocation and key handover: `PG-COD
 The provider sends the registry one request about one subject.
 - **Endpoint:** `POST {api}/v2/requests`.
 - **Headers:** `X-Provider-ID`, and `Authorization: Bearer <credential>` issued by that
-  registry.
-- **Body:** an unsigned envelope:
+  registry. A provider known by its domain sends no credential and signs the request
+  instead (`extensions/provider-identity.md`).
+- **Body:** an unsigned envelope (signed under `provider-identity`):
 
 ```json
 {"type": "pg.request.v1", "signatures": [],
@@ -136,7 +137,7 @@ JSON Schemas: `schemas/`. Byte vectors: `test-vectors/messages.json`.
 | Code | HTTP | Meaning |
 |---|---|---|
 | `PG_MALFORMED` | 422 | the request does not follow this document |
-| `PG_NOT_AUTHENTICATED` | 401 | credential or `provider_id` not accepted |
+| `PG_NOT_AUTHENTICATED` | 401 | credential, signature or `provider_id` not accepted |
 | `PG_PROFILE_UNSUPPORTED` | 422 | the registry does not answer under this profile |
 
 **Two codes are answer reasons**, not HTTP errors:
@@ -153,7 +154,9 @@ JSON Schemas: `schemas/`. Byte vectors: `test-vectors/messages.json`.
   - `profiles` and `extensions`;
   - `policy` — the URL of its published policy;
   - `complaints` — a contact for complaints;
-  - `sandbox`.
+  - `sandbox`;
+  - `providers`: `open` when providers known by their domain are accepted
+    (`extensions/provider-identity.md`), `registered` when it issues its own credentials.
 
 **A client sends members of an extension only to a registry that declares it.**
 

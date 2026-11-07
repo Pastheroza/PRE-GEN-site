@@ -20,23 +20,22 @@
 </head>
 <body>
 <header class="top"><div class="wrap">
-<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="40" height="32" alt="PRE-GEN"></a>
+<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt="PRE-GEN"></a>
 <button class="menu-btn" type="button" aria-controls="site-menu" aria-expanded="false" aria-label="Open menu"><span></span><span></span></button>
 <div class="menu" id="site-menu">
-<nav aria-label="Main"><a href="/docs" aria-current="page">Protocol</a><a href="/docs/sdk">Integrate</a><a href="/registries">Registries</a><a href="/lookup">Lookup</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a><a href="https://github.com/sponsors/Pastheroza">Support</a></nav>
-<div class="theme" role="group" aria-label="Theme"><button type="button" data-set-theme="system" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" class="fill"/></svg><span>System</span></button><button type="button" data-set-theme="light" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg><span>Light</span></button><button type="button" data-set-theme="dark" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><span>Dark</span></button></div>
+<nav aria-label="Main"><a href="/connect">Connect your AI</a><a href="/create-registry">Create a registry</a><a href="/docs">How it works</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a></nav>
 </div>
 </div></header>
 <main><div class="wrap">
-<div class="doc"><aside><ul><li><a href="/docs">Overview</a></li><li><a href="/docs/pg-code" aria-current="page">PG codes</a></li><li><a href="/docs/versions">Versioning</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Integrate</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Implement</a></li></ul></aside><article><h1>PG code — identifier format</h1>
-    <p class="meta">Status: <strong>frozen 2026-08-20</strong>, issuer prefix added 2026-09-28 · Vectors: <span class="mono">pg_code</span>, vectors v2 · License: Apache-2.0 · The text is normative; a vector that disagrees with it is an erratum.</p>
+<div class="doc"><aside><ul><li><a href="/docs">How it works</a></li><li><a href="/docs/two-layers">Two layers</a></li><li><a href="/docs/pg-code" aria-current="page">PG codes</a></li><li><a href="/docs/versions">Versions</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Add it to your service</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Build it</a></li></ul></aside><article><h1>PG codes</h1>
+    <p class="meta">Status: <strong>frozen 2026-08-20</strong>, issuer prefix added 2026-09-28 · Test vectors: <span class="mono">pg_code</span>, vectors v2 · License: Apache-2.0 · The text is the rule; a vector that disagrees with it gets fixed.</p>
 
     <p>
-      This document specifies the PRE-GEN identifier format completely enough to implement
-      from scratch, without reading any registry source code. A PG code is assigned once and
-      cited forever — in a license, a dispute, a court filing — which is why the format is
-      <strong>frozen</strong>: changing how the check character is computed would invalidate
-      every code already issued, with no way to tell an old-but-valid code from a corrupted one.
+      A PG code is the permanent number of a person, a work or a licence in a registry. This page
+      describes the format completely, so anyone can implement it without reading registry code.
+      A code is assigned once and cited forever, in a licence, a dispute or a court filing, which
+      is why the format is <strong>frozen</strong>: changing the check character would break every
+      code already issued.
     </p>
 
     <h2>1 · Two shapes, and only two</h2>
@@ -193,7 +192,7 @@ check = CHECK_ALPHABET[ sum mod 37 ]</code></pre>
       holds the code.</li>
     </ul>
 
-    <h2>7 · The load-bearing rule: resolved, never parsed</h2>
+    <h2>7 · Look it up, never take it apart</h2>
     <p>
       <strong>An identifier is resolved by database lookup. It is never parsed to extract
       meaning.</strong> The serial inside a license id exists so a human can see which subject
@@ -204,7 +203,7 @@ check = CHECK_ALPHABET[ sum mod 37 ]</code></pre>
     </p>
 
     <h2>8 · Issuers: more than one registry</h2>
-    <p>Any company may run a PRE-GEN registry. So that two registries never issue the same code, every registry — the first one included — puts its <strong>issuer prefix</strong> in every code it issues.</p>
+    <p>Anyone may run a PRE-GEN registry. So that two registries never issue the same code, every registry, the first one included, puts its own <strong>prefix</strong> in every code it issues.</p>
     <div class="table"><table>
       <thead><tr><th>Shape</th><th>Example</th><th>Meaning</th></tr></thead>
       <tbody>
@@ -222,13 +221,13 @@ check = CHECK_ALPHABET[ sum mod 37 ]</code></pre>
     <p>A registry that receives a code with a prefix it doesn't hold answers that the code belongs to another registry, not "not found". Longer serials stay free as well: the pad width is a minimum.</p>
 
     <h3>The signed registry directory</h3>
-    <p>A prefix by itself protects nothing: anyone can print one. What decides which codes software <strong>accepts</strong> is the directory at <a href="/registries.json">registries.json</a>, signed by the PRE-GEN steward key (<a href="/spec/PG-CODE.md">PG-CODE.md</a> §9.1). It lists each registry with its namespace (four letters for every registry; bare only for the legacy codes issued before v5), its API and key-set addresses (HTTPS only) and the fingerprints of every operator key it may sign with. A code is valid only when a key listed for its namespace signed it — the same rule for every registry, the origin one included.</p>
+    <p>A prefix by itself protects nothing: anyone can print one. What decides which codes software <strong>accepts</strong> is the directory at <a href="/registries.json">registries.json</a>, signed by the PRE-GEN steward key (<a href="/spec/PG-CODE.md">PG-CODE.md</a> §9.1). It lists each registry with its namespace (four letters for every registry; bare only for the legacy codes issued before v5), its API and key-set addresses (HTTPS only) and the fingerprints of every operator key it may sign with. A code is valid only when a key listed for its namespace signed it — the same rule for every registry, the first one included.</p>
     <ul>
       <li>A client checks the signature with a steward key it already holds, never with a key taken from the directory, and refuses a directory older than one it has seen, one that removes a registry or key or undoes a revocation, or a different one with the same <code>sequence</code>.</li>
       <li>A registry announces its next operator key in the directory before using it, so a planned rotation changes nothing for clients.</li>
       <li>The steward lists a registry only after <a href="/registries">admission conditions</a>, and can revoke a registry (<code>revoked</code> in its entry) or a single stolen key (<code>revoked_keys</code>). Nothing signed by a revoked registry or key authorizes a generation again (V-14); a revocation is never undone.</li>
       <li>A listing proves which registry may issue a code, not that it holds any right over a person or a work.</li>
-      <li>v5 does not define how fresh a directory must be, so a verifier learns of a revocation only when it fetches the directory again.</li>
+      <li>A verifier loads the directory again at least every 24 hours (core rule 2), so a stale copy cannot hide a revocation for more than a day.</li>
     </ul>
     <h3>Steward keys</h3>
     <div class="table"><table>
@@ -240,8 +239,8 @@ check = CHECK_ALPHABET[ sum mod 37 ]</code></pre>
     </table></div>
     <p>Both keys are held offline by the editor of the standard, not by any registry. The same values are in the specification, the v5 paper, the <a href="https://github.com/Pastheroza/PRE-GEN-site">repository README</a> and the DNS TXT record <code>_pregen-steward.pregen.org</code>. A directory signed by the successor replaces those of the steward key whatever their sequence. <a href="/docs/sdk"><span class="mono">@pregen/verify</span> and <span class="mono">pregen</span></a> have both keys built in.</p>
 
-    <h2>9 · Conformance</h2>
-    <p>An implementation conforms if it reproduces every case in the <code>pg_code</code>
+    <h2>9 · Testing an implementation</h2>
+    <p>An implementation is correct when it reproduces every case in the <code>pg_code</code>
     section of the test vectors:</p>
     <ul>
       <li><code>check_char</code> — all 37 possible outputs, including all five overflow symbols;</li>
@@ -250,11 +249,11 @@ check = CHECK_ALPHABET[ sum mod 37 ]</code></pre>
       <li><code>rejects</code> — corrupted codes that <strong>must</strong> fail verification.</li>
     </ul>
     <p>
-      Vectors live in the SDK repository:
+      The vectors are published with the specification:
       <a href="/spec/test-vectors/vectors.json" target="_blank" rel="noopener noreferrer"><code>spec/test-vectors/vectors.json</code></a>.
       Regenerate only after an intentional format change — the generator is deterministic, so
       a noisy diff means the format moved.
-    </p><nav class="pager" aria-label="Pages"><a href="/docs">← Overview</a><a href="/docs/versions">Versioning →</a></nav></article></div>
+    </p><nav class="pager" aria-label="Pages"><a href="/docs">← How it works</a><a href="/docs/versions">Versions →</a></nav></article></div>
 </div></main>
 <footer class="foot"><div class="wrap">
 <p>PRE-GEN is an open standard by Valerii Egorov, Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>

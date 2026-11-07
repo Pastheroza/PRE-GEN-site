@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Create your registry — PRE-GEN</title>
+<meta name="description" content="Create a PRE-GEN registry in four steps: install it, create it, add your people, get listed. Free, open, on the same terms for everyone.">
+<meta property="og:title" content="Create your registry — PRE-GEN">
+<meta property="og:description" content="Create a PRE-GEN registry in four steps: install it, create it, add your people, get listed. Free, open, on the same terms for everyone.">
+<meta property="og:image" content="https://www.pregen.org/assets/og-image.png">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.pregen.org/create-registry">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://www.pregen.org/create-registry">
+<link rel="icon" type="image/png" href="/assets/pregen-logo.png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="stylesheet" href="/styles.css">
+<script src="/theme.js"></script>
+<script src="/site.js" defer></script>
+</head>
+<body>
+<header class="top"><div class="wrap">
+<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt="PRE-GEN"></a>
+<button class="menu-btn" type="button" aria-controls="site-menu" aria-expanded="false" aria-label="Open menu"><span></span><span></span></button>
+<div class="menu" id="site-menu">
+<nav aria-label="Main"><a href="/connect">Connect your AI</a><a href="/create-registry" aria-current="page">Create a registry</a><a href="/docs">How it works</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a></nav>
+</div>
+</div></header>
+<main><div class="wrap guide">
+<h1>Create your registry</h1>
+<p class="lede">A registry speaks for real people, characters or brands. It gives each one a code, answers every AI that asks, and signs every answer. Anyone can run one, free.</p>
+<section class="prompt" aria-labelledby="prompt-h">
+<h2 id="prompt-h">The easy way: give this to your AI assistant</h2>
+<p>Copy the prompt and paste it into your AI assistant, for example Claude Code, Cursor or ChatGPT. It reads the guides, walks you through the choices to make first, prepares the server with you, and explains every step. If something is unclear, it stops and explains.</p>
+<pre><code>You are helping me create a PRE-GEN registry.
+
+A registry speaks for real people, characters or brands: it gives each one a code, records what they allow and refuse, and answers every AI that asks with a signed answer. PRE-GEN is an open protocol, and anyone can run a registry on the same terms.
+
+First, read these fully:
+- https://www.pregen.org/llms.txt
+- https://www.pregen.org/docs/registry.md (the complete guide)
+- https://www.pregen.org/spec/PRE-GEN-CORE.md (the rules; where the guide and the rules differ, the rules win)
+
+Then work with me, step by step:
+1. Help me decide what must be decided first, and explain each choice in plain words: our registry's name, our four-letter prefix, the domain it will run on, who operates it (legal name and address), and how we will check that a person is who they say they are and may decide for themselves.
+2. Prepare the ground: tell me what I need (a server on our own domain with HTTPS, Python 3.10 or newer, a safe offline place for the registry's key), why, and roughly what it costs.
+3. Follow docs/registry.md: install pregen-registry, create a sandbox first and test it, then create the real registry (with --open-providers, so any AI service can ask without an account), write our policy, and run pregen-registry check until every check passes.
+4. Add real people only after we have checked them, and only with what they agreed to.
+5. Help me prepare the application for our prefix, but submit nothing without my word.
+6. Ask me before you accept any terms, store any secret, or publish anything.
+
+As you go, explain each step to me in plain words, as if I am not a programmer. If anything is unclear, stop, tell me what is unclear and what my options are, and wait for my answer. Selling licences is optional and separate: do not set it up unless I ask.</code></pre>
+</section>
+<p class="then">What your assistant will do, in four steps:</p>
+<ol class="gsteps">
+<li><span class="n">1</span><div><h2>Install it</h2><p>The open reference registry, ready to run on your own server.</p><pre><code>pip install "pregen-registry>=0.3.0"</code></pre></div></li>
+<li><span class="n">2</span><div><h2>Choose your four letters</h2><p>Every code you give out starts with them, like PG-ABCD-000001K (the last character is a check). One command creates your registry with its own key.</p></div></li>
+<li><span class="n">3</span><div><h2>Add who you speak for</h2><p>Check that each person is who they say. Give them a code, record what they allow and refuse, and the registry answers every AI for them.</p></div></li>
+<li><span class="n">4</span><div><h2>Get listed</h2><p>Send the application for your letters. Once approved, your registry is on the public list every AI app checks.</p></div></li>
+</ol>
+<section class="dev" aria-labelledby="dev">
+<h2 id="dev">For your developer</h2>
+<p>Everything above, in full detail, with every command.</p>
+<ul>
+<li><a href="/docs/registry.md"><span>The complete guide<small>From install to listed</small></span></a></li>
+<li><a href="/registries"><span>Registries already listed<small>Who runs PRE-GEN today</small></span></a></li>
+<li><a href="/docs/two-layers"><span>Selling licences<small>Optional, and yours to run</small></span></a></li>
+<li><a href="https://chatgpt.com/?prompt=Walk%20me%20through%20creating%20a%20PRE-GEN%20registry%2C%20step%20by%20step%20and%20in%20plain%20words.%20First%20read%20https%3A%2F%2Fwww.pregen.org%2Fdocs%2Fregistry.md%20and%20https%3A%2F%2Fwww.pregen.org%2Fllms.txt." target="_blank" rel="noopener"><span>Ask ChatGPT what this means</span></a></li>
+<li><a href="https://claude.ai/new?q=Walk%20me%20through%20creating%20a%20PRE-GEN%20registry%2C%20step%20by%20step%20and%20in%20plain%20words.%20First%20read%20https%3A%2F%2Fwww.pregen.org%2Fdocs%2Fregistry.md%20and%20https%3A%2F%2Fwww.pregen.org%2Fllms.txt." target="_blank" rel="noopener"><span>Ask Claude what this means</span></a></li>
+</ul>
+</section>
+</div></main>
+<footer class="foot"><div class="wrap">
+<p>PRE-GEN is an open standard by Valerii Egorov, Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
+<nav aria-label="Site"><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification source</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
+</div></footer>
+</body>
+</html>

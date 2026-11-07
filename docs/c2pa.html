@@ -20,78 +20,86 @@
 </head>
 <body>
 <header class="top"><div class="wrap">
-<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="40" height="32" alt="PRE-GEN"></a>
+<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt="PRE-GEN"></a>
 <button class="menu-btn" type="button" aria-controls="site-menu" aria-expanded="false" aria-label="Open menu"><span></span><span></span></button>
 <div class="menu" id="site-menu">
-<nav aria-label="Main"><a href="/docs" aria-current="page">Protocol</a><a href="/docs/sdk">Integrate</a><a href="/registries">Registries</a><a href="/lookup">Lookup</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a><a href="https://github.com/sponsors/Pastheroza">Support</a></nav>
-<div class="theme" role="group" aria-label="Theme"><button type="button" data-set-theme="system" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" class="fill"/></svg><span>System</span></button><button type="button" data-set-theme="light" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg><span>Light</span></button><button type="button" data-set-theme="dark" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><span>Dark</span></button></div>
+<nav aria-label="Main"><a href="/connect">Connect your AI</a><a href="/create-registry">Create a registry</a><a href="/docs">How it works</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a></nav>
 </div>
 </div></header>
 <main><div class="wrap">
-<div class="doc"><aside><ul><li><a href="/docs">Overview</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versioning</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Integrate</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa" aria-current="page">C2PA</a></li><li><a href="/docs/implement">Implement</a></li></ul></aside><article><h1>PRE-GEN assertions in C2PA manifests</h1>
+<div class="doc"><aside><ul><li><a href="/docs">How it works</a></li><li><a href="/docs/two-layers">Two layers</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versions</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Add it to your service</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa" aria-current="page">C2PA</a></li><li><a href="/docs/implement">Build it</a></li></ul></aside><article><h1>PRE-GEN inside C2PA</h1>
     <p class="meta">PRE-GEN v5 · v5 bundle: <span class="mono">pg.proof.v1</span> (assertion label <span class="mono">org.pregen.proof</span>) · earlier assertion: <span class="mono">pg.assertion.v1</span> · not yet tested end to end with a platform</p>
-    <p><strong>Version 5.</strong> The <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/proof.md">proof</a> extension carries the whole signed record in a C2PA manifest: for every subject of the job, the request, the registry's answer, the provider's report naming the output's SHA-256 (and soft bindings that survive re-encoding), and the registry's acknowledgement. A watermark payload <code>&lt;prefix&gt;:&lt;16 hex&gt;</code> lets a platform fetch the registry's part when metadata was stripped. A platform checks it as of the moment the output was made, and against the file. The rest of this page describes the earlier assertion, which stays valid.</p>
+    <p><strong>Version 5.</strong> The <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/proof.md">proof</a> extension carries the whole signed record in a C2PA manifest: for every subject of the job, the request, the registry's answer, the provider's report naming the output's SHA-256 (and soft bindings that survive re-encoding), and the registry's acknowledgement. When metadata was stripped, a platform fetches the registry's part by the report id. A platform checks it as of the moment the output was made, and against the file. The rest of this page describes the earlier assertion, which stays valid.</p>
 
     <p>
       C2PA answers <strong>“who made this and when”</strong>. It does not answer
-      <strong>“were they allowed to”</strong>. PRE-GEN bridges the gap with
-      <code>pg.assertion.v1</code> — a signed authorization assertion embedded directly into a
-      C2PA manifest, so the permission travels <em>inside</em> the file instead of living in a
-      database somewhere. Content and its consent become inseparable.
+      <strong>“were they allowed to”</strong>. PRE-GEN adds that answer as a signed record
+      inside the C2PA manifest, so the permission travels with the file instead of living in a
+      database somewhere.
     </p>
 
     <div class="note">
       <span class="mono">Division of labor</span>
-      C2PA is provenance. PRE-GEN is authorization. An assertion is <strong>not a license</strong> —
-      it is a verifiable pointer to one. Anyone can resolve the PG codes and check the
-      signatures against the registry’s public keys, independently of the file’s author.
+      C2PA says where a file came from. PRE-GEN says whether it was permitted. The record is
+      <strong>not a licence</strong>; it points to one, and anyone can look up the PG codes and
+      check the signatures against the registry's public keys, without trusting the file's author.
     </div>
 
     <h2>What goes into the assertion</h2>
     <p>
-      <code>pg.assertion.v1</code> is a C2PA custom assertion (<code>action</code> array stays
-      untouched; PRE-GEN data rides in a <code>com.pregen.authorization/1</code> assertion).
-      Canonical JSON, no floats, signature excluded from its own signed bytes:
+      The registry signs <code>pg.assertion.v1</code> only for an allowed decision that already
+      has the provider’s receipt, so the assertion and the receipt always name the same output
+      (<a href="/spec/PRE-GEN-EXTENSIONS.md">PRE-GEN-EXTENSIONS.md</a> X.7). Every member is
+      always present. The signed bytes are the canonical JSON of the object without
+      <code>signature</code> and <code>signing_key_id</code>:
     </p>
 <pre><code>{
-  "v": "pg.assertion.v1",
-  "subject_pg": "PG-000042*",
-  "decision_ref": {
-    "decision_id": "dec_01J8ZK…",
-    "registry": "https://api2.prampta.com",
-    "decided_at": 1787600000,
-    "decision_sig": "a3f1…"
-  },
-  "license_pg": "PG-STD-000042-K7M2QX9",
+  "schema_version": "pg.assertion.v1",
+  "assertion_id": "assert_…",
+  "decision_id": "dec_…",
+  "subject_id": "PG-000042*",
+  "license_id": "PG-PRM-…",
   "provider_id": "prov_studio_one",
-  "receipt_ref": "rcp_01J8ZM…",
-  "generated_at": 1787600123
+  "model_id": "image-model-2",
+  "decision": "allow",
+  "purpose": "commercial",
+  "rules_snapshot_hash": "9c1e…",
+  "output_hash": "4f2a…",
+  "issued_at": "2026-10-17T09:30:00+00:00",
+  "signature": "a3f1…",
+  "signing_key_id": "pg-ed25519:…"
 }</code></pre>
     <div class="table"><table>
       <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
       <tbody>
-        <tr><td class="mono">subject_pg</td><td>The subject depicted — resolvable at <a href="/lookup">/lookup</a></td></tr>
-        <tr><td class="mono">decision_ref</td><td>Pointer to the signed allow-decision: id, registry base URL, timestamp, decision signature</td></tr>
-        <tr><td class="mono">license_pg</td><td>The license that backed the decision (optional in opt-out denials)</td></tr>
-        <tr><td class="mono">receipt_ref</td><td>The provider’s post-generation receipt tying output to decision</td></tr>
+        <tr><td class="mono">decision_id</td><td>The allowed decision the assertion is bound to</td></tr>
+        <tr><td class="mono">subject_id</td><td>The subject, as the decision named it — resolvable at <a href="/lookup">/lookup</a></td></tr>
+        <tr><td class="mono">license_id</td><td>The licence the decision resolved against; <code>null</code> when the allow needed none</td></tr>
+        <tr><td class="mono">decision</td><td>Always <code>allow</code>: only an allowed decision can have a receipt</td></tr>
+        <tr><td class="mono">purpose</td><td>The intended use the decision answered</td></tr>
+        <tr><td class="mono">rules_snapshot_hash</td><td>The hash of the exact rule inputs that produced the decision</td></tr>
+        <tr><td class="mono">output_hash</td><td>The output’s SHA-256, from the receipt</td></tr>
+        <tr><td class="mono">signature, signing_key_id</td><td>The registry operator key’s signature and its key id; not part of the signed bytes</td></tr>
       </tbody>
     </table></div>
 
-    <h2>Embedding</h2>
+    <h2>Getting it and embedding it</h2>
     <p>
-      Use any C2PA-conformant SDK (the CAI <span class="mono">c2pa-rs</span>, Python
-      <span class="mono">c2pa-python</span>, or a hosted SDK). The assertion is added as a
-      custom assertion before signing:
+      After filing the receipt, the provider asks the registry for the assertion. Asking again
+      returns the byte-identical original, never a re-signed copy:
     </p>
-<pre><code>from prampta import Prampta
-from c2pa import C2paReader, C2paWriter   # illustrative
+<pre><code>POST https://api2.prampta.com/v1/assertions/
+Authorization: Bearer $PROVIDER_SECRET
+X-Provider-ID: your-provider-id
+X-Licensee-ID: lic-…
 
-pg = Prampta(base_url="https://api2.prampta.com", …)
-decision = pg.assert_allowed("PG-000042*", prompt=prompt, modality="image")
-
-assertion = pg.c2pa_assertion(decision)   # builds pg.assertion.v1
-writer.add_assertion("com.pregen.authorization/1", assertion)
-writer.sign(...)                           # your C2PA credential</code></pre>
+{"decision_id": "dec_…"}</code></pre>
+    <p>
+      Anyone can fetch an issued assertion with
+      <span class="mono">GET /v1/assertions/&#123;decision_id&#125;</span>. The registry produces
+      only this statement; building and signing the C2PA manifest is the provider’s job, with any
+      C2PA-conformant SDK. Where the statement goes in the manifest is not specified.
+    </p>
     <p>
       The PRE-GEN assertion never replaces the C2PA signature — it sits alongside it. Stripping
       the assertion breaks the studio’s chain-of-title check; stripping the C2PA signature
@@ -100,14 +108,15 @@ writer.sign(...)                           # your C2PA credential</code></pre>
 
     <h2>Verification, from anywhere</h2>
     <ol>
-      <li>Read the manifest, find <code>com.pregen.authorization/1</code>.</li>
-      <li>Resolve <code>subject_pg</code> publicly — <a href="/lookup">pregen.org/lookup</a> or <span class="mono">GET /v1/subjects/&#123;code&#125;</span>.</li>
-      <li>Fetch the registry’s key set (<span class="mono">GET /keys</span>, rotation-aware) and verify <code>decision_sig</code> over the canonical decision bytes.</li>
-      <li>Optionally pull the evidence bundle and walk the audit chain back to genesis.</li>
+      <li>Read the manifest and find the assertion where the provider placed it.</li>
+      <li>Take the key named by <code>signing_key_id</code> from the registry’s key set (<span class="mono">GET /keys</span>), and only if the <a href="/registries">signed directory</a> lists it for that registry.</li>
+      <li>Verify <code>signature</code> over the canonical JSON of the assertion without <code>signature</code> and <code>signing_key_id</code>.</li>
+      <li>Compare <code>output_hash</code> with the file’s SHA-256; a re-encoded file no longer matches.</li>
+      <li>Optionally, a party with an account at the registry fetches the evidence bundle (<span class="mono">GET /v1/audit/evidence/&#123;decision_id&#125;</span>) and walks the audit chain back to genesis.</li>
     </ol>
     <p>
-      No account, no SDK required — the file carries everything needed to ask the registry
-      “was this authorized?” and check the answer cryptographically.
+      The signature check needs no account and no SDK: the file carries everything needed to
+      ask “was this authorized?” and check the answer cryptographically.
     </p>
 
     <h2>What this is not</h2>
@@ -116,7 +125,7 @@ writer.sign(...)                           # your C2PA credential</code></pre>
       proves which license applied and that the provider asked. It also says nothing about
       provenance of the <em>input</em> material — that remains C2PA’s job. The two layers are
       complementary by design: C2PA for origin, PRE-GEN for consent.
-    </p><nav class="pager" aria-label="Pages"><a href="/docs/proves">← What it proves</a><a href="/docs/implement">Implement →</a></nav></article></div>
+    </p><nav class="pager" aria-label="Pages"><a href="/docs/proves">← What it proves</a><a href="/docs/implement">Build it →</a></nav></article></div>
 </div></main>
 <footer class="foot"><div class="wrap">
 <p>PRE-GEN is an open standard by Valerii Egorov, Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>

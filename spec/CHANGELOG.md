@@ -8,7 +8,32 @@ comments cited throughout `spec/PRE-GEN-SPEC.md`.
 
 See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
 
-## Unreleased — pregen 0.11.0, @pregen/verify 0.11.0, pregen-registry 0.2.0 (not published)
+## pregen 0.12.0, @pregen/verify 0.12.0, pregen-registry 0.3.0 (2026-11-06)
+
+Two extensions, so that PRE-GEN is integrated once, with no account at any registry, and a registry's commerce
+is a separate, optional layer.
+- **`provider-identity`** (`extensions/provider-identity.md`): a provider is its domain and its key. It serves
+  `/.well-known/pregen-party.json` (`schemas/party-document.json`: name, roles, its `pg.keyset.v1` chain), signs
+  every request (`signers` in `schemas/request.json`) and report, and sends no credential. A registry declares
+  `"providers": "open"` and `provider-identity`; it pins the chain with the first accepted message, and a later document
+  must extend it (P-2). Until the registry vets the provider, everything but a floor refusal, a published subject and
+  the provider's own bound licensee's grant is `deny PG_PROVIDER_NOT_ACCEPTED` (P-5a). `GET`s carry `PG-Access`
+  (`schemas/access.json`, with `aud` = the registry's `api`). A sandbox accepts a port and `localhost` in the provider URL and takes the document by
+  post (`POST /v2/sandbox/party`).
+- **`bind`** (`extensions/bind.md`, `schemas/binding.json`): a person connects their licences to an app through
+  OAuth 2.0 code + PKCE at the authority that holds their account; the binding (`pg.binding.v1`) names a random
+  per-app `licensee_id`; `PG_NOT_BOUND` (403) is "connect your licence", never a refusal. Specified; not in the
+  reference registry yet.
+- **Listing condition (`PG-CODE.md` §9.1, item 5):** a listed registry answers any AI service known by its domain, with
+  no account, on the same terms; it may also issue credentials and may vet a service first. Registries listed earlier
+  have 90 days from publication. `pregen-registry check` reports it.
+- **Registry document:** `providers` (`open` | `registered`), `bind` endpoints; `extensions` may name both, and `commerce`
+  (a registry's own optional layer, no shared page yet).
+- **Libraries:** `check_provider_url` / `checkProviderUrl`, `party_document` / `partyDocument`, `pg_access` / `pgAccess`.
+- **Reference registry 0.3.0:** `init --open-providers` (a sandbox always is), `provider accept --id https://…`,
+  `POST /v2/sandbox/party`, `PG-Access` on `GET /v2/grants/{id}` and `/v2/statement`; `GET /v2/keys/{provider URL}`.
+
+## pregen 0.11.0, @pregen/verify 0.11.0, pregen-registry 0.2.0 (2026-11-05)
 
 Security fixes from an internal review (2026-10-28), and what the two new guides need (`docs/provider.md`,
 `docs/registry.md`). No message format changes; one behaviour change in `decide_identity`.

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Versioning — PRE-GEN</title>
+<title>Versions — PRE-GEN</title>
 <meta name="description" content="How every PRE-GEN signed object is versioned and which changes are additive-safe.">
 <meta property="og:title" content="Versioning — PRE-GEN">
 <meta property="og:description" content="How every PRE-GEN signed object is versioned and which changes are additive-safe.">
@@ -20,15 +20,14 @@
 </head>
 <body>
 <header class="top"><div class="wrap">
-<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="40" height="32" alt="PRE-GEN"></a>
+<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt="PRE-GEN"></a>
 <button class="menu-btn" type="button" aria-controls="site-menu" aria-expanded="false" aria-label="Open menu"><span></span><span></span></button>
 <div class="menu" id="site-menu">
-<nav aria-label="Main"><a href="/docs" aria-current="page">Protocol</a><a href="/docs/sdk">Integrate</a><a href="/registries">Registries</a><a href="/lookup">Lookup</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a><a href="https://github.com/sponsors/Pastheroza">Support</a></nav>
-<div class="theme" role="group" aria-label="Theme"><button type="button" data-set-theme="system" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" class="fill"/></svg><span>System</span></button><button type="button" data-set-theme="light" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg><span>Light</span></button><button type="button" data-set-theme="dark" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><span>Dark</span></button></div>
+<nav aria-label="Main"><a href="/connect">Connect your AI</a><a href="/create-registry">Create a registry</a><a href="/docs">How it works</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a></nav>
 </div>
 </div></header>
 <main><div class="wrap">
-<div class="doc"><aside><ul><li><a href="/docs">Overview</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions" aria-current="page">Versioning</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Integrate</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Implement</a></li></ul></aside><article><h1>Versioning</h1>
+<div class="doc"><aside><ul><li><a href="/docs">How it works</a></li><li><a href="/docs/two-layers">Two layers</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions" aria-current="page">Versions</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Add it to your service</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Build it</a></li></ul></aside><article><h1>Versions</h1>
     <p class="meta"><strong>PRE-GEN v5</strong>, 12 October 2026 — the current version · <a href="/spec/PRE-GEN-v5.pdf">PDF</a> · <a href="/spec/VERSIONS.md">VERSIONS.md</a></p>
 
     <h2>Specification versions</h2>
@@ -44,17 +43,17 @@
       </tbody>
     </table></div>
     <ul>
-      <li><strong>A version is a published snapshot.</strong> The number changes only with a new release, here and on Zenodo; changes made in between are collected for the next one.</li>
-      <li><strong>Nothing issued ever changes meaning.</strong> A code, signed object or vector valid under one version stays valid under every later one. A version may stop issuing something, never stop recognizing it.</li>
+      <li><strong>A version is a published snapshot.</strong> The number changes only with a new release, here and on Zenodo. Changes made in between wait for the next one.</li>
+      <li><strong>Nothing issued ever changes meaning.</strong> A code or signed answer valid under one version stays valid under every later one. A version may stop issuing something, never stop recognizing it.</li>
       <li><strong>Each version lists what changed</strong> against the previous one — see <a href="/spec/VERSIONS.md">VERSIONS.md</a> for v4 → v5.</li>
-      <li><strong>Drafts for the next version are informative only.</strong> <a href="/spec/drafts/authorized-releases.md">Authorized Releases</a> — releases with the artist's permission, and stamping AI content that already exists. Not part of v5.</li>
+      <li><strong>Drafts for the next version are informative only, not part of v5.</strong> <a href="/spec/drafts/authorized-releases.md">Authorized Releases</a>: releases with the artist's permission, and stamping AI content that already exists.</li>
     </ul>
 
     <h2>v5 message types</h2>
     <p>The v5 interface names each message by its <code>type</code>, and the type is part of the signed bytes, so a signature over one kind of message can never be replayed as another: <code>pg.request.v1</code>, <code>pg.answer.v1</code>, <code>pg.report.v1</code>, <code>pg.report_ack.v1</code>, <code>pg.keyset.v1</code>, <code>pg.grant.v1</code>, <code>pg.anchors.v1</code>, and the bundle <code>pg.proof.v1</code>. JSON Schemas for each are in <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec/schemas">spec/schemas</a>. The markers below belong to the earlier interface, which stays valid.</p>
 
     <h2>Signed object markers (earlier interface)</h2>
-    <p class="meta">Updated 2026-08-23 · Independent of the specification version</p>
+    <p class="meta">Updated 2026-10-17 · Independent of the specification version</p>
 
     <p>
       Every signed object carries its schema version <strong>inside the signed bytes</strong> —
@@ -77,7 +76,7 @@
         <tr><td><strong>Decision</strong></td><td class="mono">schema_version = pg.decision.v1</td><td>Yes</td><td>Yes — new optional fields are free</td></tr>
         <tr><td><strong>Policy</strong></td><td class="mono">policy_version</td><td>Stamped on every decision</td><td>Versioned by design (append-only history)</td></tr>
         <tr><td><strong>License</strong></td><td class="mono">v = pg.license.v2</td><td>Yes</td><td>Within v2, yes; a meaning change needs a v3 branch</td></tr>
-        <tr><td><strong>Receipt</strong></td><td class="mono">v = pg.receipt.v2 (default) · pg.receipt.v3 (opt-in)</td><td>Yes</td><td>No — body changes ship live on merge</td></tr>
+        <tr><td><strong>Receipt</strong></td><td class="mono">v = pg.receipt.v2 (default) · pg.receipt.v3 (opt-in)</td><td>Yes</td><td>No — any change is a new marker (v3 was added that way)</td></tr>
         <tr><td><strong>Identity assertion</strong></td><td class="mono">audience = prampta:identity:v1</td><td>Yes</td><td>No — a new required field breaks old signatures, by design</td></tr>
         <tr><td><strong>Entitlement</strong></td><td class="mono">audience (same mechanism)</td><td>Yes</td><td>No — same reason</td></tr>
         <tr><td><strong>Evidence bundle</strong></td><td class="mono">pg.evidence.v1</td><td>Yes — minted fresh at read time</td><td>—</td></tr>
@@ -108,13 +107,14 @@
       signature from one format era cannot silently pass as another.
     </p>
 
-    <h2>Receipts: the known gap</h2>
+    <h2>Receipts: a fixed shape</h2>
     <p>
-      There is currently no deprecation window or dual-accept mechanism for receipt format
-      changes — an addition to the receipt body ships live the moment it merges. The receipt’s
-      version marker closed the “no marker at all” gap; the evolution-window gap is known and
-      tracked, not hidden. Providers holding cached receipts should verify them against the
-      operator key set and store the evidence bundle for long-term audit.
+      Every member of a receipt is always present, so any change of shape is a new marker
+      (<code>pg.receipt.v3</code> was added that way, to sign the event type). A registry may
+      accept a provider signature over the current or the previous shape during an announced
+      window, signalled with <code>Deprecation</code> and <code>Sunset</code> headers
+      (<a href="/spec/PRE-GEN-SPEC.md">PRE-GEN-SPEC.md</a> §6.1, §7). <code>pg.receipt.v2</code>
+      and <code>pg.receipt.v3</code> coexist today with no sunset date.
     </p><nav class="pager" aria-label="Pages"><a href="/docs/pg-code">← PG codes</a><a href="/docs/refusal-codes">Refusal codes →</a></nav></article></div>
 </div></main>
 <footer class="foot"><div class="wrap">

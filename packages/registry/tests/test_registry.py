@@ -10,7 +10,7 @@ from pregen import PregenError, canonical_json, fingerprint, verify_bytes
 from pregen_registry.app import create_app
 from pregen_registry.cli import main as cli
 from pregen_registry.protocol import Key, check_body, message_id, mint_code, parse_code, seal, signing_input
-from pregen_registry.registry import Config, Registry
+from pregen_registry.registry import PARTY_MIN_INTERVAL, Config, Registry
 
 
 class Clock:
@@ -575,3 +575,166 @@ def test_a_lost_operator_key_is_replaced_and_its_history_kept(tmp_path, capsys):
     assert [k["key_id"] for k in ks["keys"]][:2] == [lost, reg.key.id]
     import pregen
     assert pregen.verify_signed(ks, reg.key.public_hex, "signature")
+
+
+# ── extension provider-identity: a provider known by its domain ─────────
+
+import pregen as lib  # noqa: E402
+
+
+class OpenProvider:
+    """A provider with no account anywhere: a domain, a key, a party document; every message signed."""
+
+    def __init__(self, reg, client, url="https://frame.example", key=None):
+        self.reg, self.c, self.id, self.key = reg, client, url, key or lib.new_private_key_hex()
+        self.key_id = lib.fingerprint(lib.public_key_hex(self.key))
+        self.doc = lib.party_document(url, "Frame", self.key)
+        self.h = {"X-Provider-ID": url}
+
+    def signed(self, type_, body, key=None):
+        k = key or self.key
+        kid = lib.fingerprint(lib.public_key_hex(k))
+        return lib.sign_envelope(type_, {"signers": [{"role": "provider", "key_id": kid}], **body}, k)
+
+    def body(self, subject, job="job-1", purpose="research", **extra):
+        return {"subject_ref": subject, "provider_id": self.id, "profile": "likeness/1", "use": {"purpose": purpose},
+                "job_id": job, "job_hash": "a" * 64, **extra}
+
+    def ask(self, body, key=None, headers=None):
+        return self.c.post("/v2/requests", headers=headers or self.h, json=self.signed("pg.request.v1", body, key))
+
+    def answer(self, body):
+        r = self.ask(body)
+        assert r.status_code == 200, r.text
+        return r.json()["answer"]
+
+    def report(self, answer, outcome="generated"):
+        body = {"request_id": answer["body"]["request_id"], "answer": message_id("pg.answer.v1", answer["body"]),
+                "job_id": "job-1", "outcome": outcome, "output_hash": "e" * 64 if outcome == "generated" else "",
+                "occurred_at": 1_800_000_000}
+        return self.c.post("/v2/reports", headers=self.h, json=self.signed("pg.report.v1", body))
+
+
+def test_a_sandbox_takes_the_party_document_by_post_and_answers_signed_requests():
+    reg, c, _ = make()
+    p = OpenProvider(reg, c)
+    doc = c.get("/.well-known/pregen-registry.json").json()
+    assert doc["providers"] == "open" and "provider-identity" in doc["extensions"]
+    check_body("registry-document", doc)
+    assert p.ask(p.body(code(1))).status_code == 401                                   # nothing pinned yet
+    r = c.post("/v2/sandbox/party", json=p.doc)
+    assert r.status_code == 200 and r.json()["party_id"] == p.id, r.text
+    assert c.post("/v2/sandbox/party", json=p.doc).status_code == 200                 # the same document again
+    a = p.answer(p.body(code(1)))["body"]
+    assert a["status"] == "allow" and a["request_id"] == message_id("pg.request.v1", p.signed("pg.request.v1", p.body(code(1)))["body"])
+    assert p.answer(p.body(code(3)))["body"]["reason"] == "PG_SUBJECT_OPTED_OUT"
+    assert p.answer(p.body(code(8)))["body"]["reason"] == "PG_UNKNOWN_SUBJECT"       # a sandbox masks nothing
+    # the report, signed by the same key, is acknowledged
+    r = p.report(p.answer(p.body(code(1), job="job-1")))
+    assert r.status_code == 200 and r.json()["ack"]["body"]["provider_key_id"] == p.key_id, r.text
+
+
+def test_an_open_provider_is_its_signature_and_nothing_else():
+    reg, c, _ = make()
+    p = OpenProvider(reg, c)
+    c.post("/v2/sandbox/party", json=p.doc)
+    unsigned = {"type": "pg.request.v1", "body": p.body(code(1)), "signatures": []}
+    assert c.post("/v2/requests", headers=p.h, json=unsigned).status_code == 422       # P-1: signed or nothing
+    assert p.ask(p.body(code(1)), key=lib.new_private_key_hex()).status_code == 401    # another key
+    assert p.ask(p.body(code(1)), headers={**p.h, "Authorization": "Bearer x"}).status_code == 401   # no credential
+    stolen = p.body(code(1))
+    stolen["provider_id"] = "https://other.example"
+    assert p.ask(stolen).status_code == 401                                            # names another provider
+    assert c.post("/v2/keys", headers=p.h, json=p.doc["keysets"][0]).status_code == 401   # keys live in the document
+    for bad in ("https://Frame.example", "https://frame.example/", "http://frame.example"):
+        assert c.post("/v2/sandbox/party", json={**p.doc, "party_id": bad}).status_code == 422
+    # the old credential path still works beside it
+    old = Provider(reg, c)
+    assert old.answer(old.body(code(1)))["body"]["status"] == "allow"
+
+
+def test_a_production_registry_reads_the_party_document_from_the_domain_and_masks_until_vetted():
+    clock = Clock()
+    docs = {}
+    reg = Registry(Config(prefix="ABCD", name="R", api="https://r.example", providers="open"), Key(), clock=clock,
+                   fetch_party=lambda url: docs[url])
+    c = TestClient(create_app(reg))
+    private = reg.add_subject("Maya Cole", level="verified")
+    public = reg.add_subject("Public Person", level="verified", published=1)
+    out = reg.add_subject("Opted Out", level="verified")
+    reg.opt_out(out)
+    reg.add_grant(private, purposes=("commercial",))
+    reg.add_grant(public, purposes=("commercial",))
+    reg.add_grant(private, licensee_id="https://frame.example:u1", purposes=("research",))
+    p = OpenProvider(reg, c)
+    assert p.ask(p.body(private, purpose="commercial")).status_code == 401              # no document on the domain
+    docs[p.id] = p.doc
+    clock.t += PARTY_MIN_INTERVAL
+    assert c.post("/v2/sandbox/party", json=p.doc).status_code == 404                  # by post only in a sandbox
+    # P-5a: unvetted, it learns a refusal of the person, a published subject, its own bound licensee's grant; nothing else
+    assert p.answer(p.body(private, purpose="commercial"))["body"]["reason"] == "PG_PROVIDER_NOT_ACCEPTED"
+    assert p.answer(p.body(mint_code("ABCD", 99), job="j2"))["body"]["reason"] == "PG_PROVIDER_NOT_ACCEPTED"
+    assert p.answer(p.body(out, job="j3"))["body"]["reason"] == "PG_SUBJECT_OPTED_OUT"
+    assert p.answer(p.body(public, job="j4", purpose="commercial"))["body"]["status"] == "allow"
+    reg.connect(p.id, "https://frame.example:u1")
+    a = p.answer(p.body(private, job="j5", licensee_id="https://frame.example:u1"))["body"]
+    assert a["status"] == "allow"
+    # PG-Access reads the grant; a credential-less GET without it, or for another path, does not
+    gid = a["basis"]["grant"]["id"]
+    assert c.get(f"/v2/grants/{gid}", headers=p.h).status_code == 401
+    h = {"PG-Access": lib.pg_access(p.id, p.key, "https://r.example", "GET", f"/v2/grants/{gid}", now=clock.t)}
+    assert c.get(f"/v2/grants/{gid}", headers=h).status_code == 200
+    assert c.get(f"/v2/grants/{gid}?x=1", headers=h).status_code == 401
+    late = {"PG-Access": lib.pg_access(p.id, p.key, "https://r.example", "GET", f"/v2/grants/{gid}", now=clock.t - 61)}
+    assert c.get(f"/v2/grants/{gid}", headers=late).status_code == 401
+    other = {"PG-Access": lib.pg_access(p.id, p.key, "https://other.example", "GET", f"/v2/grants/{gid}", now=clock.t)}
+    assert c.get(f"/v2/grants/{gid}", headers=other).status_code == 401                # signed for another registry
+    assert c.get("/v2/statement", headers={"PG-Access": lib.pg_access(p.id, p.key, "https://r.example", "GET", "/v2/statement", now=clock.t)}).json()["provider_id"] == p.id
+    # P-6: vetted, ordinary answers
+    reg.accept_provider(p.id)
+    assert p.answer(p.body(private, job="j6", purpose="commercial"))["body"]["status"] == "allow"
+    assert p.answer(p.body(mint_code("ABCD", 99), job="j7"))["body"]["reason"] == "PG_UNKNOWN_SUBJECT"
+
+
+def test_the_pinned_chain_is_extended_by_a_rotation_and_never_replaced():
+    clock = Clock()
+    docs = {}
+    reg = Registry(Config(prefix="ABCD", name="R", api="https://r.example", providers="open"), Key(), clock=clock,
+                   fetch_party=lambda url: docs[url])
+    c = TestClient(create_app(reg))
+    s = reg.add_subject("Maya Cole", level="verified", published=1)
+    reg.add_grant(s)
+    p = OpenProvider(reg, c)
+    docs[p.id] = p.doc
+    assert p.answer(p.body(s))["body"]["status"] == "allow"
+    # whoever takes over the domain does not get the keys: a new first keyset is refused, the old key still works
+    thief = OpenProvider(reg, c, key=lib.new_private_key_hex())
+    docs[p.id] = thief.doc
+    clock.t += PARTY_MIN_INTERVAL
+    r = thief.ask(thief.body(s, job="j2"))
+    assert r.status_code == 401 and "does not extend" in r.text, r.text
+    assert p.answer(p.body(s, job="j3"))["body"]["status"] == "allow"
+    # a rotation signed by the old key extends the chain; the new key signs from then on, the old no longer does
+    new = lib.new_private_key_hex()
+    new_id = lib.fingerprint(lib.public_key_hex(new))
+    rotation = lib.sign_envelope("pg.keyset.v1", {
+        "signers": [{"role": "provider", "key_id": new_id}, {"role": "provider_previous", "key_id": p.key_id}],
+        "kind": "rotation", "provider_id": p.id, "previous": message_id("pg.keyset.v1", p.doc["keysets"][0]["body"]),
+        "recovery_registry": "", "keys": [{"key_id": new_id, "public_key_hex": lib.public_key_hex(new), "status": "current"},
+                                          {"key_id": p.key_id, "public_key_hex": lib.public_key_hex(p.key), "status": "previous"}]},
+        new, p.key)
+    docs[p.id] = {**p.doc, "keysets": [p.doc["keysets"][0], rotation]}
+    clock.t += PARTY_MIN_INTERVAL
+    assert p.ask(p.body(s, job="j4"), key=new).status_code == 200
+    assert p.ask(p.body(s, job="j5")).status_code == 401
+    assert [k["body"]["kind"] for k in c.get(f"/v2/keys/{p.id}").json()["keysets"]] == ["first", "rotation"]
+
+
+def test_a_registered_only_registry_refuses_providers_known_by_their_domain():
+    reg = Registry(Config(prefix="ABCD", name="R", api="https://r.example"), Key())
+    c = TestClient(create_app(reg))
+    doc = c.get("/.well-known/pregen-registry.json").json()
+    assert doc["providers"] == "registered" and "provider-identity" not in doc["extensions"]
+    p = OpenProvider(reg, c)
+    r = p.ask(p.body(mint_code("ABCD", 1)))
+    assert r.status_code == 401 and "registered" in r.text

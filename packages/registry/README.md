@@ -2,8 +2,9 @@
 
 The reference PRE-GEN registry. **Ask before you generate; get a signed answer anyone can
 check.** It implements `spec/PRE-GEN-CORE.md`, the profile `likeness/1` and these extensions:
-`reports`, `provider-keys`, `limits`, `jobs`, `grants`, `licensee`, `observe`, `lookup` and,
-in sandbox mode, `sandbox`.
+`reports`, `provider-keys`, `limits`, `jobs`, `grants`, `licensee`, `observe`, `lookup`, `identity`,
+`proof`, `catalog`, `provider-identity` (with `--open-providers`, and always in a sandbox) and, in sandbox
+mode, `sandbox`.
 
 It is a registry, not a marketplace: it has no prices, payments or dashboards. Those belong to
 each registry's own business.
@@ -31,7 +32,9 @@ answers as `spec/extensions/sandbox.md` says.
 4. **Add subjects, grants, providers and end users:**
    - `pregen-registry subject add --name "…" --level verified`
    - `pregen-registry grant add --subject PG-ABCD-… --purposes commercial --days 365 --max-uses 100`
-   - `pregen-registry provider add --id frame-ai` — prints the credential once
+   - `pregen-registry provider add --id frame-ai` — prints the credential once (a registry you created with
+     `--open-providers` also answers any provider known by its domain and key, with no credential:
+     `spec/extensions/provider-identity.md`; `provider accept --id https://frame.example` once you have vetted one)
    - `pregen-registry connect --provider frame-ai --licensee frame-ai:user-1`
 5. **Serve it behind TLS:** `pregen-registry serve --dir ./data --host 0.0.0.0 --port 8000`, or HTTPS directly with
    `--ssl-certfile cert.pem --ssl-keyfile key.pem`.
@@ -59,10 +62,11 @@ never signs again. Move its private key file offline.
 | `GET /keys` | its signed operator key set: every key it ever signed with, current and retired |
 | `POST /v2/requests` | ask → `{"answer": <signed pg.answer.v1>}` |
 | `POST /v2/reports` | report → `{"ack": <signed pg.report_ack.v1>}` |
-| `POST /v2/keys`, `GET /v2/keys/{provider_id}` | provider keysets |
-| `GET /v2/grants/{id}` | a signed grant |
+| `POST /v2/keys`, `GET /v2/keys/{provider_id}` | provider keysets (a provider known by its domain publishes them in its party document instead) |
+| `GET /v2/grants/{id}` | a signed grant (credential, or `PG-Access`) |
 | `GET /v2/codes/{code}` | public lookup |
 | `POST /v2/sandbox/access` | sandbox credentials (sandbox mode only) |
+| `POST /v2/sandbox/party` | a provider's party document by post (sandbox mode only) |
 
 ## Limits of this version
 
@@ -71,6 +75,9 @@ never signs again. Move its private key file offline.
 - **Managed subject keys are stored in the database.** Encrypt them, or use a KMS, before
   holding real people.
 - **Provider key recovery** (a keyset co-signed by the registry) is not implemented yet.
+- **`bind`** (a person connecting licences to an app) is specified (`spec/extensions/bind.md`), not implemented.
+- **Party documents** are fetched after a one-shot address check; a resolver that pins the checked address closes
+  the rebinding gap before holding real people. The registrable-domain rule (Public Suffix List) is not enforced.
 
 ## Tests
 

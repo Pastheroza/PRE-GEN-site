@@ -1,13 +1,14 @@
 """pregen-registry — run and operate a PRE-GEN registry.
 
   pregen-registry init --dir DATA --prefix TEST --name "My Registry" --api https://registry.example
-                       --policy https://registry.example/policy --complaints mailto:… [--sandbox]
+                       --policy https://registry.example/policy --complaints mailto:… [--sandbox] [--open-providers]
   pregen-registry serve --dir DATA [--host 0.0.0.0 --port 8000]
   pregen-registry subject add --dir DATA --name "Maya Cole" [--level verified]
   pregen-registry grant add --dir DATA --subject PG-… [--licensee ID] [--purposes research,commercial] [--days 365] [--max-uses N]
   pregen-registry grant revoke --dir DATA --id GRANT_ID    (the grant ends now)
   pregen-registry provider add --dir DATA [--id frame-ai]     (prints the credential once)
   pregen-registry provider remove --dir DATA --id frame-ai    (its token stops working)
+  pregen-registry provider accept --dir DATA --id https://frame.example   (a provider known by its domain, vetted: ordinary answers)
   pregen-registry connect --dir DATA --provider frame-ai --licensee frame-ai:user-1
   pregen-registry info --dir DATA
   pregen-registry key next --dir DATA      (makes the next operator key and lists it in /keys as `next`)
@@ -83,6 +84,8 @@ def main(argv=None):
             p.add_argument("--policy", default="")
             p.add_argument("--complaints", default="")
             p.add_argument("--sandbox", action="store_true", help="standard test subjects; credentials without an account")
+            p.add_argument("--open-providers", action="store_true",
+                           help="accept providers known by their domain and key, with no credential (provider-identity)")
         elif name == "serve":
             p.add_argument("--host", default="127.0.0.1")
             p.add_argument("--port", type=int, default=8000)
@@ -107,7 +110,7 @@ def main(argv=None):
             p.add_argument("--days", type=int, default=365)
             p.add_argument("--max-uses", type=int)
         elif name == "provider":
-            p.add_argument("action", choices=["add", "remove"])
+            p.add_argument("action", choices=["add", "remove", "accept"])
             p.add_argument("--id")
         elif name == "connect":
             p.add_argument("--provider", required=True)
@@ -139,7 +142,7 @@ def main(argv=None):
         if cfg_path.exists():
             sys.exit(f"{a.dir} already holds a registry")
         cfg = {"prefix": a.prefix, "name": a.name, "api": a.api, "policy": a.policy, "complaints": a.complaints,
-               "sandbox": a.sandbox}
+               "sandbox": a.sandbox, "providers": "open" if a.open_providers or a.sandbox else "registered"}
         try:
             Config(**cfg)
         except ValueError as e:
@@ -233,6 +236,12 @@ def main(argv=None):
         except ValueError as e:
             sys.exit(str(e))
         print(f"provider {a.id} removed: its token no longer works")
+    elif a.cmd == "provider" and a.action == "accept":
+        try:
+            load(a.dir).accept_provider(a.id or "")
+        except ValueError as e:
+            sys.exit(str(e))
+        print(f"provider {a.id} accepted: it gets ordinary answers from now on (provider-identity P-6)")
     elif a.cmd == "provider":
         if a.id and not re.fullmatch(r"[A-Za-z0-9-]+", a.id):              # ":" separates provider and customer
             sys.exit("a provider id is letters, digits and -")

@@ -69,6 +69,13 @@ export function newPrivateKeyHex(): string;
 export function publicKeyHex(privateKeyHex: string): Promise<string>;
 /** A v5 envelope {type, body, signatures}: one signature per private key, in the order of body.signers. */
 export function signEnvelope(type: string, body: Record<string, unknown>, ...privateKeyHexes: string[]): Promise<{ type: string; body: Record<string, unknown>; signatures: string[] }>;
+/** A provider URL (provider-identity): https://<domain>, lower case, no path, port, query or fragment. Throws PregenError. */
+export function checkProviderUrl(url: string, options?: { allowPort?: boolean }): string;
+/** The document to serve at {providerUrl}/.well-known/pregen-party.json: name, roles and a first keyset signed by the key. */
+export function partyDocument(providerUrl: string, name: string, privateKeyHex: string,
+  options?: { redirectUris?: string[]; bindInitiateUri?: string; policy?: string; contact?: string }): Promise<Record<string, unknown>>;
+/** The PG-Access header value for a GET by a provider known by its domain: a signed pg.access.v1 envelope, base64url. */
+export function pgAccess(providerUrl: string, privateKeyHex: string, aud: string, method: string, path: string, options?: { now?: number }): Promise<string>;
 export function verifyDecision(decision: Record<string, unknown>, code: string, options?: { directory?: Directory; fetch?: Fetch }): Promise<boolean>;
 /** Everything to check before generating (V-1 to V-4, V-10, V-13, P-5). Throws PregenError with the
  * reason; returns the decision when you may generate. `request`: the /v1/verify body plus provider_id and licensee_id. */

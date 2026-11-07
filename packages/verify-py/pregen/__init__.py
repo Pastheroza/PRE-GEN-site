@@ -13,13 +13,14 @@ from urllib.parse import urlsplit
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-__version__ = "0.11.0"
+__version__ = "0.12.0"
 __all__ = [
     "STEWARD_PUBLIC_KEY_HEX", "DIRECTORY_URL", "PregenError", "Directory", "canonical_json",
     "fingerprint", "check_public_key", "verify_bytes", "verify_signed", "verify_license", "issuer_of", "normalize_code",
     "verify_directory", "load_directory", "verify_decision", "check_decision", "check_answer", "verify_answer", "message_id", "DIRECTORY_MAX_AGE", "decide_identity",
     "verify_anchors", "check_channel_proof", "wikidata_official_urls", "check_proof", "FLOOR_REASONS", "REPORT_GRACE", "STEWARD_SUCCESSOR_PUBLIC_KEY_HEX", "Simulator",
     "signing_input", "sign_envelope", "new_private_key_hex", "public_key_hex",
+    "check_provider_url", "party_document", "pg_access",
 ]
 
 STEWARD_PUBLIC_KEY_HEX = "5cb949aab04186e3e216ec541b847c912fc3f78138c0ec3cb2560b2dad0d1f1b"
@@ -535,6 +536,64 @@ def sign_envelope(type_: str, body: dict, *private_key_hexes: str) -> dict:
     data = signing_input(type_, body)
     return {"type": type_, "body": body, "signatures": [
         Ed25519PrivateKey.from_private_bytes(bytes.fromhex(k)).sign(data).hex() for k in private_key_hexes]}
+
+
+# ── extension provider-identity: a provider known by its domain, with no account anywhere ──────────────
+
+_HOST = re.compile(r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]")
+
+
+def check_provider_url(url, allow_port: bool = False) -> str:
+    """A provider URL (extensions/provider-identity.md): `https://` + the app's own domain, lower case, ASCII (an
+    IDN in its xn-- form), with no path, query, fragment, credentials, port or trailing dot. One app, one id: no other
+    spelling of the domain is an id. A sandbox (allow_port) also takes a port and `localhost`, to test from a laptop."""
+    if not isinstance(url, str) or not url.startswith("https://"):
+        raise PregenError("a provider URL is https://<your domain>")
+    u = urlsplit(url)
+    host, _, port = u.netloc.partition(":")
+    local = allow_port and host == "localhost"
+    if "@" in u.netloc or u.path or u.query or u.fragment or url != "https://" + u.netloc \
+            or not (_HOST.fullmatch(host) or local) or (port and not (allow_port and port.isdigit() and 0 < int(port) < 65536)):
+        raise PregenError(f"not a provider URL: {url!r} (https://<domain>, lower case, no path, port, query or fragment)")
+    return url
+
+
+def party_document(provider_url: str, name: str, private_key_hex: str, *, redirect_uris=(), bind_initiate_uri: str = "",
+                   policy: str = "", contact: str = "") -> dict:
+    """The document a provider serves at `{provider_url}/.well-known/pregen-party.json` (provider-identity): who it is
+    and its signing key, as a `first` keyset signed by that key. The same key gives the same document every time, so
+    build it at deploy time or on each start. To change the key later, append a `rotation` keyset (provider-keys)."""
+    check_provider_url(provider_url, allow_port=True)
+    pub = public_key_hex(private_key_hex)
+    kid = fingerprint(pub)
+    keyset = sign_envelope("pg.keyset.v1", {
+        "signers": [{"role": "provider", "key_id": kid}], "kind": "first", "provider_id": provider_url,
+        "previous": None, "recovery_registry": "",
+        "keys": [{"key_id": kid, "public_key_hex": pub, "status": "current"}]}, private_key_hex)
+    doc = {"party_id": provider_url, "name": name, "roles": ["provider"], "keysets": [keyset]}
+    if redirect_uris:
+        doc["redirect_uris"] = list(redirect_uris)
+    if bind_initiate_uri:
+        doc["bind_initiate_uri"] = bind_initiate_uri
+    if policy:
+        doc["policy"] = policy
+    if contact:
+        doc["contact"] = contact
+    return doc
+
+
+def pg_access(provider_url: str, private_key_hex: str, aud: str, method: str, path: str, now=None) -> str:
+    """The `PG-Access` header value for a GET by a provider known by its domain (provider-identity): a `pg.access.v1`
+    envelope over {provider_id, aud (the registry's api, from the directory), method, path (with its query string),
+    issued_at}, signed with the current key, as base64url. A registry accepts it within 60 seconds of `issued_at`, for
+    itself only: a header signed for another registry is refused."""
+    import base64
+    import time
+    kid = fingerprint(public_key_hex(private_key_hex))
+    env = sign_envelope("pg.access.v1", {"signers": [{"role": "provider", "key_id": kid}], "provider_id": provider_url,
+                                         "aud": aud.rstrip("/"), "method": method.upper(), "path": path,
+                                         "issued_at": int(time.time() if now is None else now)}, private_key_hex)
+    return base64.urlsafe_b64encode(canonical_json(env)).decode().rstrip("=")
 
 
 def _registry_signed(env: dict, type_: str, code: str, directory: Directory, get_json) -> dict:

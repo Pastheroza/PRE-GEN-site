@@ -51,9 +51,13 @@
           "lookup",
           "identity",
           "proof",
-          "catalog"
+          "catalog",
+          "provider-identity",
+          "bind",
+          "commerce"
         ]
-      }
+      },
+      "description": "commerce: a registry's own, optional second layer (selling licences); its terms are the registry's own page until a shared extension is published"
     },
     "policy": {
       "type": "string"
@@ -66,6 +70,31 @@
     },
     "spec": {
       "type": "string"
+    },
+    "providers": {
+      "enum": [
+        "open",
+        "registered"
+      ],
+      "description": "extension provider-identity: open = providers known by their domain are accepted; registered = this registry issues its own credentials (the default when absent)"
+    },
+    "bind": {
+      "type": "object",
+      "required": [
+        "authorize",
+        "token"
+      ],
+      "properties": {
+        "authorize": {
+          "type": "string",
+          "pattern": "^https://"
+        },
+        "token": {
+          "type": "string",
+          "pattern": "^https://"
+        }
+      },
+      "description": "extension bind: where a person connects their licences to an app"
     }
   }
 }

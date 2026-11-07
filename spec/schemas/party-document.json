@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.pregen.org/spec/schemas/party-document.json",
+  "title": "GET {provider URL}/.well-known/pregen-party.json (extension provider-identity)",
+  "type": "object",
+  "required": [
+    "party_id",
+    "name",
+    "roles",
+    "keysets"
+  ],
+  "properties": {
+    "party_id": {
+      "type": "string",
+      "pattern": "^https://[a-z0-9.:-]+$",
+      "description": "the provider URL: https:// and the app's own domain, nothing else"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "roles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "const": "provider"
+      }
+    },
+    "keysets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "type",
+          "body",
+          "signatures"
+        ],
+        "properties": {
+          "type": {
+            "const": "pg.keyset.v1"
+          },
+          "body": {
+            "type": "object"
+          },
+          "signatures": {
+            "type": "array"
+          }
+        }
+      },
+      "description": "the pg.keyset.v1 chain (provider-keys), oldest first"
+    },
+    "redirect_uris": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "extension bind: HTTPS URLs on the provider's own host, or a private-use scheme from the reversed domain"
+    },
+    "bind_initiate_uri": {
+      "type": "string"
+    },
+    "policy": {
+      "type": "string"
+    },
+    "contact": {
+      "type": "string"
+    }
+  }
+}

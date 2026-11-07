@@ -13,6 +13,10 @@
     "job_hash"
   ],
   "properties": {
+    "signers": {
+      "type": "array",
+      "description": "extension provider-identity: [{role: provider, key_id}] when the request is signed; absent when a credential authenticates it"
+    },
     "subject_ref": {
       "type": "string",
       "pattern": "^PG-[0-9A-Z*~$=!-]{3,48}$"

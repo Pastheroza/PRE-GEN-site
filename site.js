@@ -1,4 +1,4 @@
-// Header menu (phones) and theme choice (every page).
+// Header menu (every page).
 (function () {
   var root = document.documentElement;
   var btn = document.querySelector(".menu-btn");
@@ -23,22 +23,6 @@
     });
   }
 
-  var choices = document.querySelectorAll("[data-set-theme]");
-  function current() { return root.getAttribute("data-theme") || "system"; }
-  function mark() {
-    choices.forEach(function (b) { b.setAttribute("aria-pressed", b.getAttribute("data-set-theme") === current() ? "true" : "false"); });
-  }
-  choices.forEach(function (b) {
-    b.addEventListener("click", function () {
-      var t = b.getAttribute("data-set-theme");
-      try {
-        if (t === "system") localStorage.removeItem("pg-theme"); else localStorage.setItem("pg-theme", t);
-      } catch (e) {}
-      if (t === "system") root.removeAttribute("data-theme"); else root.setAttribute("data-theme", t);
-      mark();
-    });
-  });
-  mark();
 })();
 
 // A Copy button on every code block.

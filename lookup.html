@@ -20,23 +20,22 @@
 </head>
 <body>
 <header class="top"><div class="wrap">
-<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="40" height="32" alt="PRE-GEN"></a>
+<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt="PRE-GEN"></a>
 <button class="menu-btn" type="button" aria-controls="site-menu" aria-expanded="false" aria-label="Open menu"><span></span><span></span></button>
 <div class="menu" id="site-menu">
-<nav aria-label="Main"><a href="/docs">Protocol</a><a href="/docs/sdk">Integrate</a><a href="/registries">Registries</a><a href="/lookup" aria-current="page">Lookup</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a><a href="https://github.com/sponsors/Pastheroza">Support</a></nav>
-<div class="theme" role="group" aria-label="Theme"><button type="button" data-set-theme="system" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" class="fill"/></svg><span>System</span></button><button type="button" data-set-theme="light" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg><span>Light</span></button><button type="button" data-set-theme="dark" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><span>Dark</span></button></div>
+<nav aria-label="Main"><a href="/connect">Connect your AI</a><a href="/create-registry">Create a registry</a><a href="/docs">How it works</a><a href="/registries">Registries</a><a href="/lookup" aria-current="page">Look up a code</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a></nav>
 </div>
 </div></header>
 <main><div class="wrap">
 <h1>Look up a PG code</h1>
-<p class="lede">Every subject and licence has a permanent, check-summed code. Enter one to see what the registry holds. No account needed.</p>
+<p class="lede">Every person, work and licence in a registry has a permanent code. Enter one to see what the registry says about it. No account needed.</p>
 <form class="search" id="pgForm" autocomplete="off">
 <input id="pgInput" type="text" name="code" placeholder="PG-000042*" aria-label="PG code" spellcheck="false" autocapitalize="characters" maxlength="32">
 <button type="submit">Look up</button>
 </form>
-<p class="meta">Subject <span class="mono">PG-000042*</span> · licence <span class="mono">PG-STD-000001-K7M2QX9</span> · legacy <span class="mono">PG-0000016</span> · another registry <span class="mono">PG-NWRD-000042=</span></p>
+<p class="meta">Person <span class="mono">PG-000042*</span> · licence <span class="mono">PG-STD-000001-K7M2QX9</span> · old format <span class="mono">PG-0000016</span> · another registry <span class="mono">PG-NWRD-000042=</span></p>
 <div id="pgResult" class="pg-result" aria-live="polite"></div>
-<p class="meta">Looking up a code never grants anything. A provider needs a signed decision from <a href="/docs/sdk"><code>POST /v1/verify/</code></a> before generating. Format: <a href="/docs/pg-code">PG codes</a>.</p>
+<p class="meta">Looking up a code permits nothing. An AI service needs a signed yes from the registry before it generates (<a href="/docs/sdk">how to ask</a>). Format: <a href="/docs/pg-code">PG codes</a>.</p>
 <script src="/lookup.js"></script>
 
 </div></main>

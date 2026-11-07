@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.pregen.org/spec/schemas/access.json",
+  "title": "pg.access.v1 body (extension provider-identity): the PG-Access header of a GET",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "signers",
+    "provider_id",
+    "aud",
+    "method",
+    "path",
+    "issued_at"
+  ],
+  "properties": {
+    "signers": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "role",
+          "key_id"
+        ],
+        "properties": {
+          "role": {
+            "const": "provider"
+          },
+          "key_id": {
+            "type": "string",
+            "pattern": "^pg-ed25519:[0-9a-f]{32}$"
+          }
+        }
+      }
+    },
+    "provider_id": {
+      "type": "string",
+      "pattern": "^https://"
+    },
+    "aud": {
+      "type": "string",
+      "pattern": "^https://",
+      "description": "the registry this read is for: its api base URL from the directory; a read signed for another registry is refused"
+    },
+    "method": {
+      "const": "GET"
+    },
+    "path": {
+      "type": "string",
+      "pattern": "^/",
+      "description": "the path with its query string"
+    },
+    "issued_at": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

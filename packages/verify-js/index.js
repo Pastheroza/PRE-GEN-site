@@ -446,6 +446,55 @@ export async function signEnvelope(type, body, ...privateKeyHexes) {
   return { type, body, signatures };
 }
 
+// ── extension provider-identity: a provider known by its domain, with no account anywhere ──────────────
+
+const HOST = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$/;
+
+/** A provider URL (extensions/provider-identity.md): `https://` + the app's own domain, lower case, ASCII (an IDN in
+ * its xn-- form), with no path, query, fragment, credentials, port or trailing dot. One app, one id. A sandbox
+ * (allowPort) also takes a port and `localhost`, to test from a laptop. Returns it; throws PregenError otherwise. */
+export function checkProviderUrl(url, { allowPort = false } = {}) {
+  let u;
+  try { u = new URL(url); } catch { fail("a provider URL is https://<your domain>"); }
+  const host = u.hostname;
+  if (u.protocol !== "https:" || u.origin !== url || u.username || (u.port && !allowPort)
+      || !(HOST.test(host) || (allowPort && host === "localhost"))) {
+    fail(`not a provider URL: ${JSON.stringify(url)} (https://<domain>, lower case, no path, port, query or fragment)`);
+  }
+  return url;
+}
+
+/** The document a provider serves at `{providerUrl}/.well-known/pregen-party.json` (provider-identity): who it is and
+ * its signing key, as a `first` keyset signed by that key. The same key gives the same document every time, so build
+ * it at deploy time or on each start. To change the key later, append a `rotation` keyset (provider-keys). */
+export async function partyDocument(providerUrl, name, privateKeyHex,
+  { redirectUris = [], bindInitiateUri = "", policy = "", contact = "" } = {}) {
+  checkProviderUrl(providerUrl, { allowPort: true });
+  const pub = await publicKeyHex(privateKeyHex);
+  const kid = await fingerprint(pub);
+  const keyset = await signEnvelope("pg.keyset.v1", { signers: [{ role: "provider", key_id: kid }], kind: "first",
+    provider_id: providerUrl, previous: null, recovery_registry: "",
+    keys: [{ key_id: kid, public_key_hex: pub, status: "current" }] }, privateKeyHex);
+  const doc = { party_id: providerUrl, name, roles: ["provider"], keysets: [keyset] };
+  if (redirectUris.length) doc.redirect_uris = [...redirectUris];
+  if (bindInitiateUri) doc.bind_initiate_uri = bindInitiateUri;
+  if (policy) doc.policy = policy;
+  if (contact) doc.contact = contact;
+  return doc;
+}
+
+/** The `PG-Access` header value for a GET by a provider known by its domain (provider-identity): a `pg.access.v1`
+ * envelope over {provider_id, aud (the registry's api, from the directory), method, path (with its query string),
+ * issued_at}, signed with the current key, as base64url. A registry accepts it within 60 seconds of `issued_at`, for
+ * itself only: a header signed for another registry is refused. */
+export async function pgAccess(providerUrl, privateKeyHex, aud, method, path, { now } = {}) {
+  const kid = await fingerprint(await publicKeyHex(privateKeyHex));
+  const env = await signEnvelope("pg.access.v1", { signers: [{ role: "provider", key_id: kid }], provider_id: providerUrl,
+    aud: aud.replace(/\/+$/, ""), method: method.toUpperCase(), path, issued_at: Math.floor(now ?? Date.now() / 1000) }, privateKeyHex);
+  const bytes = utf8.encode(canonicalJson(env));
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
 /** PRE-GEN-CORE.md rule 5: may I generate on this answer? `request` is the pg.request.v1 envelope you
  * sent. Checks that a key the directory lists for the subject's prefix signed it (and is not revoked),
  * that it answers exactly this request under the same profile, that it is within its lifetime, that it

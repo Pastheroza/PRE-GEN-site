@@ -55,6 +55,8 @@ def check(api: str, directory_url: str | None = None, steward: str | None = None
     yield doc.get("api", "").rstrip("/") == api, f"document api is {doc.get('api')!r}"
     yield "likeness/1" in doc.get("profiles", []), "answers under likeness/1"
     yield all(x in doc.get("extensions", []) for x in EXTENSIONS_NEEDED), f"declares {', '.join(EXTENSIONS_NEEDED)}"
+    yield doc.get("providers") == "open" and "provider-identity" in doc.get("extensions", []), \
+        "answers AI services known by their domain, no account (providers: open; a listing condition, PG-CODE.md §9.1 item 5)"
     try:
         with urllib.request.urlopen(doc.get("policy", ""), timeout=10) as r:
             yield r.status == 200, f"the policy page answers: {doc.get('policy')}"

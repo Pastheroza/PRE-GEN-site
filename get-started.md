@@ -49,22 +49,29 @@ binds only systems that choose to ask.
 
 ## Part A — Provider: ask, check, generate
 
-### A1. Credentials from a registry
+### A1. Your identity: a domain and a key
 
 A provider talks to the registry that holds each subject. Registries are listed in the
 signed directory `https://www.pregen.org/registries.json` (human view:
-`https://www.pregen.org/registries`). Each registry issues its own credentials; follow its
-guide. Today one registry is in production: PRAMPTA (`https://api2.prampta.com`, guide
-`https://prampta.com/get-started-v2.md`).
+`https://www.pregen.org/registries`). **No account anywhere:** a provider is its domain and a
+key it makes (extension `provider-identity`). Make an Ed25519 key once
+(`newPrivateKeyHex()` / `pregen.new_private_key_hex()`), build the party document
+(`partyDocument("https://your.domain", "Name", key)` / `pregen.party_document(...)`) and serve
+it at `https://<your domain>/.well-known/pregen-party.json`. Your provider id is
+`https://<your domain>`; every request and report is signed with the key. A registry that says
+`"providers": "registered"` in its document still issues its own credential; a registry that
+says `"open"` answers you as you are. Today one registry is in production: PRAMPTA
+(`https://api2.prampta.com`, commerce and vetting at `https://prampta.com`). The complete
+guide, with tested examples: `https://www.pregen.org/docs/provider.md`.
 
 ### A2. Install a verification library
 
 ```bash
-npm install @pregen/verify@^0.11.0
+npm install @pregen/verify@^0.12.0
 ```
 
 ```bash
-pip install "pregen>=0.11.0"
+pip install "pregen>=0.12.0"
 ```
 
 Both libraries carry the steward key, load and check the directory, and check answers and
@@ -104,17 +111,20 @@ const api = entry.api;
 
 ```
 POST {api}/v2/requests
-Authorization: Bearer <credential from that registry>
-X-Provider-ID: <your provider id>
+X-Provider-ID: https://your.domain
 Content-Type: application/json
 
-{"type": "pg.request.v1", "signatures": [],
- "body": {"subject_ref": "PG-TEST-000001N", "provider_id": "<your provider id>",
+{"type": "pg.request.v1", "signatures": ["<ed25519 hex, by your current key>"],
+ "body": {"signers": [{"role": "provider", "key_id": "pg-ed25519:…"}],
+          "subject_ref": "PG-TEST-000001N", "provider_id": "https://your.domain",
           "profile": "likeness/1", "use": {"purpose": "commercial"},
           "job_id": "job-8841", "job_hash": "<sha-256 hex of what you fixed about the job>"}}
 ```
 
-- These six members are all the core requires. Add others only if the profile or an
+- `signEnvelope("pg.request.v1", body, key)` / `pregen.sign_envelope(..., key)` makes it. On the
+  credential path (a `registered` registry) the request is unsigned, has no `signers`, and
+  carries `Authorization: Bearer <credential>` with the registry's provider id.
+- The six members after `signers` are all the core requires. Add others only if the profile or an
   extension the registry declares defines them.
 - **`use` under `likeness/1`:** `{purpose, rights?, territory?, channel?, categories?}`;
   `purpose` is `personal`, `educational`, `research`, `editorial` or `commercial`.
@@ -158,8 +168,9 @@ is never presented as permitted.
 ### A8. Report (when the registry declares `reports`)
 
 After generating, sign a `pg.report.v1` with your own key and send it to
-`POST {api}/v2/reports`; the registry returns a signed acknowledgement. Register your key
-once with `POST {api}/v2/keys` (extension `provider-keys`).
+`POST {api}/v2/reports`; the registry returns a signed acknowledgement. Your key is in your
+party document (A1); on the credential path, register it once with `POST {api}/v2/keys`
+(extension `provider-keys`).
 
 ```
 body: {signers: [{role: "provider", key_id}], request_id, answer: <answer's message id>,
@@ -205,10 +216,10 @@ categories need the person's own signed grant).
   and answer shapes:
 
   ```bash
-  pip install "pregen-registry>=0.2.0"
+  pip install "pregen-registry>=0.3.0"
   pregen-registry init --dir ./data --prefix TEST --name "My sandbox" --api http://127.0.0.1:8000 --sandbox
   pregen-registry serve --dir ./data
-  curl -X POST http://127.0.0.1:8000/v2/sandbox/access     # a provider id and token, no account
+  curl -X POST http://127.0.0.1:8000/v2/sandbox/party -H 'Content-Type: application/json' --data @pregen-party.json   # your party document, by post
   ```
 
   Its keys are not in the real directory, so `checkAnswer` refuses its signatures; that is
@@ -216,7 +227,9 @@ categories need the person's own signed grant).
   signed by the test steward key `78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0`. It lists PRE-GEN's own
   sandbox, the PRE-GEN Test Registry (`https://sandbox.pregen.org`, prefix `TEST`, codes
   `PG-TEST-000001N` to `PG-TEST-000008H`): with it, `checkAnswer(…, { directory, testing: true })`
-  accepts sandbox answers end to end.
+  accepts sandbox answers end to end. Post your party document to
+  `https://sandbox.pregen.org/v2/sandbox/party` first (any `https://…` id you choose), then ask
+  with signed requests.
 - **Bytes.** `spec/test-vectors/messages.json` gives eight messages with their canonical
   body, signing input, message id and signatures. Reproduce every one.
 
@@ -256,9 +269,7 @@ A file made under PRE-GEN can carry a proof bundle `pg.proof.v1`: for every subj
 job, the request, the answer, the provider's report and the registry's acknowledgement,
 each exactly as signed.
 
-- **Where to find it:** a C2PA manifest assertion labelled `org.pregen.proof`; or a
-  watermark payload `<prefix>:<16 hex>`, from which you fetch the registry's part with
-  `GET {api}/v2/proofs/{16 hex}`.
+- **Where to find it:** a C2PA manifest assertion labelled `org.pregen.proof`.
 - **How to check it:**
 
   ```js
@@ -285,13 +296,14 @@ Any company or person can run a registry on the same terms; the first one has no
 rights.
 
 1. **Run one.** The open reference registry:
-   `pip install "pregen-registry>=0.2.0"`,
-   then `pregen-registry init --dir ./data --prefix ABCD --name "…" --api https://… --policy https://… --complaints mailto:…`.
+   `pip install "pregen-registry>=0.3.0"`,
+   then `pregen-registry init --dir ./data --prefix ABCD --name "…" --api https://… --policy https://… --complaints mailto:… --open-providers`
+   (`--open-providers`: answer any provider known by its domain and key, with no credential).
    Step by step: `https://www.pregen.org/docs/registry.md`. Or implement the core yourself
    from `PRE-GEN-CORE.md`.
 2. **Publish:** `GET {api}/keys` (your signing keys) and
    `GET {api}/.well-known/pregen-registry.json` (`prefix`, `name`, `profiles`,
-   `extensions`, `policy`, `complaints`, `sandbox`).
+   `extensions`, `policy`, `complaints`, `sandbox`, `providers`).
 3. **Apply for a four-letter prefix** (`ABCDEFGHJKMNPQRSTVWXYZ`, no digits, no I, L, O, U):
    open a "Registry application" issue at
    `https://github.com/Pastheroza/PRE-GEN-site/issues/new?template=registry-application.md`.
@@ -314,7 +326,7 @@ The libraries implement this as `decideIdentity` / `decide_identity`.
 
 - Core (one page): `https://www.pregen.org/spec/PRE-GEN-CORE.md`
 - Specification PDF: `https://www.pregen.org/spec/PRE-GEN-v5.pdf`
-- Profile `likeness/1` and the twelve extensions:
+- Profile `likeness/1` and the fourteen extensions:
   `https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec`
 - Signed registry directory: `https://www.pregen.org/registries.json`
 - Implementation kit and test vectors: `https://www.pregen.org/docs/implement`

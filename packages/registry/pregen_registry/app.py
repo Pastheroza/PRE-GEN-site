@@ -13,6 +13,10 @@ from .registry import Registry
 SANDBOX_ACCESS_PER_HOUR = 10
 
 
+def _path(request: Request) -> str:
+    return request.url.path + ("?" + request.url.query if request.url.query else "")
+
+
 def create_app(registry: Registry, policy_file=None) -> FastAPI:
     """`policy_file`: a published policy page, served at GET /policy (text/markdown) when it exists."""
     app = FastAPI(title=f"PRE-GEN registry — {registry.config.name}", version=__version__,
@@ -49,14 +53,15 @@ def create_app(registry: Registry, policy_file=None) -> FastAPI:
     def post_keys(env=Body(...), x_provider_id: str = Header(""), authorization: str | None = Header(None)):
         return registry.post_keyset(x_provider_id, authorization, env)
 
-    @app.get("/v2/keys/{provider_id}")
-    def get_keys(provider_id: str):
+    @app.get("/v2/keys/{provider_id:path}")
+    def get_keys(provider_id: str):                     # a provider URL (provider-identity) has slashes in it
         return registry.get_keysets(provider_id)
 
     @app.get("/v2/grants/{grant_id}")
-    def grant(grant_id: str, x_provider_id: str = Header(""), authorization: str | None = Header(None)):
+    def grant(grant_id: str, request: Request, x_provider_id: str = Header(""), authorization: str | None = Header(None),
+              pg_access: str | None = Header(None)):
         if not registry.config.sandbox:
-            registry.authenticate(x_provider_id, authorization)
+            registry.authenticate_read(x_provider_id, authorization, pg_access, "GET", _path(request))
         return registry.grant(grant_id)
 
     @app.get("/v2/codes/{code}")
@@ -72,8 +77,21 @@ def create_app(registry: Registry, policy_file=None) -> FastAPI:
         return registry.catalog()
 
     @app.get("/v2/statement")
-    def statement(x_provider_id: str = Header(""), authorization: str | None = Header(None)):
-        return registry.statement(x_provider_id, authorization)
+    def statement(request: Request, x_provider_id: str = Header(""), authorization: str | None = Header(None),
+                  pg_access: str | None = Header(None)):
+        return registry.statement(x_provider_id, authorization, pg_access, _path(request))
+
+    @app.post("/v2/sandbox/party")
+    def sandbox_party(doc=Body(...)):
+        """provider-identity, in a sandbox: the party document by post, since a laptop has no domain to serve it on.
+        ponytail: no rate limit; a sandbox holds no real people and a pin is one row."""
+        if not registry.config.sandbox:
+            raise ProtocolError("PG_NOT_FOUND", "this registry is not a sandbox: it reads the party document from your "
+                                "domain", status=404)
+        pid = registry.pin_party(doc, posted=True)
+        return {"party_id": pid, "note": "Pinned: requests and reports signed by this chain's current key are accepted "
+                "here with X-Provider-ID: " + pid + " and no Authorization header. A production registry reads the "
+                "same document from your domain."}
 
     @app.get("/v2/proofs/{short_id}")
     def proof(short_id: str):

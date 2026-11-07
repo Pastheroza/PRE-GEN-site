@@ -1,0 +1,58 @@
+/* Homepage: one screen, three rows on one grid. The name, the word, four buttons. Then two short sections. */
+.home main { padding: 0; }
+.home .wrap { max-width: 1240px; padding: 0 24px; }
+
+.hero { display: flex; flex-direction: column; min-height: calc(100svh - 61px); padding: 28px 0 32px; }
+.hero-top { display: flex; justify-content: space-between; align-items: baseline; gap: 24px; padding-bottom: 14px; border-bottom: 1px solid var(--soft); }
+.hero-top h1 { margin: 0; font-size: 17px; font-weight: 500; line-height: 1.3; letter-spacing: 0; }
+.hero-top p { margin: 0; font-size: 15px; color: var(--muted); text-align: right; }
+
+.word { flex: 1; display: flex; align-items: flex-end; padding: 4vh 0 14px; }
+.wordmark { display: block; width: 100%; height: auto; }   /* outlined Geist Bold, cropped to the letters: exactly as wide as the buttons */
+
+.acts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.act { display: flex; flex-direction: column; justify-content: space-between; gap: 22px; min-height: 124px; padding: 16px 18px 18px; border: 1px solid var(--fg); color: var(--fg); text-decoration: none; transition: background .15s, color .15s; }
+.act .for { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; line-height: 1.3; color: var(--muted); }
+.act .for::after { content: "→"; font-size: 20px; line-height: 1; color: var(--fg); }
+.act.out .for::after { content: "↗"; }
+.act b { font-size: clamp(21px, 1.9vw, 26px); font-weight: 600; line-height: 1.1; letter-spacing: -0.02em; }
+.act.main { background: var(--fg); color: var(--bg); }
+.act.main .for, .act.main .for::after { color: var(--bg); }
+.act:hover, .act:focus-visible { text-decoration: none; background: var(--fg); color: var(--bg); }
+.act:hover .for, .act:hover .for::after { color: var(--bg); }
+.act.main:hover, .act.main:focus-visible { background: var(--tint); color: var(--fg); border-color: var(--fg); }
+.act.main:hover .for, .act.main:hover .for::after { color: var(--fg); }
+
+/* Below the first screen: the idea in one sentence, three steps, four answers. */
+.sec { padding: 72px 0 0; }
+.sec h2 { margin: 0 0 24px; padding: 12px 0 0; border-top: 1px solid var(--soft); font-size: 15px; font-weight: 500; color: var(--muted); }
+.sec .say { max-width: 22em; margin: 0 0 40px; font-size: clamp(26px, 3.4vw, 44px); font-weight: 500; line-height: 1.15; letter-spacing: -0.025em; text-wrap: balance; }
+.cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; margin: 0; padding: 0; list-style: none; }
+.cols.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.cols li, .cols div { margin: 0; }
+.cols .n { display: block; margin-bottom: 14px; font-size: 15px; color: var(--muted); }
+.cols b, .cols dt { display: block; margin-bottom: 6px; font-size: 22px; font-weight: 600; letter-spacing: -0.015em; }
+.cols p, .cols dd { margin: 0; font-size: 16px; line-height: 1.5; color: var(--muted); max-width: 24em; }
+.cols dd a { display: block; margin-top: 10px; color: var(--fg); font-weight: 500; }
+.cols dd a::after { content: " →"; }
+.home .foot { margin-top: 96px; }
+
+@media (max-width: 960px) {
+  .acts { grid-template-columns: 1fr 1fr; }
+  .cols.four { grid-template-columns: 1fr 1fr; row-gap: 28px; }
+}
+@media (max-width: 640px) {
+  .home .wrap { padding: 0 16px; }
+  .hero { min-height: calc(100svh - 57px); padding: 18px 0 16px; }
+  .hero-top { flex-direction: column; gap: 4px; }
+  .hero-top p { text-align: left; }
+  .word { padding-bottom: 10px; }
+  .acts { gap: 8px; }
+  .acts { grid-template-columns: 1fr; }
+  .act.main { min-height: 96px; }
+  .act { min-height: 84px; padding: 14px; gap: 14px; }
+  .act b { font-size: 21px; }
+  .cols, .cols.four { grid-template-columns: 1fr; gap: 24px; }
+  .sec { padding-top: 56px; }
+}
+@media (prefers-reduced-motion: reduce) { .act { transition: none; } }

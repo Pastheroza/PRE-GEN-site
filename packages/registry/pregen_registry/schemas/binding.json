@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.pregen.org/spec/schemas/binding.json",
+  "title": "pg.binding.v1 body (extension bind): a person's licences connected to one app",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "signers",
+    "authority",
+    "provider_id",
+    "licensee_id",
+    "grants",
+    "issued_at",
+    "expires_at"
+  ],
+  "properties": {
+    "signers": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "role",
+          "key_id"
+        ],
+        "properties": {
+          "role": {
+            "const": "registry"
+          },
+          "key_id": {
+            "type": "string",
+            "pattern": "^pg-ed25519:[0-9a-f]{32}$"
+          }
+        }
+      }
+    },
+    "authority": {
+      "type": "string",
+      "description": "the registry's prefix (\"\" for the origin's bare namespace)"
+    },
+    "provider_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "licensee_id": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 255,
+      "description": "random and new for every binding"
+    },
+    "grants": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "the grant and licence ids the person chose on the consent screen"
+    },
+    "issued_at": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "expires_at": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "at most one year after issued_at"
+    }
+  }
+}

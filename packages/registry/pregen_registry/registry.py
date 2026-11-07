@@ -1,5 +1,5 @@
 """The registry: state in SQLite, the core rules, profile likeness/1 and the extensions
-reports, provider-keys, limits, jobs, grants, licensee, observe, sandbox and lookup.
+reports, provider-keys, limits, jobs, grants, licensee, observe, sandbox, lookup and provider-identity.
 
 ponytail: one process-wide lock around one SQLite connection serializes every write. That is the
 spec's three locks (provider+job, ask, grant counter) collapsed into one: correct, simple, and enough
@@ -7,17 +7,22 @@ for a sandbox or a small registry. Per-row locks on Postgres when throughput mat
 """
 from __future__ import annotations
 
+import base64
 import hashlib
+import ipaddress
 import json
 import re
 import secrets
+import socket
 import sqlite3
 import threading
 import time
+import urllib.request
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
-from pregen import PregenError, check_public_key, fingerprint, issuer_of
+from pregen import PregenError, check_provider_url, check_public_key, fingerprint, issuer_of
+from urllib.parse import urlsplit
 
 from .protocol import Key, ProtocolError, canonical, check_body, check_envelope, message_id, mint_code, parse_code, seal
 
@@ -31,6 +36,12 @@ USE_MEMBERS = {"purpose", "rights", "territory", "channel", "categories"}
 PROHIBITED_FOR_MINORS = {"sexual", "adult", "violence"}
 INTIMATE = {"sexual", "adult"}  # likeness/1: only with the person's own signature on the grant
 UNAVAILABLE = {"pending", "paused", "disputed", "withdrawn"}
+# provider-identity P-5: a refusal of the person is never masked, whoever asks
+FLOOR = {"PG_SUBJECT_OPTED_OUT", "PG_SUBJECT_UNAVAILABLE", "PG_PROHIBITED_USE", "PG_IMMUTABLE_DENIAL",
+         "PG_PERSONAL_SIGNATURE_REQUIRED"}
+PARTY_REFRESH = 86400           # provider-identity P-3: the party document is read again at least daily
+PARTY_MIN_INTERVAL = 60         # P-7: and at most once a minute per provider
+PARTY_MAX_BYTES = 65536
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL);
@@ -49,6 +60,7 @@ CREATE TABLE IF NOT EXISTS grants (
   envelope TEXT NOT NULL, resale INTEGER NOT NULL DEFAULT 0, categories TEXT NOT NULL DEFAULT '[]');
 CREATE TABLE IF NOT EXISTS providers (provider_id TEXT PRIMARY KEY, token_hash TEXT NOT NULL, created_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS connections (provider_id TEXT NOT NULL, licensee_id TEXT NOT NULL, PRIMARY KEY (provider_id, licensee_id));
+CREATE TABLE IF NOT EXISTS accepted (provider_id TEXT PRIMARY KEY);
 CREATE TABLE IF NOT EXISTS keysets (provider_id TEXT NOT NULL, position INTEGER NOT NULL, id TEXT NOT NULL,
   envelope TEXT NOT NULL, PRIMARY KEY (provider_id, position));
 CREATE TABLE IF NOT EXISTS jobs (provider_id TEXT NOT NULL, job_id TEXT NOT NULL, job_hash TEXT NOT NULL,
@@ -77,15 +89,43 @@ class Config:
     complaints: str = ""
     sandbox: bool = False
     profiles: list = field(default_factory=lambda: [PROFILE])
+    providers: str = "registered"   # "open": providers known by their domain (provider-identity); a sandbox always is
 
     def __post_init__(self):
         if not re.fullmatch(r"[ABCDEFGHJKMNPQRSTVWXYZ]{4}", self.prefix):
             raise ValueError("a registry's prefix is four letters of the PG alphabet (new codes are never bare, PG-CODE.md §9)")
+        if self.providers not in ("open", "registered"):
+            raise ValueError("providers is open or registered")
+        if self.sandbox:
+            self.providers = "open"
+
+
+def fetch_party(provider_url: str) -> dict:
+    """GET {provider URL}/.well-known/pregen-party.json (provider-identity P-2): HTTPS, no redirect, 64 KB, 10 s; a
+    host on a private, loopback or link-local address is refused. ponytail: the address is checked before the fetch,
+    not on the socket; a production registry closes that gap with a resolver that pins the checked address."""
+    host = urlsplit(provider_url).hostname or ""
+    for info in socket.getaddrinfo(host, 443):
+        ip = ipaddress.ip_address(info[4][0])
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast or ip.is_unspecified:
+            raise ValueError(f"{host} resolves to a private address")
+
+    class Stay(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, *a, **k):
+            return None
+    req = urllib.request.Request(provider_url + "/.well-known/pregen-party.json",
+                                 headers={"Accept": "application/json", "User-Agent": "pregen-registry"})
+    with urllib.request.build_opener(Stay).open(req, timeout=10) as res:
+        data = res.read(PARTY_MAX_BYTES + 1)
+    if len(data) > PARTY_MAX_BYTES:
+        raise ValueError("party document over 64 KB")
+    return json.loads(data)
 
 
 class Registry:
-    def __init__(self, config: Config, operator_key: Key, db_path: str = ":memory:", clock=lambda: int(time.time())):
-        self.config, self.key, self.clock = config, operator_key, clock
+    def __init__(self, config: Config, operator_key: Key, db_path: str = ":memory:", clock=lambda: int(time.time()),
+                 fetch_party=fetch_party):
+        self.config, self.key, self.clock, self.fetch_party = config, operator_key, clock, fetch_party
         self.db = sqlite3.connect(db_path, check_same_thread=False, isolation_level=None)
         self.db.row_factory = sqlite3.Row
         self.db.executescript(SCHEMA)
@@ -263,6 +303,9 @@ class Registry:
 
     # ── authentication ───────────────────────────────────────────────────
     def authenticate(self, provider_id: str, authorization: str | None):
+        if self.is_open(provider_id):
+            raise ProtocolError("PG_NOT_AUTHENTICATED", "a provider known by its domain signs its messages; a GET sends "
+                                "PG-Access (extensions/provider-identity.md)", status=401)
         token = (authorization or "").removeprefix("Bearer ").strip()
         row = self._row("SELECT token_hash FROM providers WHERE provider_id = ?", (provider_id or "",))
         if not row or not token or not secrets.compare_digest(row["token_hash"], _hash_token(token)):
@@ -270,13 +313,18 @@ class Registry:
 
     # ── core: requests ───────────────────────────────────────────────────
     def request(self, provider_id: str, authorization: str | None, env) -> dict:
-        body = check_envelope(env, "pg.request.v1", (), lambda *_: None)
+        if self.is_open(provider_id):            # provider-identity P-1: signed with the current key of its chain
+            self._check_open(provider_id, authorization)
+            body = self._signed_by_provider(env, "pg.request.v1", provider_id)
+        else:
+            body = check_envelope(env, "pg.request.v1", (), lambda *_: None)
         check_body("request", body)
         try:                                     # one code, one string: never a signed answer to another spelling (H5)
             issuer_of(body["subject_ref"])
         except PregenError:
             raise ProtocolError("PG_MALFORMED", "subject_ref is not a canonical PG code (PG-CODE.md §7)") from None
-        self.authenticate(provider_id, authorization)
+        if not self.is_open(provider_id):
+            self.authenticate(provider_id, authorization)
         if body["provider_id"] != provider_id:
             raise ProtocolError("PG_NOT_AUTHENTICATED", "provider_id differs from X-Provider-ID", status=401)
         if body["profile"] not in self.config.profiles:
@@ -373,8 +421,23 @@ class Registry:
                 return "allow", None, g, level
         return "deny", "PG_USAGE_LIMIT", None, level
 
+    def _masked(self, db, req: dict, status: str, reason, grant) -> bool:
+        """provider-identity P-5a: a provider this registry has not vetted learns a refusal of the person, a published
+        subject, and what its own bound licensee holds; everything else is deny PG_PROVIDER_NOT_ACCEPTED."""
+        pid = req["provider_id"]
+        if not self.is_open(pid) or self.config.sandbox or reason in FLOOR or reason == "PG_OTHER_REGISTRY" \
+                or db.execute("SELECT 1 FROM accepted WHERE provider_id = ?", (pid,)).fetchone():
+            return False
+        s = db.execute("SELECT published, fixed_refusal FROM subjects WHERE code = ?", (req["subject_ref"],)).fetchone()
+        if s is not None and (s["published"] or (s["fixed_refusal"] and reason == s["fixed_refusal"])):
+            return False
+        licensee = req.get("licensee_id", "")
+        return not (status == "allow" and licensee and grant["licensee_id"] == licensee)
+
     def _answer(self, db, ask, req: dict, now: int) -> dict:
         status, reason, grant, level = self._decide(db, req, now)
+        if self._masked(db, req, status, reason, grant):
+            status, reason, grant = "deny", "PG_PROVIDER_NOT_ACCEPTED", None
         body = {"request_id": ask["id"], "profile": req["profile"], "status": status, "level": level,
                 "obligations": [], "issued_at": now, "expires_at": now + TTL}
         if status == "allow":
@@ -390,6 +453,115 @@ class Registry:
                     grant["id"] if grant is not None else None, use))
         return env
 
+    # ── extension provider-identity: providers known by their domain ─────
+    @staticmethod
+    def is_open(provider_id: str) -> bool:
+        return isinstance(provider_id, str) and provider_id.startswith("https://")
+
+    def _check_open(self, provider_id: str, authorization: str | None):
+        if self.config.providers != "open":
+            raise ProtocolError("PG_NOT_AUTHENTICATED", "this registry issues its own credentials (providers: registered)",
+                                status=401)
+        if authorization:
+            raise ProtocolError("PG_NOT_AUTHENTICATED", "a provider known by its domain sends no credential (P-1)",
+                                status=401)
+        try:
+            check_provider_url(provider_id, allow_port=self.config.sandbox)
+        except PregenError as e:
+            raise ProtocolError("PG_NOT_AUTHENTICATED", str(e), status=401) from None
+
+    def accept_provider(self, provider_id: str):
+        """P-6: vetted under the registry's published procedure; from now on it gets ordinary answers."""
+        check_provider_url(provider_id, allow_port=self.config.sandbox)
+        with self.tx() as db:
+            db.execute("INSERT OR IGNORE INTO accepted VALUES (?)", (provider_id,))
+
+    def pin_party(self, doc, provider_id: str | None = None, posted: bool = False) -> str:
+        """A party document's keysets onto the provider's chain (P-2). Fetched from the domain, or posted to a
+        sandbox, which holds no real people and takes the document by post because a laptop has no domain."""
+        if posted and not self.config.sandbox:
+            raise ProtocolError("PG_NOT_FOUND", "this registry is not a sandbox: it reads the party document from your "
+                                "domain", status=404)
+        check_body("party-document", doc)
+        pid = doc["party_id"]
+        if provider_id is not None and pid != provider_id:
+            raise ProtocolError("PG_MALFORMED", "party_id differs from the provider id")
+        try:
+            check_provider_url(pid, allow_port=self.config.sandbox)
+        except PregenError as e:
+            raise ProtocolError("PG_MALFORMED", str(e)) from None
+        for env in doc["keysets"]:
+            self._keyset_shape(env, pid)
+        with self.tx() as db:
+            for env in doc["keysets"]:
+                try:
+                    self._accept_keyset(db, pid, env)
+                except ProtocolError as e:
+                    if e.code != "PG_KEYSET_CONFLICT":
+                        raise
+                    raise ProtocolError("PG_NOT_AUTHENTICATED", "the party document does not extend the pinned chain "
+                                        "(P-2); whoever takes over a domain does not get its keys", status=401) from None
+            db.execute("INSERT OR REPLACE INTO meta VALUES (?, ?)", ("party:" + pid, "posted" if posted else str(self.clock())))
+        return pid
+
+    def _open_chain(self, provider_id: str, key_id: str) -> list[dict]:
+        """The pinned chain of a provider known by its domain. Its party document is read when nothing is pinned, when
+        a message names a key the chain does not hold, and at least daily (P-2, P-3); at most once a minute (P-7)."""
+        with self.lock:
+            chain = self._chain(self.db, provider_id)
+        last = self._meta("party:" + provider_id) or ""
+        stale = chain and last != "posted" and (key_id != self._current(chain[-1]["body"])["key_id"]
+                                                or self.clock() - float(last or 0) > PARTY_REFRESH)
+        if (not chain or stale) and (not last.replace(".", "").isdigit() or self.clock() - float(last) >= PARTY_MIN_INTERVAL):
+            self._set_meta("party:" + provider_id, str(self.clock()))                  # budget the attempt, not the success
+            try:
+                self.pin_party(self.fetch_party(provider_id), provider_id)
+            except ProtocolError as e:
+                raise ProtocolError("PG_NOT_AUTHENTICATED", f"party document: {e.detail}", status=401) from None
+            except Exception as e:
+                raise ProtocolError("PG_NOT_AUTHENTICATED", f"party document not read from {provider_id}: {e}",
+                                    status=401) from None
+            with self.lock:
+                chain = self._chain(self.db, provider_id)
+        if not chain:
+            raise ProtocolError("PG_NOT_AUTHENTICATED", "no keys known for this provider: serve "
+                                "/.well-known/pregen-party.json on its domain", status=401)
+        return chain
+
+    @staticmethod
+    def _signer_key_id(env) -> str:
+        signers = env.get("body", {}).get("signers") if isinstance(env, dict) and isinstance(env.get("body"), dict) else None
+        return signers[0].get("key_id", "") if isinstance(signers, list) and signers and isinstance(signers[0], dict) else ""
+
+    def _signed_by_provider(self, env, type_: str, provider_id: str) -> dict:
+        chain = self._open_chain(provider_id, self._signer_key_id(env))
+        current = self._current(chain[-1]["body"])
+        return check_envelope(env, type_, ("provider",),
+                              lambda role, key_id: current["public_key_hex"] if key_id == current["key_id"] else None)
+
+    def authenticate_read(self, provider_id: str, authorization: str | None, pg_access: str | None, method: str,
+                          path: str) -> str:
+        """A GET: the registry's credential, or `PG-Access`, a pg.access.v1 envelope (base64url) signed by a provider
+        known by its domain, naming this method and path and issued within 60 seconds. Returns the provider id."""
+        if not pg_access:
+            self.authenticate(provider_id, authorization)
+            return provider_id
+        try:
+            env = json.loads(base64.urlsafe_b64decode(pg_access + "=" * (-len(pg_access) % 4)))
+        except Exception:
+            raise ProtocolError("PG_NOT_AUTHENTICATED", "PG-Access is not a base64url pg.access.v1 envelope", status=401) from None
+        pid = env.get("body", {}).get("provider_id", "") if isinstance(env, dict) and isinstance(env.get("body"), dict) else ""
+        if provider_id and provider_id != pid:
+            raise ProtocolError("PG_NOT_AUTHENTICATED", "PG-Access names another provider", status=401)
+        self._check_open(pid, authorization)
+        body = self._signed_by_provider(env, "pg.access.v1", pid)
+        check_body("access", body)
+        if body["aud"] != self.config.api.rstrip("/") or body["method"] != method.upper() or body["path"] != path \
+                or abs(self.clock() - body["issued_at"]) > 60:
+            raise ProtocolError("PG_NOT_AUTHENTICATED", "PG-Access names another registry or request, or is older than "
+                                "60 seconds", status=401)
+        return pid
+
     # ── extension provider-keys ──────────────────────────────────────────
     def _chain(self, db, provider_id: str) -> list[dict]:
         return [json.loads(r["envelope"]) for r in db.execute(
@@ -399,8 +571,7 @@ class Registry:
     def _current(keyset_body: dict) -> dict:
         return next(k for k in keyset_body["keys"] if k["status"] == "current")
 
-    def post_keyset(self, provider_id: str, authorization: str | None, env) -> dict:
-        self.authenticate(provider_id, authorization)
+    def _keyset_shape(self, env, provider_id: str) -> dict:
         if not isinstance(env, dict) or env.get("type") != "pg.keyset.v1" or not isinstance(env.get("body"), dict):
             raise ProtocolError("PG_MALFORMED", "expected a pg.keyset.v1 envelope")
         body = env["body"]
@@ -412,30 +583,44 @@ class Registry:
                 check_public_key(k["public_key_hex"])
             except PregenError as e:
                 raise ProtocolError("PG_MALFORMED", f"{k['key_id']}: {e}") from None
+        return body
+
+    def _accept_keyset(self, db, provider_id: str, env) -> dict:
+        """One keyset onto the provider's chain: the identical one again is a no-op; a first with a chain, or a rotation
+        that does not chain, is PG_KEYSET_CONFLICT."""
+        body = env["body"]
         kid = message_id(env["type"], body)
+        chain = self._chain(db, provider_id)
+        if any(message_id(k["type"], k["body"]) == kid for k in chain):
+            return env                                                   # the identical keyset again
+        new = self._current(body)
+        pubs = {"provider": new}
+        if body["kind"] == "first":
+            if chain:
+                raise ProtocolError("PG_KEYSET_CONFLICT", "this provider already has a key chain", status=409)
+            roles = ("provider",)
+        elif body["kind"] == "rotation":
+            if not chain or body["previous"] != message_id("pg.keyset.v1", chain[-1]["body"]):
+                raise ProtocolError("PG_KEYSET_CONFLICT", "does not chain to the current keyset", status=409)
+            if body["recovery_registry"] != chain[-1]["body"]["recovery_registry"]:
+                raise ProtocolError("PG_MALFORMED", "only a recovery keyset may change recovery_registry")
+            pubs["provider_previous"], roles = self._current(chain[-1]["body"]), ("provider", "provider_previous")
+        else:
+            raise ProtocolError("PG_UNSUPPORTED", "recovery is co-signed by the recovery registry; "
+                                "ask the registry operator", status=422)
+        check_envelope(env, "pg.keyset.v1", roles,
+                       lambda role, key_id: pubs[role]["public_key_hex"] if pubs[role]["key_id"] == key_id else None)
+        db.execute("INSERT INTO keysets VALUES (?, ?, ?, ?)", (provider_id, len(chain), kid, json.dumps(env)))
+        return env
+
+    def post_keyset(self, provider_id: str, authorization: str | None, env) -> dict:
+        if self.is_open(provider_id):
+            raise ProtocolError("PG_NOT_AUTHENTICATED", "a provider known by its domain publishes its keys in its party "
+                                "document; there is nothing to post", status=401)
+        self.authenticate(provider_id, authorization)
+        self._keyset_shape(env, provider_id)
         with self.tx() as db:
-            chain = self._chain(db, provider_id)
-            if any(message_id(k["type"], k["body"]) == kid for k in chain):
-                return {"keyset": env}                                   # the identical keyset again
-            new = self._current(body)
-            pubs = {"provider": new}
-            if body["kind"] == "first":
-                if chain:
-                    raise ProtocolError("PG_KEYSET_CONFLICT", "this provider already has a key chain", status=409)
-                roles = ("provider",)
-            elif body["kind"] == "rotation":
-                if not chain or body["previous"] != message_id("pg.keyset.v1", chain[-1]["body"]):
-                    raise ProtocolError("PG_KEYSET_CONFLICT", "does not chain to the current keyset", status=409)
-                if body["recovery_registry"] != chain[-1]["body"]["recovery_registry"]:
-                    raise ProtocolError("PG_MALFORMED", "only a recovery keyset may change recovery_registry")
-                pubs["provider_previous"], roles = self._current(chain[-1]["body"]), ("provider", "provider_previous")
-            else:
-                raise ProtocolError("PG_UNSUPPORTED", "recovery is co-signed by the recovery registry; "
-                                    "ask the registry operator", status=422)
-            check_envelope(env, "pg.keyset.v1", roles,
-                           lambda role, key_id: pubs[role]["public_key_hex"] if pubs[role]["key_id"] == key_id else None)
-            db.execute("INSERT INTO keysets VALUES (?, ?, ?, ?)", (provider_id, len(chain), kid, json.dumps(env)))
-            return {"keyset": env}
+            return {"keyset": self._accept_keyset(db, provider_id, env)}
 
     def get_keysets(self, provider_id: str) -> dict:
         with self.lock:
@@ -443,7 +628,10 @@ class Registry:
 
     # ── extension reports (+ limits, observe) ────────────────────────────
     def report(self, provider_id: str, authorization: str | None, env) -> dict:
-        self.authenticate(provider_id, authorization)
+        if self.is_open(provider_id):
+            self._check_open(provider_id, authorization)
+        else:
+            self.authenticate(provider_id, authorization)
         if not isinstance(env, dict) or env.get("type") != "pg.report.v1" or not isinstance(env.get("body"), dict):
             raise ProtocolError("PG_MALFORMED", "expected a pg.report.v1 envelope")
         body = env["body"]
@@ -452,8 +640,11 @@ class Registry:
         stored = self._row("SELECT ack FROM reports WHERE id = ? AND provider_id = ?", (rid, provider_id))
         if stored:                                         # identical report: the stored ack, before key status
             return {"ack": json.loads(stored["ack"])}
-        with self.lock:
-            chain = self._chain(self.db, provider_id)
+        if self.is_open(provider_id):
+            chain = self._open_chain(provider_id, self._signer_key_id(env))
+        else:
+            with self.lock:
+                chain = self._chain(self.db, provider_id)
         if not chain:
             raise ProtocolError("PG_NOT_AUTHENTICATED", "register a provider signing key first (POST /v2/keys)", status=401)
         current = self._current(chain[-1]["body"])
@@ -553,10 +744,11 @@ class Registry:
             {"subject_ref": s["code"], "name": s["name"], "anchor": s["anchor"] or "", "level": s["level"],
              **json.loads(s["offer"])} for s in rows if s["status"] not in UNAVAILABLE]}
 
-    def statement(self, provider_id: str, authorization: str | None) -> dict:
+    def statement(self, provider_id: str, authorization: str | None, pg_access: str | None = None,
+                  path: str = "/v2/statement") -> dict:
         """catalog.md: what a provider owes, from the allows the registry issued — not from the provider's reports.
         An allow given back within the window (limits.md) is not billed."""
-        self.authenticate(provider_id, authorization)
+        provider_id = self.authenticate_read(provider_id, authorization, pg_access, "GET", path)
         rows = self._q("SELECT a.grant_id, a.use, COUNT(*) AS n FROM answers a JOIN asks k ON k.id = a.ask_id "
                        "WHERE k.provider_id = ? AND a.status = 'allow' GROUP BY a.grant_id, a.use ORDER BY a.grant_id",
                        (provider_id,))
@@ -583,9 +775,10 @@ class Registry:
     def document(self) -> dict:
         api = self.config.api.rstrip("/")
         return {"prefix": self.config.prefix, "name": self.config.name, "api": api, "keys": api + "/keys",
-                "profiles": self.config.profiles, "extensions": EXTENSIONS + (["sandbox"] if self.config.sandbox else []),
+                "profiles": self.config.profiles, "extensions": EXTENSIONS + (["sandbox"] if self.config.sandbox else [])
+                + (["provider-identity"] if self.config.providers == "open" else []),
                 "policy": self.config.policy, "complaints": self.config.complaints, "sandbox": self.config.sandbox,
-                "spec": "PRE-GEN v5"}
+                "providers": self.config.providers, "spec": "PRE-GEN v5"}
 
     def key_set(self) -> dict:
         """PRE-GEN-SPEC.md §2.3: every key ever signed with, current and retired, and the announced next key; self-signed,

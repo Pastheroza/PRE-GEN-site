@@ -1,4 +1,4 @@
-# PRE-GEN for AI providers: ask, check, generate, report, prove
+# PRE-GEN for AI providers: a domain, a key, the library
 
 You run a generative AI product. Before it generates an output that shows a protected
 person (or work), it **asks** the registry its code names, **checks** the signed answer,
@@ -7,7 +7,10 @@ can check offline. This guide gives every step in Python and JavaScript, with wh
 step returns. Where it and the specification differ, the specification wins:
 `https://www.pregen.org/spec/PRE-GEN-CORE.md`.
 
-**You need:** Python 3.9+ or Node.js 20+, and credentials from each registry you ask (step 3).
+**You need:** Python 3.9+ or Node.js 20+, and a domain you control. **No account anywhere:**
+your identity is your domain and a key you make (step 2). Every registry listed in the
+directory answers you on the same terms. Selling licences is a registry's own, optional
+business, joined later and separately (the section "Selling and connected users").
 
 ## Ground rules
 
@@ -38,17 +41,17 @@ step returns. Where it and the specification differ, the specification wins:
    tracking`, `sntp time.apple.com` on macOS, or Windows Time; without a time server, compare
    with a registry's HTTP `Date` header, `curl -s -o /dev/null -D - {api}/keys | grep -i '^date'`):
    answers live minutes, and one issued more than 60 s in your future is refused.
-5. **Secrets stay server-side:** registry tokens and your private key never go to a browser,
-   a URL, a log or client code. Your secret store is wherever only your servers can read
+5. **Secrets stay server-side:** your private key (and any registry token, on the credential
+   path) never goes to a browser, a URL, a log or client code. Your secret store is wherever only your servers can read
    them: a secrets manager, environment variables, or a file readable only by the service.
 6. **A sandbox answer is never accepted in production.** It carries `ext: {"sandbox": true}`;
    the libraries refuse it unless you pass `testing`.
 7. **Copy codes exactly.** A person's code ends with a check character that may be `*`, `~`,
    `$`, `=` or `!`: quote codes in a shell (`'PG-ABCD-000001$'`) and encode them in a URL
    path (`%24` for `$`).
-8. **Ask the person** who runs the product before you create accounts, accept terms or
-   store secrets. Their request to integrate PRE-GEN covers what this guide makes and
-   stores: the sandbox credential, the tokens registries give you, and your provider key.
+8. **Ask the person** who runs the product before you accept terms or store secrets. Their
+   request to integrate PRE-GEN covers what this guide makes and stores: your provider key,
+   your party document, and the copy of it a sandbox keeps. This guide creates no account.
 9. **An `allow` is a registry's signed answer, not legal advice.** It records what that
    registry decided under its own published policy; you stay responsible under the law
    that applies to you (`https://www.pregen.org/legal.html`).
@@ -56,18 +59,77 @@ step returns. Where it and the specification differ, the specification wins:
 ## 1. Install the library
 
 ```bash
-pip install "pregen>=0.11.0"
+pip install "pregen>=0.12.0"
 ```
 
 ```bash
 npm init -y && npm pkg set type=module    # in your project folder, if it has no package.json yet
-npm install @pregen/verify@^0.11.0
+npm install @pregen/verify@^0.12.0
 ```
 
 Both carry the PRE-GEN steward key, check the directory, answers and proofs, and sign your
 messages. Neither needs anything else.
 
-## 2. Load the directory
+## 2. Your identity: a domain, a key, the party document
+
+A provider is known by its **domain** and signs with its **key**. Nothing is issued to you,
+nowhere to sign up (extension `provider-identity`,
+`https://www.pregen.org/spec/extensions/provider-identity.md`).
+
+**Your provider id** is `https://` and your domain, nothing else: `https://frame.example`
+(lower case, no `www.`, path, port or trailing slash; only a sandbox also takes a port, step 9). It goes in every request as
+`provider_id` and in the `X-Provider-ID` header. Pick a domain the product controls and keep
+it: changing it is becoming a new provider.
+
+**Make the key once** and keep it with your other secrets:
+
+```python
+import json, os
+import pregen
+key = pregen.new_private_key_hex()          # 64 hex: the private key. Store it, never log it.
+with open("provider.key", "w") as f:        # or your secret store; the complete examples read this file
+    f.write(key)
+os.chmod("provider.key", 0o600)
+pub = pregen.public_key_hex(key)            # 64 hex: the public key
+key_id = pregen.fingerprint(pub)            # "pg-ed25519:<32 hex>"
+```
+
+```js
+import { newPrivateKeyHex, publicKeyHex, fingerprint } from "@pregen/verify";
+const key = newPrivateKeyHex();
+const pub = await publicKeyHex(key);
+const keyId = await fingerprint(pub);
+```
+
+**Build the party document** (who you are and your key, signed by the key) and serve it as a
+static file at `https://<your domain>/.well-known/pregen-party.json`:
+
+```python
+doc = pregen.party_document("https://frame.example", "Frame", key)   # the same key: the same document
+json.dump(doc, open("pregen-party.json", "w"))                       # publish it at /.well-known/pregen-party.json
+```
+
+```js
+import { partyDocument } from "@pregen/verify";
+const doc = await partyDocument("https://frame.example", "Frame", key);
+writeFileSync("pregen-party.json", JSON.stringify(doc));             // publish it at /.well-known/pregen-party.json
+```
+
+Check it: `curl -s https://frame.example/.well-known/pregen-party.json | python3 -m json.tool`
+prints `party_id`, `name`, `roles` and one `keysets` entry. The file must answer over HTTPS
+without a redirect and without a login. A registry reads it the first time you ask, pins your
+key chain, and reads it again at least daily; **whoever takes over your domain does not get
+your key**: a later document must extend the chain (a `rotation` keyset signed by the old key,
+`https://www.pregen.org/spec/extensions/provider-keys.md`), or it is refused.
+
+**Before you have a domain** (or to test from a laptop), a sandbox takes the document by post
+and accepts any `https://…` id you choose, a port included: step 9. Nothing else changes.
+
+**A registry that still wants its own credential** says `"providers": "registered"` in its
+document (`GET {api}/.well-known/pregen-registry.json`); the credential path for it is at the
+end of this guide. A registry that says `"providers": "open"` answers you as you are.
+
+## 3. Load the directory
 
 ```python
 directory = pregen.load_directory(previous=saved)     # saved: the last one you accepted, or None
@@ -90,10 +152,10 @@ hours: answers checked against a directory object older than that are refused.
 the test directory's URL (without it, the public directory is loaded). Never in production.
 The public test directory is `https://www.pregen.org/test/registries.json`, signed by the test
 steward key `78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0`.
-Keep a saved test directory in its own folder (`pregen-test/`, step 9): passed as `previous` to
+Keep a saved test directory in its own folder (`pregen-test/`, step 8): passed as `previous` to
 the real directory, it is refused (`sequence … is older` / `namespace … was removed`).
 A test directory is only about who signed the directory: answers from a non-sandbox registry
-listed in it are checked without `testing`. `testing` is for sandbox answers only (step 10).
+listed in it are checked without `testing`. `testing` is for sandbox answers only (step 9).
 
 **A registry's new key:** if `check_answer` refuses with `… may not sign …: issuer_mismatch`,
 the registry may have just been listed with a new key: load the directory again (with
@@ -102,87 +164,9 @@ the registry may have just been listed with a new key: load the directory again 
 answer, and reloading will not help. A test directory that fails to load is no test directory:
 stop, never check sandbox answers without it, and report it through the steward's issue tracker.
 
-## 3. Credentials from each registry
+## 4. Ask
 
-Every `api` below comes from the directory you loaded in step 2. The directory
-(`https://www.pregen.org/registries.json`, human view
-`https://www.pregen.org/registries`) lists every registry with its prefix and `api`. Each
-registry gives you, privately, a **provider id** and a **token**. Always send to the
-`api` in the registry's directory entry; if one a registry gave you differs, ask it before
-sending anything (compare them as exact strings). If a registry sends a token
-without its provider id, ask for the id: do not guess (a wrong one is 401
-`PG_NOT_AUTHENTICATED`). Keep one pair per registry, keyed by its prefix, for example:
-
-```json
-{"ABCD": {"provider_id": "frame-ai", "token": "<secret>"},
- "EFGH": {"provider_id": "frame-ai", "token": "<secret>"}}
-```
-
-A registry's sandbox gives test credentials without an account:
-`curl -s -X POST {sandbox api}/v2/sandbox/access` → `{"provider_id": "sbx-…", "token": "…",
-"registry": "<the sandbox api>", "note": "…"}` (Python: `json.loads(urllib.request.urlopen(
-urllib.request.Request(sandbox_api + "/v2/sandbox/access", data=b"", method="POST")).read())`;
-JS: `const res = await fetch(sandboxApi + "/v2/sandbox/access", { method: "POST", signal: AbortSignal.timeout(10000) }); if (!res.ok)
-throw new Error("HTTP " + res.status); const access = await res.json()`).
-This call is outside rule 2: each one mints a new credential (at most 10 an hour per address,
-then 429), so do not repeat it; if it got no answer (a timeout or a connection error; any HTTP
-status, 5xx included, is final), call it once more (a credential you never
-received is never used). The token is shown once: store the pair at once, under the sandbox's prefix (the four
-letters of its test codes). Once you have loaded the test directory (step 2), check that
-`registry` equals `directory.registry_for(<test code 1>)["api"]` (by prefix: `next(r for r in directory.registries if
-r["prefix"] == "ABCE")["api"]`); if it differs, delete the
-stored pair and ask the registry before using it. A directory entry does not
-say it is a sandbox; the registry's document does (`GET {api}/.well-known/pregen-registry.json`
-→ `"sandbox": true`; if it says `false`, it is not a sandbox: do not use `testing` with it).
-Use the credential like any other.
-
-## 4. Your provider key: make it once, register it once per registry
-
-Reports are signed with **your** key, so a registry can tell your reports from anyone
-else's. Make the key once and keep it with your other secrets:
-
-```python
-import pregen
-key = pregen.new_private_key_hex()          # 64 hex: the private key. Store it, never log it.
-pub = pregen.public_key_hex(key)            # 64 hex: the public key
-key_id = pregen.fingerprint(pub)            # "pg-ed25519:<32 hex>"
-```
-
-```js
-import { newPrivateKeyHex, publicKeyHex, fingerprint } from "@pregen/verify";
-const key = newPrivateKeyHex();
-const pub = await publicKeyHex(key);
-const keyId = await fingerprint(pub);
-```
-
-Register it **once at each registry**, with that registry's credential, before your first
-request there (a report without a registered key is refused with 401, and the allow would
-stay counted), and remember which registries are done (persist that list with your secrets,
-and each job's `job_id` and `job_input` with the job record, saved before its first request,
-so a resend after a crash is the identical request). `PROVIDER_ID` is the provider id
-that registry gave you; anything but HTTP 200 with `keyset` means: do not ask that registry:
-
-```python
-keyset = pregen.sign_envelope("pg.keyset.v1", {
-    "signers": [{"role": "provider", "key_id": key_id}],
-    "kind": "first", "provider_id": PROVIDER_ID, "previous": None, "recovery_registry": "",
-    "keys": [{"key_id": key_id, "public_key_hex": pub, "status": "current"}]}, key)
-# POST {api}/v2/keys with this envelope as the JSON body (headers: step 5)
-```
-
-In JavaScript, `await signEnvelope("pg.keyset.v1", { …the same body… }, KEY)` (the complete
-example has it in full).
-
-The registry answers HTTP 200 `{"keyset": …}`, and the same keyset again returns the same, so
-re-sending it from a new process is harmless.
-`recovery_registry: ""` means only the registry that holds your key set may co-sign a
-recovery if you lose your key (`https://www.pregen.org/spec/extensions/provider-keys.md`). A *different* first
-keyset is refused (409 `PG_KEYSET_CONFLICT`): to change your key later,
-send a `rotation` keyset (`https://www.pregen.org/spec/extensions/provider-keys.md`).
-
-## 5. Ask
-
-A person's code looks like `PG-ABCD-000001G`; its four letters name the registry.
+A person's code looks like `PG-ABCD-000001K`; its four letters name the registry.
 `directory.registry_for(code)` / `directory.registryFor(code)` gives that registry's entry
 (`prefix`, `api`, `keys` = the URL of its key set, `key_fingerprints`, …). If it gives
 `None` / `null`, no listed registry holds the code: you have no `allow`: do not generate
@@ -191,17 +175,18 @@ that person.
 ```
 POST {api}/v2/requests
 Content-Type: application/json
-X-Provider-ID: <provider id from that registry>
-Authorization: Bearer <token from that registry>
+X-Provider-ID: https://frame.example
 
-{"type": "pg.request.v1", "signatures": [],
- "body": {"subject_ref": "PG-ABCD-000001G", "provider_id": "<provider id>",
+{"type": "pg.request.v1", "signatures": ["<ed25519 hex, by your current key>"],
+ "body": {"signers": [{"role": "provider", "key_id": "pg-ed25519:…"}],
+          "subject_ref": "PG-ABCD-000001K", "provider_id": "https://frame.example",
           "profile": "likeness/1", "use": {"purpose": "commercial"},
           "job_id": "job-8841", "job_hash": "<sha-256 hex of what you fixed about the job>",
-          "licensee_id": "frame-ai:user-1"}}
+          "licensee_id": "<the licensee id that registry gave your customer>"}}
 ```
 
-- The first six members are required; `licensee_id` and the others below are optional.
+- `signers` names your current key, and the one signature is by it: that is your whole
+  authentication (no `Authorization` header). The next six members are required; `licensee_id` and the others below are optional.
   `profile` is the fixed name of a vocabulary of uses (`likeness/1`: a person's likeness and
   voice), never a version of a registry's policy: the answer must name the same profile,
   compared as a name. No answer carries a version, hash or counter of a registry's rules. `use.purpose` is what the output is for, not
@@ -216,8 +201,7 @@ Authorization: Bearer <token from that registry>
   only to the registry that connected it, and none to the other registries in the job. Some grants cover
   only one licensee. Send exactly the licensee id the registry gave you. An id the registry
   did not connect to you is refused (401 `PG_NOT_AUTHENTICATED`).
-- **Rule out what you can locally first** (no listed registry, no credential, a failed anchor
-  list), then ask in any order you like and stop at the first refusal of a private person, or
+- **Rule out what you can locally first** (no listed registry, a failed anchor list), then ask in any order you like and stop at the first refusal of a private person, or
   the first `decide_identity` verdict that is not `allow`, giving back every allow received before it.
 - **One request per code.** A job with two people asks twice, under the same `job_id`,
   each code at the registry its prefix names (a public person: see below). **Every job has a new `job_id`** (random, not a
@@ -227,8 +211,12 @@ Authorization: Bearer <token from that registry>
   (409 `PG_ASK_CLOSED`, whose body's `ack` member is the acknowledgement you were given before: keep it if
   you lost yours; otherwise nothing to do). Within one job, every request carries the same `job_hash`; a reused `job_id`
   with a different `job_hash` gets 409 `PG_JOB_CONFLICT` first. Both mean no answer.
-- `pregen.sign_envelope("pg.request.v1", body)` / `signEnvelope("pg.request.v1", body)`
-  makes the envelope (no key: `signatures` stays empty; the token authenticates you).
+- `pregen.sign_envelope("pg.request.v1", body, KEY)` / `await signEnvelope("pg.request.v1",
+  body, KEY)` makes the envelope, with `body["signers"] = [{"role": "provider", "key_id":
+  key_id}]`. A registry that has not vetted you (its own published procedure) answers
+  `deny` `PG_PROVIDER_NOT_ACCEPTED` for everything except a refusal of the person, a subject
+  it publishes, and a grant your own connected customer holds: a refusal, so nothing to
+  generate; ask the registry how it vets providers, or use its sandbox meanwhile (step 9).
 
 The registry answers HTTP 200 `{"answer": {"type": "pg.answer.v1", "body": {…}, "signatures": […]}}`.
 
@@ -295,7 +283,7 @@ whose claim the person confirmed holds everywhere; "no licence here" does not. S
    (unconfirmed); the complete examples show how. Only `wikidata:` anchors have
    a defined list of official channels today: for any other anchor, `confirmed` is `False` (do
    not call `wikidata_official_urls`, which raises). Both complete examples below do all of
-   step 5. In Python, pass `get_text` (and a `get_json` if you fetch
+   step 4. In Python, pass `get_text` (and a `get_json` if you fetch
    yourself) that send a `User-Agent: <product> (<contact URL>)` header: Wikidata answers 403
    to an anonymous client (the library's own fetcher sends one). In JS, pass a `fetch` that sends
    it to `wikidataOfficialUrls`, and send it from `getText`.
@@ -308,15 +296,15 @@ whose claim the person confirmed holds everywhere; "no licence here" does not. S
    the code it returns; `verify_answer` must pass for every other code whose claim the person
    confirmed. Report
    as `generated`, and put in the proof, the allow of the code it returns and every other allow
-   from a claim the person confirmed; give back (step 8) allows from unconfirmed claims. Apply
-   step 6's obligations rule to every allow you report. Codes that did not answer `allow` are
+   from a claim the person confirmed; give back (step 7) allows from unconfirmed claims. Apply
+   step 5's obligations rule to every allow you report. Codes that did not answer `allow` are
    neither reported nor put in the proof. If the status is not `allow`, give back every allow.
 5. **Unknown is not unconfirmed.** If any listed registry's anchor list fails (anything but a
    404 from a registry whose document does not list `identity`, or `verify_anchors` raises, with no verified copy of it under 24 hours old), if Wikidata
    or a proof page cannot be read (a timeout, a connection error, 403, 429 or 5xx; a 404 or 410
    means the page and its line are gone, so that claim is simply unconfirmed), or if any code
-   under the anchor **whose claim the person confirmed** gets no valid answer (no credentials
-   there, a 4xx, or `verify_answer` raises), you have no decision for this person: do not
+   under the anchor **whose claim the person confirmed** gets no valid answer (a 4xx, or
+   `verify_answer` raises), you have no decision for this person: do not
    generate them, and give back their allows. A failure at an unconfirmed claim changes nothing:
    `decide_identity` ignores it. While any registry's anchor list (except such a 404) has not verified within the last 24
    hours (`failed` above), generate no one whose code has that registry's prefix, and no public
@@ -324,11 +312,11 @@ whose claim the person confirmed holds everywhere; "no licence here" does not. S
    Everyone else may go on. A code the steward recorded as a false claim
    (`directory.is_false_claim(code)`) is never generated, and the libraries refuse its answers.
 
-If you learn of another registry's claim to the same person only later, apply step 5's
+If you learn of another registry's claim to the same person only later, apply step 4's
 public-person rule then: keep every answer, and never present the output as permitted while a
 refusal of the person stands.
 
-## 6. Check the answer
+## 5. Check the answer
 
 ```python
 pregen.check_answer(answer, request, directory)     # raises pregen.PregenError (a ValueError); str(e) is the reason
@@ -344,7 +332,7 @@ was not retired before it signed), the answer names exactly your request and pro
 within its lifetime, it is not a sandbox answer (unless `testing`), and its `status` is
 `allow`. An answer that fails the check is not an answer: never generate on it. If its body
 says `allow` all the same (expired, badly signed, for another request), still report
-`not_generated` for it (step 8), so a registry that did issue it frees the use where it can
+`not_generated` for it (step 7), so a registry that did issue it frees the use where it can
 (the reference registry refuses a give-back for an answer bound to another request); a refused
 give-back is logged, and you go on. To log why a valid answer refused, the same
 arguments to `pregen.verify_answer(answer, request, directory)` /
@@ -364,20 +352,20 @@ they raise when the answer itself is not valid; then log that reason. The status
 `check_answer` does not look at `obligations`: you must. If an allow lists obligations your
 product does not apply, do not generate, and give the allow back.
 
-## 7. Generate, only on a valid allow for every person
+## 6. Generate, only on a valid allow for every person
 
 An answer lives a short time (`expires_at`, at most 15 minutes; often 5). Generate only when
 **every** person in the job has a checked `allow` (for a public person, `decide_identity`'s
-`allow`, step 5) whose `expires_at` has not passed. Take
+`allow`, step 4) whose `expires_at` has not passed. Take
 one time, `began` (whole Unix seconds, `int(time.time())`), right before generation starts:
 it is the `occurred_at` of every report
-in the job (step 8), even if rendering ends later. If generation cannot start before the
-earliest `expires_at`, ask again under a new `job_id` and give back the old allows (step 8).
+in the job (step 7), even if rendering ends later. If generation cannot start before the
+earliest `expires_at`, ask again under a new `job_id` and give back the old allows (step 7).
 Write the output only after every check passed and `began` is taken. Hash it:
 `output_hash` = SHA-256, in hex, of the exact bytes you write or deliver (read back from the
 file if you write one).
 
-## 8. Report the output
+## 7. Report the output
 
 For each person's allow, sign a report with your key and send it to the same registry:
 
@@ -404,7 +392,7 @@ report = pregen.sign_envelope("pg.report.v1", {
 - **Send reports soon:** a proof needs the registry to have received the report within 24
   hours of the answer's expiry; a later one is recorded but proves nothing.
 
-## 9. Keep the proof with the output
+## 8. Keep the proof with the output
 
 The proof is the four signed messages for every person in the job, exactly as signed:
 
@@ -420,7 +408,7 @@ labelled `org.pregen.proof`. **An output made without a valid `allow` is never p
 permitted.**
 
 **Checking someone's proof** (a platform, a distributor, an auditor; if that is all you do, you
-need steps 1, 2 and 9 only):
+need steps 1, 3 and 8 only):
 
 ```python
 result = pregen.check_proof(bundle, directory, output_sha256=sha256_of_the_file)
@@ -459,7 +447,7 @@ so offline it fails without them. Save both every time you load the directory, a
 every 24 hours while you label, replacing the old copies (a key set keeps its retired keys,
 so the newest copy verifies old proofs too):
 
-Run the snippets from your product's own folder; the save snippet follows step 2's
+Run the snippets from your product's own folder; the save snippet follows step 3's
 `load_directory`. Production and testing each keep their own folder, so a test file can never stand in for a
 production one: `pregen/`, or `pregen-test/` with the test steward key beside the rest.
 
@@ -584,17 +572,42 @@ current as what you saved: a revocation published after that is invisible to it.
 `verify_directory(saved)` only for offline proof checks: it counts the saved copy as loaded
 now. For answers, always `load_directory(previous=saved)`.
 
-## 10. Try it in a sandbox first
+## 9. Try it on the public test network first
 
-From the registry, get its sandbox `api`, the sandbox's eight test codes, and the test
-directory (its URL and test steward key). To start before any registry gives you one, use
-PRE-GEN's own: the PRE-GEN Test Registry, prefix `TEST`, `api` `https://sandbox.pregen.org`,
-listed in the public test directory (step 2), codes 1 to 8: `PG-TEST-000001N` `PG-TEST-000002Z` `PG-TEST-0000034` `PG-TEST-000004E` `PG-TEST-000005R` `PG-TEST-000006$` `PG-TEST-0000077` `PG-TEST-000008H`. A sandbox is its own registry with its own prefix
-(for example `ABCE` beside `ABCD`): take credentials from `{sandbox api}/v2/sandbox/access`,
-store them under that prefix in `CREDENTIALS`, and register your key there (step 4; the same
-provider key for sandbox and production is fine). Copy
-the eight test codes the registry gives you (code `N` is `PG-<prefix>-00000N` plus a check
-character computed from it: copy it, never retype it). Each answers one way:
+The test network is a sandbox registry and a test directory, open to everyone:
+
+- **Test directory:** `https://www.pregen.org/test/registries.json`, signed by the test steward
+  key `78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0` (step 3). It lists
+  sandboxes only. Never in production.
+- **The PRE-GEN Test Registry:** prefix `TEST`, `api` `https://sandbox.pregen.org`, codes 1 to 8:
+  `PG-TEST-000001N` `PG-TEST-000002Z` `PG-TEST-0000034` `PG-TEST-000004E` `PG-TEST-000005R`
+  `PG-TEST-000006$` `PG-TEST-0000077` `PG-TEST-000008H` (copy them; the last character is a
+  check character). Any registry's own sandbox works the same way: a separate registry with its
+  own prefix (`ABCE` beside `ABCD`), listed in the test directory, whose document says
+  `"sandbox": true`.
+
+**Introduce yourself by post.** A laptop has no domain to serve a document on, so a sandbox
+takes your party document as a request body, and accepts any `https://…` id you choose
+(make it random, such as `https://test-k7q2x9.example`, so nobody else's test has already taken it) with the key you made in step 2:
+
+```python
+doc = pregen.party_document(PROVIDER, NAME, KEY)
+urllib.request.urlopen(urllib.request.Request(sandbox_api + "/v2/sandbox/party", method="POST",
+    data=json.dumps(doc).encode(), headers={"Content-Type": "application/json"}), timeout=10)   # → 200 {"party_id": …}
+```
+
+```js
+const res = await fetch(sandboxApi + "/v2/sandbox/party", { method: "POST", body: JSON.stringify(doc),
+  headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(10000) });     // → 200 {"party_id": …}
+```
+
+Posting the same document again is harmless. A different first keyset under an id someone
+else already pinned is refused (401): pick another id, for example
+`https://test-<random>.example`. From then on you ask the sandbox exactly as you would any
+registry: signed requests, `X-Provider-ID`, no credential. A production registry reads the
+same document from your domain instead, and nothing is ever posted to it.
+
+Each test code answers one way:
 
 | Code | Answer |
 |---|---|
@@ -610,21 +623,53 @@ character computed from it: copy it, never retype it). Each answers one way:
 `testing` is only ever used with a test directory (`TEST_STEWARD` set): there it is true for a
 code whose registry's document says `"sandbox": true`, and for `check_proof` (offline included)
 when any `answer.body.ext.sandbox` is true. With the real directory it is always false, whatever
-a registry's document says, and the libraries refuse it there. A sandbox proof is never a label. A registry may give you more codes (9 and up) for its own test grants, and tells you what each
-answers (if not, `GET {sandbox api}/v2/codes/<code>`: the name says): ask them like the others. Ask each in a job of its own: run the complete example once per code (`CODES = [that code]`).
-For codes 2 to 8 it stops at the check with `not an allow: <status> <reason>`, and that line is
-the outcome to compare with the table (nothing was allowed, so nothing to give back). Take code `1` through the whole flow (ask, check,
-generate, report, proof), as in production: the complete examples below do, with
-`TESTING = True` / `const TESTING = true`. Keep sandbox outputs and proofs apart from
-production ones: they are never labels (record `accepted: false`, reason `test directory: never a
-label`, step 9). A sandbox accepts any `licensee_id` without connecting it: ask a licensee-only
-test code with the licensee id the registry names for it. Check sandbox answers
-and proofs with `testing`: `check_answer(answer, request, directory, testing=True)`,
-`check_proof(…, testing=True)`; JS `checkAnswer(answer, request, { directory, testing: true })`.
+a registry's document says, and the libraries refuse it there. A sandbox proof is never a label.
+A registry may give you more codes (9 and up) for its own test grants, and tells you what each
+answers (if not, `GET {sandbox api}/v2/codes/<code>`: the name says): ask them like the others.
+Ask each in a job of its own: run the complete example once per code (`CODES = [that code]`).
+For codes 2 to 8 it stops at the check: the example raises, exits with code 1, and the last line
+of the traceback, `not an allow: <status> <reason>`, is the outcome to compare with the table
+(nothing was allowed, so nothing to give back). That is the example working, not a bug. Take code
+`1` through the whole flow (ask, check, generate, report, proof), as in production: the complete
+examples below do, with `TESTING = True` / `const TESTING = true`. Keep sandbox outputs and
+proofs apart from production ones: they are never labels (record `accepted: false`, reason
+`test directory: never a label`, step 8). A sandbox accepts any `licensee_id` without
+connecting it: ask a licensee-only test code with the licensee id the registry names for it.
+Check sandbox answers and proofs with `testing`: `check_answer(answer, request, directory,
+testing=True)`, `check_proof(…, testing=True)`; JS `checkAnswer(answer, request, { directory,
+testing: true })`. Every sandbox answer carries `ext: {"sandbox": true}`, and the libraries
+refuse it outside testing.
+
+**You are integrated** when the complete example below ends with the proof printed for code
+`1` and with `not an allow: …` for codes 2 to 8. Then switch `DIRECTORY_URL` to the real
+directory, `TEST_STEWARD` to `None`, `TESTING` to `False`, and `PROVIDER` to your domain, with
+the party document served on it.
+
+## Selling and connected users
+
+Everything above is the mandatory layer: every AI provider and every registry implements it,
+and it costs nothing and needs no account. **Commerce is a registry's own, optional layer:** a
+registry may sell licences to people or to providers, with its own prices, checkout and
+contract. A provider that has PRE-GEN connects to any registry's commerce directly; a registry
+that sells nothing is still a complete registry. Two layers, one picture:
+`https://www.pregen.org/docs/two-layers`.
+
+- **A person's licence, used in your app.** When a customer holds a licence at a registry, they will connect it to your app once, with one consent screen at their registry
+  (extension `bind`, specified, not yet offered by a listed registry; `https://www.pregen.org/spec/extensions/bind.md`: OAuth 2.0 code + PKCE,
+  your `redirect_uris` from your party document). You receive a signed binding with a random
+  `licensee_id`, and send it in requests about that person (step 4). HTTP 403 `PG_NOT_BOUND`
+  means "connect your licence", never a refusal. A registry's own connect procedure (extension
+  `licensee`) does the same with an id the registry gives you.
+- **Buying for your product or your users.** Each registry publishes its commerce page and
+  terms itself; PRE-GEN names none. The first registry: `https://prampta.com`.
+- **Being vetted.** A registry that has not vetted you answers only about refusals, published
+  subjects and your own connected customers (`PG_PROVIDER_NOT_ACCEPTED`, step 4). Vetting is
+  each registry's own published procedure, and is not needed to honour a licence your customer
+  connected.
 
 ## Complete example (Python)
 
-One job, one or more people (private or public), each at their own registry. Fill in the eight constants,
+One job, one or more people (private or public), each at their own registry. Fill in the constants at the top,
 and list each person once (a public person by one code: the example asks the others).
 
 ```python
@@ -639,11 +684,12 @@ import urllib.request
 
 import pregen
 
-CREDENTIALS = {"ABCD": {"provider_id": "frame-ai", "token": "<secret>"}}   # one per registry (step 3)
-KEY = "<your private key hex>"                                             # step 4, from your secret store
+PROVIDER = "https://frame.example"                                        # your domain (step 2); at a sandbox, any https://… you chose
+NAME = "Frame"                                                             # what a consent screen shows beside your domain
+KEY = open("provider.key").read().strip()                                 # step 2: from your secret store, never in code
 DIRECTORY_URL, TEST_STEWARD = pregen.DIRECTORY_URL, None                    # testing: the test directory and its key
-CODES = ["PG-ABCD-000001G"]                                                # the people in this job
-FOLDER = "pregen-test" if TEST_STEWARD else "pregen"                       # test and production never share a file (step 9)
+CODES = ["PG-ABCD-000001K"]                                                # the people in this job
+FOLDER = "pregen-test" if TEST_STEWARD else "pregen"                       # test and production never share a file (step 8)
 TESTING = False                                                            # True only for a job whose every code is at a sandbox, under a test directory
 UA = {"User-Agent": "frame-ai (https://frame-ai.example/contact)"}        # who you are: Wikidata refuses anonymous clients
 LICENSEES = {}                                                             # prefix -> the licensee_id that registry gave this customer
@@ -674,13 +720,13 @@ def get_text(url):                                                        # a pr
     except urllib.error.HTTPError as e:
         if e.code in (404, 410) or 300 <= e.code < 400:
             return ""                                                     # gone, or elsewhere: unconfirmed
-        raise                                                             # unreadable: no decision (step 5)
+        raise                                                             # unreadable: no decision (step 4)
 
 
 saved_anchors = json.load(open(ANCHORS)) if os.path.exists(ANCHORS) else {}   # prefix -> last verified list
 
 
-def anchor_list(r):                                                       # step 5.1: entries, or None (no list)
+def anchor_list(r):                                                       # step 2.1: entries, or None (no list)
     try:
         env = get_json(r["api"] + "/v2/anchors")
     except urllib.error.HTTPError as e:
@@ -712,11 +758,10 @@ json.dump(saved_anchors, open(ANCHORS, "w"))
 
 
 def post(entry, path, envelope, member):                                  # rule 2: the same bytes, at most 4 sends
-    cred, data = CREDENTIALS[entry["prefix"]], json.dumps(envelope).encode()
+    data = json.dumps(envelope).encode()
     for _ in range(4):
         req = urllib.request.Request(entry["api"] + path, data=data, method="POST", headers={
-            "Content-Type": "application/json", "X-Provider-ID": cred["provider_id"],
-            "Authorization": "Bearer " + cred["token"]})
+            "Content-Type": "application/json", "X-Provider-ID": PROVIDER})
         try:
             with urllib.request.urlopen(req, timeout=10) as res:
                 body = json.loads(res.read())
@@ -736,20 +781,16 @@ def post(entry, path, envelope, member):                                  # rule
     raise RuntimeError(f"{path}: no answer after 4 sends")
 
 
-REGISTERED = set()                             # load and save it with your secrets in a real product
+INTRODUCED = set()                             # sandboxes that hold your party document (step 9)
 
 
-def register_key(entry):                       # step 4: once per registry
-    if entry["prefix"] in REGISTERED:
-        return
-    post(entry, "/v2/keys", pregen.sign_envelope("pg.keyset.v1", {
-        "signers": [{"role": "provider", "key_id": key_id}], "kind": "first",
-        "provider_id": CREDENTIALS[entry["prefix"]]["provider_id"], "previous": None, "recovery_registry": "",
-        "keys": [{"key_id": key_id, "public_key_hex": pub, "status": "current"}]}, KEY), "keyset")
-    REGISTERED.add(entry["prefix"])
+def introduce(entry):                          # a sandbox takes the document by post; a registry reads your domain
+    if TESTING and entry["prefix"] not in INTRODUCED:
+        post(entry, "/v2/sandbox/party", pregen.party_document(PROVIDER, NAME, KEY), "party_id")
+        INTRODUCED.add(entry["prefix"])
 
 
-def report(entry, request, answer, outcome, output_hash, began):   # step 8
+def report(entry, request, answer, outcome, output_hash, began):   # step 7
     env = pregen.sign_envelope("pg.report.v1", {
         "signers": [{"role": "provider", "key_id": key_id}],
         "request_id": pregen.message_id("pg.request.v1", request["body"]),
@@ -758,7 +799,7 @@ def report(entry, request, answer, outcome, output_hash, began):   # step 8
     return env, post(entry, "/v2/reports", env, "ack")
 
 
-def give_back(items, when):                                              # step 8: not_generated, one by one
+def give_back(items, when):                                              # step 7: not_generated, one by one
     for entry, request, answer in items:
         try:
             report(entry, request, answer, "not_generated", "", when)
@@ -774,32 +815,31 @@ json.dump({"job_id": job_id, "job_input": job_input}, open(os.path.join(FOLDER, 
 allowed = []                                                              # every answer whose body says allow
 
 
-def ask(code):                                                            # step 5: one code, in this job
+def ask(code):                                                            # step 4: one code, in this job
     entry = directory.registry_for(code)
-    if entry["prefix"] not in CREDENTIALS:
-        raise RuntimeError(f"{code}: no credential at {entry['prefix']}")
-    register_key(entry)
+    introduce(entry)
     request = pregen.sign_envelope("pg.request.v1", {
-        "subject_ref": code, "provider_id": CREDENTIALS[entry["prefix"]]["provider_id"], "profile": "likeness/1",
+        "signers": [{"role": "provider", "key_id": key_id}],
+        "subject_ref": code, "provider_id": PROVIDER, "profile": "likeness/1",
         "use": {"purpose": "commercial"}, "job_id": job_id, "job_hash": job_hash,
-        **({"licensee_id": LICENSEES[entry["prefix"]]} if entry["prefix"] in LICENSEES else {})})
+        **({"licensee_id": LICENSEES[entry["prefix"]]} if entry["prefix"] in LICENSEES else {})}, KEY)
     answer = post(entry, "/v2/requests", request, "answer")
     if answer.get("body", {}).get("status") == "allow":
         allowed.append((entry, request, answer))                          # given back below if anything fails
     return answer, request
 
 
-for code in CODES:                                                        # rule out locally first (step 5)
+for code in CODES:                                                        # rule out locally first (step 4)
     entry = directory.registry_for(code)
-    if entry is None or entry.get("revoked") or entry["prefix"] in FAILED or (code not in ANCHOR_OF and entry["prefix"] not in CREDENTIALS):
-        raise SystemExit(f"{code}: no listed registry, no credential there, or its anchor list failed")
+    if entry is None or entry.get("revoked") or entry["prefix"] in FAILED:
+        raise SystemExit(f"{code}: no listed registry, or its anchor list failed")
     if directory.is_false_claim(code):
         raise SystemExit(f"{code}: the steward recorded it as a false claim")
     if code in ANCHOR_OF and FAILED:
-        raise SystemExit(f"{code}: a public person while an anchor list failed: no decision (step 5)")
+        raise SystemExit(f"{code}: a public person while an anchor list failed: no decision (step 4)")
 
 try:
-    for code in CODES:                                                    # steps 5 and 6
+    for code in CODES:                                                    # steps 4 and 5
         anchor = ANCHOR_OF.get(code)
         if anchor is None:                                                # a private person: one code
             pregen.check_answer(*ask(code), directory, testing=TESTING)  # raises unless a valid allow
@@ -823,14 +863,14 @@ try:
         unconfirmed = {c["code"] for c in claims if not c["confirmed"]}   # their allows go back, not into the proof
         give_back([a for a in allowed if a[1]["body"]["subject_ref"] in unconfirmed], int(time.time()))
         allowed[:] = [a for a in allowed if a[1]["body"]["subject_ref"] not in unconfirmed]
-    for entry, request, answer in allowed:                                # step 6: this product applies no obligations
+    for entry, request, answer in allowed:                                # step 5: this product applies no obligations
         if answer["body"].get("obligations"):
             raise RuntimeError(f"{request['body']['subject_ref']}: an allow with obligations")
 except Exception:
     give_back(allowed, int(time.time()))
     raise
 
-began = int(time.time())                                                  # step 7: generation begins now
+began = int(time.time())                                                  # step 6: generation begins now
 if began >= min(a["body"]["expires_at"] for _, _, a in allowed):          # an allow ran out: give all back, ask again
     give_back(allowed, began)
     raise RuntimeError("an allow expired before generation began: ask again under a new job_id")
@@ -842,7 +882,7 @@ except Exception:
 output_hash = hashlib.sha256(open("output.bin", "rb").read()).hexdigest()  # the bytes delivered
 
 subjects, unreported = [], []
-for entry, request, answer in allowed:                                    # step 8: every report, one by one
+for entry, request, answer in allowed:                                    # step 7: every report, one by one
     try:
         rep, ack = report(entry, request, answer, "generated", output_hash, began)
         subjects.append({"request": request, "answer": answer, "report": rep, "ack": ack})
@@ -852,16 +892,16 @@ for entry, request, answer in allowed:                                    # step
 
 if unreported:                                                            # no proof: keep the output unlabelled
     raise SystemExit(f"no proof for {unreported}: keep output.bin unlabelled")
-bundle = {"format": "pg.proof.v1", "subjects": subjects}                  # step 9
+bundle = {"format": "pg.proof.v1", "subjects": subjects}                  # step 8
 print(pregen.check_proof(bundle, directory, output_sha256=output_hash, testing=TESTING))
 json.dump(bundle, open("output.bin.proof.json", "w"))                    # kept with the file
 ```
 
-It prints `{'output_hash': '…', 'job_id': 'job-…', 'subjects': [{'code': 'PG-ABCD-000001G',
+It prints `{'output_hash': '…', 'job_id': 'job-…', 'subjects': [{'code': 'PG-ABCD-000001K',
 'level': 'verified', 'basis': {'kind': 'grant', …}}]}`. Not shown, in either example: the
-identical resend of rule 2, the directory reload on `issuer_mismatch` (step 2),
-`verify_answer` to log why a refusal refused (step 6), and saving the key sets for offline
-checks (step 9: if you check proofs offline in the same folder, run its save right after
+identical resend of rule 2, the directory reload on `issuer_mismatch` (step 3),
+`verify_answer` to log why a refusal refused (step 5), and saving the key sets for offline
+checks (step 8: if you check proofs offline in the same folder, run its save right after
 `load_directory`, since `directory.json`, `key_sets.json` and `saved_at.json` must be written
 together).
 
@@ -873,13 +913,14 @@ The same, in Node.js 20+ (save as `job.mjs`):
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { loadDirectory, signEnvelope, checkAnswer, verifyAnswer, checkProof, messageId, publicKeyHex, fingerprint,
-  canonicalJson, verifyAnchors, wikidataOfficialUrls, checkChannelProof, decideIdentity, DIRECTORY_URL } from "@pregen/verify";
+  canonicalJson, verifyAnchors, wikidataOfficialUrls, checkChannelProof, decideIdentity, partyDocument, DIRECTORY_URL } from "@pregen/verify";
 
-const CREDENTIALS = { ABCD: { provider_id: "frame-ai", token: "<secret>" } };   // one per registry (step 3)
-const KEY = "<your private key hex>";                                          // step 4, from your secret store
+const PROVIDER = "https://frame.example";                                      // your domain (step 2); at a sandbox, any https://… you chose
+const NAME = "Frame";                                                           // what a consent screen shows beside your domain
+const KEY = readFileSync("provider.key", "utf8").trim();                       // step 2: from your secret store, never in code
 const [url, TEST_STEWARD] = [DIRECTORY_URL, null];                              // testing: the test directory and its key
-const CODES = ["PG-ABCD-000001G"];                                              // the people in this job
-const FOLDER = TEST_STEWARD ? "pregen-test" : "pregen";                       // test and production never share a file (step 9)
+const CODES = ["PG-ABCD-000001K"];                                              // the people in this job
+const FOLDER = TEST_STEWARD ? "pregen-test" : "pregen";                       // test and production never share a file (step 8)
 const TESTING = false;                                                          // true only for a job whose every code is at a sandbox, under a test directory
 const UA = "frame-ai (https://frame-ai.example/contact)";                       // who you are: Wikidata refuses anonymous clients
 const LICENSEES = {};                                                           // prefix -> the licensee_id that registry gave this customer
@@ -896,12 +937,12 @@ const fetchUA = (u, o = {}) => fetch(u, { ...o, signal: AbortSignal.timeout(1000
 const getText = async (u) => {                                                  // a proof page, never through a redirect
   const res = await fetchUA(u, { redirect: "manual" });
   if (res.status === 404 || res.status === 410 || (res.status >= 300 && res.status < 400)) return "";   // gone, or elsewhere: unconfirmed
-  if (!res.ok) throw new Error(`${u}: HTTP ${res.status}`);                     // unreadable: no decision (step 5)
+  if (!res.ok) throw new Error(`${u}: HTTP ${res.status}`);                     // unreadable: no decision (step 4)
   return res.text();
 };
 
 const savedAnchors = existsSync(ANCHORS) ? JSON.parse(readFileSync(ANCHORS, "utf8")) : {};   // prefix -> last verified list
-async function anchorList(r) {                                                  // step 5.1: entries, or null (no list)
+async function anchorList(r) {                                                  // step 2.1: entries, or null (no list)
   let env;
   try {
     const res = await fetchUA(r.api + "/v2/anchors");
@@ -930,12 +971,12 @@ for (const r of directory.registries) {
 writeFileSync(ANCHORS, JSON.stringify(savedAnchors));
 
 async function post(entry, path, envelope, member) {                          // rule 2: the same bytes, at most 4 sends
-  const cred = CREDENTIALS[entry.prefix], data = JSON.stringify(envelope);
+  const data = JSON.stringify(envelope);
   for (let i = 0; i < 4; i++) {
     let res, body;
     try {
       res = await fetch(entry.api + path, { method: "POST", body: data, signal: AbortSignal.timeout(10000), headers: {
-        "Content-Type": "application/json", "X-Provider-ID": cred.provider_id, Authorization: `Bearer ${cred.token}` } });
+        "Content-Type": "application/json", "X-Provider-ID": PROVIDER } });
       body = res.ok ? await res.json().catch(() => ({})) : await res.text();
     } catch { await new Promise((r) => setTimeout(r, 3000)); continue; }        // no answer: send the same bytes again
     if (res.ok) {
@@ -949,21 +990,21 @@ async function post(entry, path, envelope, member) {                          //
   throw new Error(`${path}: no answer after 4 sends`);
 }
 
-async function report(entry, request, answer, outcome, outputHash, began) {      // step 8
+async function report(entry, request, answer, outcome, outputHash, began) {      // step 7
   const env = await signEnvelope("pg.report.v1", { signers: [{ role: "provider", key_id: keyId }],
     request_id: await messageId("pg.request.v1", request.body), answer: await messageId("pg.answer.v1", answer.body),
     job_id: request.body.job_id, outcome, output_hash: outputHash, occurred_at: began }, KEY);
   return { report: env, ack: await post(entry, "/v2/reports", env, "ack") };
 }
 
-async function giveBack(items, when) {                                          // step 8: not_generated, one by one
+async function giveBack(items, when) {                                          // step 7: not_generated, one by one
   for (const { entry, request, answer } of items) {
     try { await report(entry, request, answer, "not_generated", "", when); }
     catch (e) { console.log("give-back refused:", e.message); }                 // e.g. a registry that never issued it
   }
 }
 
-const registered = new Set();                                                   // load and save it with your secrets in a real product
+const introduced = new Set();                                                   // sandboxes that hold your party document (step 9)
 const jobId = `job-${crypto.randomUUID()}`;                                     // new for every job
 const jobInput = { prompt: "<the prompt>", settings: { model: "<model>", seed: 1, temperature: "0.7" },     // keep it; non-whole
   customer: Object.keys(LICENSEES).length ? LICENSEES : null };                                            // numbers as strings
@@ -971,35 +1012,31 @@ const jobHash = createHash("sha256").update(canonicalJson(jobInput)).digest("hex
 writeFileSync(`${FOLDER}/jobs/${jobId}.json`, JSON.stringify({ job_id: jobId, job_input: jobInput }));
 const allowed = [];                                                             // every answer whose body says allow
 
-async function ask(code) {                                                      // step 5: one code, in this job
+async function ask(code) {                                                      // step 4: one code, in this job
   const entry = directory.registryFor(code);
-  if (!CREDENTIALS[entry.prefix]) throw new Error(`${code}: no credential at ${entry.prefix}`);
-  const providerId = CREDENTIALS[entry.prefix].provider_id;
-  if (!registered.has(entry.prefix)) {                                          // step 4: once per registry
-    await post(entry, "/v2/keys", await signEnvelope("pg.keyset.v1", {
-      signers: [{ role: "provider", key_id: keyId }], kind: "first", provider_id: providerId, previous: null,
-      recovery_registry: "", keys: [{ key_id: keyId, public_key_hex: pub, status: "current" }] }, KEY), "keyset");
-    registered.add(entry.prefix);
+  if (TESTING && !introduced.has(entry.prefix)) {                                // a sandbox takes the document by post
+    await post(entry, "/v2/sandbox/party", await partyDocument(PROVIDER, NAME, KEY), "party_id");
+    introduced.add(entry.prefix);                                               // a registry reads it from your domain
   }
-  const request = await signEnvelope("pg.request.v1", { subject_ref: code, provider_id: providerId,
-    profile: "likeness/1", use: { purpose: "commercial" }, job_id: jobId, job_hash: jobHash,
-    ...(entry.prefix in LICENSEES ? { licensee_id: LICENSEES[entry.prefix] } : {}) });
+  const request = await signEnvelope("pg.request.v1", { signers: [{ role: "provider", key_id: keyId }],
+    subject_ref: code, provider_id: PROVIDER, profile: "likeness/1", use: { purpose: "commercial" }, job_id: jobId,
+    job_hash: jobHash, ...(entry.prefix in LICENSEES ? { licensee_id: LICENSEES[entry.prefix] } : {}) }, KEY);
   const answer = await post(entry, "/v2/requests", request, "answer");
   if (answer?.body?.status === "allow") allowed.push({ entry, request, answer }); // given back below if anything fails
   return { answer, request };
 }
 
-for (const code of CODES) {                                                     // rule out locally first (step 5)
+for (const code of CODES) {                                                     // rule out locally first (step 4)
   const entry = directory.registryFor(code);
-  if (!entry || entry.revoked || FAILED.has(entry.prefix) || (!ANCHOR_OF.has(code) && !CREDENTIALS[entry.prefix])) {
-    throw new Error(`${code}: no listed registry, no credential there, or its anchor list failed`);
+  if (!entry || entry.revoked || FAILED.has(entry.prefix)) {
+    throw new Error(`${code}: no listed registry, or its anchor list failed`);
   }
   if (directory.isFalseClaim(code)) throw new Error(`${code}: the steward recorded it as a false claim`);
-  if (ANCHOR_OF.has(code) && FAILED.size) throw new Error(`${code}: a public person while an anchor list failed: no decision (step 5)`);
+  if (ANCHOR_OF.has(code) && FAILED.size) throw new Error(`${code}: a public person while an anchor list failed: no decision (step 4)`);
 }
 
 try {
-  for (const code of CODES) {                                                   // steps 5 and 6
+  for (const code of CODES) {                                                   // steps 4 and 5
     const anchor = ANCHOR_OF.get(code);
     if (!anchor) {                                                              // a private person: one code
       const { answer, request } = await ask(code);
@@ -1027,7 +1064,7 @@ try {
     await giveBack(back, Math.floor(Date.now() / 1000));
     allowed.splice(0, allowed.length, ...allowed.filter((a) => !back.includes(a)));
   }
-  for (const { request, answer } of allowed) {                                  // step 6: this product applies no obligations
+  for (const { request, answer } of allowed) {                                  // step 5: this product applies no obligations
     if (answer.body.obligations?.length) throw new Error(`${request.body.subject_ref}: an allow with obligations`);
   }
 } catch (e) {
@@ -1035,7 +1072,7 @@ try {
   throw e;
 }
 
-const began = Math.floor(Date.now() / 1000);                                    // step 7: generation begins now
+const began = Math.floor(Date.now() / 1000);                                    // step 6: generation begins now
 if (began >= Math.min(...allowed.map(({ answer }) => answer.body.expires_at))) { // an allow ran out: give all back
   await giveBack(allowed, began);
   throw new Error("an allow expired before generation began: ask again under a new job_id");
@@ -1049,29 +1086,29 @@ try {
 const outputHash = createHash("sha256").update(readFileSync("output.bin")).digest("hex");   // the bytes delivered
 
 const subjects = [], unreported = [];
-for (const { entry, request, answer } of allowed) {                             // step 8: every report, one by one
+for (const { entry, request, answer } of allowed) {                             // step 7: every report, one by one
   try {
     const { report: rep, ack } = await report(entry, request, answer, "generated", outputHash, began);
     subjects.push({ request, answer, report: rep, ack });
   } catch (e) { unreported.push(request.body.subject_ref); console.log("report refused:", e.message); }
 }
 if (unreported.length) throw new Error(`no proof for ${unreported}: keep output.bin unlabelled`);
-const bundle = { format: "pg.proof.v1", subjects };                             // step 9
+const bundle = { format: "pg.proof.v1", subjects };                             // step 8
 console.log(await checkProof(bundle, { directory, outputSha256: outputHash, testing: TESTING }));
 writeFileSync("output.bin.proof.json", JSON.stringify(bundle));                 // kept with the file
 ```
 
 ## Errors
 
-A refusal about a person is a signed answer (step 6). HTTP errors carry
+A refusal about a person is a signed answer (step 5). HTTP errors carry
 `{"error", "error_description"}`:
 
 | Code | HTTP | Meaning |
 |---|---|---|
 | `PG_MALFORMED` | 422 | the request does not follow the core (a member, a type, a code's spelling) |
-| `PG_NOT_AUTHENTICATED` | 401 | the provider id, token or licensee is not accepted, or no provider key is registered yet (reports: register it, step 4, then send the same report again) |
+| `PG_NOT_AUTHENTICATED` | 401 | the signature, the provider id or the licensee is not accepted: no party document on your domain (or none posted to this sandbox), a key that is not your chain's current one, a credential sent beside a provider URL, or a registry that wants its own credential (`"providers": "registered"`: the credential path) |
 | `PG_PROFILE_UNSUPPORTED` | 422 | the registry does not answer under this profile |
-| `PG_KEYSET_CONFLICT` | 409 | a different first keyset was already registered: rotate instead (step 4) |
+| `PG_KEYSET_CONFLICT` | 409 | credential path only: a different first keyset was already registered: rotate instead |
 | `PG_REPORT_CONFLICT` | 409 | another report for the same answer was already filed: resend the report you kept |
 | `PG_ASK_CLOSED` | 409 | this person in this job was already reported: use a new `job_id` for a new job |
 | `PG_ASK_CONFLICT` | 409 | this person in this job was asked with a different request: resend the identical one |
@@ -1085,7 +1122,9 @@ To keep the acknowledgement a 409 `PG_ASK_CLOSED` carries, parse that response's
 message instead.
 
 Answer reasons you will meet: `PG_UNKNOWN_SUBJECT` (this registry holds no such person:
-not a prohibition, and not a permission), `PG_OTHER_REGISTRY`, `PG_NO_LICENSE`, `PG_NOT_CONNECTED`
+not a prohibition, and not a permission), `PG_PROVIDER_NOT_ACCEPTED` (this registry has not vetted
+you and answers only about refusals, published subjects and your connected customers: a refusal),
+`PG_OTHER_REGISTRY`, `PG_NO_LICENSE`, `PG_NOT_CONNECTED`
 (only a connected end user's grant would do: show "connect your account" if your customer could
 hold this registry's grant),
 `PG_USAGE_LIMIT`, `PG_SCOPE_VIOLATION` (the grant does not cover this purpose or use),
@@ -1094,14 +1133,43 @@ the fixed protections no grant overrides: `PG_SUBJECT_OPTED_OUT`, `PG_SUBJECT_UN
 `PG_PROHIBITED_USE`, `PG_IMMUTABLE_DENIAL`, `PG_PERSONAL_SIGNATURE_REQUIRED`. Treat any
 reason you do not know as a refusal.
 
+## The credential path (a registry that says `"providers": "registered"`)
+
+Some registries still issue their own credentials. Everything in this guide holds there too,
+with these differences:
+
+1. The registry gives you, privately, a **provider id** (`frame-ai`) and a **token**. Keep one
+   pair per registry, keyed by its prefix, in your secret store. Always send to the `api` in
+   the registry's directory entry.
+2. Every `POST` carries `X-Provider-ID: <that id>` and `Authorization: Bearer <token>`, and
+   `provider_id` in the body is that id. The request is **not** signed: `signatures` is `[]`
+   and the body has no `signers` (`pregen.sign_envelope("pg.request.v1", body)` with no key).
+3. **Register your key once at that registry**, with its credential, before your first
+   request there, because reports are signed with it: `POST {api}/v2/keys` with a `first`
+   keyset (`kind: "first"`, `provider_id` = that id, `previous: null`, `recovery_registry: ""`,
+   your current key), signed with your key: `pregen.sign_envelope("pg.keyset.v1", {...}, KEY)`.
+   HTTP 200 `{"keyset": …}`; the same keyset again returns the same. A different first keyset
+   is refused (409 `PG_KEYSET_CONFLICT`): to change your key, send a `rotation`
+   (`https://www.pregen.org/spec/extensions/provider-keys.md`).
+4. `GET /v2/grants/{id}` and `/v2/statement` take the same two headers instead of `PG-Access`.
+5. A sandbox of such a registry mints a credential without an account:
+   `POST {sandbox api}/v2/sandbox/access` → `{"provider_id", "token", "registry", "note"}` (shown
+   once; at most 10 an hour per address).
+
+Both paths may be used at once, each at the registries that take it. A registry announces
+which it takes in `providers` of its document; `open` registries answer providers known by
+their domain and their registered providers alike.
+
 ## You are done when
 
+- [ ] Your party document is served at `https://<your domain>/.well-known/pregen-party.json`, over HTTPS, with no redirect
+- [ ] Your private key is in your secret store and nowhere else; every request and report is signed with it
 - [ ] The directory is saved after every load, and loaded again (with `previous`) at least every 24 hours
-- [ ] Your provider key is in your secret store and registered at every registry you ask
 - [ ] If you check proofs offline, the directory and every key set are saved with `saved_at`, at least every 24 hours
 - [ ] Every generation of a listed person is preceded by a request for each of their codes, to the registry each code names
 - [ ] A public person is asked at every code their anchor names, and generated only on `decide_identity`'s `allow`
 - [ ] `check_answer` / `checkAnswer` passes for every private person, and for the code `decide_identity` names for each public person, before generating
 - [ ] Every allow is reported: `generated` with `occurred_at` = when generation began, or `not_generated`
 - [ ] The proof bundle is checked with `check_proof` / `checkProof` and kept with the output
-- [ ] Nothing in production accepts a sandbox answer; no prompt, output, token or key leaves your servers
+- [ ] The complete example ran on the test network: the proof for code `1`, `not an allow` for codes 2 to 8
+- [ ] Nothing in production accepts a sandbox answer; no prompt, output or key leaves your servers
