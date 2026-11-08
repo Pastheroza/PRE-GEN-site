@@ -20,6 +20,20 @@ Text only: no message format, required schema member or vector changes.
 
 ## pregen 0.13.0, @pregen/verify 0.13.0, pregen-registry 0.4.0 (unreleased)
 
+Four clarifications of existing extensions (approved 2026-11-07), no new extension:
+- **`licensee`, `catalog`:** a provider sends a person's `licensee_id` only when the request rests on that person's
+  licence (under `bind`, the subject is among the binding's grants); otherwise `""`, on its own grant, which covers
+  its users only with resale. **`bind` B-3c:** `ext.bind` only on an allow whose basis is one of the binding's grants.
+- **`limits`, `jobs`:** a `not_generated` report with `answer: null` releases every reserved allow of the ask (by
+  `request_id`) inside the give-back window, and those allows cannot be reported again; send it instead of the request
+  again. An answer is open until its `expires_at`. X-7: a job may have started generating from the moment core rule 5
+  passed; store that moment first.
+- **`provider-identity`, Sandboxes:** a `localhost` id is bound to its key, `https://<32 hex>.localhost[:port]`; a
+  sandbox refuses any other. `sandbox_provider_url` / `sandboxProviderUrl` build it.
+- **`bind`:** a `redirect_uri` is HTTPS on the provider's own host or a private-use scheme from its reversed domain;
+  `http` only on a loopback host and only in a sandbox (RFC 8252 §7.3). `schemas/party-document.json` gives the
+  pattern; a registry refuses a party document that lists anything else.
+
 A person's terms of generation, as one more extension: additive to v5. The answer does not change, so apps on 0.12
 keep working.
 - **`terms`** (`extensions/terms.md`, `schemas/terms.json`): a subject's terms are a public, signed `pg.terms.v1`
@@ -62,7 +76,8 @@ keep working.
 - **`sandbox`:** standard serials 9–11 (1–8 unchanged): 9 buy first, with a test purchase
   (`POST {api}/v2/sandbox/purchases`, one use per purchase, sandbox only); 10 the person's terms; 11 a minor. For a
   known minor, a category outside the closed vocabulary is `PG_PROHIBITED_USE` (`likeness/1`, the floor).
-  A test purchase is its buyer's alone: another provider naming the buyer as its `licensee_id` gets `PG_NO_LICENSE`.
+  A test purchase is its buyer's alone: another provider naming the buyer as its `licensee_id` is refused (403
+  `PG_NOT_BOUND`, or 401 with a registered credential).
   **Upgrading a 0.3 sandbox:** 0.4.0 adds the missing standard subjects each time a sandbox starts, so an existing
   one gains 9–11 by restarting on 0.4.0. 0.3 numbered the operator's own test people from 9; a sandbox whose 9, 10
   or 11 is such a subject refuses to start and says so: make a fresh one (`init --sandbox`) and add those people
@@ -73,9 +88,12 @@ keep working.
   Each consent gives the sandbox's test creator a new licence (research, three uses), so apps never share one.
 - **Reference registry 0.4.0 implements `bind` in a sandbox** (`/v2/bind/authorize`, `/v2/bind/token`,
   `GET /v2/grants?licensee_id=…`, `pregen-registry bindings`). A production registry built from it does not list
-  `bind`: it has no accounts or sign-in for people. A sandbox now checks a `licensee_id` from a provider known by its
-  domain: only a binding, an operator connection or another provider's own id passes (the serial 9 row above);
-  anything else is 403 `PG_NOT_BOUND`. A registered credential in a sandbox is unchanged.
+  `bind`: it has no accounts or sign-in for people. A sandbox now checks every `licensee_id` as production does:
+  only a binding or an operator connection passes; anything else, the buyer's provider id included (serial 9), is
+  403 `PG_NOT_BOUND` from a provider known by its domain and 401 `PG_NOT_AUTHENTICATED` with a registered credential.
+  The consent page's one-time nonce must come back with the approval; a foreign `Origin` is refused; a code is
+  spent only by its own client, and shown twice by it ends the binding it gave (RFC 6749 §4.1.2); the licence is
+  made at the exchange. A sandbox's database never starts as a production registry.
 - **Reference provider** (`examples/reference-provider`): an app that signs creators in, connects their licence
   through `bind`, journals each job before asking, renders only what it asked about, reports and attaches the proof,
   and recovers after a crash; with a self-check over sandbox codes 1–12.

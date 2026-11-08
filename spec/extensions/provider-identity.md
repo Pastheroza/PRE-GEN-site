@@ -23,8 +23,10 @@ the app's own domain, and nothing else. `https://frame.example`.
   id cannot collide. A registry that issues its own credentials matches a rights holder's
   block list against every name it knows for an app, so a veto of either name holds for both.
   An allow list, signed licence terms included, matches only an app's exact one id.
-- **A sandbox** (`sandbox` extension) also accepts a port and `localhost`
-  (`https://localhost:8443`), so a provider can test from a laptop.
+- **A sandbox** (`sandbox` extension) also accepts a port, and on `localhost` only an id bound to
+  the key: `https://<k>.localhost[:port]`, where `<k>` is the 32 hex characters of the key id
+  (`pg-ed25519:<k>`) of the chain's first key. So a provider can test from a laptop, and two
+  people's tests never take the same id (Sandboxes, below).
 
 ## The party document
 
@@ -112,6 +114,12 @@ A laptop has no domain to serve a document on, so a sandbox MAY take the party d
 post: `POST {sandbox api}/v2/sandbox/party` with the document as the body → HTTP 200
 `{"party_id", "note"}`, pinned under the same rules (a document that does not extend a pinned
 chain is refused). A production registry reads the document from the domain, never by post.
+
+An id on `localhost` is bound to its key: `https://<k>.localhost[:port]`, with `<k>` the hex of
+the first key's id. A sandbox refuses a posted document whose `localhost` id is not its own
+key's, a plain `https://localhost:8443` included, so the first test never takes the name from the
+next. The libraries build it: `pregen.sandbox_provider_url(KEY, port)` /
+`await sandboxProviderUrl(KEY, port)`.
 
 ## Errors
 

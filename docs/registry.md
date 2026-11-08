@@ -478,12 +478,14 @@ curl -s -X POST https://sandbox.registry.example/v2/sandbox/party -H 'Content-Ty
   --data @pregen-party.json          # → {"party_id": "https://…", "note": "…"}
 ```
 
-A sandbox accepts any `https://…` id, a port and `localhost` included, and masks nothing. The
+A sandbox accepts any `https://…` id, with a port too, and masks nothing; on `localhost` only an id bound to
+the key, `https://<32 hex of the key id>.localhost[:port]` (`pregen.sandbox_provider_url`). The
 credential path works too: `curl -s -X POST https://sandbox.registry.example/v2/sandbox/access`
 returns `{"provider_id": "sbx-…", "token": "…", "registry": "…", "note": "…"}`. Every
 sandbox answer carries `ext: {"sandbox": true}`, and clients refuse it unless they are
-testing. Replace each `<…>` in `./sandbox/policy.md`, as in step 3. The sandbox accepts any
-licensee without `connect`; in production, run `connect` first or the provider gets 401. A
+testing. Replace each `<…>` in `./sandbox/policy.md`, as in step 3. Like production, the
+sandbox accepts a licensee only after `connect` (or, for a provider known by its domain, a `bind`
+binding); otherwise the provider gets 401 (403 `PG_NOT_BOUND` for a provider known by its domain). A
 licensee-only grant still needs `licensee_id` in the request (without it: `deny PG_NO_LICENSE`
 in the sandbox, where `test:t1` names no sandbox provider; in production, `deny PG_NOT_CONNECTED`).
 Apply for the sandbox's prefix too (step 9, status `sandbox`): a sandbox is listed only in a

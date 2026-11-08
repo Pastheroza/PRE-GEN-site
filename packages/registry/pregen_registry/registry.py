@@ -44,6 +44,7 @@ PARTY_REFRESH = 86400           # provider-identity P-3: the party document is r
 PARTY_MIN_INTERVAL = 60         # P-7: and at most once a minute per provider
 PARTY_MAX_BYTES = 65536
 BIND_CODE_TTL = 60              # bind.md step 4: a code lives 60 seconds and is single-use
+CONSENT_TTL = 600               # a consent page's one-time nonce: the person has ten minutes to answer it
 BINDING_TTL = 365 * 86400       # pg.binding.v1: at most one year, then the person consents again
 SANDBOX_HOLDER = "account:holder"   # sandbox.md serial 12: the test creator; an account's grants are reached only by bind
 # extensions/sandbox.md, serial 10: a test template; its text governs nothing
@@ -82,9 +83,11 @@ CREATE TABLE IF NOT EXISTS terms (id TEXT PRIMARY KEY, subject_code TEXT NOT NUL
 CREATE TABLE IF NOT EXISTS answers (id TEXT PRIMARY KEY, ask_id TEXT NOT NULL, envelope TEXT NOT NULL,
   status TEXT NOT NULL, issued_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, grant_id TEXT, use TEXT,
   report_id TEXT);
+CREATE TABLE IF NOT EXISTS bind_consents (nonce_hash TEXT PRIMARY KEY, client_id TEXT NOT NULL,
+  redirect_uri TEXT NOT NULL, challenge TEXT NOT NULL, expires_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS bind_codes (code_hash TEXT PRIMARY KEY, provider_id TEXT NOT NULL, redirect_uri TEXT NOT NULL,
-  challenge TEXT NOT NULL, account TEXT NOT NULL, grants TEXT NOT NULL, expires_at INTEGER NOT NULL,
-  used INTEGER NOT NULL DEFAULT 0);
+  challenge TEXT NOT NULL, account TEXT NOT NULL, expires_at INTEGER NOT NULL, used INTEGER NOT NULL DEFAULT 0,
+  binding TEXT);
 CREATE TABLE IF NOT EXISTS bindings (licensee_id TEXT PRIMARY KEY, id TEXT NOT NULL, provider_id TEXT NOT NULL,
   account TEXT NOT NULL, grants TEXT NOT NULL, expires_at INTEGER NOT NULL, ended_at INTEGER, envelope TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS reports (id TEXT PRIMARY KEY, provider_id TEXT NOT NULL, ask_id TEXT NOT NULL,
@@ -140,6 +143,27 @@ def fetch_party(provider_url: str) -> dict:
     return json.loads(data)
 
 
+def _redirect_ok(provider_id: str, uri, sandbox: bool = False) -> bool:
+    """bind.md, schemas/party-document.json redirect_uris: HTTPS on the provider's own host (and port), with no user
+    part or fragment, or a private-use scheme from its reversed domain (RFC 8252 §7.1), so bind is never an open
+    redirect. A sandbox also takes http on a loopback host, any port (RFC 8252 §7.3)."""
+    if not isinstance(uri, str):
+        return False
+    try:
+        p, own = urlsplit(uri), urlsplit(provider_id)
+        port, own_port = p.port, own.port
+    except ValueError:
+        return False
+    if p.fragment or "#" in uri or p.username is not None or p.password is not None:
+        return False
+    if p.scheme == "https":
+        return p.hostname == own.hostname and port == own_port and p.netloc == own.netloc
+    if p.scheme == "http":
+        return sandbox and p.hostname in ("localhost", "127.0.0.1", "::1")
+    reverse = ".".join(reversed((own.hostname or "").split(".")))
+    return "." in reverse and (p.scheme == reverse or p.scheme.startswith(reverse + ".")) and not p.netloc
+
+
 class Registry:
     def __init__(self, config: Config, operator_key: Key, db_path: str = ":memory:", clock=lambda: int(time.time()),
                  fetch_party=fetch_party):
@@ -150,6 +174,12 @@ class Registry:
         if "signatures" not in {r["name"] for r in self.db.execute("PRAGMA table_info(asks)")}:   # a 0.3 database
             self.db.execute("ALTER TABLE asks ADD COLUMN signatures TEXT NOT NULL DEFAULT '[]'")
         self.lock = threading.RLock()  # one sqlite connection: every use of it holds this lock
+        if not config.sandbox and (self._meta("sandbox") or self.db.execute("SELECT 1 FROM bindings").fetchone()
+                                   or self.db.execute("SELECT 1 FROM subjects WHERE serial = 1 AND name = ?",
+                                                      (self.SANDBOX_NAMES[1],)).fetchone()):
+            raise ValueError("this database is a sandbox's: its test subjects, licences and bindings would give "
+                             "answers not marked as sandbox answers. Start it as a sandbox, or make a new registry "
+                             "with `init`.")
         self.activated_at = int(self._meta("activated_at") or self._set_meta("activated_at", str(clock())))
         if config.sandbox:
             self._check_sandbox_serials()   # before anything is written: a refused start changes nothing
@@ -380,6 +410,8 @@ class Registry:
         A sandbox runs this on every start and adds only those missing, so one made by 0.3 (1–7) gains 9–12. A serial
         held by another subject (0.3 numbered the operator's own from 9) is refused: that code would answer wrongly."""
         have = self._check_sandbox_serials()
+        with self.lock:
+            self._set_meta("sandbox", "1")     # a sandbox's database never starts as a production registry
         name, new = self.SANDBOX_NAMES, lambda n: n not in have
         if new(1):
             self.add_grant(self.add_subject(name[1], serial=1, level="verified"), purposes=PURPOSES, days=36500)
@@ -486,17 +518,11 @@ class Registry:
         return body
 
     def _licensee_ok(self, provider_id: str, licensee: str) -> bool:
-        """licensee.md: connected by the operator, or bound by the person (bind). A sandbox connects any licensee for a
-        registered credential, which has no bind; for a provider known by its domain it lets through only another
-        provider's id, so that sandbox.md serial 9's "naming the buyer" row still answers PG_NO_LICENSE."""
+        """licensee.md: connected by the operator, or bound by the person (bind); a sandbox too, so a made-up id, or
+        another provider's, never reaches a grant (sandbox.md serials 9 and 12)."""
         with self.lock:
-            if self.db.execute("SELECT 1 FROM connections WHERE provider_id = ? AND licensee_id = ?",
-                               (provider_id, licensee)).fetchone() or self._binding(self.db, provider_id, licensee):
-                return True
-            if not self.config.sandbox or licensee.startswith("account:"):
-                return False
-            return not self.is_open(provider_id) or self.is_open(licensee) or bool(
-                self.db.execute("SELECT 1 FROM providers WHERE provider_id = ?", (licensee,)).fetchone())
+            return bool(self.db.execute("SELECT 1 FROM connections WHERE provider_id = ? AND licensee_id = ?",
+                                        (provider_id, licensee)).fetchone() or self._binding(self.db, provider_id, licensee))
 
     def _binding(self, db, provider_id: str, licensee: str):
         """The active binding of `licensee` to this provider (bind B-1, B-2), or None. ponytail: the operator key is
@@ -642,7 +668,7 @@ class Registry:
         if self.config.sandbox:
             body["ext"] = {"sandbox": True}
         binding = self._binding(db, req["provider_id"], req.get("licensee_id", "")) if status == "allow" else None
-        if binding is not None:                   # bind B-3c: the answer names the binding; basis stays {kind, grant}
+        if binding is not None and grant["id"] in json.loads(binding["grants"]):   # B-3c: an allow resting on it
             body["ext"] = {**body.get("ext", {}), "bind": {"binding": binding["id"]}}
         env = seal("pg.answer.v1", body, [("registry", self.key)])
         use = "reserved" if status == "allow" else None   # catalog.md: every allow is billed unless given back
@@ -692,6 +718,16 @@ class Registry:
             raise ProtocolError("PG_MALFORMED", str(e)) from None
         for env in doc["keysets"]:
             self._keyset_shape(env, pid)
+        bad = [u for u in doc.get("redirect_uris", []) if not _redirect_ok(pid, u, self.config.sandbox)]
+        if bad:
+            raise ProtocolError("PG_MALFORMED", f"redirect_uris must be https on {pid}'s own host, or a private-use "
+                                f"scheme from its reversed domain (in a sandbox also http on localhost): {bad[0]!r}")
+        host = urlsplit(pid).hostname or ""
+        if host == "localhost" or host.endswith(".localhost"):    # provider-identity, Sandboxes: bound to the key
+            want = self._current(doc["keysets"][0]["body"])["key_id"].split(":")[1] + ".localhost"
+            if host != want:
+                raise ProtocolError("PG_MALFORMED", f"a sandbox id on localhost is bound to its key: https://{want}"
+                                    "[:port] (pregen.sandbox_provider_url)")
         with self.tx() as db:
             for env in doc["keysets"]:
                 try:
@@ -847,37 +883,53 @@ class Registry:
             with self.lock:
                 doc = self._meta("partydoc:" + client_id)
         doc = json.loads(doc) if doc else None
-        if doc is None or redirect_uri not in doc.get("redirect_uris", []):
+        if doc is None or redirect_uri not in doc.get("redirect_uris", []) \
+                or not _redirect_ok(client_id, redirect_uri, self.config.sandbox):
             raise ProtocolError("PG_MALFORMED", "unknown app, or redirect_uri is not one of its party document's "
                                 "redirect_uris", status=400)
+        with self.lock:                                       # bind.md step 2: what the consent screen may claim
+            doc["posted"] = self._meta("party:" + client_id) == "posted"
         return doc
 
     def bind_offer(self) -> list[dict]:
-        """What the sandbox's test creator connects: a new licence on serial 12 for each consent, so no two apps share
+        """What the sandbox's test creator connects: a new licence on serial 12 for each binding, so no two apps share
         its three uses (sandbox.md)."""
         return [{"subject_ref": mint_code(self.config.prefix, 12), "purposes": ["research"], "max_uses": 3}]
 
-    def bind_approve(self, client_id: str, redirect_uri: str, code_challenge: str) -> str:
-        """bind.md steps 2-3: the person approved; a code for the app, single-use, 60 seconds, bound to the client,
-        the redirect URI and the PKCE challenge."""
+    def bind_consent(self, client_id: str, redirect_uri: str, code_challenge: str) -> str:
+        """The consent page's one-time nonce: an approval must come from a page this registry showed."""
+        self.bind_client(client_id, redirect_uri)
+        nonce, now = secrets.token_urlsafe(32), self.clock()
+        with self.tx() as db:
+            db.execute("DELETE FROM bind_consents WHERE expires_at <= ?", (now,))
+            db.execute("INSERT INTO bind_consents VALUES (?, ?, ?, ?, ?)",
+                       (_hash_token(nonce), client_id, redirect_uri, code_challenge, now + CONSENT_TTL))
+        return nonce
+
+    def bind_approve(self, client_id: str, redirect_uri: str, code_challenge: str, consent: str) -> str:
+        """bind.md steps 2-3: the person approved on a page this registry showed (its nonce is spent); a code for the
+        app, single-use, 60 seconds, bound to the client, the redirect URI and the PKCE challenge."""
         self.bind_client(client_id, redirect_uri)
         if not re.fullmatch(r"[A-Za-z0-9_-]{43}", code_challenge or ""):
             raise ProtocolError("PG_MALFORMED", "code_challenge is a base64url SHA-256 (S256)", status=400)
-        with self.lock:                # the consent number keeps two consents in one second two grants
-            n = self._row("SELECT COUNT(*) FROM grants WHERE licensee_id = ?", (SANDBOX_HOLDER,))[0] + 1
-            grants = [self.add_grant(o["subject_ref"], licensee_id=SANDBOX_HOLDER, purposes=o["purposes"],
-                                     max_uses=o["max_uses"], ext={"sandbox": True, "consent": n})
-                      for o in self.bind_offer()]
-        code = secrets.token_urlsafe(32)
+        code, now = secrets.token_urlsafe(32), self.clock()
         with self.tx() as db:
-            db.execute("INSERT INTO bind_codes VALUES (?, ?, ?, ?, ?, ?, ?, 0)", (
-                _hash_token(code), client_id, redirect_uri, code_challenge, SANDBOX_HOLDER, json.dumps(grants),
-                self.clock() + BIND_CODE_TTL))
+            db.execute("DELETE FROM bind_codes WHERE expires_at <= ? AND binding IS NULL", (now,))
+            spent = db.execute("DELETE FROM bind_consents WHERE nonce_hash = ? AND client_id = ? AND redirect_uri = ? "
+                               "AND challenge = ? AND expires_at > ?", (_hash_token(consent or ""), client_id,
+                                                                        redirect_uri, code_challenge, now)).rowcount
+            if spent:
+                db.execute("INSERT INTO bind_codes VALUES (?, ?, ?, ?, ?, ?, 0, NULL)", (
+                    _hash_token(code), client_id, redirect_uri, code_challenge, SANDBOX_HOLDER, now + BIND_CODE_TTL))
+        if not spent:
+            raise ProtocolError("PG_MALFORMED", "no consent page was shown for this approval, or it was answered "
+                                "already or too late", status=400)
         return code
 
     def bind_exchange(self, provider_id: str, authorization: str | None, env) -> dict:
         """bind.md steps 4-5: the app's signed pg.bind_exchange.v1 for a pg.binding.v1 with a new random licensee_id.
-        A new binding replaces the person's earlier one with this app (B-1)."""
+        A new binding replaces the person's earlier one with this app (B-1). A code shown twice by its own client ends
+        the binding it gave (RFC 6749 §4.1.2); another client cannot spend it."""
         if not self.config.sandbox:
             raise ProtocolError("PG_NOT_FOUND", "this registry offers bind only as a sandbox", status=404)
         if not self.is_open(provider_id):
@@ -894,28 +946,38 @@ class Registry:
             raise ProtocolError("PG_NOT_AUTHENTICATED", "provider_id differs from X-Provider-ID, or issued_at is more "
                                 "than 60 seconds off", status=401)
         challenge = base64.urlsafe_b64encode(hashlib.sha256(body["code_verifier"].encode()).digest()).rstrip(b"=").decode()
-        binding = None
         with self.tx() as db:
-            row = db.execute("SELECT * FROM bind_codes WHERE code_hash = ?", (_hash_token(body["code"]),)).fetchone()
-            if row is not None:                               # single-use: a failed try spends the code too
+            row = db.execute("SELECT * FROM bind_codes WHERE code_hash = ? AND provider_id = ?",
+                             (_hash_token(body["code"]), provider_id)).fetchone()
+            if row is not None:                         # its own client: spent now, whatever the outcome
                 db.execute("UPDATE bind_codes SET used = 1 WHERE code_hash = ?", (row["code_hash"],))
-            if row is not None and not row["used"] and row["expires_at"] > now and row["provider_id"] == provider_id \
-                    and row["redirect_uri"] == body["redirect_uri"] \
-                    and re.fullmatch(r"[A-Za-z0-9._~-]{43,128}", body["code_verifier"]) \
-                    and secrets.compare_digest(row["challenge"], challenge):
-                db.execute("UPDATE bindings SET ended_at = ? WHERE provider_id = ? AND account = ? AND ended_at IS NULL",
-                           (now, provider_id, row["account"]))
-                licensee = secrets.token_urlsafe(24)                         # random, new, means nothing elsewhere
-                binding = seal("pg.binding.v1", {"authority": self.config.prefix, "provider_id": provider_id,
-                                                 "licensee_id": licensee, "grants": json.loads(row["grants"]),
-                                                 "issued_at": now, "expires_at": now + BINDING_TTL}, [("registry", self.key)])
-                check_body("binding", binding["body"])
-                db.execute("INSERT INTO bindings VALUES (?, ?, ?, ?, ?, ?, NULL, ?)", (
-                    licensee, message_id(binding["type"], binding["body"]), provider_id, row["account"], row["grants"],
-                    now + BINDING_TTL, json.dumps(binding)))
-        if binding is None:
+                if row["used"] and row["binding"]:      # a replayed code: the binding it gave ends
+                    db.execute("UPDATE bindings SET ended_at = ? WHERE licensee_id = ? AND ended_at IS NULL",
+                               (now, row["binding"]))
+        ok = row is not None and not row["used"] and row["expires_at"] > now \
+            and row["redirect_uri"] == body["redirect_uri"] \
+            and re.fullmatch(r"[A-Za-z0-9._~-]{43,128}", body["code_verifier"]) \
+            and secrets.compare_digest(row["challenge"], challenge)
+        if not ok:
             raise ProtocolError("PG_BIND_CODE", "the code is unknown, used or expired, or not for this client, redirect "
                                 "URI or verifier", status=400)
+        with self.lock:                # the licence is made now, at the exchange, never for an approval left unused
+            n = self._row("SELECT COUNT(*) FROM grants WHERE licensee_id = ?", (SANDBOX_HOLDER,))[0] + 1
+            grants = [self.add_grant(o["subject_ref"], licensee_id=row["account"], purposes=o["purposes"],
+                                     max_uses=o["max_uses"], ext={"sandbox": True, "consent": n})
+                      for o in self.bind_offer()]
+        with self.tx() as db:
+            db.execute("UPDATE bindings SET ended_at = ? WHERE provider_id = ? AND account = ? AND ended_at IS NULL",
+                       (now, provider_id, row["account"]))
+            licensee = secrets.token_urlsafe(24)                         # random, new, means nothing elsewhere
+            binding = seal("pg.binding.v1", {"authority": self.config.prefix, "provider_id": provider_id,
+                                             "licensee_id": licensee, "grants": grants,
+                                             "issued_at": now, "expires_at": now + BINDING_TTL}, [("registry", self.key)])
+            check_body("binding", binding["body"])
+            db.execute("INSERT INTO bindings VALUES (?, ?, ?, ?, ?, ?, NULL, ?)", (
+                licensee, message_id(binding["type"], binding["body"]), provider_id, row["account"], json.dumps(grants),
+                now + BINDING_TTL, json.dumps(binding)))
+            db.execute("UPDATE bind_codes SET binding = ? WHERE code_hash = ?", (licensee, row["code_hash"]))
         return {"binding": binding}
 
     def bound_grants(self, provider_id: str, authorization: str | None, pg_access: str | None, licensee: str,
@@ -1010,6 +1072,8 @@ class Registry:
                 db.execute("UPDATE answers SET report_id = ? WHERE id = ?", (rid, ans["id"]))
             else:
                 db.execute("UPDATE asks SET null_report = ? WHERE id = ?", (rid, ask["id"]))
+                for aid in released:          # given back unseen: never reported again, as generated or otherwise
+                    db.execute("UPDATE answers SET report_id = ? WHERE id = ?", (rid, aid))
             if body["outcome"] == "generated":
                 db.execute("UPDATE asks SET closing_ack = ? WHERE id = ?", (json.dumps(ack), ask["id"]))
             return {"ack": ack}
@@ -1030,10 +1094,12 @@ class Registry:
                     db.execute("UPDATE answers SET use = 'released' WHERE id = ?", (a["id"],))
                     released.append(a["id"])
             return (pick["id"] if pick is not None else None), released
-        own = next((a for a in reserved if a["id"] == body["answer"]), None)
-        if own is not None and give_back(own):
-            db.execute("UPDATE answers SET use = 'released' WHERE id = ?", (own["id"],))
-            released.append(own["id"])
+        # A not_generated report releases its own allow; with `answer: null` (an allow the provider never received),
+        # every reserved allow of this ask (limits.md). Either way, inside the give-back window only.
+        for a in reserved:
+            if (body["answer"] is None or a["id"] == body["answer"]) and give_back(a):
+                db.execute("UPDATE answers SET use = 'released' WHERE id = ?", (a["id"],))
+                released.append(a["id"])
         return None, released
 
     # ── extensions grants, lookup; publication ──────────────────────────

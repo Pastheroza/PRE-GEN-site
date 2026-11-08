@@ -25,6 +25,9 @@ equality, never reads what it stands for, and its answers do not repeat it.
 | After a `generated` report for that subject of the job, no new answer | `PG_ASK_CLOSED` (409, with the stored `ack`) |
 | The identical request while an answer is open gets that same answer | — |
 
+An answer is **open** from its `issued_at` until its `expires_at`. After that, the identical
+request gets a new answer.
+
 **A new generation always needs a new `job_id`.**
 
 The registry cannot stop two workers of one provider from both generating on the same answer:
@@ -43,4 +46,5 @@ carry the same `job_hash`, and the job input hashes to it.
 - **X-5** — Store the output hash and the signed reports before sending them.
 - **X-6** — A report is filed only when its acknowledgement verifies.
 - **X-7** — A job that may have started generating is never restarted automatically. Its
-  outcome is unknown until a person resolves it.
+  outcome is unknown until a person resolves it. A job may have started generating from the
+  moment core rule 5 passed for it; store that moment before generating.

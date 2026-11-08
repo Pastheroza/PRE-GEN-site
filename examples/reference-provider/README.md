@@ -25,21 +25,28 @@ npm start                 # node app.mjs --sandbox
 This uses the public test network: the test directory `https://www.pregen.org/test/registries.json`, signed by the
 test steward key, and the PRE-GEN Test Registry (prefix `TEST`). It makes a throwaway provider key in
 `data-sandbox/sandbox-provider.key`, posts its party document to the sandbox (a laptop has no domain to serve it on),
-and listens on port 8443. Your provider id is `https://localhost:8443`. A sandbox pins the first key it sees for an id,
-so if another test already took that id there, start with `--port 8444` (the id follows the port).
+and listens on port 8443. Your provider id is bound to that key, `https://<32 hex of the key id>.localhost:8443`, so it
+never collides with anyone else's test (`sandboxProviderUrl` in the library).
 
-Open the app, create an account, and generate on any test code, for example `PG-TEST-000001N` (allow) or
+Open `http://localhost:8443`, create an account, and generate on any test code, for example `PG-TEST-000001N` (allow) or
 `PG-TEST-000002Z` (refused). Connecting a licence needs a registry whose document lists `bind`.
 
-The bind callback is `https://localhost:8443/callback`. Without a certificate the app serves plain HTTP, so the
-browser cannot open that address after you approve at the registry: change `https` to `http` in the address bar and
-load it (the code lives 60 seconds). For a clean run, give it a local certificate, for example one made with mkcert:
-`node app.mjs --sandbox --tls-cert localhost.pem --tls-key localhost-key.pem`.
+For now, connecting a licence works only against a local reference registry: the public sandbox.pregen.org does not
+serve `bind` yet, and will once it runs the new version of `packages/registry`. Until then, on the public sandbox the
+Connect button reports that the registry does not offer bind, and the self-check skips its code 12 rows. To try bind
+today, run the reference registry yourself with `--sandbox` over HTTPS and point the app at a test directory that
+lists it (`--directory`, `--steward`), as `test/e2e.test.mjs` does.
+
+No certificate is needed. In a sandbox the app registers `http://localhost:8443/callback` as its bind redirect: plain
+HTTP is allowed for a redirect only on a loopback host and only in a sandbox (RFC 8252 §7.3). With `--tls-cert` and
+`--tls-key` it serves HTTPS on the provider id instead.
 
 ## What happens, and which rule it follows
 
-- Sign-in: local accounts, scrypt password hashes, a random session id in an HttpOnly, SameSite=Lax cookie (Secure and
-  `__Host-` behind TLS). Lax and not Strict, because the bind callback is a navigation from the registry. Every
+- Sign-in: local accounts, scrypt password hashes (N = 2^17, r = 8, p = 1, stored with the hash so they can be raised
+  later), a random session id in an HttpOnly, SameSite=Lax cookie (Secure and `__Host-` behind TLS). Lax and not
+  Strict, because the bind callback is a navigation from the registry. The app reads only that exact cookie name, and
+  two values of it count as no session, so a cookie planted on a narrower path cannot swap in another account. Every
   signed-in form carries the session's CSRF token, and any cross-site post is refused.
 - Connect your licence (`spec/extensions/bind.md`). The app picks the authority itself: its configured prefix, looked
   up in the verified directory. It reads that registry's document, sends the creator to `bind.authorize` with PKCE S256
@@ -48,8 +55,13 @@ load it (the code lives 60 seconds). For a clean run, give it a local certificat
   registry's signature on the returned `pg.binding.v1` through the directory, and stores it on the account. A
   registry's "Use at" button opens `/bind/initiate?iss=…`: the app asks the person first, and only for an `iss` that is
   a prefix in the directory.
+- Which licence a request rests on: the creator's `licensee_id` goes only into a request about a subject among their
+  binding's grants, read from `GET /v2/grants` when the job is made. Any other code is asked for the provider itself
+  and rests on the provider's own grant, which covers generating for users only with the resale right (`catalog.md`).
+  So a connected creator can still use a test purchase on code 9.
 - The connected licence: `GET {api}/v2/grants?licensee_id=…` with `PG-Access`, shown on the account page. `status`
-  and `remaining` are unsigned and only inform the page.
+  and `remaining` are unsigned and only inform the page. A connection that expired, or that the registry no longer
+  knows (replaced by a newer one, or revoked), is shown as "connect your licence", never as a refusal.
 - Products: the user picks a product and writes a prompt. The server sets `purpose` and `categories` from the product
   (a research still is `research`; an ad banner is `commercial` with `advertising`). A request's `use` is the
   provider's own signed statement, and the proof keeps it, so the provider decides it from what it will render. A use
@@ -62,10 +74,16 @@ load it (the code lives 60 seconds). For a clean run, give it a local certificat
 - Reports (`reports.md`): `generated` with the output's SHA-256 after rendering, `not_generated` when the app decides
   not to render. The signed report is stored before it is sent, and counts as filed only when the registry's
   acknowledgement for exactly that report verifies.
+- A lost answer: when the registry cannot be reached, or its answer does not verify, an allow may still be reserved
+  there. The request is never sent again, since a resend after that allow expired would reserve a second use. The app
+  reports `not_generated` with `answer: null` and the full signed request (`reports.md`), and the registry releases
+  every reserved allow of that ask within the give-back window. The creator sees "could not be reached".
 - After a crash, at start: every stored allow with no report and no render begun gets `not_generated`, so its use
-  goes back instead of staying reserved and counted. A job whose render may have begun is never restarted or given
-  back automatically: it is marked unresolved, and an operator who knows the output was never delivered runs
-  `node app.mjs <same flags> --give-back <job id>`.
+  goes back instead of staying reserved and counted. A job never sent goes back to the queue; a job sent whose answer
+  was never stored gets the `answer: null` report above. A job whose render may have begun is never restarted or given
+  back automatically: it is marked unresolved (jobs.md X-7), and an operator who knows the output was never delivered
+  runs `node app.mjs <same flags> --give-back <job id>`. A report the registry could not be reached for is sent again
+  every five minutes.
 - Proof (`proof.md`): `GET {api}/v2/proofs/{first 16 hex of the report id}`, checked with `checkProof` against the
   file's SHA-256, saved as `<file>.proof.json` beside the file.
 - Three messages the creator can tell apart: the registry could not be reached (network error, timeout, 5xx);
@@ -87,7 +105,8 @@ PREGEN_PROVIDER_KEY_HEX=… node app.mjs --provider-url https://your.domain --au
   TLS proxy: it answers `/.well-known/pregen-party.json` itself, with `redirect_uris`
   (`https://your.domain/callback`) and `bind_initiate_uri` (`https://your.domain/bind/initiate`).
 - `--authority` is the prefix of the registry that holds your creators' licences, for example `PRAM`.
-- The key is read from `PREGEN_PROVIDER_KEY_HEX` or `--key-file`, from your secret store. Make it once with
+- The key is read from `PREGEN_PROVIDER_KEY_HEX` or `--key-file`, from your secret store. A sandbox refuses
+  `PREGEN_PROVIDER_KEY_HEX`, so a production key is never used in a test. Make it once with
   `newPrivateKeyHex()` from `@pregen/verify` and keep it off the code and the repository.
 - Data goes to `./data` (`--data` to change it); the sandbox uses `./data-sandbox`, so the two never share a file.
 
@@ -114,14 +133,16 @@ on a research-only licence (refused, with the reason). The app needs no change f
 npm run selfcheck         # node selfcheck.mjs ./adapter.mjs --sandbox
 ```
 
-It runs an integration through the sandbox codes 1 to 12 and the rows of `spec/extensions/sandbox.md`: 1 to 8, the
+It runs only against a sandbox: the adapter refuses production flags, and the kit refuses an adapter that does not
+say `sandbox: true`, because it buys, asks about every serial of the prefix and signs with a creator's licensee id. It
+runs an integration through the sandbox codes 1 to 12 and the rows of `spec/extensions/sandbox.md`: 1 to 8, the
 code 9 purchase rows (before buying, one use per purchase, again while reserved, after a give-back, two jobs racing
 for the last use), the code 10 terms rows, the code 11 floor rows, and code 12 through a connected licence (allowed for
 research, `PG_SCOPE_VIOLATION` for commercial, `PG_NO_LICENSE` without the licensee, `PG_NOT_BOUND` for an id not bound
 to you). It prints PASS or FAIL per row and exits non-zero on a failure. Every allow it gets is given back.
 
-To check your own integration, write an adapter with the shape of `adapter.mjs`: `open(argv)` returns `{prefix, api,
-licenseeId?, ask, buy?, giveBack?}`, and `ask({code, purpose, categories, licenseeId, terms})` returns
+To check your own integration, write an adapter with the shape of `adapter.mjs`: `open(argv)` returns `{sandbox: true, prefix,
+api, licenseeId?, ask, buy?, giveBack?}`, and `ask({code, purpose, categories, licenseeId, terms})` returns
 `{status, reason}` from the answer your code verified, or `{error, httpStatus}`. Code 12 rows run when the adapter
 has a connected licence (this app's adapter takes the newest binding in its database). The "before buying" row needs a
 provider id that has never bought at that sandbox.
@@ -138,19 +159,26 @@ PYTHON=/path/to/python npm test
 ```
 
 One command. The Python needs fastapi, uvicorn, cryptography and jsonschema (the reference registry's dependencies).
-The test makes a temporary folder, a self-signed certificate for localhost, a local reference registry with
-`--sandbox` over HTTPS, and a test directory signed by a throwaway steward key, then drives the app like a browser:
-sign in, connect (approving the consent page by its form post), an allowed job on code 12 whose proof passes
-`checkProof` against the file, a commercial job refused with `PG_SCOPE_VIOLATION`, the self-check with this app's
-adapter, a binding replaced by a second connection so the old licensee id gets "connect your licence", a crash right
-after an allow is stored and a restart that gives the use back (seen as `given_back` in `/v2/statement`), two jobs
-racing for the last bought use of code 9 (exactly one allow), and a stopped registry ("could not be reached"). It
-never touches sandbox.pregen.org and writes nothing into the repository.
+The test makes a temporary folder, a self-signed certificate, a local reference registry with `--sandbox` over
+HTTPS, and a test directory signed by a throwaway steward key. It runs the app as `npm start` does (plain HTTP on
+loopback, a key-bound provider id) and drives it like a browser:
+
+1. Sign in, and connect: the consent page is read for its one-time nonce and approved by its form post.
+2. A planted or wrongly named session cookie is no session.
+3. An allowed job on code 12 has a proof that passes `checkProof` against the file, and its allow names the binding.
+4. A commercial job is refused with `PG_SCOPE_VIOLATION`.
+5. The self-check passes with this app's adapter.
+6. A second connection replaces the first creator's binding, and that creator sees "connect your licence".
+7. The app crashes right after storing an allow; the restart gives the use back, seen as `given_back` in
+   `/v2/statement`.
+8. Two jobs from the connected creator race for the last bought use of code 9, with no licensee id: exactly one allow.
+9. An allow is dropped on the way; the `answer: null` report gives it back.
+10. With the registry stopped, the creator sees "could not be reached".
+
+It never touches sandbox.pregen.org and writes nothing into the repository.
 
 ## Known limits
 
-- The app sends a creator's `licensee_id` with every code at their licence's registry. A grant the provider bought for
-  itself then covers that request only if it carries the resale right (`catalog.md`).
-- When the registry cannot be reached after three sends, the app tells the creator and stops. If the request did reach
-  the registry and got an allow the app never saw, that use stays reserved and counted (`limits.md`). Sending the
-  identical request again would return that same answer, which could then be given back; the app does not do this yet.
+- Recovery assumes one app process (production checklist, item 5).
+- An `answer: null` report the registry refuses is kept with its error and not retried; check `report_error` in
+  `jobs` from time to time.

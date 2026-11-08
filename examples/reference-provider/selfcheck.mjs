@@ -1,7 +1,7 @@
 // Self-check: runs a provider's own integration through the sandbox codes 1-12 and the rows of
 // spec/extensions/sandbox.md, and compares every answer with the expected one.
 //   node selfcheck.mjs [./adapter.mjs] [flags for the adapter, e.g. --sandbox]
-// An adapter exports open(argv) → {prefix, api, licenseeId?, ask(q), buy?(code), giveBack?(result)}, where
+// An adapter exports open(argv) → {sandbox: true, prefix, api, licenseeId?, ask(q), buy?(code), giveBack?(result)}, where
 // ask({code, purpose, categories?, licenseeId?, terms?}) returns {status, reason} from the answer it verified, or
 // {error, httpStatus} for an HTTP error. Each ask is a new job. Every allow is given back, so nothing stays reserved.
 // Row 9 "before buying" needs a provider id that never bought at this sandbox.
@@ -12,6 +12,8 @@ import { mintCode } from "./pregen.mjs";
 const args = process.argv.slice(2);
 const adapter = await import(pathToFileURL(resolve(args[0] && !args[0].startsWith("-") ? args.shift() : "./adapter.mjs")));
 const a = await adapter.open(args);
+// It buys, asks about codes 1-12 of the adapter's prefix and signs with a creator's licensee_id: never in production.
+if (a.sandbox !== true) throw new Error("the adapter must say sandbox: true; the self-check never runs against a production registry");
 const code = (n) => mintCode(a.prefix, n);
 const counts = { PASS: 0, FAIL: 0, SKIP: 0 };
 const show = (r) => (r.error ? `HTTP ${r.httpStatus} ${r.error}` : `${r.status}${r.reason ? ` ${r.reason}` : ""}`);

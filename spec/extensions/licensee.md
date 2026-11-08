@@ -20,3 +20,8 @@ sign-in. The registry then accepts requests for that user from that provider.
   [`bind`](bind.md) it is HTTP 403 `PG_NOT_BOUND` ("connect your licence"), never a refusal.
 - A use that needs a connected user, asked without one, gets an answer with reason
   `PG_NOT_CONNECTED`. A provider shows this as "connect your account", not as a refusal.
+- **When to send it.** A provider sends a person's `licensee_id` only when the request rests on
+  that person's licence: under [`bind`](bind.md), when the subject is among the binding's grants
+  (`GET {api}/v2/grants?licensee_id=…`). Otherwise it sends `""` and rests on its own grant. Its own
+  grant covers generations for its users only with the resale right ([`catalog`](catalog.md)), so a
+  `licensee_id` sent where the person holds nothing can only turn an allow into a refusal.

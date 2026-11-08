@@ -43,3 +43,10 @@ def test_pg_access_is_a_base64url_access_envelope_over_method_path_and_time():
                            "provider_id": "https://frame.example", "aud": "https://r.example", "method": "GET", "path": "/v2/grants/abc?x=1",
                            "issued_at": 1_800_000_000}
     assert pregen.verify_bytes(pub, env["signatures"][0], pregen.signing_input("pg.access.v1", env["body"]))
+
+
+def test_a_sandbox_test_id_is_bound_to_the_key():
+    key = pregen.new_private_key_hex()
+    hexid = pregen.fingerprint(pregen.public_key_hex(key)).split(":")[1]
+    assert pregen.sandbox_provider_url(key) == f"https://{hexid}.localhost"
+    assert pregen.sandbox_provider_url(key, 8443) == f"https://{hexid}.localhost:8443"

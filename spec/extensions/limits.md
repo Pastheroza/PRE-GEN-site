@@ -22,7 +22,11 @@ the last use: one gets the allow, the other the profile's usage-limit refusal.
 3. Every other `reserved` allow for this subject of the job is `released`, if it is inside
    the profile's give-back window.
 
-**A `not_generated` report** releases its own allow, if it is inside the window.
+**A `not_generated` report** releases its own allow, if it is inside the window. With
+`answer: null`, the report of an allow the provider never received (lost, or expired before it
+arrived), it names the ask by `request_id` and releases every `reserved` allow of that ask inside
+the window; those allows can never be reported again. Send that, never the request again: once
+the answer has expired, the identical request gets a new answer and reserves another use.
 
 **An allow never reported stays reserved** — that is, counted.
 

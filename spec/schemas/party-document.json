@@ -54,9 +54,10 @@
     "redirect_uris": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "pattern": "^(https://[^/?#@]+(/[^#]*)?|http://(localhost|127\\.0\\.0\\.1|\\[::1\\])(:[0-9]{1,5})?(/[^#]*)?|[a-z][a-z0-9-]*(\\.[a-z0-9-]+)+:[^#]*)$"
       },
-      "description": "extension bind: HTTPS URLs on the provider's own host, or a private-use scheme from the reversed domain"
+      "description": "extension bind: HTTPS URLs on the provider's own host, or a private-use scheme from the reversed domain; http only on a loopback host and only in a sandbox (RFC 8252 §7.3)"
     },
     "bind_initiate_uri": {
       "type": "string"

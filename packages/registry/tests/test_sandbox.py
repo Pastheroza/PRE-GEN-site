@@ -66,13 +66,18 @@ def test_buy_first_for_a_provider_known_by_its_domain_and_only_in_a_sandbox():
 
 
 @pytest.mark.parametrize("buyer_kind", [Provider, OpenProvider])
-def test_another_provider_naming_the_buyer_as_its_licensee_gets_no_licence(buyer_kind):
+def test_another_provider_naming_the_buyer_as_its_licensee_is_refused(buyer_kind):
     reg, c, _ = make()
     buyer, other = buyer_kind(reg, c), Provider(reg, c)
     if buyer_kind is OpenProvider:
         c.post("/v2/sandbox/party", json=buyer.doc)
     assert buy(buyer, signed=buyer_kind is OpenProvider).status_code == 200
-    assert status(other, other.body(code(9), job="x", licensee_id=buyer.id)) == "PG_NO_LICENSE"   # its alone
+    r = other.ask(other.body(code(9), job="x", licensee_id=buyer.id))                 # its alone: not other's licensee
+    assert (r.status_code, r.json()["error"]) == (401, "PG_NOT_AUTHENTICATED")
+    open_other = OpenProvider(reg, c, url="https://other.example")
+    c.post("/v2/sandbox/party", json=open_other.doc)
+    r = open_other.ask(open_other.body(code(9), job="y", licensee_id=buyer.id))
+    assert (r.status_code, r.json()["error"]) == (403, "PG_NOT_BOUND")
     assert status(buyer, buyer.body(code(9), job="b")) == "allow"                # the use is still the buyer's
     assert c.get("/v2/statement", headers=other.h).json()["grants"] == []
 

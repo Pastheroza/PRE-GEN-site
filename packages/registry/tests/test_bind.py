@@ -1,6 +1,7 @@
 """Extension bind in a sandbox (extensions/bind.md) and sandbox serial 12 (extensions/sandbox.md)."""
 import base64
 import hashlib
+import re
 import secrets
 from urllib.parse import parse_qs, urlsplit
 
@@ -29,11 +30,15 @@ def pkce():
     return verifier, base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
 
 
-def consent(c, p, challenge, decision="approve", redirect=None, state="s1"):
+def consent(c, p, challenge, decision="approve", redirect=None, state="s1", nonce=None, headers=None):
+    """GET the consent page, then answer it the way a browser posts its form (with the page's one-time nonce)."""
     q = {"response_type": "code", "client_id": p.id, "redirect_uri": redirect or p.id + "/bind/callback",
          "state": state, "code_challenge": challenge, "code_challenge_method": "S256"}
-    return c.get("/v2/bind/authorize", params=q), c.post("/v2/bind/authorize", data={**q, "decision": decision},
-                                                         follow_redirects=False)
+    page = c.get("/v2/bind/authorize", params=q)
+    found = re.search(r'name="consent" value="([^"]+)"', page.text)
+    nonce = nonce if nonce is not None else (found.group(1) if found else "")
+    return page, c.post("/v2/bind/authorize", data={**q, "consent": nonce, "decision": decision},
+                        follow_redirects=False, headers=headers or {})
 
 
 def exchange(c, p, code, verifier, redirect=None, issued_at=None):
@@ -90,7 +95,8 @@ def test_code_twelve_through_a_binding():
     assert r.status_code == 403 and r.json()["error"] == "PG_NOT_BOUND"
     r = p.ask(p.body(TWELVE, job="j4", licensee_id="account:holder"))                      # the account is not an id
     assert r.status_code == 403 and r.json()["error"] == "PG_NOT_BOUND"
-    assert p.answer(p.body(mint_code("TEST", 1), job="j5", licensee_id=lic))["body"]["status"] == "allow"
+    a = p.answer(p.body(mint_code("TEST", 1), job="j5", licensee_id=lic))["body"]
+    assert a["status"] == "allow" and a["ext"] == {"sandbox": True}           # an open grant: no ext.bind (B-3c)
 
 
 def test_three_uses_then_the_limit_and_the_app_reads_what_is_left():
@@ -126,11 +132,17 @@ def test_a_leaked_licensee_id_is_useless_to_another_app_and_each_app_has_its_own
     assert q.answer(q.body(TWELVE, job="q0", licensee_id=lq))["body"]["status"] == "allow"   # not used up by p
 
 
-def test_a_registered_credential_naming_a_binding_gets_nothing_from_it():
+def test_a_licensee_id_not_bound_to_the_asker_never_reaches_a_grant():
     reg, c, _ = make()
-    lic = bind(c, app(reg, c))["body"]["licensee_id"]
-    old = Provider(reg, c)
-    assert old.answer(old.body(TWELVE, licensee_id=lic))["body"]["reason"] == "PG_NO_LICENSE"
+    p = app(reg, c)
+    lic = bind(c, p)["body"]["licensee_id"]
+    for n in (1, 12):                                    # a made-up https id is no loophole (sandbox.md)
+        r = p.ask(p.body(mint_code("TEST", n), job=f"m{n}", licensee_id="https://made-up.example"))
+        assert (r.status_code, r.json()["error"]) == (403, "PG_NOT_BOUND")
+    old = Provider(reg, c)                               # a registered credential: licensee.md, 401
+    for who in (lic, "made-up", p.id):
+        r = old.ask(old.body(TWELVE, job="o-" + who[:5], licensee_id=who))
+        assert (r.status_code, r.json()["error"]) == (401, "PG_NOT_AUTHENTICATED")
 
 
 def test_a_new_binding_replaces_the_old_and_revocation_takes_effect_at_once():
@@ -199,3 +211,86 @@ def test_a_sandbox_made_before_code_twelve_gains_it_and_refuses_a_person_on_seri
     reg.db.execute("UPDATE subjects SET name = 'My own test person' WHERE serial = 12")
     with pytest.raises(ValueError, match="1-7 and 9-12"):
         Registry(cfg, key, db_path=str(tmp_path / "a.db"), clock=Clock())
+
+
+def test_redirect_uris_are_the_apps_own_https_host_or_its_private_scheme():
+    reg, c, _ = make()
+    key = lib.new_private_key_hex()
+    for bad in ("https://evil.example/cb", "http://frame.example/cb", "https://frame.example:444/cb",
+                "https://user@frame.example/cb", "https://frame.example/cb#x", "https://frame.example.evil.example/cb",
+                "javascript:alert(1)", "evil.example:/cb"):
+        doc = lib.party_document("https://frame.example", "Frame", key, redirect_uris=[bad])
+        assert c.post("/v2/sandbox/party", json=doc).status_code == 422, bad
+    doc = lib.party_document("https://frame.example", "Frame", key,
+                             redirect_uris=["https://frame.example/cb", "example.frame:/cb", "example.frame.app:/cb"])
+    assert c.post("/v2/sandbox/party", json=doc).status_code == 200
+
+
+def test_an_approval_needs_the_page_it_answers_and_comes_from_this_registry():
+    reg, c, _ = make()
+    p = app(reg, c)
+    _, challenge = pkce()
+    assert consent(c, p, challenge, nonce="")[1].status_code == 400                      # no page shown
+    page, back = consent(c, p, challenge)
+    nonce = re.search(r'name="consent" value="([^"]+)"', page.text).group(1)
+    assert back.status_code == 303
+    assert consent(c, p, challenge, nonce=nonce)[1].status_code == 400                   # spent
+    assert consent(c, p, challenge, headers={"Origin": "https://evil.example"})[1].status_code == 403
+    assert consent(c, p, challenge, headers={"Origin": "https://test.example"})[1].status_code == 303
+    assert "posted to this sandbox" in page.text                                         # BIND-6: said so
+    assert reg._row("SELECT COUNT(*) FROM grants WHERE licensee_id = 'account:holder'")[0] == 0   # no licence yet
+
+
+def test_another_app_cannot_burn_a_code_and_a_replay_ends_the_binding():
+    reg, c, _ = make()
+    p, q = app(reg, c), app(reg, c, url="https://other.example")
+    verifier, challenge = pkce()
+    k = parse_qs(urlsplit(consent(c, p, challenge)[1].headers["location"]).query)["code"][0]
+    assert exchange(c, q, k, verifier).json()["error"] == "PG_BIND_CODE"                 # not q's code
+    r = exchange(c, p, k, verifier)
+    assert r.status_code == 200                                                          # still p's
+    lic = r.json()["binding"]["body"]["licensee_id"]
+    assert exchange(c, p, k, verifier).json()["error"] == "PG_BIND_CODE"                 # replayed
+    assert p.ask(p.body(TWELVE, licensee_id=lic)).status_code == 403                     # RFC 6749 §4.1.2
+
+
+def test_a_sandbox_database_never_starts_as_a_production_registry(tmp_path):
+    db = str(tmp_path / "s.db")
+    key = Key()
+    Registry(Config(prefix="TEST", name="T", api="https://test.example", sandbox=True), key, db_path=db, clock=Clock())
+    with pytest.raises(ValueError, match="sandbox"):
+        Registry(Config(prefix="TEST", name="T", api="https://test.example"), key, db_path=db, clock=Clock())
+
+
+def test_an_allow_never_received_is_given_back_by_a_report_with_no_answer():
+    """limits.md: answer null releases every reserved allow of the ask; the request is never sent again."""
+    reg, c, clock = make()
+    p = app(reg, c)
+    lic = bind(c, p)["body"]["licensee_id"]
+    env = p.signed("pg.request.v1", p.body(TWELVE, job="lost", licensee_id=lic))
+    body = env["body"]
+    r = c.post("/v2/requests", headers=p.h, json=env)
+    assert r.json()["answer"]["body"]["status"] == "allow"                  # issued, but say the app never got it
+    clock.t += 301                                                           # expired before it arrived
+    report = {"request_id": message_id("pg.request.v1", body), "answer": None, "request": body, "job_id": "lost",
+              "outcome": "not_generated", "output_hash": "", "occurred_at": reg.clock()}
+    r = c.post("/v2/reports", headers=p.h, json=p.signed("pg.report.v1", report))
+    assert r.status_code == 200, r.text
+    assert len(r.json()["ack"]["body"]["released"]) == 1
+    for n in range(3):                                                       # all three uses are there again
+        assert p.answer(p.body(TWELVE, job=f"after{n}", licensee_id=lic))["body"]["status"] == "allow"
+
+
+def test_localhost_ids_in_a_sandbox_are_bound_to_their_key_and_loopback_http_is_a_sandbox_callback():
+    reg, c, _ = make()
+    key = lib.new_private_key_hex()
+    own = lib.sandbox_provider_url(key, 8443)
+    for pid in ("https://localhost:8443", lib.sandbox_provider_url(lib.new_private_key_hex(), 8443)):
+        assert c.post("/v2/sandbox/party", json=lib.party_document(pid, "X", key)).status_code == 422, pid
+    doc = lib.party_document(own, "Mine", key, redirect_uris=["http://localhost:8443/callback",
+                                                              "http://127.0.0.1:9000/cb", "http://[::1]/cb"])
+    assert c.post("/v2/sandbox/party", json=doc).status_code == 200
+    prod, cp, _ = make(sandbox=False)
+    doc = lib.party_document("https://frame.example", "F", key, redirect_uris=["http://localhost:8443/callback"])
+    with pytest.raises(Exception):
+        prod.pin_party(doc)                                                  # http only in a sandbox

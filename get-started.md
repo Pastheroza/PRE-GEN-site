@@ -251,7 +251,8 @@ categories need the person's own signed grant).
   `PG-TEST-000001N` to `PG-TEST-0000123`): with it, `checkAnswer(…, { directory: testDir, testing: true })`
   accepts sandbox answers end to end. Post your party document to
   `https://sandbox.pregen.org/v2/sandbox/party` first (an `https://<domain>` id: lower case, no path, query or trailing slash; a sandbox also
-  takes a port, and `https://localhost:<port>`), then ask
+  takes a port, and on your machine `https://<32 hex of your key id>.localhost:<port>`, which
+  `sandboxProviderUrl(KEY, port)` / `pregen.sandbox_provider_url(KEY, port)` builds), then ask
   with signed requests.
 - **What to test.** One job (a new `job_id`) per row, `purpose: "research"` unless the row
   says otherwise. Codes at the PRE-GEN Test Registry:

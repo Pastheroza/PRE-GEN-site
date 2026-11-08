@@ -74,6 +74,8 @@ export function publicKeyHex(privateKeyHex: string): Promise<string>;
 export function signEnvelope(type: string, body: Record<string, unknown>, ...privateKeyHexes: string[]): Promise<{ type: string; body: Record<string, unknown>; signatures: string[] }>;
 /** A provider URL (provider-identity): https://<domain>, lower case, no path, port, query or fragment. Throws PregenError. */
 export function checkProviderUrl(url: string, options?: { allowPort?: boolean }): string;
+/** A sandbox test id bound to your key: https://<32 hex of the key id>.localhost[:port]. */
+export function sandboxProviderUrl(privateKeyHex: string, port?: number): Promise<string>;
 /** The document to serve at {providerUrl}/.well-known/pregen-party.json: name, roles and a first keyset signed by the key. */
 export function partyDocument(providerUrl: string, name: string, privateKeyHex: string,
   options?: { redirectUris?: string[]; bindInitiateUri?: string; policy?: string; contact?: string }): Promise<Record<string, unknown>>;

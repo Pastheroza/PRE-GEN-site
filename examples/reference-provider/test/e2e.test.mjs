@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { createPrivateKey, sign } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { request as httpRequest } from "node:http";
 import { request as httpsRequest, createServer } from "node:https";
 import { createServer as netServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -50,7 +51,7 @@ open(${JSON.stringify(key)}, "wb").write(k.private_bytes(serialization.Encoding.
 
   // An HTTPS client that trusts that certificate, follows no redirect and sends cookies only where it got them.
   const call = (url, { method = "GET", headers = {}, body } = {}) => new Promise((ok, fail) => {
-    const req = httpsRequest(url, { method, headers, ca }, (res) => {
+    const req = (url.startsWith("https:") ? httpsRequest : httpRequest)(url, { method, headers, ca }, (res) => {
       let text = "";
       res.on("data", (d) => (text += d)).on("end", () => ok({ status: res.statusCode, headers: res.headers, text,
         json: () => JSON.parse(text) }));
@@ -60,7 +61,9 @@ open(${JSON.stringify(key)}, "wb").write(k.private_bytes(serialization.Encoding.
   const keyFetch = async (url) => { const r = await call(url); return { ok: r.status === 200, status: r.status, json: async () => r.json() }; };
 
   const [rport, aport, dport] = [await freePort(), await freePort(), await freePort()];
-  const REG = `https://127.0.0.1:${rport}`, APP = `https://localhost:${aport}`;
+  // The registry speaks HTTPS; the app runs as `npm start` does: plain HTTP on loopback, which a sandbox allows for
+  // the bind redirect (RFC 8252 §7.3). Its provider id is bound to its key: https://<32 hex>.localhost:<port>.
+  const REG = `https://127.0.0.1:${rport}`, APP = `http://localhost:${aport}`;
 
   // The registry: init --sandbox, then serve over HTTPS.
   const regDir = join(tmp, "registry");
@@ -91,7 +94,8 @@ open(${JSON.stringify(key)}, "wb").write(k.private_bytes(serialization.Encoding.
   const keyFile = join(tmp, "provider.key");
   const providerKey = pg.newPrivateKeyHex();
   writeFileSync(keyFile, providerKey + "\n", { mode: 0o600 });
-  const appArgs = ["--sandbox", "--port", String(aport), "--tls-cert", cert, "--tls-key", key, "--authority", "TEST",
+  const PROVIDER = await pg.sandboxProviderUrl(providerKey, aport);
+  const appArgs = ["--sandbox", "--port", String(aport), "--authority", "TEST",
     "--directory", `https://127.0.0.1:${dport}/registries.json`, "--steward", stewardPub, "--key-file", keyFile,
     "--data", join(tmp, "app")];
   const childEnv = { ...process.env, NODE_EXTRA_CA_CERTS: cert, NODE_NO_WARNINGS: "1" };
@@ -126,7 +130,7 @@ open(${JSON.stringify(key)}, "wb").write(k.private_bytes(serialization.Encoding.
       return r;
     };
     return {
-      go,
+      go, cookie: () => cookie,
       async signUp(email) {
         assert.equal((await go(`${APP}/signup`, { email, password: "correct horse battery" })).status, 303);
         csrf = /name=csrf value="([^"]+)"/.exec((await go(`${APP}/`)).text)[1];
@@ -138,8 +142,16 @@ open(${JSON.stringify(key)}, "wb").write(k.private_bytes(serialization.Encoding.
         const authorize = new URL(start.headers.location);
         assert.equal(authorize.origin, REG);
         assert.equal(authorize.searchParams.get("code_challenge_method"), "S256");
-        assert.match((await go(authorize.href)).text, /Connect your licences/);
-        const back = await go(authorize.origin + authorize.pathname, { ...Object.fromEntries(authorize.searchParams), decision: "approve" });
+        const consent = (await go(authorize.href)).text;
+        assert.match(consent, /Connect your licences/);
+        // Post the consent form as a browser would: its hidden fields (the one-time consent nonce among them).
+        const unescape = (v) => v.replace(/&(#x?[0-9a-f]+|amp|lt|gt|quot);/gi, (_, e) => ({ amp: "&", lt: "<", gt: ">", quot: '"' })[e.toLowerCase()]
+          ?? String.fromCodePoint(e[1].toLowerCase() === "x" ? parseInt(e.slice(2), 16) : Number(e.slice(1))));
+        const fields = Object.fromEntries([...consent.matchAll(/<input\b[^>]*>/g)].map(([tag]) => [
+          /\bname=["']?([^"' >]+)/.exec(tag)?.[1], unescape(/\bvalue=(?:"([^"]*)"|'([^']*)'|([^\s>]*))/.exec(tag)?.slice(1).find((x) => x !== undefined) ?? "")])
+          .filter(([k]) => k));
+        assert.ok(fields.consent, "the consent page carries a one-time consent nonce");
+        const back = await go(authorize.origin + authorize.pathname, { ...fields, decision: "approve" });
         assert.equal(back.status, 303, back.text);
         const callback = new URL(back.headers.location);
         assert.equal(callback.searchParams.get("iss"), "TEST");
@@ -170,15 +182,23 @@ open(${JSON.stringify(key)}, "wb").write(k.private_bytes(serialization.Encoding.
     assert.deepEqual(JSON.parse(readFileSync(join(tmp, "app", "outputs", `${j.id}.txt.proof.json`), "utf8")), proof);
     return checked;
   }
-  const statement = async () => (await call(`${REG}/v2/statement`, { headers: { "X-Provider-ID": APP,
-    "PG-Access": await pg.pgAccess(APP, providerKey, REG, "GET", "/v2/statement") } })).json();
+  const statement = async () => (await call(`${REG}/v2/statement`, { headers: { "X-Provider-ID": PROVIDER,
+    "PG-Access": await pg.pgAccess(PROVIDER, providerKey, REG, "GET", "/v2/statement") } })).json();
   const CODE9 = "PG-TEST-000009V", CODE12 = "PG-TEST-0000123";
 
   const a = browser();
+  let c;                                      // the connected creator of step 5, used for code 9
   await t.test("sign in and connect a licence", async () => {
     await a.signUp("a@example.test");
     await a.connect();
     assert.match((await a.go(`${APP}/`)).text, /licence on <b>PG-TEST-0000123<\/b>: purposes research;\s+active, 3 uses left/);
+    // The session is read from the exact cookie name only, and two values of it are no session (a planted cookie).
+    const [name, value] = a.cookie().split("=");
+    assert.equal(name, "sid");                // no TLS here; behind TLS it is __Host-sid
+    const signedIn = async (cookie) => /Signed in as/.test((await call(`${APP}/`, { headers: { cookie } })).text);
+    assert.ok(await signedIn(`${name}=${value}`));
+    assert.ok(!(await signedIn(`__Host-sid=${value}`)));
+    assert.ok(!(await signedIn(`${name}=${"A".repeat(43)}; ${name}=${value}`)));
   });
 
   await t.test("an allowed job on code 12 gets a proof that checks against its file", async () => {
@@ -217,16 +237,18 @@ open(${JSON.stringify(key)}, "wb").write(k.private_bytes(serialization.Encoding.
     const b = browser();                      // the same test creator connects from another account: bind B-1
     await b.signUp("b@example.test");
     await b.connect();
-    const j = await a.wait(await a.job(CODE12, "research-still"));
-    assert.equal(j.outcome, "not_connected");
-    assert.match(j.message, /^Connect your licence/);
-    assert.match((await a.go(`${APP}/`)).text, /connect your licence again/);
+    const r = await a.post("/jobs", { code: CODE12, product: "research-still", prompt: "x" });
+    assert.match(r.text, /Connect your licence: the connection between your licence and this app has ended/);
+    assert.match((await a.go(`${APP}/`)).text, /TEST: Connect your licence/);
+    b.connected = true;
+    c = b;
   });
 
-  const c = browser();
-  await c.signUp("c@example.test");
+  // Code 9 from a connected creator: the app sends no licensee_id there (it is not among the binding's grants), so the
+  // request rests on the provider's own purchase.
 
   await t.test("a crash after the allow: at restart the use is given back", async () => {
+    assert.ok(c?.connected, "needs the connected creator from the step before");
     // The self-check left one bought use of code 9 free (it gives back every allow it gets).
     const before = (await statement()).grants.reduce((n, g) => n + g.given_back, 0);
     app.kill("SIGTERM");
@@ -246,13 +268,34 @@ open(${JSON.stringify(key)}, "wb").write(k.private_bytes(serialization.Encoding.
     const ids = [await c.job(CODE9, "research-still"), await c.job(CODE9, "research-still")];
     const jobs = await Promise.all(ids.map((id) => c.wait(id)));
     assert.deepEqual(jobs.map((j) => `${j.outcome} ${j.reason ?? ""}`.trim()).sort(), ["generated", "refused PG_USAGE_LIMIT"]);
-    await provenOutput(c, jobs.find((j) => j.outcome === "generated"));
+    const generated = jobs.find((j) => j.outcome === "generated");
+    await provenOutput(c, generated);
+    assert.equal((await c.go(APP + generated.proof)).json().subjects[0].request.body.licensee_id, undefined);
+  });
+
+  await t.test("an allow lost on the way: answer null not_generated, the use given back, no resend", async () => {
+    const before = (await statement()).grants.reduce((n, g) => n + g.given_back, 0);
+    app.kill("SIGTERM");
+    await app.exited;
+    await startApp({ PREGEN_DROP_ANSWER: "1" });          // the registry issues an allow; the app never sees it
+    const j = await c.wait(await c.job(CODE12, "research-still"));
+    assert.equal(j.outcome, "unavailable");
+    const after = (await statement()).grants.reduce((n, g) => n + g.given_back, 0);
+    assert.equal(after, before + 1);
+    app.kill("SIGTERM");
+    await app.exited;
+    await startApp();
   });
 
   await t.test("registry down: 'registry unavailable', not a refusal", async () => {
+    const d = browser();                      // no licence connected: the ask itself meets the dead registry
+    await d.signUp("d@example.test");
     reg.kill("SIGKILL");
-    const j = await c.wait(await c.job(CODE9, "research-still"));
+    const j = await d.wait(await d.job(CODE9, "research-still"));
     assert.equal(j.outcome, "unavailable");
     assert.match(j.message, /could not be reached/);
+    // A connected creator hears it before a job exists: the app reads their licence first, to choose the licensee_id.
+    const r = await c.post("/jobs", { code: CODE9, product: "research-still", prompt: "x" });
+    assert.match(r.text, /The registry could not be reached/);
   });
 });

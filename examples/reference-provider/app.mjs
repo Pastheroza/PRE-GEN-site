@@ -4,12 +4,13 @@
 import { createServer as createHttp } from "node:http";
 import { createServer as createHttps } from "node:https";
 import { DatabaseSync } from "node:sqlite";
-import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
+import { randomBytes, randomUUID, scrypt, timingSafeEqual } from "node:crypto";
+import { promisify } from "node:util";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { openPregen, parseConfig, pg, sha256, Unavailable, PROFILE } from "./pregen.mjs";
 
-const cfg = parseConfig(process.argv.slice(2));
+const cfg = await parseConfig(process.argv.slice(2));
 const pregen = await openPregen(cfg);
 const OUT = join(cfg.data, "outputs");
 mkdirSync(OUT, { recursive: true });
@@ -23,6 +24,8 @@ const PRODUCTS = {
   "ad-banner": { label: "Ad banner", use: { purpose: "commercial", categories: ["advertising"] } },
 };
 const RENDERER = "stub-text/1";
+const UNAVAILABLE = "The registry could not be reached. Nothing was generated; try again in a few minutes.";
+const CONNECT_AGAIN = "Connect your licence: the connection between your licence and this app has ended. Connect it again, then retry.";
 
 // ── storage: one node:sqlite file ──
 const db = new DatabaseSync(join(cfg.data, "app.db"));
@@ -36,8 +39,8 @@ CREATE TABLE IF NOT EXISTS bindings (account_id INTEGER NOT NULL, authority TEXT
 CREATE TABLE IF NOT EXISTS jobs (id TEXT PRIMARY KEY, account_id INTEGER NOT NULL, created_at INTEGER NOT NULL,
   input TEXT NOT NULL, job_hash TEXT NOT NULL, request TEXT NOT NULL,       -- fixed before anything is sent (jobs.md X-2)
   state TEXT NOT NULL DEFAULT 'queued', worker TEXT, claimed_at INTEGER,   -- queued | claimed | done | unresolved
-  answer TEXT, status TEXT, reason TEXT,                                   -- stored before acting on it
-  began_at INTEGER, output TEXT, output_hash TEXT, report TEXT, ack TEXT, outcome TEXT);`);
+  sent_at INTEGER, answer TEXT, status TEXT, reason TEXT,                  -- stored before acting on it
+  began_at INTEGER, output TEXT, output_hash TEXT, report TEXT, ack TEXT, report_error TEXT, outcome TEXT);`);
 const one = (sql, ...a) => db.prepare(sql).get(...a);
 const all = (sql, ...a) => db.prepare(sql).all(...a);
 const run = (sql, ...a) => db.prepare(sql).run(...a);
@@ -48,15 +51,28 @@ async function createJob(account, code, productId, prompt) {
   const entry = (await pregen.directory()).registryFor(code);
   if (!product) throw new Error("choose a product");
   if (!entry) throw new Error(`no listed registry holds ${code}`);
-  const binding = one("SELECT licensee_id FROM bindings WHERE account_id = ? AND authority = ? AND expires_at > ?",
-    account.id, entry.prefix, now());
+  const binding = one("SELECT licensee_id, expires_at FROM bindings WHERE account_id = ? AND authority = ?", account.id, entry.prefix);
+  let licenseeId;
+  if (binding) {
+    // bind.md: an ended connection (expired, replaced, revoked) is "connect your licence", never a refusal.
+    if (binding.expires_at <= now()) throw new Error(CONNECT_AGAIN);
+    let held;
+    try { held = await pregen.grants(entry.prefix, binding.licensee_id); }
+    catch (e) { throw new Error(e instanceof Unavailable ? UNAVAILABLE : e.message); }
+    if (held.error === "PG_NOT_BOUND") throw new Error(CONNECT_AGAIN);
+    if (held.error) throw new Error(`the registry would not show your licence: ${held.error}`);
+    // The creator's licensee_id goes only into a request that rests on their own licence: a subject among the
+    // binding's grants. Anything else is asked for the provider itself and rests on its own grant, which covers
+    // generating for users only with the resale right (catalog.md).
+    if (held.grants.some((g) => (g.grant?.body ?? g.terms)?.subject_ref === code)) licenseeId = binding.licensee_id;
+  }
   const id = `job-${randomUUID()}`;                          // a new job_id for every generation (jobs.md)
   // jobs.md: the job input is fixed once, holds everything we fixed, and hashes to job_hash.
   const input = { job_id: id, provider_id: cfg.providerUrl, asks: [{ subject_ref: code, registry: entry.prefix,
     profile: PROFILE, use: product.use }], product: productId, prompt, renderer: RENDERER,
-    customer: binding ? { [entry.prefix]: binding.licensee_id } : null };
+    customer: licenseeId ? { [entry.prefix]: licenseeId } : null };
   const canonical = pg.canonicalJson(input), jobHash = sha256(canonical);
-  const request = await pregen.signRequest({ code, use: product.use, jobId: id, jobHash, licenseeId: binding?.licensee_id });
+  const request = await pregen.signRequest({ code, use: product.use, jobId: id, jobHash, licenseeId });
   run("INSERT INTO jobs (id, account_id, created_at, input, job_hash, request) VALUES (?, ?, ?, ?, ?, ?)",
     id, account.id, now(), canonical, jobHash, JSON.stringify(request));
   return id;
@@ -73,11 +89,12 @@ const job = (id) => one("SELECT * FROM jobs WHERE id = ?", id);
 
 async function runJob(j) {
   const request = JSON.parse(j.request);
+  run("UPDATE jobs SET sent_at = coalesce(sent_at, ?) WHERE id = ?", now(), j.id);   // from here an answer may exist
   let r;
-  try { r = await pregen.ask(request); } catch (e) {
-    if (e instanceof Unavailable) return finish(j.id, "unavailable");
-    return finish(j.id, "failed", e.message);                    // e.g. an answer that does not verify: never received
+  try { r = await pregen.ask(request); } catch (e) {          // no answer, or one that does not verify (never received)
+    return releaseLost(j.id, e instanceof Unavailable ? "unavailable" : "failed", e instanceof Unavailable ? null : e.message);
   }
+  if (process.env.PREGEN_DROP_ANSWER && cfg.sandbox) return releaseLost(j.id, "unavailable");   // e2e: a lost answer
   if (r.error) return finish(j.id, r.error === "PG_NOT_BOUND" ? "not_connected" : "failed", r.error);   // bind.md B-5
   // limits.md: an allow reserves a use the moment it is issued, so it is stored before anything else happens.
   run("UPDATE jobs SET answer = ?, status = ?, reason = ? WHERE id = ?", JSON.stringify(r.answer), r.body.status,
@@ -107,6 +124,16 @@ async function generate(id) {
   await fileReport(id);
 }
 
+// An answer the app never received may still hold a reserved use. The request is never sent again (a resend after
+// that answer expired would reserve a second use): the app reports not_generated with answer null and the request
+// itself (reports.md), and the registry releases that ask's reserved allows within the give-back window (limits.md).
+async function releaseLost(id, outcome, why = null) {
+  finish(id, outcome, why);
+  const report = await pregen.makeReport(JSON.parse(job(id).request), null, "not_generated", "", now());
+  run("UPDATE jobs SET report = ? WHERE id = ?", JSON.stringify(report), id);
+  await fileReport(id);
+}
+
 // reports.md + limits.md: a use that never happened goes back with a signed not_generated report.
 async function giveBack(id, why) {
   const j = job(id);
@@ -121,10 +148,12 @@ async function fileReport(id) {
     const ack = await pregen.fileReport(code, report);
     run("UPDATE jobs SET ack = ? WHERE id = ?", JSON.stringify(ack), id);
   } catch (e) {
-    console.error(`${id}: report not filed yet: ${e.message}`);
-    return finish(id, "report_pending");                          // retried by recover()
+    console.error(`${id}: report not filed: ${e.message}`);
+    // A registry that cannot be reached gets it again from recover(); a refusal is kept and not retried.
+    if (!(e instanceof Unavailable)) run("UPDATE jobs SET report_error = ? WHERE id = ?", e.message, id);
+    return finish(id, j.outcome ?? "report_pending");
   }
-  if (report.body.outcome !== "generated") return finish(id, "given_back");
+  if (report.body.outcome !== "generated") return finish(id, j.outcome === "unavailable" ? "unavailable" : "given_back");
   try {   // proof.md: fetched by report id, checked against this file's SHA-256, kept next to the exact file
     const proof = await pregen.fetchProof(code, report, sha256(readFileSync(j.output)));
     writeFileSync(j.output + ".proof.json", JSON.stringify(proof, null, 2));
@@ -144,17 +173,20 @@ function render(input) {
 }
 
 // After a crash: every stored allow with no report gets not_generated, or its use stays reserved and counted
-// (limits.md). A job that may have begun generating is never restarted or given back automatically (jobs.md X-7).
+// (limits.md); an answer lost on the way is released the same way, never asked again. A job that may have begun
+// generating is never restarted or given back automatically (jobs.md X-7).
 // ponytail: assumes one app process owns the 'claimed' rows; with several, recover only jobs of dead workers.
 async function recover(startup) {
   for (const j of startup ? all("SELECT * FROM jobs WHERE state = 'claimed'") : []) {
     if (j.report) await fileReport(j.id);                        // signed and stored: send those same bytes
-    else if (!j.answer) run("UPDATE jobs SET state = 'queued' WHERE id = ?", j.id);   // nothing allowed: ask again (same bytes)
+    else if (!j.answer && !j.sent_at) run("UPDATE jobs SET state = 'queued' WHERE id = ?", j.id);   // never sent: safe to send
+    else if (!j.answer) await releaseLost(j.id, "given_back", "the app stopped before the answer was stored");
     else if (j.status !== "allow") finish(j.id, "refused", j.reason);
     else if (!j.began_at) await giveBack(j.id, "the app stopped before generating");
     else run("UPDATE jobs SET state = 'unresolved', outcome = 'unresolved' WHERE id = ?", j.id);
   }
-  for (const j of all("SELECT id FROM jobs WHERE outcome = 'report_pending'")) await fileReport(j.id);
+  for (const j of all(`SELECT id FROM jobs WHERE state = 'done' AND report IS NOT NULL AND ack IS NULL
+    AND report_error IS NULL`)) await fileReport(j.id);
 }
 
 async function worker(name) {
@@ -178,17 +210,22 @@ const SECURE = Boolean(cfg.tls) || !cfg.sandbox;                  // production 
 const COOKIE = SECURE ? "__Host-sid" : "sid";
 const h = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
-function hashPassword(pw, salt = randomBytes(16).toString("hex")) {
-  return `scrypt$${salt}$${scryptSync(pw, salt, 64).toString("hex")}`;
+// scrypt at OWASP's N = 2^17, r = 8, p = 1. The parameters live in the hash, so raising them later keeps old hashes valid.
+const scryptAsync = promisify(scrypt);
+const derive = (pw, salt, N, r, p) => scryptAsync(pw, salt, 64, { N, r, p, maxmem: 256 * N * r });
+async function hashPassword(pw, salt = randomBytes(16).toString("hex"), N = 2 ** 17, r = 8, p = 1) {
+  return `scrypt$${N}$${r}$${p}$${salt}$${(await derive(pw, salt, N, r, p)).toString("hex")}`;
 }
-function passwordOk(pw, stored) {
-  const [, salt, hash] = stored.split("$");
-  return timingSafeEqual(Buffer.from(hashPassword(pw, salt).split("$")[2], "hex"), Buffer.from(hash, "hex"));
+async function passwordOk(pw, stored) {
+  const [, N, r, p, salt, hash] = stored.split("$");
+  return timingSafeEqual(await derive(pw, salt, Number(N), Number(r), Number(p)), Buffer.from(hash, "hex"));
 }
-const DUMMY = hashPassword("not a password");                      // same work for an unknown email
+const DUMMY = await hashPassword("not a password");               // same work for an unknown email
 
 function session(req) {
-  const sid = /(?:^|;\s*)(?:__Host-)?sid=([A-Za-z0-9_-]+)/.exec(req.headers.cookie ?? "")?.[1];
+  // Only the exact cookie name, and exactly one of it: a second value (say, planted with a narrower Path) is no session.
+  const values = (req.headers.cookie ?? "").split(";").map((c) => c.trim().split("=")).filter(([k]) => k === COOKIE);
+  const sid = values.length === 1 && /^[A-Za-z0-9_-]{43}$/.test(values[0][1] ?? "") ? values[0][1] : null;
   return sid ? one(`SELECT s.csrf, a.id, a.email FROM sessions s JOIN accounts a ON a.id = s.account_id
     WHERE s.id = ? AND s.expires_at > ?`, sha256(sid), now()) : undefined;
 }
@@ -218,8 +255,8 @@ function message(j) {
   switch (j.outcome) {
     case "generated": return `Generated.${j.reason ? ` ${j.reason}` : " The proof is saved next to the file."}`;
     case "refused": return `Refused by the registry: ${j.reason}. Nothing was generated.`;
-    case "not_connected": return "Connect your licence: the registry no longer knows this app's connection to it. Connect it again, then retry.";
-    case "unavailable": return "The registry could not be reached. Nothing was generated; try again in a few minutes.";
+    case "not_connected": return CONNECT_AGAIN;
+    case "unavailable": return UNAVAILABLE;
     case "given_back": return `Not generated; the use went back to the licence (${j.reason}).`;
     case "report_pending": return "Waiting for the registry to acknowledge the report.";
     case "unresolved": return "Interrupted while generating: an operator has to resolve this job.";
@@ -233,14 +270,14 @@ async function licencePanel(s) {
   for (const b of all("SELECT * FROM bindings WHERE account_id = ?", s.id)) {
     let r;
     try { r = await pregen.grants(b.authority, b.licensee_id); } catch (e) {
-      rows.push(`<p class=msg>${b.authority}: the registry could not be reached to show your licence.</p>`); continue;
+      rows.push(`<p class=msg>${h(b.authority)}: the registry could not be reached to show your licence.</p>`); continue;
     }
-    if (r.error === "PG_NOT_BOUND") rows.push(`<p class=msg>${b.authority}: connect your licence again; this connection has ended.</p>`);
+    if (r.error === "PG_NOT_BOUND") rows.push(`<p class=msg>${h(b.authority)}: ${CONNECT_AGAIN}</p>`);
     else if (r.error) rows.push(`<p class=msg>${b.authority}: ${h(r.error)}</p>`);
     else for (const g of r.grants) {       // status and remaining are unsigned: they inform, only an allow permits
       const body = g.grant?.body ?? {};
       rows.push(`<p>${h(b.authority)} licence on <b>${h(body.subject_ref)}</b>: purposes ${h((body.use?.purposes ?? []).join(", "))};
-        ${h(g.status)}, ${g.remaining ?? "unlimited"} uses left</p>`);
+        ${h(g.status)}, ${h(g.remaining ?? "unlimited")} uses left</p>`);
     }
   }
   return rows.join("") || "<p>No licence connected yet.</p>";
@@ -288,8 +325,8 @@ async function handle(req, res) {
       let acc = one("SELECT * FROM accounts WHERE email = ?", email);
       if (path === "/signup") {
         if (acc) return page(res, "Sign in", `<p class=msg>That account exists: sign in.</p>${signInForms}`, 409);
-        acc = { id: Number(run("INSERT INTO accounts (email, password) VALUES (?, ?)", email, hashPassword(pw)).lastInsertRowid) };
-      } else if (!passwordOk(pw, acc?.password ?? DUMMY) || !acc) {   // ponytail: no rate limit; put one in front
+        acc = { id: Number(run("INSERT INTO accounts (email, password) VALUES (?, ?)", email, await hashPassword(pw)).lastInsertRowid) };
+      } else if (!(await passwordOk(pw, acc?.password ?? DUMMY)) || !acc) {   // ponytail: no rate limit; put one in front
         return page(res, "Sign in", `<p class=msg>Wrong email or password.</p>${signInForms}`, 401);
       }
       startSession(res, acc.id);
@@ -378,7 +415,6 @@ for (let i = 0; i < cfg.workers; i++) worker(`${process.pid}-${i}`);
 const server = cfg.tls ? createHttps(cfg.tls, (q, r) => handle(q, r).catch((e) => { console.error(e); if (!r.headersSent) page(r, "Error", "", 500); }))
   : createHttp((q, r) => handle(q, r).catch((e) => { console.error(e); if (!r.headersSent) page(r, "Error", "", 500); }));
 server.listen(cfg.port, () => {
-  console.log(`${cfg.name}: ${cfg.providerUrl} (${cfg.sandbox ? "SANDBOX: test directory, test answers only" : "production"}), `
-    + `listening on ${cfg.tls ? "https" : "http"}://localhost:${cfg.port}, authority ${cfg.authority}, key ${pregen.keyId}`);
-  if (cfg.sandbox && !cfg.tls) console.log("No --tls-cert: the bind callback https://localhost:… will fail in the browser; change https to http in the address bar (the code lives 60 seconds), or start with --tls-cert/--tls-key.");
+  console.log(`${cfg.name}: provider id ${cfg.providerUrl} (${cfg.sandbox ? "SANDBOX: test directory, test answers only" : "production"}), `
+    + `authority ${cfg.authority}, key ${pregen.keyId}\nOpen ${cfg.sandbox ? cfg.appUrl : `${cfg.providerUrl} (listening on port ${cfg.port})`}`);
 });

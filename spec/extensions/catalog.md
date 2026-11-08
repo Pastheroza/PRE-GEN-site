@@ -18,7 +18,9 @@ people must be paid for each use without trusting the provider's own count.
 A grant ([`grants`](grants.md)) whose `licensee_id` is a provider covers that provider's own
 use. It covers generations **for the provider's users** (`licensee_id` in the request, see
 [`licensee`](licensee.md)) only when its `use` carries `"resale": true`. Without it the
-registry answers `PG_NO_LICENSE`. Purpose, territory, channels and limits still apply to every
+registry answers `PG_NO_LICENSE`. So a provider sends a user's `licensee_id` only when the request
+rests on that user's own licence, and otherwise `""`, resting on its own grant (`licensee`, "When to
+send it"). Purpose, territory, channels and limits still apply to every
 generation.
 
 ## What is owed

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { checkProviderUrl, partyDocument, pgAccess, newPrivateKeyHex, publicKeyHex, fingerprint, verifyBytes,
+import { checkProviderUrl, sandboxProviderUrl, partyDocument, pgAccess, newPrivateKeyHex, publicKeyHex, fingerprint, verifyBytes,
   signingInput, PregenError } from "../index.js";
 
 test("a provider URL is the app's domain and nothing else", () => {
@@ -38,4 +38,11 @@ test("PG-Access is a base64url pg.access.v1 envelope over method, path and time"
   assert.deepEqual(env.body, { signers: [{ role: "provider", key_id: await fingerprint(pub) }], provider_id: "https://frame.example",
     aud: "https://r.example", method: "GET", path: "/v2/grants/abc?x=1", issued_at: 1_800_000_000 });
   assert.equal(await verifyBytes(pub, env.signatures[0], signingInput("pg.access.v1", env.body)), true);
+});
+
+test("a sandbox test id is bound to the key", async () => {
+  const key = newPrivateKeyHex();
+  const hex = (await fingerprint(await publicKeyHex(key))).split(":")[1];
+  assert.equal(await sandboxProviderUrl(key), `https://${hex}.localhost`);
+  assert.equal(await sandboxProviderUrl(key, 8443), `https://${hex}.localhost:8443`);
 });

@@ -7,7 +7,9 @@ import { DatabaseSync } from "node:sqlite";
 import { openPregen, parseConfig, pg, sha256 } from "./pregen.mjs";
 
 export async function open(argv) {
-  const cfg = parseConfig(argv);
+  const cfg = await parseConfig(argv);
+  // The self-check asks about real-looking codes, buys and signs with a creator's licensee_id: a sandbox only.
+  if (!cfg.sandbox) throw new Error("the self-check runs only with --sandbox: never against a production registry");
   const p = await openPregen(cfg);
   const entry = await p.registry(cfg.authority);
   await p.introduce(entry);
@@ -24,7 +26,7 @@ export async function open(argv) {
   }
 
   return {
-    prefix: cfg.authority, api: entry.api, licenseeId: row?.licensee_id,
+    sandbox: true, prefix: cfg.authority, api: entry.api, licenseeId: row?.licensee_id,
     async ask(q) {
       const req = await request(q);
       const r = await p.ask(req);

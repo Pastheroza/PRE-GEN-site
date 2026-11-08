@@ -517,6 +517,13 @@ export function checkProviderUrl(url, { allowPort = false } = {}) {
   return url;
 }
 
+/** A test id for a sandbox, on your own machine (provider-identity, Sandboxes): bound to your key, so two people's
+ * tests never collide. `https://<32 hex of the key id>.localhost[:port]`. */
+export async function sandboxProviderUrl(privateKeyHex, port) {
+  const host = (await fingerprint(await publicKeyHex(privateKeyHex))).split(":")[1] + ".localhost";
+  return checkProviderUrl(`https://${host}` + (port ? `:${Number(port)}` : ""), { allowPort: true });
+}
+
 /** The document a provider serves at `{providerUrl}/.well-known/pregen-party.json` (provider-identity): who it is and
  * its signing key, as a `first` keyset signed by that key. The same key gives the same document every time, so build
  * it at deploy time or on each start. To change the key later, append a `rotation` keyset (provider-keys). */

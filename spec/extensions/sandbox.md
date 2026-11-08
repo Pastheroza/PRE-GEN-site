@@ -33,7 +33,7 @@ Serials 9–11 let a provider test payment, the person's terms and the floor:
 | 9 | after a `not_generated` report within the give-back window ([`limits`](limits.md)) | `allow`: the use is back; the statement shows it `given_back` |
 | 9 | two jobs at once for the last use | one `allow`, the other `deny`, `PG_USAGE_LIMIT` |
 | 9 | another provider, which bought nothing | `deny`, `PG_NO_LICENSE` |
-| 9 | another provider, naming the buyer as its `licensee_id` | `deny`, `PG_NO_LICENSE` |
+| 9 | another provider, naming the buyer as its `licensee_id` | HTTP 403 `PG_NOT_BOUND` from a provider known by its domain, HTTP 401 `PG_NOT_AUTHENTICATED` with a registered credential ([`licensee`](licensee.md)) |
 | 10 | no `terms` | `deny`, `PG_NO_LICENSE` |
 | 10 | `terms`: the current id, signed by a provider known by its domain | `deny`, `PG_NO_LICENSE`: the terms grant nothing |
 | 10 | `terms`: any other id | `deny`, `PG_TERMS_NOT_ACCEPTED`; it binds no ask (T-7) |
@@ -48,7 +48,7 @@ Serials 9–11 let a provider test payment, the person's terms and the floor:
 | 12 | the `licensee_id` of this provider's binding, `purpose: "research"` | `allow`, with `ext.bind` naming the binding (B-3c) |
 | 12 | the same, `purpose: "commercial"` | `deny`, `PG_SCOPE_VIOLATION`: outside the licence |
 | 12 | the same, a fourth time | `deny`, `PG_USAGE_LIMIT` |
-| 12 | a `licensee_id` with no active binding to this provider: another app's, replaced, revoked or made up | HTTP 403 `PG_NOT_BOUND` (B-5) |
+| 12 | a `licensee_id` with no active binding to this provider: another app's, replaced, revoked or made up | HTTP 403 `PG_NOT_BOUND` from a provider known by its domain, HTTP 401 `PG_NOT_AUTHENTICATED` with a registered credential ([`licensee`](licensee.md)) |
 
 - **9** is in the catalog ([`catalog`](catalog.md)) with a test price and no grant.
 - **10** has published terms ([`terms`](terms.md)): purposes `editorial` and `research`, `advertising`

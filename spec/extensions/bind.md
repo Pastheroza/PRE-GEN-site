@@ -17,7 +17,11 @@ A registry that implements this extension declares `bind`.
 
 OAuth 2.0 authorization code with PKCE (RFC 6749, RFC 7636) and the issuer parameter
 (RFC 9207). The client id is the provider URL; its `redirect_uris` come from its party
-document, as in OAuth's client-id metadata documents.
+document, as in OAuth's client-id metadata documents. A `redirect_uri` is HTTPS on the
+provider's own host, its port included, with no user part or fragment, or a private-use scheme
+from its reversed domain (`example.frame:/callback`, RFC 8252 §7.1). `http` is taken only on a
+loopback host (`localhost`, `127.0.0.1`, `[::1]`), on any port, and only by a sandbox (RFC 8252
+§7.3). A registry refuses a party document that lists anything else.
 
 1. **Start.** The app sends the person to `bind.authorize` with `response_type=code`,
    `client_id={provider URL}`, `redirect_uri` (exactly one of the document's), `state`,
@@ -75,8 +79,9 @@ document, as in OAuth's client-id metadata documents.
 - **B-3b Dies with its key.** A binding is valid only while the key that signed it is current,
   or retired but not revoked, in the authority's chain. Revoking a key voids every binding it
   signed.
-- **B-3c The answer names the binding.** An `allow` on a request with a bound `licensee_id`
-  carries `ext.bind = {"binding": <the binding's message id>}`. `basis` stays `{kind, grant}`,
+- **B-3c The answer names the binding.** An `allow` whose basis is one of the binding's grants
+  carries `ext.bind = {"binding": <the binding's message id>}`; an allow on any other grant (an
+  open one, or the provider's own) carries none, though the request named the licensee. `basis` stays `{kind, grant}`,
   which every current client checks; a proof verifier may read `ext.bind`; `check_proof` /
   `checkProof` do not check it yet.
 - **B-4 Grant scope still applies.** A grant that names `providers` is reached only through a

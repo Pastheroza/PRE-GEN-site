@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import time
 from html import escape
-from urllib.parse import parse_qs, urlencode
+from urllib.parse import parse_qs, urlencode, urlsplit
 
 from fastapi import Body, FastAPI, Header, Request
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
@@ -13,10 +13,16 @@ from .protocol import ProtocolError
 from .registry import Registry
 
 SANDBOX_ACCESS_PER_HOUR = 10
+BIND_APPROVALS_PER_HOUR = 20
 
 
 def _path(request: Request) -> str:
     return request.url.path + ("?" + request.url.query if request.url.query else "")
+
+
+def _origin(url: str) -> str:
+    p = urlsplit(url)
+    return f"{p.scheme}://{p.netloc}"
 
 
 def _authorize_params(registry: Registry, q: dict) -> dict:
@@ -35,6 +41,7 @@ def create_app(registry: Registry, policy_file=None) -> FastAPI:
     app = FastAPI(title=f"PRE-GEN registry — {registry.config.name}", version=__version__,
                   docs_url="/docs", redoc_url=None)
     issued: dict[str, list[float]] = {}            # sandbox credentials per client address, last hour
+    approvals: dict[str, list[float]] = {}         # bind consents per client address, last hour
 
     @app.exception_handler(ProtocolError)
     def protocol_error(_: Request, e: ProtocolError):
@@ -122,15 +129,18 @@ def create_app(registry: Registry, policy_file=None) -> FastAPI:
     @app.get("/v2/bind/authorize")
     def bind_authorize(request: Request):
         """bind.md step 2: the consent screen. The sandbox's test creator is signed in; it holds no real people."""
-        q = dict(request.query_params)
+        q = {k: v for k, v in request.query_params.items() if k != "consent"}
         doc = _authorize_params(registry, q)
+        q["consent"] = registry.bind_consent(q["client_id"], q["redirect_uri"], q["code_challenge"])
+        unchecked = ("<p>Not checked: this app's party document was posted to this sandbox, not read from its domain."
+                     "</p>" if doc["posted"] else "")
         offer = "".join(f"<li>{escape(o['subject_ref'])}: {', '.join(o['purposes'])}, {o['max_uses']} uses</li>"
                         for o in registry.bind_offer())
         name, domain = escape(str(doc.get("name", ""))), escape(doc["party_id"])
         fields = "".join(f'<input type="hidden" name="{escape(k)}" value="{escape(v)}">' for k, v in q.items())
         page = (f"<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'>"
                 f"<title>Connect your licences</title><h1>Connect your licences from {escape(registry.config.name)} "
-                f"to {name}?</h1><p>App: {name} at <b>{domain}</b></p><p>Licences that become usable there:</p>"
+                f"to {name}?</h1><p>App: {name} at <b>{domain}</b></p>{unchecked}<p>Licences that become usable there:</p>"
                 f"<ul>{offer}</ul><p>{name} will learn the terms of these licences and a random id for this app. It "
                 f"will not learn your account, your email, your other licences or the other apps you use.</p>"
                 f"<p>Signed in as the sandbox's test creator, with no password: a sandbox holds no real people.</p>"
@@ -142,11 +152,21 @@ def create_app(registry: Registry, policy_file=None) -> FastAPI:
     @app.post("/v2/bind/authorize")
     async def bind_decide(request: Request):
         """bind.md step 3: back to the app with a code, or with access_denied."""
+        origin = request.headers.get("origin")
+        if origin and origin != _origin(registry.config.api):
+            raise ProtocolError("PG_MALFORMED", "the consent form is answered only from this registry's own page",
+                                status=403)
+        who, now = request.client.host if request.client else "?", time.time()
+        recent = [t for t in approvals.get(who, []) if now - t < 3600]
+        if len(recent) >= BIND_APPROVALS_PER_HOUR:
+            raise ProtocolError("PG_RATE_LIMITED", "too many consents from this address; try later", status=429)
+        approvals[who] = [*recent, now]
         q = {k: v[-1] for k, v in parse_qs((await request.body()).decode(), keep_blank_values=True).items()}
         _authorize_params(registry, q)
         sep = "&" if "?" in q["redirect_uri"] else "?"
         if q.get("decision") == "approve":
-            back = {"code": registry.bind_approve(q["client_id"], q["redirect_uri"], q["code_challenge"])}
+            back = {"code": registry.bind_approve(q["client_id"], q["redirect_uri"], q["code_challenge"],
+                                                  q.get("consent", ""))}
         else:
             back = {"error": "access_denied"}
         back |= {"state": q["state"], "iss": registry.config.prefix}

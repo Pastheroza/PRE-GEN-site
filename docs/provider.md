@@ -135,7 +135,8 @@ your key**: a later document must extend the chain (a `rotation` keyset signed b
 `https://www.pregen.org/spec/extensions/provider-keys.md`), or it is refused.
 
 **Before you have a domain** (or to test from a laptop), a sandbox takes the document by post
-and accepts a test id with a port or `localhost` too: step 9. Nothing else changes.
+and accepts a test id with a port too, or on your machine one bound to your key,
+`pregen.sandbox_provider_url(KEY, port)` / `await sandboxProviderUrl(KEY, port)`: step 9. Nothing else changes.
 
 **A registry that still wants its own credential** says `"providers": "registered"` in its
 document, or has no `providers` member (`GET {api}/.well-known/pregen-registry.json`); the

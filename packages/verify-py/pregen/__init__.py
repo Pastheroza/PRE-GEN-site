@@ -20,7 +20,7 @@ __all__ = [
     "verify_directory", "load_directory", "verify_decision", "check_decision", "check_answer", "verify_answer", "message_id", "DIRECTORY_MAX_AGE", "decide_identity",
     "verify_anchors", "check_channel_proof", "wikidata_official_urls", "SETTLED_AFTER", "check_proof", "FLOOR_REASONS", "REPORT_GRACE", "STEWARD_SUCCESSOR_PUBLIC_KEY_HEX", "Simulator",
     "signing_input", "sign_envelope", "new_private_key_hex", "public_key_hex",
-    "check_provider_url", "party_document", "pg_access",
+    "check_provider_url", "sandbox_provider_url", "party_document", "pg_access",
     "CATEGORIES", "PROHIBITED_FOR_MINORS", "INTIMATE", "floor", "forbids", "terms_opens", "check_terms",
 ]
 
@@ -608,6 +608,13 @@ def check_provider_url(url, allow_port: bool = False) -> str:
             or not (_HOST.fullmatch(host) or local) or (port and not (allow_port and port.isdigit() and 0 < int(port) < 65536)):
         raise PregenError(f"not a provider URL: {url!r} (https://<domain>, lower case, no path, port, query or fragment)")
     return url
+
+
+def sandbox_provider_url(private_key_hex: str, port: int | None = None) -> str:
+    """A test id for a sandbox, on your own machine (provider-identity, Sandboxes): bound to your key, so two people's
+    tests never collide. `https://<32 hex of the key id>.localhost[:port]`."""
+    host = fingerprint(public_key_hex(private_key_hex)).split(":")[1] + ".localhost"
+    return check_provider_url(f"https://{host}" + (f":{int(port)}" if port else ""), allow_port=True)
 
 
 def party_document(provider_url: str, name: str, private_key_hex: str, *, redirect_uris=(), bind_initiate_uri: str = "",

@@ -27,7 +27,7 @@ export function mintCode(prefix, serial) {
 }
 
 /** Flags shared by the app and the self-check adapter. Production is the default; --sandbox is explicit. */
-export function parseConfig(argv) {
+export async function parseConfig(argv) {
   const { values: v } = parseArgs({ args: argv, allowPositionals: true, options: {
     sandbox: { type: "boolean", default: false },
     "provider-url": { type: "string" }, name: { type: "string", default: "Reference Provider" },
@@ -43,26 +43,35 @@ export function parseConfig(argv) {
   }
   const cfg = {
     sandbox, port, name: v.name, workers: Number(v.workers), giveBack: v["give-back"],
-    // provider-identity.md: https:// + your registrable domain. A sandbox also takes localhost and a port.
-    providerUrl: v["provider-url"] ?? (sandbox ? `https://localhost:${port}` : undefined),
     authority: v.authority ?? (sandbox ? "TEST" : undefined),
     directoryUrl: v.directory ?? (sandbox ? TEST_DIRECTORY : pg.DIRECTORY_URL),
     steward: v.steward ?? (sandbox ? TEST_STEWARD : pg.STEWARD_PUBLIC_KEY_HEX),
     data: v.data ?? (sandbox ? "data-sandbox" : "data"),             // test and production never share a file
     tls: v["tls-cert"] && v["tls-key"] ? { cert: readFileSync(v["tls-cert"]), key: readFileSync(v["tls-key"]) } : null,
   };
-  if (!cfg.providerUrl) throw new Error("production needs --provider-url https://<your domain>");
-  pg.checkProviderUrl(cfg.providerUrl, { allowPort: sandbox });
+  if (!sandbox && !v["provider-url"]) throw new Error("production needs --provider-url https://<your domain>");
   if (!cfg.authority || !/^[A-Z]{4}$/.test(cfg.authority)) throw new Error("--authority is the four-letter prefix of the registry that holds your creators' licences");
-  mkdirSync(cfg.data, { recursive: true });
   // The provider key comes from your secret store: an env var or a file. Never from code, never asked for in a form.
+  // The env var is the production path; a sandbox never takes it, so a production key is never signed with in a test.
+  if (sandbox && process.env.PREGEN_PROVIDER_KEY_HEX) {
+    throw new Error("PREGEN_PROVIDER_KEY_HEX is for production: unset it, and use --key-file with a test key or let the sandbox make one");
+  }
   cfg.key = process.env.PREGEN_PROVIDER_KEY_HEX?.trim() || (v["key-file"] && readFileSync(v["key-file"], "utf8").trim());
   if (!cfg.key) {
     if (!sandbox) throw new Error("production needs PREGEN_PROVIDER_KEY_HEX or --key-file");
+    mkdirSync(cfg.data, { recursive: true });
     const file = join(cfg.data, "sandbox-provider.key");             // a throwaway test key, never a production one
     if (!existsSync(file)) { writeFileSync(file, pg.newPrivateKeyHex() + "\n"); chmodSync(file, 0o600); }
     cfg.key = readFileSync(file, "utf8").trim();
   }
+  // provider-identity.md: https:// + your registrable domain. In a sandbox the default id is bound to the key,
+  // https://<32 hex of the key id>.localhost:<port>, so two people's tests never collide.
+  cfg.providerUrl = v["provider-url"] ?? await pg.sandboxProviderUrl(cfg.key, port);
+  pg.checkProviderUrl(cfg.providerUrl, { allowPort: sandbox });
+  // Where the browser reaches this app: the provider URL behind TLS. A sandbox without a certificate is plain HTTP on
+  // loopback, which bind allows for redirect URIs only there (RFC 8252 §7.3).
+  cfg.appUrl = sandbox && !cfg.tls ? `http://localhost:${port}` : cfg.providerUrl;
+  mkdirSync(cfg.data, { recursive: true });
   return cfg;
 }
 
@@ -70,9 +79,9 @@ export function parseConfig(argv) {
 export async function openPregen(cfg) {
   const keyId = await pg.fingerprint(await pg.publicKeyHex(cfg.key));
   const signers = [{ role: "provider", key_id: keyId }];
-  const redirectUri = cfg.providerUrl + "/callback";
+  const redirectUri = cfg.appUrl + "/callback";
   const party = await pg.partyDocument(cfg.providerUrl, cfg.name, cfg.key,
-    { redirectUris: [redirectUri], bindInitiateUri: cfg.providerUrl + "/bind/initiate" });
+    { redirectUris: [redirectUri], bindInitiateUri: cfg.appUrl + "/bind/initiate" });
   const http = (url, init = {}) => fetch(url, { ...init, redirect: "error", signal: AbortSignal.timeout(10_000) });
   const testing = cfg.sandbox;           // sandbox.md: a sandbox answer is accepted only when testing, under a test directory
 
@@ -164,10 +173,11 @@ export async function openPregen(cfg) {
     return pg.checkAnswer(answer, request, { directory: await directory(), fetch: http, testing });
   }
 
-  async function makeReport(request, answer, outcome, outputHash, occurredAt) {      // reports.md
+  // reports.md. `answer` null: no usable answer was received, so the report carries the full request instead.
+  async function makeReport(request, answer, outcome, outputHash, occurredAt) {
     return pg.signEnvelope("pg.report.v1", { signers, request_id: await pg.messageId("pg.request.v1", request.body),
-      answer: await pg.messageId("pg.answer.v1", answer.body), job_id: request.body.job_id, outcome,
-      output_hash: outputHash, occurred_at: occurredAt }, cfg.key);
+      answer: answer ? await pg.messageId("pg.answer.v1", answer.body) : null, ...(answer ? {} : { request: request.body }),
+      job_id: request.body.job_id, outcome, output_hash: outputHash, occurred_at: occurredAt }, cfg.key);
   }
 
   /** reports.md: filed only when an acknowledgement for exactly this report verifies (X-6). Returns the ack. */
