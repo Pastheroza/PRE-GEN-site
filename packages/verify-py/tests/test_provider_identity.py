@@ -15,7 +15,11 @@ def test_a_provider_url_is_the_apps_domain_and_nothing_else():
                 "https://frame.example.", "https://localhost", "https://frame", "frame.example", 42, "https://xn--"]:
         with pytest.raises(pregen.PregenError):
             pregen.check_provider_url(bad)
-    assert pregen.check_provider_url("https://localhost:8443", allow_port=True) == "https://localhost:8443"
+    assert pregen.check_provider_url("https://0123456789abcdef0123456789abcdef.localhost:8443", allow_port=True) == "https://0123456789abcdef0123456789abcdef.localhost:8443"
+    for bad in ("https://localhost:8443", "https://localhost", "https://0123456789abcdef0123456789abcdef.localhost:08443",
+                "https://0123456789abcdef0123456789abcdef.localhost:443", "https://0123456789abcdef0123456789abcdef.localhost:65536", "https://0123456789abcdef0123456789abcdef.localhost:0"):
+        with pytest.raises(pregen.PregenError):
+            pregen.check_provider_url(bad, allow_port=True)
     assert pregen.check_provider_url("https://frame.example:8443", allow_port=True) == "https://frame.example:8443"
 
 
@@ -50,3 +54,7 @@ def test_a_sandbox_test_id_is_bound_to_the_key():
     hexid = pregen.fingerprint(pregen.public_key_hex(key)).split(":")[1]
     assert pregen.sandbox_provider_url(key) == f"https://{hexid}.localhost"
     assert pregen.sandbox_provider_url(key, 8443) == f"https://{hexid}.localhost:8443"
+    assert pregen.sandbox_provider_url(key, 443) == f"https://{hexid}.localhost"
+    for bad in (0, 65536, "8443", True, 8443.0):
+        with pytest.raises(pregen.PregenError):
+            pregen.sandbox_provider_url(key, bad)

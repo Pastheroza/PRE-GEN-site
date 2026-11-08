@@ -35,11 +35,13 @@ CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, account_id INTEGER NOT
 CREATE TABLE IF NOT EXISTS bind_starts (state TEXT PRIMARY KEY, account_id INTEGER NOT NULL, authority TEXT NOT NULL,
   verifier TEXT NOT NULL, created_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS bindings (account_id INTEGER NOT NULL, authority TEXT NOT NULL, licensee_id TEXT NOT NULL,
-  binding TEXT NOT NULL, expires_at INTEGER NOT NULL, PRIMARY KEY (account_id, authority));
+  binding TEXT NOT NULL, expires_at INTEGER NOT NULL, subjects TEXT NOT NULL DEFAULT '[]',   -- the licence's codes
+  PRIMARY KEY (account_id, authority));
 CREATE TABLE IF NOT EXISTS jobs (id TEXT PRIMARY KEY, account_id INTEGER NOT NULL, created_at INTEGER NOT NULL,
   input TEXT NOT NULL, job_hash TEXT NOT NULL, request TEXT NOT NULL,       -- fixed before anything is sent (jobs.md X-2)
   state TEXT NOT NULL DEFAULT 'queued', worker TEXT, claimed_at INTEGER,   -- queued | claimed | done | unresolved
-  sent_at INTEGER, answer TEXT, status TEXT, reason TEXT,                  -- stored before acting on it
+  sent_at INTEGER, release_after INTEGER,                                  -- an answer lost on the way
+  answer TEXT, status TEXT, reason TEXT,                                   -- stored before acting on it
   began_at INTEGER, output TEXT, output_hash TEXT, report TEXT, ack TEXT, report_error TEXT, outcome TEXT);`);
 const one = (sql, ...a) => db.prepare(sql).get(...a);
 const all = (sql, ...a) => db.prepare(sql).all(...a);
@@ -51,20 +53,15 @@ async function createJob(account, code, productId, prompt) {
   const entry = (await pregen.directory()).registryFor(code);
   if (!product) throw new Error("choose a product");
   if (!entry) throw new Error(`no listed registry holds ${code}`);
-  const binding = one("SELECT licensee_id, expires_at FROM bindings WHERE account_id = ? AND authority = ?", account.id, entry.prefix);
+  const binding = one("SELECT * FROM bindings WHERE account_id = ? AND authority = ?", account.id, entry.prefix);
   let licenseeId;
-  if (binding) {
-    // bind.md: an ended connection (expired, replaced, revoked) is "connect your licence", never a refusal.
+  // The creator's licensee_id goes only into a request that rests on their own licence: a code among the binding's
+  // grants. Any other code is asked for the provider itself, as for an account with no licence, and rests on the
+  // provider's own grant, which covers generating for users only with the resale right (catalog.md). So an ended
+  // connection blocks only its own codes: "connect your licence", never a refusal (bind.md B-5).
+  if (binding && JSON.parse(binding.subjects).includes(code)) {
     if (binding.expires_at <= now()) throw new Error(CONNECT_AGAIN);
-    let held;
-    try { held = await pregen.grants(entry.prefix, binding.licensee_id); }
-    catch (e) { throw new Error(e instanceof Unavailable ? UNAVAILABLE : e.message); }
-    if (held.error === "PG_NOT_BOUND") throw new Error(CONNECT_AGAIN);
-    if (held.error) throw new Error(`the registry would not show your licence: ${held.error}`);
-    // The creator's licensee_id goes only into a request that rests on their own licence: a subject among the
-    // binding's grants. Anything else is asked for the provider itself and rests on its own grant, which covers
-    // generating for users only with the resale right (catalog.md).
-    if (held.grants.some((g) => (g.grant?.body ?? g.terms)?.subject_ref === code)) licenseeId = binding.licensee_id;
+    licenseeId = binding.licensee_id;                    // replaced or revoked: the registry answers 403 PG_NOT_BOUND
   }
   const id = `job-${randomUUID()}`;                          // a new job_id for every generation (jobs.md)
   // jobs.md: the job input is fixed once, holds everything we fixed, and hashes to job_hash.
@@ -92,10 +89,12 @@ async function runJob(j) {
   run("UPDATE jobs SET sent_at = coalesce(sent_at, ?) WHERE id = ?", now(), j.id);   // from here an answer may exist
   let r;
   try { r = await pregen.ask(request); } catch (e) {          // no answer, or one that does not verify (never received)
-    return releaseLost(j.id, e instanceof Unavailable ? "unavailable" : "failed", e instanceof Unavailable ? null : e.message);
+    return lost(j.id, e instanceof Unavailable ? "unavailable" : "failed", e instanceof Unavailable ? null : e.message);
   }
-  if (process.env.PREGEN_DROP_ANSWER && cfg.sandbox) return releaseLost(j.id, "unavailable");   // e2e: a lost answer
-  if (r.error) return finish(j.id, r.error === "PG_NOT_BOUND" ? "not_connected" : "failed", r.error);   // bind.md B-5
+  if (process.env.PREGEN_DROP_ANSWER && cfg.sandbox) return lost(j.id, "unavailable");   // the e2e test's lost answer
+  if (r.error === "PG_NOT_BOUND") return finish(j.id, "not_connected", r.error);       // bind.md B-5
+  if (r.error === "PG_ASK_CLOSED") return finish(j.id, "closed", r.error);             // jobs.md: this request is over
+  if (r.error) return finish(j.id, "failed", r.error);
   // limits.md: an allow reserves a use the moment it is issued, so it is stored before anything else happens.
   run("UPDATE jobs SET answer = ?, status = ?, reason = ? WHERE id = ?", JSON.stringify(r.answer), r.body.status,
     r.body.reason ?? null, j.id);
@@ -125,10 +124,14 @@ async function generate(id) {
 }
 
 // An answer the app never received may still hold a reserved use. The request is never sent again (a resend after
-// that answer expired would reserve a second use): the app reports not_generated with answer null and the request
-// itself (reports.md), and the registry releases that ask's reserved allows within the give-back window (limits.md).
-async function releaseLost(id, outcome, why = null) {
+// that answer expired would reserve a second use). Once any answer to it has certainly expired, the app reports
+// not_generated with answer null and the request itself (reports.md); the registry then releases that ask's expired
+// reserved allows within the give-back window (limits.md) and closes the ask.
+function lost(id, outcome, why = null) {
   finish(id, outcome, why);
+  run("UPDATE jobs SET release_after = sent_at + ? WHERE id = ?", cfg.lostAnswerWait, id);
+}
+async function releaseLost(id) {
   const report = await pregen.makeReport(JSON.parse(job(id).request), null, "not_generated", "", now());
   run("UPDATE jobs SET report = ? WHERE id = ?", JSON.stringify(report), id);
   await fileReport(id);
@@ -153,7 +156,8 @@ async function fileReport(id) {
     if (!(e instanceof Unavailable)) run("UPDATE jobs SET report_error = ? WHERE id = ?", e.message, id);
     return finish(id, j.outcome ?? "report_pending");
   }
-  if (report.body.outcome !== "generated") return finish(id, j.outcome === "unavailable" ? "unavailable" : "given_back");
+  if (report.body.answer === null) return finish(id, j.outcome);         // a lost answer keeps its message
+  if (report.body.outcome !== "generated") return finish(id, "given_back");
   try {   // proof.md: fetched by report id, checked against this file's SHA-256, kept next to the exact file
     const proof = await pregen.fetchProof(code, report, sha256(readFileSync(j.output)));
     writeFileSync(j.output + ".proof.json", JSON.stringify(proof, null, 2));
@@ -176,17 +180,23 @@ function render(input) {
 // (limits.md); an answer lost on the way is released the same way, never asked again. A job that may have begun
 // generating is never restarted or given back automatically (jobs.md X-7).
 // ponytail: assumes one app process owns the 'claimed' rows; with several, recover only jobs of dead workers.
+let recovering = false;
 async function recover(startup) {
+  if (recovering) return;
+  recovering = true;
+  try {
   for (const j of startup ? all("SELECT * FROM jobs WHERE state = 'claimed'") : []) {
     if (j.report) await fileReport(j.id);                        // signed and stored: send those same bytes
     else if (!j.answer && !j.sent_at) run("UPDATE jobs SET state = 'queued' WHERE id = ?", j.id);   // never sent: safe to send
-    else if (!j.answer) await releaseLost(j.id, "given_back", "the app stopped before the answer was stored");
+    else if (!j.answer) lost(j.id, "lost");
     else if (j.status !== "allow") finish(j.id, "refused", j.reason);
     else if (!j.began_at) await giveBack(j.id, "the app stopped before generating");
     else run("UPDATE jobs SET state = 'unresolved', outcome = 'unresolved' WHERE id = ?", j.id);
   }
+  for (const j of all("SELECT id FROM jobs WHERE report IS NULL AND release_after <= ?", now())) await releaseLost(j.id);
   for (const j of all(`SELECT id FROM jobs WHERE state = 'done' AND report IS NOT NULL AND ack IS NULL
     AND report_error IS NULL`)) await fileReport(j.id);
+  } finally { recovering = false; }
 }
 
 async function worker(name) {
@@ -217,8 +227,10 @@ async function hashPassword(pw, salt = randomBytes(16).toString("hex"), N = 2 **
   return `scrypt$${N}$${r}$${p}$${salt}$${(await derive(pw, salt, N, r, p)).toString("hex")}`;
 }
 async function passwordOk(pw, stored) {
-  const [, N, r, p, salt, hash] = stored.split("$");
-  return timingSafeEqual(await derive(pw, salt, Number(N), Number(r), Number(p)), Buffer.from(hash, "hex"));
+  const [alg, N, r, p, salt, hash] = String(stored).split("$");
+  if (alg !== "scrypt" || !/^[0-9a-f]{128}$/.test(hash ?? "")) return false;   // another format: a wrong password (401)
+  try { return timingSafeEqual(await derive(pw, salt, Number(N), Number(r), Number(p)), Buffer.from(hash, "hex")); }
+  catch { return false; }
 }
 const DUMMY = await hashPassword("not a password");               // same work for an unknown email
 
@@ -257,6 +269,8 @@ function message(j) {
     case "refused": return `Refused by the registry: ${j.reason}. Nothing was generated.`;
     case "not_connected": return CONNECT_AGAIN;
     case "unavailable": return UNAVAILABLE;
+    case "lost": return "Interrupted before the registry's answer arrived. Nothing was generated.";
+    case "closed": return "The registry has already closed this request. Nothing was generated; start a new job.";
     case "given_back": return `Not generated; the use went back to the licence (${j.reason}).`;
     case "report_pending": return "Waiting for the registry to acknowledge the report.";
     case "unresolved": return "Interrupted while generating: an operator has to resolve this job.";
@@ -273,8 +287,10 @@ async function licencePanel(s) {
       rows.push(`<p class=msg>${h(b.authority)}: the registry could not be reached to show your licence.</p>`); continue;
     }
     if (r.error === "PG_NOT_BOUND") rows.push(`<p class=msg>${h(b.authority)}: ${CONNECT_AGAIN}</p>`);
-    else if (r.error) rows.push(`<p class=msg>${b.authority}: ${h(r.error)}</p>`);
-    else for (const g of r.grants) {       // status and remaining are unsigned: they inform, only an allow permits
+    else if (r.error) rows.push(`<p class=msg>${h(b.authority)}: ${h(r.error)}</p>`);
+    else run("UPDATE bindings SET subjects = ? WHERE account_id = ? AND licensee_id = ?", JSON.stringify(
+      r.grants.map((g) => (g.grant?.body ?? g.terms)?.subject_ref).filter(Boolean)), s.id, b.licensee_id);
+    if (!r.error) for (const g of r.grants) {       // status and remaining are unsigned: they inform, only an allow permits
       const body = g.grant?.body ?? {};
       rows.push(`<p>${h(b.authority)} licence on <b>${h(body.subject_ref)}</b>: purposes ${h((body.use?.purposes ?? []).join(", "))};
         ${h(g.status)}, ${h(g.remaining ?? "unlimited")} uses left</p>`);
@@ -374,9 +390,11 @@ async function handle(req, res) {
     if (url.searchParams.get("error")) return page(res, "Connect", "<p class=msg>Not connected: you cancelled at the registry.</p><p><a href=/>Back</a></p>");
     try {
       const binding = await pregen.bindExchange(st.authority, url.searchParams.get("code") ?? "", st.verifier);
-      run(`INSERT INTO bindings VALUES (?, ?, ?, ?, ?) ON CONFLICT (account_id, authority) DO UPDATE SET
-        licensee_id = excluded.licensee_id, binding = excluded.binding, expires_at = excluded.expires_at`,
+      run(`INSERT INTO bindings (account_id, authority, licensee_id, binding, expires_at) VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT (account_id, authority) DO UPDATE SET licensee_id = excluded.licensee_id, binding = excluded.binding,
+        expires_at = excluded.expires_at, subjects = '[]'`,
         s.id, st.authority, binding.body.licensee_id, JSON.stringify(binding), binding.body.expires_at);
+      await licencePanel(s);                                     // learns which codes the licence covers
       return redirect(res, "/");
     } catch (e) {
       return page(res, "Connect", `<p class=msg>${e instanceof Unavailable ? "The registry could not be reached." : h(e.message)}</p>`, 502);
@@ -408,7 +426,7 @@ async function handle(req, res) {
 
 // ── start ──
 await recover(true);
-setInterval(() => recover(false).catch((e) => console.error("recover:", e.message)), 5 * 60_000).unref();
+setInterval(() => recover(false).catch((e) => console.error("recover:", e.message)), 10_000).unref();
 const pregenRegistry = await pregen.registry(cfg.authority);
 await pregen.introduce(pregenRegistry);                             // sandbox only: the party document by post
 for (let i = 0; i < cfg.workers; i++) worker(`${process.pid}-${i}`);

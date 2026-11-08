@@ -14,6 +14,7 @@ from .registry import Registry
 
 SANDBOX_ACCESS_PER_HOUR = 10
 BIND_APPROVALS_PER_HOUR = 20
+BIND_PAGES_PER_HOUR = 60
 
 
 def _path(request: Request) -> str:
@@ -42,6 +43,15 @@ def create_app(registry: Registry, policy_file=None) -> FastAPI:
                   docs_url="/docs", redoc_url=None)
     issued: dict[str, list[float]] = {}            # sandbox credentials per client address, last hour
     approvals: dict[str, list[float]] = {}         # bind consents per client address, last hour
+    pages: dict[str, list[float]] = {}             # consent pages shown per client address, last hour
+
+    def within(seen: dict, request: Request, limit: int, what: str) -> tuple[str, list[float]]:
+        """ponytail: per process, in memory, like /v2/sandbox/access; a shared store if a sandbox runs several."""
+        who, now = request.client.host if request.client else "?", time.time()
+        recent = [t for t in seen.get(who, []) if now - t < 3600]
+        if len(recent) >= limit:
+            raise ProtocolError("PG_RATE_LIMITED", f"too many {what} from this address; try later", status=429)
+        return who, [*recent, now]
 
     @app.exception_handler(ProtocolError)
     def protocol_error(_: Request, e: ProtocolError):
@@ -130,7 +140,9 @@ def create_app(registry: Registry, policy_file=None) -> FastAPI:
     def bind_authorize(request: Request):
         """bind.md step 2: the consent screen. The sandbox's test creator is signed in; it holds no real people."""
         q = {k: v for k, v in request.query_params.items() if k != "consent"}
+        who, seen = within(pages, request, BIND_PAGES_PER_HOUR, "consent pages")
         doc = _authorize_params(registry, q)
+        pages[who] = seen
         q["consent"] = registry.bind_consent(q["client_id"], q["redirect_uri"], q["code_challenge"])
         unchecked = ("<p>Not checked: this app's party document was posted to this sandbox, not read from its domain."
                      "</p>" if doc["posted"] else "")
@@ -156,17 +168,14 @@ def create_app(registry: Registry, policy_file=None) -> FastAPI:
         if origin and origin != _origin(registry.config.api):
             raise ProtocolError("PG_MALFORMED", "the consent form is answered only from this registry's own page",
                                 status=403)
-        who, now = request.client.host if request.client else "?", time.time()
-        recent = [t for t in approvals.get(who, []) if now - t < 3600]
-        if len(recent) >= BIND_APPROVALS_PER_HOUR:
-            raise ProtocolError("PG_RATE_LIMITED", "too many consents from this address; try later", status=429)
-        approvals[who] = [*recent, now]
+        who, seen = within(approvals, request, BIND_APPROVALS_PER_HOUR, "consents")   # counted once it is valid
         q = {k: v[-1] for k, v in parse_qs((await request.body()).decode(), keep_blank_values=True).items()}
         _authorize_params(registry, q)
         sep = "&" if "?" in q["redirect_uri"] else "?"
         if q.get("decision") == "approve":
             back = {"code": registry.bind_approve(q["client_id"], q["redirect_uri"], q["code_challenge"],
                                                   q.get("consent", ""))}
+            approvals[who] = seen
         else:
             back = {"error": "access_denied"}
         back |= {"state": q["state"], "iss": registry.config.prefix}

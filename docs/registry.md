@@ -485,7 +485,9 @@ returns `{"provider_id": "sbx-…", "token": "…", "registry": "…", "note": "
 sandbox answer carries `ext: {"sandbox": true}`, and clients refuse it unless they are
 testing. Replace each `<…>` in `./sandbox/policy.md`, as in step 3. Like production, the
 sandbox accepts a licensee only after `connect` (or, for a provider known by its domain, a `bind`
-binding); otherwise the provider gets 401 (403 `PG_NOT_BOUND` for a provider known by its domain). A
+binding); otherwise the provider gets 401 (403 `PG_NOT_BOUND` for a provider known by its domain). So a
+registered sandbox credential tests a licensee grant only in a sandbox you run, after `connect`; on
+anyone else's sandbox only a provider known by its domain can, through `bind`. A
 licensee-only grant still needs `licensee_id` in the request (without it: `deny PG_NO_LICENSE`
 in the sandbox, where `test:t1` names no sandbox provider; in production, `deny PG_NOT_CONNECTED`).
 Apply for the sandbox's prefix too (step 9, status `sandbox`): a sandbox is listed only in a

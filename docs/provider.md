@@ -736,8 +736,10 @@ of the traceback, `not an allow: <status> <reason>`, is the outcome to compare w
 `1` through the whole flow (ask, check, generate, report, proof), as in production: the complete
 examples below do, with `TESTING = True` / `const TESTING = true`. Keep sandbox outputs and
 proofs apart from production ones: they are never labels (record `accepted: false`, reason
-`test directory: never a label`, step 8). A sandbox accepts any `licensee_id` without
-connecting it: ask a licensee-only test code with the licensee id the registry names for it.
+`test directory: never a label`, step 8). A sandbox accepts a `licensee_id` only as
+production does: a binding to your app (`bind`, code 12) or one the operator connected. A
+registered sandbox credential cannot test a person's licence on a sandbox you do not run; only an
+app known by its domain can, through `bind`.
 Check sandbox answers and proofs with `testing`: `check_answer(answer, request, directory,
 testing=True)`, `check_proof(…, testing=True)`; JS `checkAnswer(answer, request, { directory,
 testing: true })`. Every sandbox answer carries `ext: {"sandbox": true}`, and the libraries

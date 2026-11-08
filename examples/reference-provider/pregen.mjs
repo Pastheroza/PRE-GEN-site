@@ -35,6 +35,7 @@ export async function parseConfig(argv) {
     directory: { type: "string" }, steward: { type: "string" },
     data: { type: "string" }, port: { type: "string" }, workers: { type: "string", default: "2" },
     "tls-cert": { type: "string" }, "tls-key": { type: "string" }, "give-back": { type: "string" },
+    "lost-answer-wait": { type: "string" },
   } });
   const sandbox = v.sandbox;
   const port = Number(v.port ?? (sandbox ? 8443 : 3000));
@@ -43,6 +44,10 @@ export async function parseConfig(argv) {
   }
   const cfg = {
     sandbox, port, name: v.name, workers: Number(v.workers), giveBack: v["give-back"],
+    // Seconds after the first send until any answer to a request has certainly expired: the registry's answer
+    // lifetime (300 at the reference registry; at most 900, PRE-GEN-CORE.md rule 4), every send with its timeout
+    // (3 x 10 s plus 3 s of waits), and 60 s for clocks. Only then is a lost answer reported (answer null).
+    lostAnswerWait: Number(v["lost-answer-wait"] ?? 300 + 33 + 60),
     authority: v.authority ?? (sandbox ? "TEST" : undefined),
     directoryUrl: v.directory ?? (sandbox ? TEST_DIRECTORY : pg.DIRECTORY_URL),
     steward: v.steward ?? (sandbox ? TEST_STEWARD : pg.STEWARD_PUBLIC_KEY_HEX),
@@ -111,17 +116,17 @@ export async function openPregen(cfg) {
   }
 
   // The same bytes, at most 3 sends (docs/provider.md, Complete example): a retry gets the same answer (jobs.md).
-  async function post(url, payload, headers = {}) {
+  async function post(url, payload, headers = {}, sends = 3) {
     const data = JSON.stringify(payload);
     for (let i = 0; ; i++) {
       try {
         const res = await http(url, { method: "POST", body: data,
           headers: { "Content-Type": "application/json", "X-Provider-ID": cfg.providerUrl, ...headers } });
         if (res.status < 500 && res.status !== 429) return { status: res.status, body: await res.json().catch(() => ({})) };
-        if (i === 2) throw new Unavailable(`${url}: HTTP ${res.status}`);
+        if (i === sends - 1) throw new Unavailable(`${url}: HTTP ${res.status}`);
       } catch (e) {
         if (e instanceof Unavailable) throw e;
-        if (i === 2) throw new Unavailable(`${url}: ${e.message}`);
+        if (i === sends - 1) throw new Unavailable(`${url}: ${e.message}`);
       }
       await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
     }
@@ -228,7 +233,7 @@ export async function openPregen(cfg) {
     const { token } = await bindEndpoints(prefix);
     const env = await pg.signEnvelope("pg.bind_exchange.v1", { signers, provider_id: cfg.providerUrl, code,
       code_verifier: verifier, redirect_uri: redirectUri, issued_at: now() }, cfg.key);
-    const r = await post(token, env);
+    const r = await post(token, env, {}, 1);     // sent once: a code sent again ends the binding issued with it
     if (r.status !== 200 || !r.body.binding) throw new Error(`bind: ${r.body.error ?? `HTTP ${r.status}`}`);
     const b = await registrySigned(r.body.binding, "pg.binding.v1", prefix);
     if (b.authority !== prefix || b.provider_id !== cfg.providerUrl || typeof b.licensee_id !== "string"

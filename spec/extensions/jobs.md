@@ -25,8 +25,10 @@ equality, never reads what it stands for, and its answers do not repeat it.
 | After a `generated` report for that subject of the job, no new answer | `PG_ASK_CLOSED` (409, with the stored `ack`) |
 | The identical request while an answer is open gets that same answer | — |
 
-An answer is **open** from its `issued_at` until its `expires_at`. After that, the identical
-request gets a new answer.
+An answer is **open** from its `issued_at` until its `expires_at`, unless it was given back
+([`limits`](limits.md)). After that, the identical request gets a new answer. After a
+`not_generated` report with `answer: null`, the ask is closed: the identical request gets
+`PG_ASK_CLOSED` (409, with the stored `ack`).
 
 **A new generation always needs a new `job_id`.**
 

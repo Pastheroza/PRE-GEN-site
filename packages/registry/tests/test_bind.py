@@ -271,12 +271,15 @@ def test_an_allow_never_received_is_given_back_by_a_report_with_no_answer():
     body = env["body"]
     r = c.post("/v2/requests", headers=p.h, json=env)
     assert r.json()["answer"]["body"]["status"] == "allow"                  # issued, but say the app never got it
-    clock.t += 301                                                           # expired before it arrived
     report = {"request_id": message_id("pg.request.v1", body), "answer": None, "request": body, "job_id": "lost",
               "outcome": "not_generated", "output_hash": "", "occurred_at": reg.clock()}
+    early = p.signed("pg.report.v1", {**report, "job_id": "lost"})
+    clock.t += 301                                                           # expired before it arrived
     r = c.post("/v2/reports", headers=p.h, json=p.signed("pg.report.v1", report))
     assert r.status_code == 200, r.text
     assert len(r.json()["ack"]["body"]["released"]) == 1
+    late = c.post("/v2/requests", headers=p.h, json=env)                    # the same request, arriving late
+    assert (late.status_code, late.json()["error"]) == (409, "PG_ASK_CLOSED") and "ack" in late.json()
     for n in range(3):                                                       # all three uses are there again
         assert p.answer(p.body(TWELVE, job=f"after{n}", licensee_id=lic))["body"]["status"] == "allow"
 
@@ -285,8 +288,10 @@ def test_localhost_ids_in_a_sandbox_are_bound_to_their_key_and_loopback_http_is_
     reg, c, _ = make()
     key = lib.new_private_key_hex()
     own = lib.sandbox_provider_url(key, 8443)
-    for pid in ("https://localhost:8443", lib.sandbox_provider_url(lib.new_private_key_hex(), 8443)):
-        assert c.post("/v2/sandbox/party", json=lib.party_document(pid, "X", key)).status_code == 422, pid
+    other = lib.sandbox_provider_url(lib.new_private_key_hex(), 8443)               # another key's id
+    assert c.post("/v2/sandbox/party", json=lib.party_document(other, "X", key)).status_code == 422
+    with pytest.raises(lib.PregenError):
+        lib.party_document("https://localhost:8443", "X", key)                       # a bare localhost is no id
     doc = lib.party_document(own, "Mine", key, redirect_uris=["http://localhost:8443/callback",
                                                               "http://127.0.0.1:9000/cb", "http://[::1]/cb"])
     assert c.post("/v2/sandbox/party", json=doc).status_code == 200
@@ -294,3 +299,74 @@ def test_localhost_ids_in_a_sandbox_are_bound_to_their_key_and_loopback_http_is_
     doc = lib.party_document("https://frame.example", "F", key, redirect_uris=["http://localhost:8443/callback"])
     with pytest.raises(Exception):
         prod.pin_party(doc)                                                  # http only in a sandbox
+
+
+def test_a_report_with_no_answer_never_gives_back_an_allow_that_is_still_valid():
+    reg, c, clock = make()
+    p = app(reg, c)
+    lic = bind(c, p)["body"]["licensee_id"]
+    env = p.signed("pg.request.v1", p.body(TWELVE, job="early", licensee_id=lic))
+    allow = c.post("/v2/requests", headers=p.h, json=env).json()["answer"]
+    report = {"request_id": message_id("pg.request.v1", env["body"]), "answer": None, "request": env["body"],
+              "job_id": "early", "outcome": "not_generated", "output_hash": "", "occurred_at": reg.clock()}
+    r = c.post("/v2/reports", headers=p.h, json=p.signed("pg.report.v1", report))
+    assert r.json()["ack"]["body"]["released"] == []                         # still valid: stays reserved
+    assert c.post("/v2/requests", headers=p.h, json=env).status_code == 409  # and the ask is closed
+    assert p.report(allow, "generated").status_code == 200                    # it can still be reported, and counts
+
+
+def test_a_given_back_answer_is_never_served_again_as_open():
+    reg, c, clock = make()
+    p = app(reg, c)
+    lic = bind(c, p)["body"]["licensee_id"]
+    body = p.body(TWELVE, job="job-1", licensee_id=lic)
+    first = p.answer(body)
+    assert p.report(first, "not_generated").json()["ack"]["body"]["released"]
+    assert p.ask(body).status_code == 429                                     # the same bytes, the same second
+    clock.t += 1
+    again = p.answer(body)
+    assert again["body"]["status"] == "allow" and again != first                # a new answer, a new reservation
+
+
+def test_redirect_uris_edges_agree_with_the_schema():
+    reg, c, _ = make()
+    key = lib.new_private_key_hex()
+    for bad in ("https://FRAME.example/cb", "https://frame.example./cb", "https://frame.example:443/cb",
+                "https://frame.example?x=1", "example.frame://cb", "example.frame:///cb", "https://frame.example/c b",
+                "https://frame.example/c\x01", "http://localhost:80/cb", "EXAMPLE.frame:/cb"):
+        doc = lib.party_document("https://frame.example", "Frame", key, redirect_uris=[bad])
+        assert c.post("/v2/sandbox/party", json=doc).status_code == 422, bad
+    doc = lib.party_document("https://frame.example", "Frame", key,
+                             redirect_uris=["https://frame.example", "https://frame.example/cb?x=1", "example.frame:/",
+                                            "http://localhost:8080/cb"])
+    assert c.post("/v2/sandbox/party", json=doc).status_code == 200
+
+
+def test_an_old_plain_localhost_pin_is_dropped_when_the_sandbox_starts(tmp_path):
+    cfg, key, db = Config(prefix="TEST", name="T", api="https://test.example", sandbox=True), Key(), str(tmp_path / "s.db")
+    reg = Registry(cfg, key, db_path=db, clock=Clock())
+    pk = lib.new_private_key_hex()
+    reg.pin_party(lib.party_document(lib.sandbox_provider_url(pk, 8443), "A", pk), posted=True)
+    reg.db.execute("UPDATE keysets SET provider_id = 'https://localhost:8443'")      # as an earlier version pinned it
+    reg = Registry(cfg, key, db_path=db, clock=Clock())
+    assert reg._q("SELECT * FROM keysets WHERE provider_id = 'https://localhost:8443'") == []
+    assert len(reg._q("SELECT * FROM keysets")) == 0
+
+
+def test_an_early_bind_codes_table_is_rebuilt(tmp_path):
+    db = str(tmp_path / "s.db")
+    cfg, key = Config(prefix="TEST", name="T", api="https://test.example", sandbox=True), Key()
+    reg = Registry(cfg, key, db_path=db, clock=Clock())
+    reg.db.execute("DROP TABLE bind_codes")
+    reg.db.execute("CREATE TABLE bind_codes (code_hash TEXT PRIMARY KEY, grants TEXT NOT NULL)")   # 6cab298's shape
+    reg = Registry(cfg, key, db_path=db, clock=Clock())
+    assert "binding" in {r["name"] for r in reg.db.execute("PRAGMA table_info(bind_codes)")}
+
+
+def test_only_a_valid_approval_counts_toward_the_limit():
+    reg, c, _ = make()
+    p = app(reg, c)
+    _, challenge = pkce()
+    for _ in range(25):                                                       # no page: refused, not counted
+        assert consent(c, p, challenge, nonce="x")[1].status_code == 400
+    assert consent(c, p, challenge)[1].status_code == 303

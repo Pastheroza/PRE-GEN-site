@@ -24,9 +24,12 @@ the last use: one gets the allow, the other the profile's usage-limit refusal.
 
 **A `not_generated` report** releases its own allow, if it is inside the window. With
 `answer: null`, the report of an allow the provider never received (lost, or expired before it
-arrived), it names the ask by `request_id` and releases every `reserved` allow of that ask inside
-the window; those allows can never be reported again. Send that, never the request again: once
-the answer has expired, the identical request gets a new answer and reserves another use.
+arrived), it names the ask by `request_id` and releases every `reserved` allow of that ask that
+has expired, inside the window; those allows can never be reported again. An allow still valid
+stays reserved. The ask is then closed: no new answer is issued for it (`PG_ASK_CLOSED`). Send
+that report, never the request again, and only once any answer would have expired: no earlier
+than the time the request was sent, plus the profile's answer lifetime, plus the request's own
+timeout.
 
 **An allow never reported stays reserved** — that is, counted.
 

@@ -598,14 +598,16 @@ _HOST = re.compile(r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0
 def check_provider_url(url, allow_port: bool = False) -> str:
     """A provider URL (extensions/provider-identity.md): `https://` + the app's own domain, lower case, ASCII (an
     IDN in its xn-- form), with no path, query, fragment, credentials, port or trailing dot. One app, one id: no other
-    spelling of the domain is an id. A sandbox (allow_port) also takes a port and `localhost`, to test from a laptop."""
+    spelling of the domain is an id. A sandbox (allow_port) also takes a port (no leading zero, never 443) and, on
+    your own machine, only `<32 hex of the key id>.localhost` (sandbox_provider_url), never a bare `localhost`."""
     if not isinstance(url, str) or not url.startswith("https://"):
         raise PregenError("a provider URL is https://<your domain>")
     u = urlsplit(url)
     host, _, port = u.netloc.partition(":")
-    local = allow_port and host == "localhost"
-    if "@" in u.netloc or u.path or u.query or u.fragment or url != "https://" + u.netloc \
-            or not (_HOST.fullmatch(host) or local) or (port and not (allow_port and port.isdigit() and 0 < int(port) < 65536)):
+    local = allow_port and re.fullmatch(r"[0-9a-f]{32}\.localhost", host)
+    if "@" in u.netloc or u.path or u.query or u.fragment or url != "https://" + u.netloc or host == "localhost" \
+            or not (_HOST.fullmatch(host) or local) or (port and not (allow_port and re.fullmatch(r"[1-9][0-9]{0,4}", port)
+                                                                       and int(port) < 65536 and port != "443")):
         raise PregenError(f"not a provider URL: {url!r} (https://<domain>, lower case, no path, port, query or fragment)")
     return url
 
@@ -613,8 +615,10 @@ def check_provider_url(url, allow_port: bool = False) -> str:
 def sandbox_provider_url(private_key_hex: str, port: int | None = None) -> str:
     """A test id for a sandbox, on your own machine (provider-identity, Sandboxes): bound to your key, so two people's
     tests never collide. `https://<32 hex of the key id>.localhost[:port]`."""
+    if port is not None and (type(port) is not int or not 0 < port < 65536):
+        raise PregenError("port is an integer from 1 to 65535")
     host = fingerprint(public_key_hex(private_key_hex)).split(":")[1] + ".localhost"
-    return check_provider_url(f"https://{host}" + (f":{int(port)}" if port else ""), allow_port=True)
+    return check_provider_url(f"https://{host}" + (f":{port}" if port not in (None, 443) else ""), allow_port=True)
 
 
 def party_document(provider_url: str, name: str, private_key_hex: str, *, redirect_uris=(), bind_initiate_uri: str = "",

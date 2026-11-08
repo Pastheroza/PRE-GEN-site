@@ -9,9 +9,11 @@ for a sandbox or a small registry. Per-row locks on Postgres when throughput mat
 from __future__ import annotations
 
 import base64
+from importlib import resources
 import hashlib
 import ipaddress
 import json
+import os
 import re
 import secrets
 import socket
@@ -143,34 +145,39 @@ def fetch_party(provider_url: str) -> dict:
     return json.loads(data)
 
 
+REDIRECT_URI = re.compile(json.loads((resources.files("pregen_registry") / "schemas" / "party-document.json")
+                                      .read_text())["properties"]["redirect_uris"]["items"]["pattern"])
+
+
 def _redirect_ok(provider_id: str, uri, sandbox: bool = False) -> bool:
-    """bind.md, schemas/party-document.json redirect_uris: HTTPS on the provider's own host (and port), with no user
-    part or fragment, or a private-use scheme from its reversed domain (RFC 8252 §7.1), so bind is never an open
-    redirect. A sandbox also takes http on a loopback host, any port (RFC 8252 §7.3)."""
-    if not isinstance(uri, str):
+    """bind.md, schemas/party-document.json redirect_uris (the same pattern, so both agree on every edge): HTTPS on the
+    provider's own host and port, or a private-use scheme from its reversed domain with one slash after it (RFC 8252
+    §7.1), so bind is never an open redirect. A sandbox also takes http on a loopback host, any port (RFC 8252 §7.3)."""
+    if not isinstance(uri, str) or not REDIRECT_URI.fullmatch(uri):
         return False
-    try:
-        p, own = urlsplit(uri), urlsplit(provider_id)
-        port, own_port = p.port, own.port
-    except ValueError:
-        return False
-    if p.fragment or "#" in uri or p.username is not None or p.password is not None:
-        return False
-    if p.scheme == "https":
-        return p.hostname == own.hostname and port == own_port and p.netloc == own.netloc
-    if p.scheme == "http":
-        return sandbox and p.hostname in ("localhost", "127.0.0.1", "::1")
-    reverse = ".".join(reversed((own.hostname or "").split(".")))
-    return "." in reverse and (p.scheme == reverse or p.scheme.startswith(reverse + ".")) and not p.netloc
+    if uri.startswith("https://"):
+        own = "https://" + urlsplit(provider_id).netloc
+        return uri == own or uri.startswith(own + "/")
+    if uri.startswith("http://"):
+        return sandbox
+    reverse = ".".join(reversed((urlsplit(provider_id).hostname or "").split(".")))
+    scheme = uri.split(":", 1)[0]
+    return scheme == reverse or scheme.startswith(reverse + ".")
 
 
 class Registry:
     def __init__(self, config: Config, operator_key: Key, db_path: str = ":memory:", clock=lambda: int(time.time()),
                  fetch_party=fetch_party):
         self.config, self.key, self.clock, self.fetch_party = config, operator_key, clock, fetch_party
+        self.ttl = TTL                 # a sandbox may shorten it, so a test can watch an answer expire
+        if config.sandbox and os.environ.get("PREGEN_REGISTRY_ANSWER_TTL"):
+            self.ttl = max(1, min(int(os.environ["PREGEN_REGISTRY_ANSWER_TTL"]), TTL))
         self.db = sqlite3.connect(db_path, check_same_thread=False, isolation_level=None)
         self.db.row_factory = sqlite3.Row
         self.db.executescript(SCHEMA)
+        if "binding" not in {r["name"] for r in self.db.execute("PRAGMA table_info(bind_codes)")}:   # an early 0.4
+            self.db.execute("DROP TABLE bind_codes")                    # codes live 60 seconds: nothing to keep
+            self.db.executescript(SCHEMA)
         if "signatures" not in {r["name"] for r in self.db.execute("PRAGMA table_info(asks)")}:   # a 0.3 database
             self.db.execute("ALTER TABLE asks ADD COLUMN signatures TEXT NOT NULL DEFAULT '[]'")
         self.lock = threading.RLock()  # one sqlite connection: every use of it holds this lock
@@ -412,6 +419,7 @@ class Registry:
         have = self._check_sandbox_serials()
         with self.lock:
             self._set_meta("sandbox", "1")     # a sandbox's database never starts as a production registry
+        self._drop_unbound_localhost_pins()
         name, new = self.SANDBOX_NAMES, lambda n: n not in have
         if new(1):
             self.add_grant(self.add_subject(name[1], serial=1, level="verified"), purposes=PURPOSES, days=36500)
@@ -441,6 +449,20 @@ class Registry:
             self.add_grant(eleven, purposes=PURPOSES, days=36500, categories=CATEGORIES, holder_key=own)
         if new(12):                    # the holder's licence is made at each consent (bind_approve): no app shares one
             self.add_subject(name[12], serial=12, level="verified")
+
+    def _drop_unbound_localhost_pins(self):
+        """provider-identity, Sandboxes: a localhost id is bound to its key. Pins an earlier version took for a plain
+        `https://localhost:8443` (or another key's id) are dropped, so the name is free for whoever owns it now."""
+        with self.tx() as db:
+            for (pid,) in db.execute("SELECT DISTINCT provider_id FROM keysets").fetchall():
+                host = urlsplit(pid).hostname or ""
+                if host != "localhost" and not host.endswith(".localhost"):
+                    continue
+                first = json.loads(db.execute("SELECT envelope FROM keysets WHERE provider_id = ? AND position = 0",
+                                              (pid,)).fetchone()["envelope"])
+                if host != self._current(first["body"])["key_id"].split(":")[1] + ".localhost":
+                    db.execute("DELETE FROM keysets WHERE provider_id = ?", (pid,))
+                    db.execute("DELETE FROM meta WHERE k IN (?, ?)", ("party:" + pid, "partydoc:" + pid))
 
     def purchase(self, provider_id: str, authorization: str | None, env) -> dict:
         """extensions/sandbox.md: a test purchase, no money. The request, authenticated as for /v2/requests, names a
@@ -478,8 +500,12 @@ class Registry:
                 if ask["closing_ack"]:
                     raise ProtocolError("PG_ASK_CLOSED", "this subject of the job was reported generated", status=409,
                                         ack=json.loads(ask["closing_ack"]))
-                open_ = db.execute("SELECT envelope FROM answers WHERE ask_id = ? AND expires_at > ? "
-                                   "ORDER BY issued_at DESC", (ask["id"], now)).fetchone()
+                if ask["null_report"]:          # limits.md: given back unseen, the ask is closed; no new answer
+                    ack = db.execute("SELECT ack FROM reports WHERE id = ?", (ask["null_report"],)).fetchone()
+                    raise ProtocolError("PG_ASK_CLOSED", "this subject of the job was reported not generated with no "
+                                        "answer", status=409, ack=json.loads(ack["ack"]))
+                open_ = db.execute("SELECT envelope FROM answers WHERE ask_id = ? AND expires_at > ? AND (use IS NULL "
+                                   "OR use != 'released') ORDER BY issued_at DESC", (ask["id"], now)).fetchone()
                 if open_:
                     return {"answer": json.loads(open_["envelope"]), "attachments": []}
             decision = self._decide(db, body, now)
@@ -660,7 +686,7 @@ class Registry:
         if self._masked(db, req, status, reason, grant):
             status, reason, grant = "deny", "PG_PROVIDER_NOT_ACCEPTED", None
         body = {"request_id": message_id("pg.request.v1", req), "profile": req["profile"], "status": status, "level": level,
-                "obligations": [], "issued_at": now, "expires_at": now + TTL}
+                "obligations": [], "issued_at": now, "expires_at": now + self.ttl}
         if status == "allow":
             body["basis"] = {"kind": "grant", "grant": {"format": "pg.grant.v1", "id": grant["id"]}}
         else:
@@ -674,8 +700,11 @@ class Registry:
         use = "reserved" if status == "allow" else None   # catalog.md: every allow is billed unless given back
         if ask_id is None:
             return env
+        if db.execute("SELECT 1 FROM answers WHERE id = ?", (message_id(env["type"], env["body"]),)).fetchone():
+            # the same answer, to the second, was given back: never served again (jobs.md), so ask a second later
+            raise ProtocolError("PG_RATE_LIMITED", "ask again in a second", status=429)
         db.execute("INSERT INTO answers VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)",
-                   (message_id(env["type"], env["body"]), ask_id, json.dumps(env), status, now, now + TTL,
+                   (message_id(env["type"], env["body"]), ask_id, json.dumps(env), status, now, now + self.ttl,
                     grant["id"] if grant is not None else None, use))
         return env
 
@@ -1080,7 +1109,7 @@ class Registry:
 
     def _account(self, db, ask_id: str, body: dict, now: int):
         """extensions/limits.md."""
-        reserved = db.execute("SELECT id, issued_at FROM answers WHERE ask_id = ? AND use = 'reserved' "
+        reserved = db.execute("SELECT id, issued_at, expires_at FROM answers WHERE ask_id = ? AND use = 'reserved' "
                               "ORDER BY issued_at, id", (ask_id,)).fetchall()
         released = []
         give_back = lambda a: now - a["issued_at"] <= GIVE_BACK_WINDOW  # noqa: E731
@@ -1095,9 +1124,10 @@ class Registry:
                     released.append(a["id"])
             return (pick["id"] if pick is not None else None), released
         # A not_generated report releases its own allow; with `answer: null` (an allow the provider never received),
-        # every reserved allow of this ask (limits.md). Either way, inside the give-back window only.
+        # every reserved allow of this ask that has expired, so none can still be used (limits.md). Either way,
+        # inside the give-back window only.
         for a in reserved:
-            if (body["answer"] is None or a["id"] == body["answer"]) and give_back(a):
+            if (a["id"] == body["answer"] or (body["answer"] is None and a["expires_at"] <= now)) and give_back(a):
                 db.execute("UPDATE answers SET use = 'released' WHERE id = ?", (a["id"],))
                 released.append(a["id"])
         return None, released

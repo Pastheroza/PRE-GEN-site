@@ -510,8 +510,9 @@ export function checkProviderUrl(url, { allowPort = false } = {}) {
   let u;
   try { u = new URL(url); } catch { fail("a provider URL is https://<your domain>"); }
   const host = u.hostname;
-  if (u.protocol !== "https:" || u.origin !== url || u.username || (u.port && !allowPort)
-      || !(HOST.test(host) || (allowPort && host === "localhost"))) {
+  // A sandbox (allowPort) also takes a port, and on your own machine only <32 hex of the key id>.localhost.
+  if (u.protocol !== "https:" || u.origin !== url || u.username || (u.port && !allowPort) || host === "localhost"
+      || !(HOST.test(host) || (allowPort && /^[0-9a-f]{32}\.localhost$/.test(host)))) {
     fail(`not a provider URL: ${JSON.stringify(url)} (https://<domain>, lower case, no path, port, query or fragment)`);
   }
   return url;
@@ -520,8 +521,11 @@ export function checkProviderUrl(url, { allowPort = false } = {}) {
 /** A test id for a sandbox, on your own machine (provider-identity, Sandboxes): bound to your key, so two people's
  * tests never collide. `https://<32 hex of the key id>.localhost[:port]`. */
 export async function sandboxProviderUrl(privateKeyHex, port) {
+  if (port !== undefined && port !== null && !(Number.isInteger(port) && port > 0 && port < 65536)) {
+    fail("port is an integer from 1 to 65535");
+  }
   const host = (await fingerprint(await publicKeyHex(privateKeyHex))).split(":")[1] + ".localhost";
-  return checkProviderUrl(`https://${host}` + (port ? `:${Number(port)}` : ""), { allowPort: true });
+  return checkProviderUrl(`https://${host}` + (port == null || port === 443 ? "" : `:${port}`), { allowPort: true });
 }
 
 /** The document a provider serves at `{providerUrl}/.well-known/pregen-party.json` (provider-identity): who it is and

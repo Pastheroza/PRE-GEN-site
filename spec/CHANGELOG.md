@@ -25,8 +25,9 @@ Four clarifications of existing extensions (approved 2026-11-07), no new extensi
   licence (under `bind`, the subject is among the binding's grants); otherwise `""`, on its own grant, which covers
   its users only with resale. **`bind` B-3c:** `ext.bind` only on an allow whose basis is one of the binding's grants.
 - **`limits`, `jobs`:** a `not_generated` report with `answer: null` releases every reserved allow of the ask (by
-  `request_id`) inside the give-back window, and those allows cannot be reported again; send it instead of the request
-  again. An answer is open until its `expires_at`. X-7: a job may have started generating from the moment core rule 5
+  `request_id`) that has expired, inside the give-back window, and those allows cannot be reported again; the ask is
+  then closed (`PG_ASK_CLOSED`). Send it instead of the request again, and only once any answer would have expired.
+  An answer is open until its `expires_at`, unless it was given back: a given-back answer is never served again. X-7: a job may have started generating from the moment core rule 5
   passed; store that moment first.
 - **`provider-identity`, Sandboxes:** a `localhost` id is bound to its key, `https://<32 hex>.localhost[:port]`; a
   sandbox refuses any other. `sandbox_provider_url` / `sandboxProviderUrl` build it.
@@ -91,7 +92,9 @@ keep working.
   `bind`: it has no accounts or sign-in for people. A sandbox now checks every `licensee_id` as production does:
   only a binding or an operator connection passes; anything else, the buyer's provider id included (serial 9), is
   403 `PG_NOT_BOUND` from a provider known by its domain and 401 `PG_NOT_AUTHENTICATED` with a registered credential.
-  The consent page's one-time nonce must come back with the approval; a foreign `Origin` is refused; a code is
+  The consent page's one-time nonce must come back with the approval and a foreign `Origin` is refused, which stops
+  a cross-site form, not an app approving its own request in a sandbox, where the creator has no password; pages and
+  valid approvals are limited per address. A sandbox drops pins of a `localhost` id not bound to its key. A code is
   spent only by its own client, and shown twice by it ends the binding it gave (RFC 6749 §4.1.2); the licence is
   made at the exchange. A sandbox's database never starts as a production registry.
 - **Reference provider** (`examples/reference-provider`): an app that signs creators in, connects their licence

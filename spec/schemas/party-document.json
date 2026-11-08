@@ -55,9 +55,9 @@
       "type": "array",
       "items": {
         "type": "string",
-        "pattern": "^(https://[^/?#@]+(/[^#]*)?|http://(localhost|127\\.0\\.0\\.1|\\[::1\\])(:[0-9]{1,5})?(/[^#]*)?|[a-z][a-z0-9-]*(\\.[a-z0-9-]+)+:[^#]*)$"
+        "pattern": "^(https://[a-z0-9-]+(\\.[a-z0-9-]+)*(:(?!443(/|$))[1-9][0-9]{0,4})?(/[!\"$-~]*)?|http://(localhost|127\\.0\\.0\\.1|\\[::1\\])(:(?!80(/|$))[1-9][0-9]{0,4})?(/[!\"$-~]*)?|[a-z][a-z0-9-]*(\\.[a-z0-9-]+)+:/([!\"$-.0-~][!\"$-~]*)?)$"
       },
-      "description": "extension bind: HTTPS URLs on the provider's own host, or a private-use scheme from the reversed domain; http only on a loopback host and only in a sandbox (RFC 8252 §7.3)"
+      "description": "extension bind: HTTPS URLs on the provider's own host, or a private-use scheme from the reversed domain with one slash after it; http only on a loopback host and only in a sandbox (RFC 8252 §7.3); lower case host, no default port, no user part, fragment, space or control character"
     },
     "bind_initiate_uri": {
       "type": "string"

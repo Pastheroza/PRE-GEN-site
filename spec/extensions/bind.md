@@ -19,9 +19,11 @@ OAuth 2.0 authorization code with PKCE (RFC 6749, RFC 7636) and the issuer param
 (RFC 9207). The client id is the provider URL; its `redirect_uris` come from its party
 document, as in OAuth's client-id metadata documents. A `redirect_uri` is HTTPS on the
 provider's own host, its port included, with no user part or fragment, or a private-use scheme
-from its reversed domain (`example.frame:/callback`, RFC 8252 §7.1). `http` is taken only on a
-loopback host (`localhost`, `127.0.0.1`, `[::1]`), on any port, and only by a sandbox (RFC 8252
-§7.3). A registry refuses a party document that lists anything else.
+from its reversed domain with one slash after it (`example.frame:/callback`, RFC 8252 §7.1).
+`http` is taken only on a loopback host (`localhost`, `127.0.0.1`, `[::1]`), on any port, and only
+by a sandbox (RFC 8252 §7.3). The host is lower case, a default port is not written, and no space
+or control character appears; `schemas/party-document.json` gives the pattern. A registry refuses
+a party document that lists anything else.
 
 1. **Start.** The app sends the person to `bind.authorize` with `response_type=code`,
    `client_id={provider URL}`, `redirect_uri` (exactly one of the document's), `state`,
@@ -42,7 +44,8 @@ loopback host (`localhost`, `127.0.0.1`, `[::1]`), on any port, and only by a sa
 4. **Exchange.** The app posts `pg.bind_exchange.v1`, signed with its current key, to
    `bind.token` with the header `X-Provider-ID: {provider URL}`:
    `{signers, provider_id, code, code_verifier, redirect_uri, issued_at}`, with `issued_at`
-   within 60 seconds. The code is single-use, lives 60 seconds, and is bound to the client, the
+   within 60 seconds. The exchange is not retried: a code works once, and the same code again
+   ends the binding it gave. If the answer is lost, start again at step 1. The code is single-use, lives 60 seconds, and is bound to the client, the
    redirect URI and the challenge.
 5. **Binding.** The answer is `{"binding": <pg.binding.v1>}`, which the app stores on the
    person's account in the app.

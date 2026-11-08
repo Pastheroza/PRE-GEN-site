@@ -36,6 +36,8 @@ the person to `/v2/bind/authorize`, where the sandbox's test creator, signed in 
 app exchanges the code at `/v2/bind/token` for a binding and reads the licence at `GET /v2/grants?licensee_id=…`.
 Each consent gives the test creator a new licence on code 12 (research, three uses), so apps never share one.
 `pregen-registry bindings --dir DATA` lists the bindings, with their allows, and `--revoke LICENSEE_ID` ends one.
+For a test that watches an answer expire, a sandbox started with `PREGEN_REGISTRY_ANSWER_TTL=5` (seconds, at most
+300) issues shorter-lived answers; a production registry ignores it.
 
 ## Run a real registry
 

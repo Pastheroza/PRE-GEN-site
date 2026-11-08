@@ -51,14 +51,17 @@ HTTP is allowed for a redirect only on a loopback host and only in a sandbox (RF
 - Connect your licence (`spec/extensions/bind.md`). The app picks the authority itself: its configured prefix, looked
   up in the verified directory. It reads that registry's document, sends the creator to `bind.authorize` with PKCE S256
   and a random `state`, and on return checks that `state` was made for this account and that `iss` is the authority it
-  started with. It then posts a signed `pg.bind_exchange.v1` to `bind.token` with `X-Provider-ID`, checks the
+  started with. It then posts a signed `pg.bind_exchange.v1` to `bind.token` with `X-Provider-ID` once: never retry
+  it, because a code sent twice ends the binding issued with it. If the exchange's response is lost, the creator starts
+  the connection again. The app checks the
   registry's signature on the returned `pg.binding.v1` through the directory, and stores it on the account. A
   registry's "Use at" button opens `/bind/initiate?iss=…`: the app asks the person first, and only for an `iss` that is
   a prefix in the directory.
-- Which licence a request rests on: the creator's `licensee_id` goes only into a request about a subject among their
-  binding's grants, read from `GET /v2/grants` when the job is made. Any other code is asked for the provider itself
-  and rests on the provider's own grant, which covers generating for users only with the resale right (`catalog.md`).
-  So a connected creator can still use a test purchase on code 9.
+- Which licence a request rests on: the creator's `licensee_id` goes only into a request about a code among their
+  binding's grants (read with `GET /v2/grants` when they connect, and each time the licence is shown). Any other code is
+  asked for the provider itself, exactly as for an account with no licence, and rests on the provider's own grant,
+  which covers generating for users only with the resale right (`catalog.md`). So a connected creator can still use a
+  test purchase on code 9, and a connection that expired or was revoked blocks only its own codes.
 - The connected licence: `GET {api}/v2/grants?licensee_id=…` with `PG-Access`, shown on the account page. `status`
   and `remaining` are unsigned and only inform the page. A connection that expired, or that the registry no longer
   knows (replaced by a newer one, or revoked), is shown as "connect your licence", never as a refusal.
@@ -75,21 +78,28 @@ HTTP is allowed for a redirect only on a loopback host and only in a sandbox (RF
   not to render. The signed report is stored before it is sent, and counts as filed only when the registry's
   acknowledgement for exactly that report verifies.
 - A lost answer: when the registry cannot be reached, or its answer does not verify, an allow may still be reserved
-  there. The request is never sent again, since a resend after that allow expired would reserve a second use. The app
-  reports `not_generated` with `answer: null` and the full signed request (`reports.md`), and the registry releases
-  every reserved allow of that ask within the give-back window. The creator sees "could not be reached".
+  there. The request is never sent again, since a resend after that allow expired would reserve a second use. Once any
+  answer to it has certainly expired, the app reports `not_generated` with `answer: null` and the full signed request
+  (`reports.md`); the registry releases the ask's expired reserved allows within the give-back window and closes the
+  ask (a later identical request gets 409 `PG_ASK_CLOSED`, which the app shows as closed, never as a crash).
+  "Certainly expired" is `--lost-answer-wait` seconds after the first send: by default 393, the reference registry's
+  300-second answers plus every send and its timeout plus 60 seconds for clocks. Raise it for a registry whose answers
+  live longer (at most 900 seconds). The creator sees "could not be reached".
 - After a crash, at start: every stored allow with no report and no render begun gets `not_generated`, so its use
   goes back instead of staying reserved and counted. A job never sent goes back to the queue; a job sent whose answer
   was never stored gets the `answer: null` report above. A job whose render may have begun is never restarted or given
   back automatically: it is marked unresolved (jobs.md X-7), and an operator who knows the output was never delivered
-  runs `node app.mjs <same flags> --give-back <job id>`. A report the registry could not be reached for is sent again
-  every five minutes.
+  runs `node app.mjs <same flags> --give-back <job id>`. Every ten seconds the app files the `answer: null` reports
+  that have come due and sends again any report the registry could not be reached for.
 - Proof (`proof.md`): `GET {api}/v2/proofs/{first 16 hex of the report id}`, checked with `checkProof` against the
   file's SHA-256, saved as `<file>.proof.json` beside the file.
 - Three messages the creator can tell apart: the registry could not be reached (network error, timeout, 5xx);
   "connect your licence" (HTTP 403 `PG_NOT_BOUND`, never shown as a refusal); refused, with the reason code.
 - The renderer is a stub that writes a small text file from the stored input. Put your model there; it must read
   nothing but the stored input.
+
+A provider id on a real domain is first come, first served at the public sandbox: whoever posts a party document for
+it first holds it there. Use the key-bound `https://<32 hex>.localhost` id the app makes, or a domain you control.
 
 ## Point it at production
 
@@ -168,12 +178,16 @@ loopback, a key-bound provider id) and drives it like a browser:
 3. An allowed job on code 12 has a proof that passes `checkProof` against the file, and its allow names the binding.
 4. A commercial job is refused with `PG_SCOPE_VIOLATION`.
 5. The self-check passes with this app's adapter.
-6. A second connection replaces the first creator's binding, and that creator sees "connect your licence".
+6. A second connection replaces the first creator's binding, and that creator's job ends "connect your licence".
 7. The app crashes right after storing an allow; the restart gives the use back, seen as `given_back` in
    `/v2/statement`.
 8. Two jobs from the connected creator race for the last bought use of code 9, with no licensee id: exactly one allow.
-9. An allow is dropped on the way; the `answer: null` report gives it back.
-10. With the registry stopped, the creator sees "could not be reached".
+9. An allow is dropped on the way. Nothing is reported while it could still be valid; after it expires, the
+   `answer: null` report gives it back. The registry runs with answers that live 6 seconds
+   (`PREGEN_REGISTRY_ANSWER_TTL`, sandbox only) and the app with `--lost-answer-wait 9`, so this takes seconds.
+10. The connection is revoked at the registry (`pregen-registry bindings --revoke`), then expires in the app's own
+    record: the licence's code is "connect your licence", while code 1 still generates without a licensee id.
+11. With the registry stopped, the creator sees "could not be reached".
 
 It never touches sandbox.pregen.org and writes nothing into the repository.
 

@@ -71,8 +71,10 @@ open(${JSON.stringify(key)}, "wb").write(k.private_bytes(serialization.Encoding.
     "Local Test Registry", "--api", REG, "--sandbox"], { env: PYENV, encoding: "utf8" });
   assert.equal(init.status, 0, init.stderr);
   const logs = { registry: "", app: "" };
+  // Answers live 6 seconds here (a sandbox-only override; 300 by default), so a lost answer expires within the test.
+  const TTL = 6;
   const reg = spawn(PY, ["-m", "pregen_registry.cli", "serve", "--dir", regDir, "--host", "127.0.0.1", "--port", String(rport),
-    "--ssl-certfile", cert, "--ssl-keyfile", key], { env: PYENV });
+    "--ssl-certfile", cert, "--ssl-keyfile", key], { env: { ...PYENV, PREGEN_REGISTRY_ANSWER_TTL: String(TTL) } });
   procs.add(reg);
   reg.stderr.on("data", (d) => (logs.registry += d));
 
@@ -97,7 +99,7 @@ open(${JSON.stringify(key)}, "wb").write(k.private_bytes(serialization.Encoding.
   const PROVIDER = await pg.sandboxProviderUrl(providerKey, aport);
   const appArgs = ["--sandbox", "--port", String(aport), "--authority", "TEST",
     "--directory", `https://127.0.0.1:${dport}/registries.json`, "--steward", stewardPub, "--key-file", keyFile,
-    "--data", join(tmp, "app")];
+    "--data", join(tmp, "app"), "--lost-answer-wait", String(TTL + 3)];
   const childEnv = { ...process.env, NODE_EXTRA_CA_CERTS: cert, NODE_NO_WARNINGS: "1" };
   let app;
   async function startApp(env = {}) {
@@ -184,7 +186,7 @@ open(${JSON.stringify(key)}, "wb").write(k.private_bytes(serialization.Encoding.
   }
   const statement = async () => (await call(`${REG}/v2/statement`, { headers: { "X-Provider-ID": PROVIDER,
     "PG-Access": await pg.pgAccess(PROVIDER, providerKey, REG, "GET", "/v2/statement") } })).json();
-  const CODE9 = "PG-TEST-000009V", CODE12 = "PG-TEST-0000123";
+  const CODE1 = "PG-TEST-000001N", CODE9 = "PG-TEST-000009V", CODE12 = "PG-TEST-0000123";
 
   const a = browser();
   let c;                                      // the connected creator of step 5, used for code 9
@@ -237,8 +239,9 @@ open(${JSON.stringify(key)}, "wb").write(k.private_bytes(serialization.Encoding.
     const b = browser();                      // the same test creator connects from another account: bind B-1
     await b.signUp("b@example.test");
     await b.connect();
-    const r = await a.post("/jobs", { code: CODE12, product: "research-still", prompt: "x" });
-    assert.match(r.text, /Connect your licence: the connection between your licence and this app has ended/);
+    const j = await a.wait(await a.job(CODE12, "research-still"));
+    assert.equal(j.outcome, "not_connected");
+    assert.match(j.message, /^Connect your licence: the connection between your licence and this app has ended/);
     assert.match((await a.go(`${APP}/`)).text, /TEST: Connect your licence/);
     b.connected = true;
     c = b;
@@ -280,22 +283,40 @@ open(${JSON.stringify(key)}, "wb").write(k.private_bytes(serialization.Encoding.
     await startApp({ PREGEN_DROP_ANSWER: "1" });          // the registry issues an allow; the app never sees it
     const j = await c.wait(await c.job(CODE12, "research-still"));
     assert.equal(j.outcome, "unavailable");
-    const after = (await statement()).grants.reduce((n, g) => n + g.given_back, 0);
-    assert.equal(after, before + 1);
+    const givenBack = async () => (await statement()).grants.reduce((n, g) => n + g.given_back, 0);
+    assert.equal(await givenBack(), before, "nothing is reported before that answer has certainly expired");
+    let after = before;
+    for (let i = 0; i < 60 && after === before; i++) { await sleep(500); after = await givenBack(); }
+    assert.equal(after, before + 1, "the answer null report gives the use back once the answer expired");
+    assert.equal((await c.wait(j.id)).message, j.message, "the creator still reads 'could not be reached'");
     app.kill("SIGTERM");
     await app.exited;
     await startApp();
   });
 
+  await t.test("an ended connection blocks only its own codes", async () => {
+    const appDb = new DatabaseSync(join(tmp, "app", "app.db"));
+    const { licensee_id: lic } = appDb.prepare("SELECT b.licensee_id FROM bindings b JOIN accounts a ON a.id = b.account_id "
+      + "WHERE a.email = 'b@example.test'").get();
+    // Revoked at the registry (B-2): the licence's code is "connect your licence"; code 1 still generates.
+    const revoke = spawnSync(PY, ["-m", "pregen_registry.cli", "bindings", "--dir", regDir, "--revoke", lic], { env: PYENV, encoding: "utf8" });
+    assert.equal(revoke.status, 0, revoke.stderr);
+    assert.equal((await c.wait(await c.job(CODE12, "research-still"))).outcome, "not_connected");
+    assert.equal((await c.wait(await c.job(CODE1, "research-still"))).outcome, "generated");
+    // Expired in the app's own record: the same, decided before anything is sent.
+    appDb.prepare("UPDATE bindings SET expires_at = 0 WHERE licensee_id = ?").run(lic);
+    appDb.close();
+    const r = await c.post("/jobs", { code: CODE12, product: "research-still", prompt: "x" });
+    assert.match(r.text, /Connect your licence: the connection between your licence and this app has ended/);
+    const one = await c.wait(await c.job(CODE1, "research-still"));
+    assert.equal(one.outcome, "generated");
+    assert.equal((await c.go(APP + one.proof)).json().subjects[0].request.body.licensee_id, undefined);
+  });
+
   await t.test("registry down: 'registry unavailable', not a refusal", async () => {
-    const d = browser();                      // no licence connected: the ask itself meets the dead registry
-    await d.signUp("d@example.test");
     reg.kill("SIGKILL");
-    const j = await d.wait(await d.job(CODE9, "research-still"));
+    const j = await c.wait(await c.job(CODE9, "research-still"));
     assert.equal(j.outcome, "unavailable");
     assert.match(j.message, /could not be reached/);
-    // A connected creator hears it before a job exists: the app reads their licence first, to choose the licensee_id.
-    const r = await c.post("/jobs", { code: CODE9, product: "research-still", prompt: "x" });
-    assert.match(r.text, /The registry could not be reached/);
   });
 });

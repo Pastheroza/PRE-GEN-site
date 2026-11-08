@@ -11,7 +11,11 @@ test("a provider URL is the app's domain and nothing else", () => {
     "https://localhost", "https://frame", "frame.example", 42]) {
     assert.throws(() => checkProviderUrl(bad), PregenError, String(bad));
   }
-  assert.equal(checkProviderUrl("https://localhost:8443", { allowPort: true }), "https://localhost:8443");
+  assert.equal(checkProviderUrl("https://0123456789abcdef0123456789abcdef.localhost:8443", { allowPort: true }), "https://0123456789abcdef0123456789abcdef.localhost:8443");
+  for (const bad of ["https://localhost:8443", "https://localhost", "https://0123456789abcdef0123456789abcdef.localhost:08443",
+    "https://0123456789abcdef0123456789abcdef.localhost:443", "https://0123456789abcdef0123456789abcdef.localhost:65536"]) {
+    assert.throws(() => checkProviderUrl(bad, { allowPort: true }), PregenError, bad);
+  }
   assert.equal(checkProviderUrl("https://frame.example:8443", { allowPort: true }), "https://frame.example:8443");
 });
 
@@ -45,4 +49,6 @@ test("a sandbox test id is bound to the key", async () => {
   const hex = (await fingerprint(await publicKeyHex(key))).split(":")[1];
   assert.equal(await sandboxProviderUrl(key), `https://${hex}.localhost`);
   assert.equal(await sandboxProviderUrl(key, 8443), `https://${hex}.localhost:8443`);
+  assert.equal(await sandboxProviderUrl(key, 443), `https://${hex}.localhost`);
+  for (const bad of [0, 65536, "8443", true, 8443.5]) await assert.rejects(sandboxProviderUrl(key, bad), PregenError);
 });

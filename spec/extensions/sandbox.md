@@ -82,7 +82,11 @@ alone. A subject not in the catalog: 404 `PG_NOT_FOUND`.
   namespace. A client uses it only when configured for testing, so a sandbox registry can
   never sign anything accepted in production.
 - **Credentials.** A sandbox MAY issue credentials without an account, because it holds no
-  real people.
+  real people. Such a registered credential cannot test a licence held by a person (a
+  `licensee_id`): only a provider known by its domain can, through [`bind`](bind.md) (serial 12).
+- **Ids are first come.** A sandbox takes party documents by post, so a public sandbox gives a real
+  domain's id to whoever posts first. Test under an id bound to your key
+  (`https://<k>.localhost[:port]`, [`provider-identity`](provider-identity.md)) or a domain you serve.
 
 ## Example
 
