@@ -31,10 +31,10 @@
 <p class="lede">Your AI asks before it shows a real person, a character or a brand, and goes ahead only on a signed yes. No account anywhere. For a developer, about a day.</p>
 <section class="prompt" aria-labelledby="prompt-h">
 <h2 id="prompt-h">The easy way: give this to your AI assistant</h2>
-<p>Copy the prompt and paste it into your AI assistant, for example Claude Code, Cursor or ChatGPT. It reads the guides, finds where your product generates people, plans the change with you, and explains every step. If something is unclear, it stops and explains.</p>
+<p>Copy the prompt and paste it into your AI assistant, for example Claude Code, Cursor or ChatGPT. It reads the guides, finds where your product generates people, plans the change with you, and explains every step. When a choice is yours, it pauses that step and asks.</p>
 <pre><code>You are helping me add PRE-GEN to my AI product.
 
-PRE-GEN is an open protocol: before my product generates a real person, a character or a brand, it asks the registry that speaks for them, and generates only on a signed "allow".
+PRE-GEN is an open protocol: before my product generates a protected subject, it asks the registry that speaks for them, and generates only on a signed "allow". Today it covers a real person's likeness and voice (the profile likeness/1). Characters and brands are covered only where a registry lists them.
 
 First, read these fully:
 - https://www.pregen.org/llms.txt
@@ -43,13 +43,15 @@ First, read these fully:
 - https://www.pregen.org/spec/extensions/provider-identity.md (the rule for an app known by its domain, with no credential; the guide follows it)
 
 Then work with me, step by step:
-1. Look through my code and find every place where we generate images, video or voice. Tell me which of them can show a real person, a character or a brand.
+1. Look through my code and find every place where we generate images, video or voice. Tell me which of them can show a real person, a character or a brand. People are what this integration covers; mark the places that can show characters or brands too, and ask about those only a registry that lists them.
 2. Before you change any code, explain your plan in plain words: where the check goes, which library you will use (pregen for Python, @pregen/verify for JavaScript), and where the private key will be kept.
 3. Follow docs/provider.md, fitting its complete example into our own code (a complete working app to compare with or start from: https://github.com/Pastheroza/PRE-GEN-site/tree/main/examples/reference-provider): make our key (keep it as a secret, never in code or logs), build the party document for our domain, ask before every generation, check the answer, generate only on a valid allow, report the output, keep the proof with it.
-4. Test on the public test network first, until each of the twelve test codes gives exactly the answers the guide's table lists, buying a test use of code 9 included. Code 12 needs a creator to connect their licence (bind): if the public test registry does not offer it yet, test code 12 against a local reference registry, as the reference app's README shows.
-5. Ask me before you accept any terms, store any secret, or deploy anything.
+4. Make our server responsible for the truth of every request. Identify each protected subject and classify the intended use on the server. Treat codes and categories a user enters as hints, never as the answer; a PG code only says where to ask. Ask about the exact inputs the renderer will use, and render only when every subject has a valid signed allow for that job. If the subject or the use is uncertain, stop that job for review.
+5. If our users bring licences they already hold, add a separate step where they connect their account at their registry (bind, in the guide's "Selling" part). A code or licence id they paste never permits anything.
+6. Test on the public test network first, until each of the twelve test codes gives exactly the answers the guide's table lists, buying a test use of code 9 included. Passing means: code 1 produces an output whose proof verifies against that exact file, and codes 2 to 8 produce no output. Code 12 needs a creator to connect their licence: if the public test registry does not offer it yet, test it against a local reference registry, as the reference app's README shows.
+7. Ask me before you accept any terms, store any secret, or deploy anything.
 
-As you go, explain each step to me in plain words, as if I am not a programmer. If anything is unclear, or does not fit our code, stop, tell me what is unclear and what my options are, and wait for my answer. Never send our prompts or outputs to a registry, and never present an output as permitted without a valid allow.</code></pre>
+As you go, explain each step to me in plain words, as if I am not a programmer. When a decision changes the scope, exposes data, or needs my approval, pause that step, tell me what my options are, and wait for my answer; meanwhile, continue work that does not depend on it, such as local tests. Never send our prompts or outputs to a registry, and never present an output as permitted without a valid allow.</code></pre>
 </section>
 <p class="then">What your assistant will do, in four steps:</p>
 <ol class="gsteps">

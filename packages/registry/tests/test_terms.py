@@ -222,8 +222,9 @@ def test_an_ask_that_still_stands_keeps_the_job(case):
         assert r.status_code == 409 and r.json()["error"] == "PG_ASK_CLOSED"
 
 
-def test_a_masked_stale_refusal_binds_nothing_either():
-    """REG-1: provider-identity P-5a hides the reason from an unvetted provider, but T-7 is decided before the mask."""
+def test_a_masked_stale_refusal_is_kept_like_any_masked_answer_and_never_locks_the_job():
+    """REG-1, LEAK-1b: P-5a hides the reason from an unvetted provider; a masked answer is kept like any other (so it
+    cannot tell a private code from an unknown one), and a stale ask still steps aside for the next request (T-7)."""
     clock = Clock()
     docs = {}
     reg = Registry(Config(prefix="ABCD", name="R", api="https://r.example", providers="open"), Key(), clock=clock,
@@ -235,9 +236,9 @@ def test_a_masked_stale_refusal_binds_nothing_either():
     p = OpenProvider(reg, c)
     docs[p.id] = p.doc
     assert reason(p, p.body(s, purpose="personal", terms=tid)) == "PG_PROVIDER_NOT_ACCEPTED"
-    assert jobs_asks(reg) == [0, 0]
-    assert reason(p, p.body(s, purpose="personal")) == "PG_PROVIDER_NOT_ACCEPTED"   # same job: no 409
     assert jobs_asks(reg) == [1, 1]
+    assert reason(p, p.body(s, purpose="personal")) == "PG_PROVIDER_NOT_ACCEPTED"   # same job: no 409
+    assert jobs_asks(reg) == [1, 2]
 
 
 def test_only_a_provider_known_by_its_domain_accepts():

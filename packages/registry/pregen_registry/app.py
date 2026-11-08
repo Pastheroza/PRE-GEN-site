@@ -6,6 +6,7 @@ from html import escape
 from urllib.parse import parse_qs, urlencode, urlsplit
 
 from fastapi import Body, FastAPI, Header, Request
+from starlette.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 
 from . import __version__
@@ -182,12 +183,16 @@ def create_app(registry: Registry, policy_file=None) -> FastAPI:
         if origin and origin != _origin(registry.config.api):
             raise ProtocolError("PG_MALFORMED", "the consent form is answered only from this registry's own page",
                                 status=403)
+        raw = await request.body()
         give_back = take(approvals, request, BIND_APPROVALS_PER_HOUR, "consents")
-        q = {k: v[-1] for k, v in parse_qs((await request.body()).decode(), keep_blank_values=True).items()}
-        try:                                      # only an approval that passed every check keeps its slot
+        q = {k: v[-1] for k, v in parse_qs(raw.decode(errors="replace"), keep_blank_values=True).items()}
+
+        def decide():                             # blocking (it may read the app's party document): off the event loop
             _authorize_params(registry, q)
-            code = registry.bind_approve(q["client_id"], q["redirect_uri"], q["code_challenge"],
+            return registry.bind_approve(q["client_id"], q["redirect_uri"], q["code_challenge"],
                                          q.get("consent", "")) if q.get("decision") == "approve" else None
+        try:                                      # only an approval that passed every check keeps its slot
+            code = await run_in_threadpool(decide)
         except ProtocolError:
             give_back()
             raise

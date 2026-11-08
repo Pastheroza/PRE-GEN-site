@@ -28,9 +28,9 @@ business, joined later and separately (the section "Selling and connected users"
    for those bytes: no answer; do not resend them unless the Errors table says to. After
    that, you have no allow for that person, and **you never send that request again**: once
    its answer had expired, the same bytes would get a new answer and count a second use.
-   Instead, give back an allow you may never have seen: once any answer would have expired (the
-   time of your first send, plus the registry's answer lifetime, at most 900 s, plus your sends
-   and waits; without a better number, 993 s), report `"outcome": "not_generated"` with
+   Instead, give back an allow you may never have seen: once any answer would have expired (your
+   last send plus its timeout, plus the registry's answer lifetime, 900 s if you do not know it,
+   plus a margin for clocks; with the sends above and a 60 s margin, 993 s after the first send), report `"outcome": "not_generated"` with
    `"answer": null` and your `request` (step 7). The registry gives back every expired allow of
    that request and closes it (`extensions/limits.md`). Skipping it can leave an allow you never
    saw counted against the grant.

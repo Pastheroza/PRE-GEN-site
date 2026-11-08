@@ -453,16 +453,22 @@ def test_the_redirect_pattern_refuses_a_trailing_newline_and_ports_past_65535():
 def test_masked_answers_for_a_private_and_an_unknown_code_are_alike():
     """provider-identity P-5a: the level of an unknown code, so nothing tells them apart."""
     docs = {}
-    reg = Registry(Config(prefix="ABCD", name="R", api="https://r.example", providers="open"), Key(), clock=Clock(),
+    clock = Clock()
+    reg = Registry(Config(prefix="ABCD", name="R", api="https://r.example", providers="open"), Key(), clock=clock,
                    fetch_party=lambda url: docs[url])
     c = TestClient(create_app(reg))
     private = reg.add_subject("Private Person", level="verified")
     p = OpenProvider(reg, c)
     docs[p.id] = p.doc
-    a = p.answer(p.body(private, job="a"))["body"]
-    b = p.answer(p.body(mint_code("ABCD", 99), job="b"))["body"]
     same = lambda x: {k: v for k, v in x.items() if k not in ("request_id", "issued_at", "expires_at")}  # noqa: E731
-    assert a["reason"] == "PG_PROVIDER_NOT_ACCEPTED" and same(a) == same(b)
+    for n, extra in enumerate(({}, {"terms": "0" * 64})):     # with terms too: a masked answer is kept like any other
+        bodies = [p.body(private, job=f"a{n}", **extra), p.body(mint_code("ABCD", 99), job=f"b{n}", **extra)]
+        first = [p.answer(x) for x in bodies]
+        clock.t += 1
+        again = [p.answer(x) for x in bodies]
+        assert first[0]["body"]["reason"] == "PG_PROVIDER_NOT_ACCEPTED"
+        assert same(first[0]["body"]) == same(first[1]["body"])
+        assert again == first                        # both repeats give the stored answer
 
 
 def test_grant_add_needs_a_licensee_or_any_provider(tmp_path, capsys):
@@ -473,5 +479,18 @@ def test_grant_add_needs_a_licensee_or_any_provider(tmp_path, capsys):
     with pytest.raises(SystemExit, match="any-provider"):
         cli(["grant", "add", "--dir", str(tmp_path), "--subject", code])
     capsys.readouterr()
+    with pytest.raises(SystemExit, match="exactly one"):
+        cli(["grant", "add", "--dir", str(tmp_path), "--subject", code, "--any-provider", "--licensee", "x:y"])
+    capsys.readouterr()
     cli(["grant", "add", "--dir", str(tmp_path), "--subject", code, "--any-provider"])
     assert re.fullmatch(r"[0-9a-f]{64}\n", capsys.readouterr().out)
+
+
+def test_a_consent_body_that_is_not_utf8_is_a_bad_request_and_takes_no_slot():
+    reg, c, _ = make()
+    p = app(reg, c)
+    r = c.post("/v2/bind/authorize", content=b"client_id=\xff\xfe", headers={"Content-Type":
+                                                                             "application/x-www-form-urlencoded"})
+    assert r.status_code == 400
+    _, challenge = pkce()
+    assert consent(c, p, challenge)[1].status_code == 303

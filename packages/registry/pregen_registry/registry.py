@@ -511,7 +511,8 @@ class Registry:
                 if open_:
                     return {"answer": json.loads(open_["envelope"]), "attachments": []}
             decision = self._decide(db, body, now)
-            if decision[1] == "PG_TERMS_NOT_ACCEPTED":  # T-7, decided before any mask: signed, but binds no job, no ask
+            # T-7: signed, but binds no job, no ask; a masked answer (P-5a) is kept like any other, so nothing tells apart
+            if decision[1] == "PG_TERMS_NOT_ACCEPTED" and not self._masked(db, body, *decision[:3]):
                 return {"answer": self._answer(db, None, body, decision, now), "attachments": []}
             ask = ask or self._bind(db, body, env["signatures"])
             return {"answer": self._answer(db, ask["id"], body, decision, now), "attachments": []}
@@ -778,13 +779,16 @@ class Registry:
     def _open_chain(self, provider_id: str, key_id: str) -> list[dict]:
         """The pinned chain of a provider known by its domain. Its party document is read when nothing is pinned, when
         a message names a key the chain does not hold, and at least daily (P-2, P-3); at most once a minute (P-7)."""
-        with self.lock:                # the chain and its marker read together, so a posted chain is never "stale"
+        with self.lock:                # the chain, its marker and the decision to read it again, all at once (P-7)
             chain = self._chain(self.db, provider_id)
             last = self._meta("party:" + provider_id) or ""
-        stale = chain and last != "posted" and (key_id != self._current(chain[-1]["body"])["key_id"]
-                                                or self.clock() - float(last or 0) > PARTY_REFRESH)
-        if (not chain or stale) and (not last.replace(".", "").isdigit() or self.clock() - float(last) >= PARTY_MIN_INTERVAL):
-            self._set_meta("party:" + provider_id, str(self.clock()))                  # budget the attempt, not the success
+            stale = chain and last != "posted" and (key_id != self._current(chain[-1]["body"])["key_id"]
+                                                    or self.clock() - float(last or 0) > PARTY_REFRESH)
+            fetch = (not chain or stale) and (not last.replace(".", "").isdigit()
+                                              or self.clock() - float(last) >= PARTY_MIN_INTERVAL)
+            if fetch:
+                self._set_meta("party:" + provider_id, str(self.clock()))              # budget the attempt, not the success
+        if fetch:
             try:
                 self.pin_party(self.fetch_party(provider_id), provider_id)
             except ProtocolError as e:

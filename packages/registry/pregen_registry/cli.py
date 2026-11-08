@@ -235,8 +235,8 @@ def main(argv=None):
     elif a.cmd == "grant":
         if not a.subject:
             sys.exit("grant add needs --subject")
-        if not a.licensee and not a.any_provider:   # the broadest grant there is: never by leaving a flag out
-            sys.exit("grant add needs --licensee ID, or --any-provider for a grant every provider may use")
+        if bool(a.licensee) == bool(a.any_provider):   # the broadest grant there is: never by leaving a flag out
+            sys.exit("grant add needs exactly one of --licensee ID, or --any-provider for a grant every provider may use")
         print(load(a.dir).add_grant(a.subject, licensee_id=a.licensee, purposes=a.purposes.split(","),
                                     days=a.days, max_uses=a.max_uses))
     elif a.cmd == "provider" and a.action == "remove":
