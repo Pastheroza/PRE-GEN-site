@@ -245,7 +245,7 @@ def _check_invariants(d):
             raise PregenError("a freeze lasts more than nothing and at most 7 days")
 
 
-_RFC3339 = re.compile(r"(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{3})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])")
+_RFC3339 = re.compile(r"(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\.[0-9]{3})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])")
 SETTLED_AFTER = 7 * 86_400   # identity.md: a new channel permits after 7 days; a steward freeze lasts at most 7 days
 
 
