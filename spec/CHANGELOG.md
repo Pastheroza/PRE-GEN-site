@@ -1,12 +1,22 @@
 # PRE-GEN protocol changelog
 
-Protocol-only. Product/UI changes live in `future_warnings_for_valera.md`'s
-"Закрытые" log and git history, not here. Kept from 2026-08-24 onward —
-**not** backfilled further back than that; earlier protocol history is
-already covered by `docs/PRAMPTA-Protocol-Versions.md` and the mint-site
-comments cited throughout `spec/PRE-GEN-SPEC.md`.
+Protocol-only, from 2026-08-24 onward: the specification, schemas, vectors, and the `pregen`,
+`@pregen/verify` and `pregen-registry` packages. Earlier history: the Zenodo versions listed in
+[`VERSIONS.md`](VERSIONS.md). What triggers an entry: any change to a normative text, schema, vector or
+library behaviour in this repository.
 
-See `docs/PROTOCOL-GOVERNANCE.md` for what triggers an entry here.
+## Collected for the next version (not yet published)
+
+Text only: no message format, required schema member or vector changes.
+- **No watermark** (decided 2026-10-29). The `proof` bundle travels in the C2PA manifest and is found by the report
+  id (`GET {api}/v2/proofs/{16 hex}`); PRE-GEN defines no watermark. A legacy `watermark` obligation id and the legacy
+  fields `watermark_payload` and `watermark_embedded` are recognised, not used (`PRE-GEN-CORE.md`,
+  `extensions/proof.md`, `profiles/likeness-1.md`, `PRE-GEN-SPEC.md`, `PRE-GEN-EXTENSIONS.md`).
+- **`bind`:** the exchange carries `X-Provider-ID` and an `issued_at` within 60 seconds; an Errors table
+  (`PG_BIND_CODE`, 400); `GET /v2/grants?licensee_id=…` returns `grant` where the registry declares `grants`,
+  otherwise the licence's `terms`, unsigned.
+- **`licensee`:** a licensee not bound to a provider URL gets 403 `PG_NOT_BOUND` (`bind` B-5), not 401.
+- **Conformance:** two profiles for the message interface (`PRE-GEN-SPEC.md` §8.1).
 
 ## pregen 0.12.0, @pregen/verify 0.12.0, pregen-registry 0.3.0 (2026-11-06)
 
@@ -22,8 +32,8 @@ is a separate, optional layer.
   post (`POST /v2/sandbox/party`).
 - **`bind`** (`extensions/bind.md`, `schemas/binding.json`): a person connects their licences to an app through
   OAuth 2.0 code + PKCE at the authority that holds their account; the binding (`pg.binding.v1`) names a random
-  per-app `licensee_id`; `PG_NOT_BOUND` (403) is "connect your licence", never a refusal. Specified; not in the
-  reference registry yet.
+  per-app `licensee_id`; `PG_NOT_BOUND` (403) is "connect your licence", never a refusal. Specified; implemented by
+  PRAMPTA (api2.prampta.com); not in the reference registry yet.
 - **Listing condition (`PG-CODE.md` §9.1, item 5):** a listed registry answers any AI service known by its domain, with
   no account, on the same terms; it may also issue credentials and may vet a service first. Registries listed earlier
   have 90 days from publication. `pregen-registry check` reports it.

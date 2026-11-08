@@ -25,8 +25,8 @@ Any company or person can run a registry on the same terms.
    `!`. In a shell, put codes in single quotes (`'PG-ABCD-000001$'`); in a URL path, encode
    them (`$` is `%24`, `*` is `%2A`). Always copy codes, never retype them.
 
-**Order on a first run:** steps 1–3, 5, 7–8, 9 for the sandbox, then 6, the step 3 backup, 8, 9 for production,
-then 10. Step 4 only when you rotate. Run every command from the folder that holds `./data`
+**Order on a first run:** steps 1–3, 5, 7–8, 9 for the sandbox, then 6, the step 3 backup, `key next` (step 4), 8, 9 for production,
+then 10. The rest of step 4 only when you rotate. Run every command from the folder that holds `./data`
 (`registry.pid`, `registry.log` and `./backup` are relative to it).
 
 ## 1. Install
@@ -143,8 +143,9 @@ step 9).
 
 `GET {api}/keys` is your signed key set: the current key, every key you ever signed with,
 and your next key once you make one. Never edit it by hand. The steward reads your key ids
-there, on your own domain: that is how it knows an application really comes from you. You
-need a next key only when you want to rotate. To rotate:
+there, on your own domain: that is how it knows an application really comes from you.
+Admission asks for a next key announced before you apply (`PG-CODE.md` §9.1, item 4): run
+`key next` once after step 3 and back up `operator.next.key`. To rotate later:
 
 ```bash
 pregen-registry key next --dir ./data
@@ -254,7 +255,7 @@ curl -s https://registry.example/v2/anchors
 
 The first returns your document: `prefix`, `name`, `api`, `keys`, `profiles`
 (`["likeness/1"]`: fixed names of vocabularies of uses, never versions of your policy; when
-your policy changes, the profile names stay), `extensions`, `policy`, `complaints`, `sandbox`, `spec`. The second
+your policy changes, the profile names stay), `extensions`, `policy`, `complaints`, `sandbox`, `providers` (`"open"`), `spec`. The second
 returns `{"current_key_id": "pg-ed25519:…", "keys": [{"key_id", "public_key_hex",
 "activated_at", "deactivated_at", "status", …}], "signature": "…"}`. The third returns your signed
 anchor list (`{"type": "pg.anchors.v1", …}`), never a 404, through your proxy too: a provider
@@ -383,8 +384,8 @@ pregen-registry provider accept --dir ./data --id https://frame.example
 ```
 
 `connect` works for such a provider too: `--provider https://frame.example --licensee
-'https://frame.example:user-1'`. Without `--open-providers`, your document says
-`"providers": "registered"` and every provider needs a credential from you:
+'https://frame.example:user-1'`. Registries listed in the directory are always open (step 3);
+you may also issue your own credentials to providers that prefer them:
 
 **Give a provider its credential.** It is printed once:
 
@@ -489,6 +490,7 @@ PASS registry document: prefix ABCD, profiles ['likeness/1']
 PASS document api is 'https://registry.example'
 PASS answers under likeness/1
 PASS declares reports, provider-keys
+PASS answers AI services known by their domain, no account (providers: open; a listing condition, PG-CODE.md §9.1 item 5)
 PASS the policy page answers: https://registry.example/policy
 PASS key set: current key pg-ed25519:<32 hex>, 1 key(s) in its history
 PASS every key id is its key's fingerprint, and no key is small-order
@@ -545,10 +547,11 @@ It asks for:
    person confirmed holds everywhere; "no licence here" does not), and the revocation
    grounds;
 4. **Endpoints:** `api`, `keys` (`{api}/keys`), that `/.well-known/pregen-registry.json`
-   answers, and the profiles you answer under (`likeness/1`);
+   answers, the profiles you answer under (`likeness/1`), and that the document says
+   `"providers": "open"` and lists `provider-identity` (open access, `PG-CODE.md` §9.1 item 5);
 5. **Keys** (the application's `keys` field is the key set URL; this item is the list of
-   key ids): the key id (fingerprint) of every operator key: current, retired, and the next
-   one if you made one. The steward lists only key ids it finds in your live `{api}/keys`,
+   key ids): the key id (fingerprint) of every operator key: current, retired, and your
+   announced next key (`pregen-registry key next`). The steward lists only key ids it finds in your live `{api}/keys`,
    with your current key among them, so a stolen GitHub account cannot list someone else's
    key;
 6. **Your `pregen-registry check --api …` output** (the plain run of step 8, without any
@@ -583,7 +586,9 @@ test codes (and any test people you added, with what each is for), and the test 
 and steward key. If you issue credentials, send each provider its credential privately, in the
 shape it stores (`{"ABCD": {"provider_id": "frame-ai", "token": "<secret>"}}`), with the codes
 it may ask about and the exact licensee id of each customer you connected for it.
-A listing can be revoked, with notice and reasons; a prefix is never given to anyone else.
+A listing can be revoked on the grounds in `PG-CODE.md` §9.1; the steward asks you to answer
+first unless there is ongoing harm, and announces every revocation with its reason. A prefix is
+never given to anyone else.
 
 ## Selling: your optional commerce
 
@@ -591,8 +596,8 @@ Everything above is the mandatory layer, the same for every registry, free, with
 providers. Selling licences (to people or to providers) is your own,
 optional business: your prices, checkout and contract, on your own site. PRE-GEN names no
 checkout, and a registry that sells nothing is complete. If you sell, publish a
-commerce page and link it from your policy; a provider that already has PRE-GEN connects to it
-directly. A person who bought a licence connects it to an app through extension `bind`
+commerce page and link it from your policy, and say there whether a provider known only by its
+domain may buy. A person who bought a licence connects it to an app through extension `bind`
 (`https://www.pregen.org/spec/extensions/bind.md`), which the reference registry does not
 implement yet. Two layers, one picture: `https://www.pregen.org/docs/two-layers`.
 
@@ -602,7 +607,7 @@ implement yet. Two layers, one picture: `https://www.pregen.org/docs/two-layers`
 - [ ] `GET {api}/keys` lists every key you ever used; a rotation waits 24 hours after the directory lists the next key
 - [ ] `{api}/.well-known/pregen-registry.json` and your policy page answer over HTTPS
 - [ ] Every public person has an anchor, with a proof URL once `check_channel_proof` prints `True` (until then anchored without one: nobody can generate them); every grant matches what the person agreed
-- [ ] Providers known by their domain are answered (`"providers": "open"`) or your document says `registered`; any credential went over a private channel; your sandbox is a separate registry
+- [ ] Providers known by their domain are answered (`"providers": "open"`, a listing condition); any credential you also issue went over a private channel; your sandbox is a separate registry
 - [ ] `pregen-registry check --api … --directory …` ends `OK: all checks passed`, listing included
 
 ## The HTTP interface
@@ -627,4 +632,5 @@ no `Authorization`, `signers` and one signature on `POST /v2/requests` and `/v2/
 `PG-Access` header on `GET /v2/grants/…` (extension `provider-identity`). A registered provider
 authenticates with `X-Provider-ID: <id>` and `Authorization: Bearer <token>` on `POST /v2/requests`,
 `/v2/reports`, `/v2/keys` and `GET /v2/grants/…`. The rest of this table is public. The server also answers endpoints of extensions this guide does not cover.
-Errors are `{"error": "PG_…", "error_description": "…"}` with HTTP 401, 404, 409, 422 or 429.
+Protocol errors are `{"error": "PG_…", "error_description": "…"}` with HTTP 401, 404, 409, 422 or 429;
+a body that is not JSON, or an unknown path, gets the framework's `{"detail": …}` (422 or 404).

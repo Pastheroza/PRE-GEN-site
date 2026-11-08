@@ -17,9 +17,9 @@ exist, and which refusals nothing can override.
 
 - **`level`** — `self`, `asserted`, `consented` or `verified`, as defined in
   [`lookup`](../extensions/lookup.md). A claim, not evidence.
-- **`obligations`** — a list of `{id, params}`, for example `watermark` or `disclosure`. A
-  registry lists the ids it uses in its published policy. A report may name the ids applied
-  (`obligations_applied`).
+- **`obligations`** — a list of `{id, params}`, for example `disclosure`. PRE-GEN never asks
+  for a watermark; a legacy `watermark` id is recognised, not used. A registry lists the ids
+  it uses in its published policy. A report may name the ids applied (`obligations_applied`).
 
 ## The floor — refused before any grant is considered
 

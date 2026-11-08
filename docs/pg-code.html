@@ -38,24 +38,27 @@
       code already issued.
     </p>
 
-    <h2>1 · Two shapes, and only two</h2>
+    <h2>1 · Shapes</h2>
     <div class="table"><table>
       <thead><tr><th>Shape</th><th>Example</th><th>Meaning</th></tr></thead>
       <tbody>
+        <tr><td class="mono">PG-&lt;ISSUER&gt;-&lt;serial&gt;&lt;check&gt;</td><td class="mono">PG-PRAM-000037J</td><td>A subject’s permanent registry number</td></tr>
+        <tr><td class="mono">PG-&lt;ISSUER&gt;-&lt;CLASS&gt;-&lt;serial&gt;-&lt;tail&gt;&lt;check&gt;</td><td class="mono">PG-NWRD-RND-000042-ZZZZZZJ</td><td>A license identifier</td></tr>
         <tr><td class="mono">PG-&lt;serial&gt;&lt;check&gt;</td><td class="mono">PG-000042*</td><td>A subject’s permanent registry number</td></tr>
         <tr><td class="mono">PG-&lt;CLASS&gt;-&lt;serial&gt;-&lt;tail&gt;&lt;check&gt;</td><td class="mono">PG-STD-000001-K7M2QX9</td><td>A license identifier</td></tr>
       </tbody>
     </table></div>
     <p>
       A subject code carries no class letters — a subject has no license class; its licenses
-      do. A bare <code>PG-</code> followed by digits is always a subject; <code>PG-</code>
-      followed by letters is always a license.
+      do. After the optional four-letter prefix, digits mean a subject and three class letters mean a
+      license. Every code issued since v5 has a prefix (§8); the bare shapes are closed legacy.
     </p>
     <h3>Historical subject shapes (permanently valid)</h3>
     <div class="table"><table>
       <thead><tr><th>Shape</th><th>Era</th></tr></thead>
       <tbody>
-        <tr><td class="mono">PG-000042*</td><td>current (2026-08-19 onward)</td></tr>
+        <tr><td class="mono">PG-PRAM-000037J</td><td>current (v5 onward)</td></tr>
+        <tr><td class="mono">PG-000042*</td><td>2026-08-19 to v5 (bare legacy, closed)</td></tr>
         <tr><td class="mono">PG-STD-000123</td><td>2026-08 → 2026-08-19 (shared the STD license counter)</td></tr>
         <tr><td class="mono">PG-SUB-000123</td><td>pre-2026-08 (dedicated SUB counter, retired)</td></tr>
       </tbody>
@@ -237,7 +240,7 @@ check = CHECK_ALPHABET[ sum mod 37 ]</code></pre>
         <tr><td>Successor (unused until a handover)</td><td class="mono">pg-ed25519:3e5e20729ce8485eea274c4cb33721d6</td><td class="mono">658544163d6abd5fef046407980d249817875d87d8cf4b67879a2e265fa5612f</td></tr>
       </tbody>
     </table></div>
-    <p>Both keys are held offline by the editor of the standard, not by any registry. The same values are in the specification, the v5 paper, the <a href="https://github.com/Pastheroza/PRE-GEN-site">repository README</a> and the DNS TXT record <code>_pregen-steward.pregen.org</code>. A directory signed by the successor replaces those of the steward key whatever their sequence. <a href="/docs/sdk"><span class="mono">@pregen/verify</span> and <span class="mono">pregen</span></a> have both keys built in.</p>
+    <p>Both keys are held offline by the editor of the standard, not by any registry. Both are in the specification, the v5 paper and the <a href="https://github.com/Pastheroza/PRE-GEN-site">repository README</a>; the steward key is also in the DNS TXT record <code>_pregen-steward.pregen.org</code>. A directory signed by the successor replaces those of the steward key whatever their sequence. <a href="/docs/sdk"><span class="mono">@pregen/verify</span> and <span class="mono">pregen</span></a> have both keys built in.</p>
 
     <h2>9 · Testing an implementation</h2>
     <p>An implementation is correct when it reproduces every case in the <code>pg_code</code>
@@ -256,8 +259,16 @@ check = CHECK_ALPHABET[ sum mod 37 ]</code></pre>
     </p><nav class="pager" aria-label="Pages"><a href="/docs">← How it works</a><a href="/docs/versions">Versions →</a></nav></article></div>
 </div></main>
 <footer class="foot"><div class="wrap">
-<p>PRE-GEN is an open standard by Valerii Egorov, Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
-<nav aria-label="Site"><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification source</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
+<div class="foot-top">
+<div class="foot-brand"><a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="56" height="56" alt="PRE-GEN"></a><p>Pre-Generative Authorization Protocol. AI asks before it generates a real person.</p></div>
+<nav class="foot-cols" aria-label="Site">
+<div><p class="foot-h">Start</p><a href="/connect">Connect your AI</a><a href="/create-registry">Create a registry</a><a href="/lookup">Look up a code</a></div>
+<div><p class="foot-h">Learn</p><a href="/docs">How it works</a><a href="/docs/two-layers">Two layers</a><a href="/faq">FAQ</a><a href="/llms.txt">llms.txt</a></div>
+<div><p class="foot-h">Project</p><a href="/registries">Registries</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification</a><a href="/support">Support</a></div>
+<div><p class="foot-h">Legal</p><a href="/legal">Legal</a><a href="/contact">Contact</a></div>
+</nav>
+</div>
+<div class="foot-bottom"><p>&copy; 2026 Valerii Egorov. Open standard, Apache-2.0. Not owned by any registry, including PRAMPTA.</p><p class="foot-ver">v5</p></div>
 </div></footer>
 </body>
 </html>

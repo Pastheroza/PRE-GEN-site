@@ -1,7 +1,7 @@
 # PG Code — Identifier Format Specification
 
 **Part of:** PRE-GEN v5 ([`VERSIONS.md`](VERSIONS.md)) · **Status:** frozen as of 2026-08-20, issuer prefix added 2026-09-28 · **Vectors:** `spec/test-vectors/vectors.json` (`pg_code` section, vectors v2)  
-**License:** Apache License 2.0 — see [`spec/LICENSE`](LICENSE); licensed separately from the PRAMPTA service (the repo root `/LICENSE` is proprietary and covers the service itself — see `spec/README.md`'s note on this).
+**License:** Apache License 2.0 — see [`spec/LICENSE`](LICENSE).
 
 This document specifies the PRE-GEN identifier format completely enough to
 implement from scratch, without reading any PRAMPTA source code. The text is
@@ -27,17 +27,20 @@ not just described.
 
 ---
 
-## 2. Two shapes, and only two
+## 2. Shapes
 
 | Shape | Example | Meaning |
 |---|---|---|
-| `PG-<serial><check>` | `PG-000042*` | A **subject's** permanent registry number |
-| `PG-<CLASS>-<serial>-<tail><check>` | `PG-STD-000001-K7M2QX9` | A **licence** identifier |
+| `PG-<ISSUER>-<serial><check>` | `PG-PRAM-000037J` | A **subject's** permanent registry number |
+| `PG-<ISSUER>-<CLASS>-<serial>-<tail><check>` | `PG-NWRD-RND-000042-ZZZZZZJ` | A **licence** identifier |
+| `PG-<serial><check>` | `PG-000042*` | A subject, bare legacy shape (before v5, closed) |
+| `PG-<CLASS>-<serial>-<tail><check>` | `PG-STD-000001-K7M2QX9` | A licence, bare legacy shape (before v5, closed) |
 
-A subject code carries **no class letters** — a subject has no licence class
-of its own; its licences do. This makes the two shapes unambiguous by
-construction: a bare `PG-` followed by digits is always a subject, and a
-`PG-` followed by letters is always a licence.
+Every code issued since v5 has a four-letter issuer prefix (§9). A subject
+code carries **no class letters** — a subject has no licence class of its
+own; its licences do. This makes the shapes unambiguous by construction:
+after the optional four-letter prefix, digits mean a subject and three class
+letters mean a licence.
 
 ### 2.1 Historical subject shapes (permanently valid)
 
@@ -46,11 +49,12 @@ could have been given must keep resolving forever:
 
 | Shape | Era |
 |---|---|
-| `PG-000042*` | current (2026-08-19 onward) |
+| `PG-PRAM-000037J` | current (v5 onward) |
+| `PG-000042*` | 2026-08-19 to v5 (bare legacy, closed) |
 | `PG-STD-000123` | 2026-08 – 2026-08-19 (shared the STD licence counter) |
 | `PG-SUB-000123` | pre-2026-08 (dedicated SUB counter, retired) |
 
-The two legacy shapes have **no check character** — they are all-digits
+The two oldest shapes (`PG-STD-`, `PG-SUB-`) have **no check character** — they are all-digits
 after the prefix. An implementation must recognise them for resolution, and
 must not attempt to validate a check character on them.
 

@@ -34,7 +34,7 @@ business, joined later and separately (the section "Selling and connected users"
    fixed about the job: `hashlib.sha256(pregen.canonical_json(job_input)).hexdigest()`, where
    `job_input` is a dict of the prompt and settings (`canonical_json` returns bytes; in JS,
    `canonicalJson` returns a string to hash). It accepts only strings, booleans, null, lists,
-   objects and whole numbers up to 2^53: write every other number as a string
+   objects and whole numbers from −(2^53 − 1) to 2^53 − 1: write every other number as a string
    (`"temperature": "0.7"`, `"seed": "18446744073709551615"`). Keep that input with the job, so you can show
    later, to whoever you choose (never a registry), what the hash stands for.
 4. **Keep your clock synced** with your system's time service (NTP: `timedatectl`, `chronyc
@@ -76,27 +76,33 @@ A provider is known by its **domain** and signs with its **key**. Nothing is iss
 nowhere to sign up (extension `provider-identity`,
 `https://www.pregen.org/spec/extensions/provider-identity.md`).
 
-**Your provider id** is `https://` and your domain, nothing else: `https://frame.example`
-(lower case, no `www.`, path, port or trailing slash; only a sandbox also takes a port, step 9). It goes in every request as
-`provider_id` and in the `X-Provider-ID` header. Pick a domain the product controls and keep
-it: changing it is becoming a new provider.
+**Your provider id** is `https://` and your registrable domain, nothing else: the name you
+registered (eTLD+1 under the Public Suffix List), `https://frame.example`, never
+`https://app.frame.example` or `https://www.frame.example`. It is lower case, with no subdomain,
+path, port or trailing slash, and at most 100 characters; only a sandbox also takes a port, step 9.
+The libraries and a sandbox accept a subdomain, but a production registry refuses it (401
+`PG_NOT_AUTHENTICATED`). It goes in every request as `provider_id` and in the `X-Provider-ID`
+header. Pick the domain the product owns and keep it: changing it is becoming a new provider.
 
 **Make the key once** and keep it with your other secrets:
 
 ```python
 import json, os
 import pregen
-key = pregen.new_private_key_hex()          # 64 hex: the private key. Store it, never log it.
-with open("provider.key", "w") as f:        # or your secret store; the complete examples read this file
-    f.write(key)
-os.chmod("provider.key", 0o600)
+if not os.path.exists("provider.key"):      # once: never overwrite a key a registry has pinned
+    fd = os.open("provider.key", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)   # or your secret store; the complete examples read this file
+    with os.fdopen(fd, "w") as f:
+        f.write(pregen.new_private_key_hex())   # 64 hex: the private key. Never log it.
+key = open("provider.key").read().strip()
 pub = pregen.public_key_hex(key)            # 64 hex: the public key
 key_id = pregen.fingerprint(pub)            # "pg-ed25519:<32 hex>"
 ```
 
 ```js
-import { newPrivateKeyHex, publicKeyHex, fingerprint } from "@pregen/verify";
-const key = newPrivateKeyHex();
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { newPrivateKeyHex, publicKeyHex, fingerprint, partyDocument } from "@pregen/verify";
+if (!existsSync("provider.key")) writeFileSync("provider.key", newPrivateKeyHex(), { mode: 0o600, flag: "wx" });   // once; never overwrite
+const key = readFileSync("provider.key", "utf8").trim();
 const pub = await publicKeyHex(key);
 const keyId = await fingerprint(pub);
 ```
@@ -110,13 +116,18 @@ json.dump(doc, open("pregen-party.json", "w"))                       # publish i
 ```
 
 ```js
-import { partyDocument } from "@pregen/verify";
 const doc = await partyDocument("https://frame.example", "Frame", key);
 writeFileSync("pregen-party.json", JSON.stringify(doc));             // publish it at /.well-known/pregen-party.json
 ```
 
 Check it: `curl -s https://frame.example/.well-known/pregen-party.json | python3 -m json.tool`
-prints `party_id`, `name`, `roles` and one `keysets` entry. The file must answer over HTTPS
+prints `party_id`, `name`, `roles` and one `keysets` entry.
+
+To let people connect licences (`bind`, see Selling below), list your callback:
+`pregen.party_document("https://frame.example", "Frame", key, redirect_uris=["https://frame.example/pregen/callback"])`
+/ `partyDocument(url, name, key, { redirectUris: ["https://frame.example/pregen/callback"] })`.
+Each is HTTPS on your own host (or a native app's reversed-domain scheme).
+ The file must answer over HTTPS
 without a redirect and without a login. If your site sends `example.com` to `www.example.com`, exempt
 `/.well-known/pregen-party.json` from that redirect. A registry reads it the first time you ask, pins your
 key chain, and reads it again at least daily; **whoever takes over your domain does not get
@@ -124,11 +135,12 @@ your key**: a later document must extend the chain (a `rotation` keyset signed b
 `https://www.pregen.org/spec/extensions/provider-keys.md`), or it is refused.
 
 **Before you have a domain** (or to test from a laptop), a sandbox takes the document by post
-and accepts any `https://…` id you choose, a port included: step 9. Nothing else changes.
+and accepts a test id with a port or `localhost` too: step 9. Nothing else changes.
 
 **A registry that still wants its own credential** says `"providers": "registered"` in its
-document (`GET {api}/.well-known/pregen-registry.json`); the credential path for it is at the
-end of this guide. A registry that says `"providers": "open"` answers you as you are.
+document, or has no `providers` member (`GET {api}/.well-known/pregen-registry.json`); the
+credential path for it is at the end of this guide. Only a registry that says
+`"providers": "open"` (and lists `provider-identity`) answers you as you are.
 
 ## 3. Load the directory
 
@@ -200,8 +212,10 @@ X-Provider-ID: https://frame.example
   when you generate on their behalf and the registry connected that customer to you
   (extension `licensee`). Leave it out otherwise. A licensee id belongs to one registry: send it
   only to the registry that connected it, and none to the other registries in the job. Some grants cover
-  only one licensee. Send exactly the licensee id the registry gave you. An id the registry
-  did not connect to you is refused (401 `PG_NOT_AUTHENTICATED`).
+  only one licensee. Send exactly the licensee id the registry gave you. An id that is not connected to you is
+  refused: HTTP 403 `PG_NOT_BOUND` at a registry that uses `bind` (show "connect your licence",
+  not a refusal), or 401 `PG_NOT_AUTHENTICATED` at a registry that connects licensees itself
+  (extension `licensee`).
 - **Rule out what you can locally first** (no listed registry, a failed anchor list), then ask in any order you like and stop at the first refusal of a private person, or
   the first `decide_identity` verdict that is not `allow`, giving back every allow received before it.
 - **One request per code.** A job with two people asks twice, under the same `job_id`,
@@ -588,7 +602,7 @@ The test network is a sandbox registry and a test directory, open to everyone:
   `"sandbox": true`.
 
 **Introduce yourself by post.** A laptop has no domain to serve a document on, so a sandbox
-takes your party document as a request body, and accepts any `https://…` id you choose
+takes your party document as a request body, and accepts a test id of your own
 (make it random, such as `https://test-k7q2x9.example`, so nobody else's test has already taken it) with the key you made in step 2:
 
 ```python
@@ -651,14 +665,19 @@ the party document served on it.
 Everything above is the mandatory layer: every AI provider and every registry implements it,
 and it costs nothing and needs no account. **Commerce is a registry's own, optional layer:** a
 registry may sell licences to people or to providers, with its own prices, checkout and
-contract. A provider that has PRE-GEN connects to any registry's commerce directly; a registry
+contract. Each registry sets whether and how a provider known by its domain may buy; a registry
 that sells nothing is still a complete registry. Two layers, one picture:
 `https://www.pregen.org/docs/two-layers`.
 
 - **A person's licence, used in your app.** When a customer holds a licence at a registry, they connect it to your app once, with one consent screen at their registry
-  (extension `bind`, where the registry's document lists it; `https://www.pregen.org/spec/extensions/bind.md`: OAuth 2.0 code + PKCE,
-  your `redirect_uris` from your party document). You receive a signed binding with a random
-  `licensee_id`, and send it in requests about that person (step 4). HTTP 403 `PG_NOT_BOUND`
+  (extension `bind`, where the registry's document lists it; `https://www.pregen.org/spec/extensions/bind.md`: OAuth 2.0 code + PKCE).
+  Send the person to `bind.authorize` (from the registry's document) with `response_type=code`,
+  `client_id` = your provider id, a `redirect_uri` from your party document's `redirect_uris`
+  (step 2), `state`, `code_challenge` and `code_challenge_method=S256`. Your callback gets a
+  `code`. Post `pregen.sign_envelope("pg.bind_exchange.v1", {signers, provider_id, code,
+  code_verifier, redirect_uri, issued_at}, KEY)` to `bind.token`, with `X-Provider-ID`. It returns
+  `{"binding": <pg.binding.v1>}`, signed by the registry, with a random `licensee_id`. Send that
+  id in requests about that person (step 4). HTTP 403 `PG_NOT_BOUND`
   means "connect your licence", never a refusal. A registry's own connect procedure (extension
   `licensee`) does the same with an id the registry gives you.
 - **Buying for your product or your users.** Each registry publishes its commerce page and
@@ -1102,14 +1121,15 @@ writeFileSync("output.bin.proof.json", JSON.stringify(bundle));                 
 ## Errors
 
 A refusal about a person is a signed answer (step 5). HTTP errors carry
-`{"error", "error_description"}`:
+`{"error", "error_description"}` (a 429 may carry only `Retry-After`):
 
 | Code | HTTP | Meaning |
 |---|---|---|
 | `PG_MALFORMED` | 422 | the request does not follow the core (a member, a type, a code's spelling) |
-| `PG_NOT_AUTHENTICATED` | 401 | the signature, the provider id or the licensee is not accepted: no party document on your domain (or none posted to this sandbox), a key that is not your chain's current one, a credential sent beside a provider URL, or a registry that wants its own credential (`"providers": "registered"`: the credential path) |
+| `PG_NOT_AUTHENTICATED` | 401 | the signature or the provider id is not accepted: no party document on your domain (or none posted to this sandbox), a key that is not your chain's current one, a credential sent beside a provider URL, or a registry that wants its own credential (`"providers": "registered"`: the credential path) |
 | `PG_PROFILE_UNSUPPORTED` | 422 | the registry does not answer under this profile |
-| `PG_KEYSET_CONFLICT` | 409 | credential path only: a different first keyset was already registered: rotate instead |
+| `PG_NOT_BOUND` | 403 | this `licensee_id` has no active binding to your app (`bind`): ask the person to connect their licence; not a refusal |
+| `PG_KEYSET_CONFLICT` / `PG_KEY_EXISTS` / `PG_KEYSET` | 409 | credential path only: a different first keyset was already registered, or a rotation does not chain to the current keyset: rotate from the current one |
 | `PG_REPORT_CONFLICT` | 409 | another report for the same answer was already filed: resend the report you kept |
 | `PG_ASK_CLOSED` | 409 | this person in this job was already reported: use a new `job_id` for a new job |
 | `PG_ASK_CONFLICT` | 409 | this person in this job was asked with a different request: resend the identical one |
@@ -1131,8 +1151,10 @@ hold this registry's grant),
 `PG_USAGE_LIMIT`, `PG_SCOPE_VIOLATION` (the grant does not cover this purpose or use),
 `PG_REVIEW_REQUIRED` (held for a person), and
 the fixed protections no grant overrides: `PG_SUBJECT_OPTED_OUT`, `PG_SUBJECT_UNAVAILABLE`,
-`PG_PROHIBITED_USE`, `PG_IMMUTABLE_DENIAL`, `PG_PERSONAL_SIGNATURE_REQUIRED`. Treat any
-reason you do not know as a refusal.
+`PG_PROHIBITED_USE`, `PG_IMMUTABLE_DENIAL`, `PG_PERSONAL_SIGNATURE_REQUIRED`. A registry may add
+its own reasons (PRAMPTA also sends `PG_SUBJECT_PENDING`, `PG_SUBJECT_PAUSED`,
+`PG_SUBJECT_DISPUTED`, `PG_SUBJECT_WITHDRAWN`, `PG_PROVIDER_VETOED`, `PG_REFUSED`): all are
+refusals. Treat any reason you do not know as a refusal.
 
 ## The credential path (a registry that says `"providers": "registered"`)
 
@@ -1150,9 +1172,13 @@ with these differences:
    keyset (`kind: "first"`, `provider_id` = that id, `previous: null`, `recovery_registry: ""`,
    your current key), signed with your key: `pregen.sign_envelope("pg.keyset.v1", {...}, KEY)`.
    HTTP 200 `{"keyset": …}`; the same keyset again returns the same. A different first keyset
-   is refused (409 `PG_KEYSET_CONFLICT`): to change your key, send a `rotation`
+   is refused with 409 (`PG_KEYSET_CONFLICT` at the reference registry, `PG_KEY_EXISTS` at
+   PRAMPTA): to change your key, send a `rotation`
    (`https://www.pregen.org/spec/extensions/provider-keys.md`).
-4. `GET /v2/grants/{id}` and `/v2/statement` take the same two headers instead of `PG-Access`.
+4. Reads a registry offers (`GET /v2/grants…`, `/v2/statement`) take the same two headers. A
+   provider known by its domain instead sends `PG-Access: ` +
+   `pregen.pg_access(PROVIDER, KEY, entry["api"], "GET", path)` /
+   `await pgAccess(PROVIDER, KEY, entry.api, "GET", path)`, valid 60 s, for that registry only.
 5. A sandbox of such a registry mints a credential without an account:
    `POST {sandbox api}/v2/sandbox/access` → `{"provider_id", "token", "registry", "note"}` (shown
    once; at most 10 an hour per address).

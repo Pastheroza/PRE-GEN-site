@@ -150,13 +150,14 @@ JSON Schemas: `schemas/`. Byte vectors: `test-vectors/messages.json`.
 
 - **`GET {api}/keys`** — its signing keys (Messages, Key set).
 - **`GET {api}/.well-known/pregen-registry.json`** — a document listing:
-  - `prefix`, `name`;
+  - `prefix`, `name`, `api`, `keys`, `spec`;
   - `profiles` and `extensions`;
   - `policy` — the URL of its published policy;
   - `complaints` — a contact for complaints;
   - `sandbox`;
   - `providers`: `open` when providers known by their domain are accepted
-    (`extensions/provider-identity.md`), `registered` when it issues its own credentials.
+    (`extensions/provider-identity.md`), `registered` when it issues its own credentials;
+  - `bind`: its `authorize` and `token` endpoints, if it declares `bind`.
 
 **A client sends members of an extension only to a registry that declares it.**
 
@@ -187,8 +188,10 @@ extension may turn a refusal the core or a profile requires into a permission.
 | [`sandbox`](extensions/sandbox.md) | Standard test subjects and a test directory |
 | [`lookup`](extensions/lookup.md) | Public lookup of a code |
 | [`identity`](extensions/identity.md) | One person in several registries: anchors, confirmation on the person's own channel, "who proved it, not who came first", disputes |
-| [`proof`](extensions/proof.md) | The signed record travels with the output (C2PA, watermark); platforms check it |
+| [`proof`](extensions/proof.md) | The signed record travels with the output (C2PA manifest and the file's SHA-256); platforms check it |
 | [`catalog`](extensions/catalog.md) | Providers sell what registries offer: catalog, resale right, billing by issued allows |
+| [`provider-identity`](extensions/provider-identity.md) | A provider known by its domain and key: party document at `/.well-known/pregen-party.json`, signed requests, no account at any registry |
+| [`bind`](extensions/bind.md) | A person connects their licences to an app: OAuth 2.0 code + PKCE at their registry, a per-app `licensee_id` |
 
 ## The earlier interface
 

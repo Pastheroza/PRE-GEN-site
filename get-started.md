@@ -10,7 +10,7 @@ Step by step, with complete tested examples: for an AI provider
 `https://www.pregen.org/docs/registry.md`.
 
 PRE-GEN v5 (12 October 2026) · open standard by Valerii Egorov · Apache-2.0 ·
-concept DOI 10.5281/zenodo.20129901 · owned by no registry.
+concept DOI 10.5281/zenodo.20129901 (v1–v4; v5 is on pregen.org only for now) · owned by no registry.
 
 ## What PRE-GEN is
 
@@ -56,12 +56,14 @@ signed directory `https://www.pregen.org/registries.json` (human view:
 `https://www.pregen.org/registries`). **No account anywhere:** a provider is its domain and a
 key it makes (extension `provider-identity`). Make an Ed25519 key once
 (`newPrivateKeyHex()` / `pregen.new_private_key_hex()`), build the party document
-(`partyDocument("https://your.domain", "Name", key)` / `pregen.party_document(...)`) and serve
+(`await partyDocument("https://your.domain", "Name", key)` / `pregen.party_document(...)`) and serve
 it at `https://<your domain>/.well-known/pregen-party.json`. Your provider id is
-`https://<your domain>`; every request and report is signed with the key. A registry that says
+`https://<your domain>`, the registrable domain itself (no `www.`, path or port); every request and report is signed with the key. A registry that says
 `"providers": "registered"` in its document still issues its own credential; a registry that
-says `"open"` answers you as you are. Today one registry is in production: PRAMPTA
-(`https://api2.prampta.com`, commerce and vetting at `https://prampta.com`). The complete
+says `"open"` answers you with no credential. Until it vets you under its published procedure, it
+answers only refusals of the person, subjects it publishes, and licences a person connected to
+your app (`bind`). Everything else is `deny` `PG_PROVIDER_NOT_ACCEPTED` (provider-identity P-5a). Today one registry is in production: PRAMPTA
+(`https://api2.prampta.com`). It accepts apps by their domain and answers them only for refusals, published subjects and licences connected with `bind`. The complete
 guide, with tested examples: `https://www.pregen.org/docs/provider.md`.
 
 ### A2. Install a verification library
@@ -75,8 +77,9 @@ pip install "pregen>=0.12.0"
 ```
 
 Both libraries carry the steward key, load and check the directory, and check answers and
-proofs. They pin no registry by default; you may pin any registry's keys yourself
-(`pinnedKeys` / `pinned_keys`).
+proofs. They pin no registry by default. You may pin any registry's keys yourself: fetch the directory
+and pass it to `verifyDirectory(json, { previous, pinnedKeys })` /
+`pregen.verify_directory(json, previous=saved, pinned_keys=...)` (`loadDirectory` takes no pins).
 
 ### A3. Load the directory
 
@@ -121,7 +124,7 @@ Content-Type: application/json
           "job_id": "job-8841", "job_hash": "<sha-256 hex of what you fixed about the job>"}}
 ```
 
-- `signEnvelope("pg.request.v1", body, key)` / `pregen.sign_envelope(..., key)` makes it. On the
+- `await signEnvelope("pg.request.v1", body, key)` / `pregen.sign_envelope(..., key)` makes it. On the
   credential path (a `registered` registry) the request is unsigned, has no `signers`, and
   carries `Authorization: Bearer <credential>` with the registry's provider id.
 - The six members after `signers` are all the core requires. Add others only if the profile or an
@@ -132,6 +135,14 @@ Content-Type: application/json
   checked against them.
 - One request per subject. A job with several subjects asks each one (extension `jobs`).
 - The request id is the request's message id (Part B).
+
+### A5a. A person's own licence (when the registry declares `bind`)
+
+The person connects their licences to your app at their registry. This is OAuth 2.0
+authorization code + PKCE against `bind.authorize` / `bind.token` from the registry document.
+`client_id` is your provider URL; `redirect_uri` is one of the `redirect_uris` in your party
+document. The registry returns a signed `pg.binding.v1`. Send its `licensee_id` in requests about
+that person. Spec: `https://www.pregen.org/spec/extensions/bind.md`.
 
 ### A6. Check the answer
 
@@ -173,7 +184,7 @@ party document (A1); on the credential path, register it once with `POST {api}/v
 (extension `provider-keys`).
 
 ```
-body: {signers: [{role: "provider", key_id}], request_id, answer: <answer's message id>,
+body: {signers: [{role: "provider", key_id}], request_id, answer: <answer's message id, or null with the full request body in "request">,
        job_id, outcome: "generated" | "not_generated",
        output_hash: <sha-256 of the output, or "">, occurred_at: <unix seconds>}
 ```
@@ -196,12 +207,16 @@ A refusal about the subject is a signed answer. HTTP errors carry
 | Code | HTTP | Meaning |
 |---|---|---|
 | `PG_MALFORMED` | 422 | the request does not follow the core |
-| `PG_NOT_AUTHENTICATED` | 401 | credential or `provider_id` not accepted |
+| `PG_NOT_AUTHENTICATED` | 401 | credential, signature or `provider_id` not accepted (no party document, a key that is not current, a chain that does not extend the pin, or a credential sent beside a provider URL) |
+| `PG_NOT_BOUND` | 403 | this licensee has not connected (or has revoked) their licences for your app: show "connect your licence", not a refusal |
+| `PG_REPORT_CONFLICT` | 409 | a different report for the same answer |
 | `PG_PROFILE_UNSUPPORTED` | 422 | the registry does not answer under this profile |
 
 Answer reasons you will meet: `PG_UNKNOWN_SUBJECT` (the registry holds no such subject —
 not a prohibition), `PG_OTHER_REGISTRY` (the code belongs to another registry: ask that
-one), `PG_NO_LICENSE`, `PG_USAGE_LIMIT`, `PG_SCOPE_VIOLATION`, `PG_REVIEW_REQUIRED`, and the
+one), `PG_PROVIDER_NOT_ACCEPTED` (an open registry has not vetted your app yet: a refusal, not a
+permission; get vetted or have the person connect their licence), `PG_NO_LICENSE`,
+`PG_NOT_CONNECTED` (this use needs a connected end user), `PG_USAGE_LIMIT`, `PG_SCOPE_VIOLATION`, `PG_REVIEW_REQUIRED`, and the
 fixed protections no grant overrides: `PG_SUBJECT_OPTED_OUT`, `PG_SUBJECT_UNAVAILABLE`,
 `PG_PROHIBITED_USE`, `PG_IMMUTABLE_DENIAL`, `PG_PERSONAL_SIGNATURE_REQUIRED` (intimate
 categories need the person's own signed grant).
@@ -210,8 +225,12 @@ categories need the person's own signed grant).
 
 - **A registry's sandbox.** A registry whose document says `"sandbox": true` publishes eight
   standard test subjects on its prefix (`…000001` allows; `…000002`–`…000007` refuse,
-  hold or answer `not_blocked`; `…000008` is unknown). Check its answers with
-  `checkAnswer(answer, request, { directory, testing: true })`.
+  hold or answer `not_blocked`; `…000008` is unknown). Check its answers against the test
+  directory, never the real one:
+  `const testDir = await loadDirectory({ url: "https://www.pregen.org/test/registries.json", stewardPublicKeyHex: "78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0" })`
+  / `pregen.load_directory("https://www.pregen.org/test/registries.json", steward_public_key_hex="78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0")`,
+  then `checkAnswer(answer, request, { directory: testDir, testing: true })`. With the real
+  directory, `testing: true` throws.
 - **The open reference registry** runs the same sandbox on your machine, to test request
   and answer shapes:
 
@@ -226,9 +245,10 @@ categories need the person's own signed grant).
   expected. The shared test directory is online: `https://www.pregen.org/test/registries.json`,
   signed by the test steward key `78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0`. It lists PRE-GEN's own
   sandbox, the PRE-GEN Test Registry (`https://sandbox.pregen.org`, prefix `TEST`, codes
-  `PG-TEST-000001N` to `PG-TEST-000008H`): with it, `checkAnswer(…, { directory, testing: true })`
+  `PG-TEST-000001N` to `PG-TEST-000008H`): with it, `checkAnswer(…, { directory: testDir, testing: true })`
   accepts sandbox answers end to end. Post your party document to
-  `https://sandbox.pregen.org/v2/sandbox/party` first (any `https://…` id you choose), then ask
+  `https://sandbox.pregen.org/v2/sandbox/party` first (an `https://<domain>` id: lower case, no path, query or trailing slash; a sandbox also
+  takes a port, and `https://localhost:<port>`), then ask
   with signed requests.
 - **Bytes.** `spec/test-vectors/messages.json` gives eight messages with their canonical
   body, signing input, message id and signatures. Reproduce every one.
@@ -282,9 +302,11 @@ each exactly as signed.
   ```
 
   It passes when every answer was a valid `allow` **at the time the output was made**,
-  every acknowledgement is signed by the subject's registry and names that report and
-  answer, all reports name one output and one job, and the file's hash matches (after
-  re-encoding, a soft binding instead).
+  every acknowledgement is signed by the subject's registry, names that report and answer,
+  and was received no later than 24 hours after the allow expired; every report says
+  `generated`; all reports name one output and one job; and, when you pass the file's
+  SHA-256, it equals `output_hash`. `checkProof` does not match re-encoded files: a soft
+  binding (`bindings`) is matched with that algorithm's own tooling, outside PRE-GEN.
 - A bundle from a revoked registry fails, old ones included. A bundle shows who permitted
   what and when; whether you keep, label or remove the content stays your decision.
 
@@ -317,7 +339,8 @@ rights.
 
 **One person in several registries** (extension `identity`): a claim the person confirmed
 on their own official channel silences unconfirmed claims; a refusal of the person holds in
-all their registries; several unconfirmed claims freeze. A matching name is never evidence.
+all their registries; an unconfirmed claim neither permits nor refuses (with no confirmed claim:
+`not_blocked`, `PG_IDENTITY_UNCONFIRMED`). A matching name is never evidence.
 The libraries implement this as `decideIdentity` / `decide_identity`.
 
 ---

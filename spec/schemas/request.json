@@ -15,7 +15,7 @@
   "properties": {
     "signers": {
       "type": "array",
-      "description": "extension provider-identity: [{role: provider, key_id}] when the request is signed; absent when a credential authenticates it"
+      "description": "extension provider-identity: [{role: provider, key_id}]; required for a provider URL (provider-identity P-1); a registry may also accept it beside a registry-issued credential"
     },
     "subject_ref": {
       "type": "string",

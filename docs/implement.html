@@ -35,6 +35,7 @@
 <ol>
 <li><strong>Read one page:</strong> <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/PRE-GEN-CORE.md">PRE-GEN-CORE.md</a>, then the profile <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/profiles/likeness-1.md">likeness/1</a> and only the <a href="/docs">extensions</a> you need.</li>
 <li><strong>Reproduce the bytes.</strong> <a href="/spec/test-vectors/messages.json">messages.json</a> gives eight messages — request, grant, answer (allow and deny), key sets, report and acknowledgement — with their canonical body, signing input, message id and signatures from fixed test keys. Match every one.</li>
+<li><strong>Run the conformance runner</strong> from the current repository: <code>spec/conformance/level1/run_conformance.py</code> (<a href="/spec/conformance/README.md">conformance/README.md</a>). The v5 operations <code>message_id</code>, <code>signing_input</code>, <code>verify_envelope</code> and <code>check_answer</code> are required by default. They use <a href="/spec/test-vectors/messages.json">messages.json</a>, <a href="/spec/test-vectors/small-order-keys.json">small-order-keys.json</a> and <a href="/spec/test-vectors/answers.json">answers.json</a>. Done when it reports 0 failed.</li>
 <li><strong>Validate the shapes</strong> against the JSON Schemas in <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec/schemas">spec/schemas</a>.</li>
 <li><strong>Talk to a real registry.</strong> The open reference registry (<a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/packages/registry">pregen-registry</a>) runs a sandbox with the eight standard test subjects: <code>pregen-registry init --dir data --prefix TEST --name "Test" --api https://… --sandbox</code>, then <code>serve</code>; <code>POST /v2/sandbox/party</code> takes your provider's party document (its domain and key; no credential), or <code>POST /v2/sandbox/access</code> issues a test credential. Your provider should get the documented answer for each subject and generate only on subject 1.</li>
 <li><strong>Tell us</strong> what took long or was unclear, as an <a href="https://github.com/Pastheroza/PRE-GEN-site/issues">issue</a>.</li>
@@ -92,8 +93,16 @@ python3 spec/conformance/level1/run_conformance.py --adapter "&lt;command that r
 
 </div></main>
 <footer class="foot"><div class="wrap">
-<p>PRE-GEN is an open standard by Valerii Egorov, Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
-<nav aria-label="Site"><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification source</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
+<div class="foot-top">
+<div class="foot-brand"><a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="56" height="56" alt="PRE-GEN"></a><p>Pre-Generative Authorization Protocol. AI asks before it generates a real person.</p></div>
+<nav class="foot-cols" aria-label="Site">
+<div><p class="foot-h">Start</p><a href="/connect">Connect your AI</a><a href="/create-registry">Create a registry</a><a href="/lookup">Look up a code</a></div>
+<div><p class="foot-h">Learn</p><a href="/docs">How it works</a><a href="/docs/two-layers">Two layers</a><a href="/faq">FAQ</a><a href="/llms.txt">llms.txt</a></div>
+<div><p class="foot-h">Project</p><a href="/registries">Registries</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification</a><a href="/support">Support</a></div>
+<div><p class="foot-h">Legal</p><a href="/legal">Legal</a><a href="/contact">Contact</a></div>
+</nav>
+</div>
+<div class="foot-bottom"><p>&copy; 2026 Valerii Egorov. Open standard, Apache-2.0. Not owned by any registry, including PRAMPTA.</p><p class="foot-ver">v5</p></div>
 </div></footer>
 </body>
 </html>

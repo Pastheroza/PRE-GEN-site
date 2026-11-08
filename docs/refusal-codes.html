@@ -57,7 +57,7 @@
 <li><code>PG_PROVIDER_NOT_ACCEPTED</code> — the registry has not vetted this provider, known only by its domain, and answers it only about refusals of the person, published subjects and its own connected licensees (<a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/provider-identity.md">provider-identity</a>). A refusal; it hides whether a private code exists.</li>
 <li><code>PG_NOT_BOUND</code> — HTTP 403: the licensee has not connected their licences to this app; show it as “connect your licence” (<a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/bind.md">bind</a>).</li>
 </ul>
-<p><code>PG_IDENTITY_UNCONFIRMED</code> and <code>PG_IDENTITY_CONFLICT</code> are outcomes of the client's own check of a public person (<a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/identity.md">identity</a>), not registry answers.</p>
+<p><code>PG_IDENTITY_UNCONFIRMED</code> is an outcome of the client's own check of a public person (<a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/identity.md">identity</a>), not a registry answer.</p>
 <p>Errors about the request itself are HTTP errors with <code>{"error", "error_description"}</code>: <code>PG_MALFORMED</code> (422, the request does not follow the core), <code>PG_NOT_AUTHENTICATED</code> (401, credential, signature or <code>provider_id</code> not accepted), <code>PG_PROFILE_UNSUPPORTED</code> (422, the registry does not answer under this profile).</p>
 <h2 id="legacy">Earlier interface (/v1)</h2>
 <p><b>Core</b> codes are used by every registry with this meaning (spec §3). The rest are PRAMPTA’s own, defined before v5 without a prefix and kept for compatibility; new codes of every registry, PRAMPTA included, carry its issuer prefix, <code>PG_&lt;ISSUER&gt;_…</code>.</p>
@@ -70,8 +70,16 @@
 <nav class="pager" aria-label="Pages"><a href="/docs/versions">← Versions</a><a href="/docs/sdk">Add it to your service →</a></nav></article></div>
 </div></main>
 <footer class="foot"><div class="wrap">
-<p>PRE-GEN is an open standard by Valerii Egorov, Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
-<nav aria-label="Site"><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification source</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
+<div class="foot-top">
+<div class="foot-brand"><a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="56" height="56" alt="PRE-GEN"></a><p>Pre-Generative Authorization Protocol. AI asks before it generates a real person.</p></div>
+<nav class="foot-cols" aria-label="Site">
+<div><p class="foot-h">Start</p><a href="/connect">Connect your AI</a><a href="/create-registry">Create a registry</a><a href="/lookup">Look up a code</a></div>
+<div><p class="foot-h">Learn</p><a href="/docs">How it works</a><a href="/docs/two-layers">Two layers</a><a href="/faq">FAQ</a><a href="/llms.txt">llms.txt</a></div>
+<div><p class="foot-h">Project</p><a href="/registries">Registries</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification</a><a href="/support">Support</a></div>
+<div><p class="foot-h">Legal</p><a href="/legal">Legal</a><a href="/contact">Contact</a></div>
+</nav>
+</div>
+<div class="foot-bottom"><p>&copy; 2026 Valerii Egorov. Open standard, Apache-2.0. Not owned by any registry, including PRAMPTA.</p><p class="foot-ver">v5</p></div>
 </div></footer>
 </body>
 </html>

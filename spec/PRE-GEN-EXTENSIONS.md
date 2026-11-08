@@ -5,7 +5,7 @@ as the first registry, PRAMPTA, implements them. Any registry may implement
 them on the same terms; implementing them gives no registry a right the
 others lack. The v5 extensions are in `extensions/`.
 
-**Version:** PRE-GEN v5 draft (2026-10-04) · companion to
+**Version:** PRE-GEN v5 (2026-10-12) · companion to
 [`PRE-GEN-SPEC.md`](PRE-GEN-SPEC.md) · Apache License 2.0.
 
 The core (`PRE-GEN-SPEC.md`) is what every authorization registry,
@@ -38,7 +38,7 @@ E-2). Each is signed; a verifier that does not use one ignores it.
 |---|---|---|
 | `rules_text` | string | display-only rights-holder text, never itself enforced |
 | `rules_text_hash` | string | SHA-256 hex of `rules_text`, empty string when `rules_text` is empty |
-| `watermark_payload` | string \| null | |
+| `watermark_payload` | string \| null | legacy: recognised, not used |
 | `is_hard_refusal` | boolean | from the refusal-code table — `false` on allow |
 | `revocation_epoch` | integer | the subject's revocation counter at issuance; `0` on subject-less refusals |
 | `max_cache_age_seconds` | integer | X.3 |

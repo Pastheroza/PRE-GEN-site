@@ -51,7 +51,7 @@ The provider serves it at `{provider URL}/.well-known/pregen-party.json`
 | `policy`, `contact` | optional |
 
 The libraries build it: `pregen.party_document(url, name, key)` /
-`partyDocument(url, name, key)`. The same key gives the same document every time.
+`await partyDocument(url, name, key)`. The same key gives the same document every time.
 
 ## Rules
 
@@ -104,7 +104,7 @@ directory, so a header signed for one registry is refused by every other; `path`
 query string. A registry accepts it within 60 seconds of `issued_at`, for itself and that method
 and path only. Replaying it inside that minute only repeats a read the provider was allowed to
 make. The libraries build it: `pregen.pg_access(url, key, api, "GET", path)` /
-`pgAccess(url, key, api, "GET", path)`.
+`await pgAccess(url, key, api, "GET", path)`.
 
 ## Sandboxes
 

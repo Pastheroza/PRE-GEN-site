@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>What it proves — PRE-GEN</title>
-<meta name="description" content="What a PRE-GEN decision, licence, receipt and directory prove, and what they do not: a page for providers and their counsel.">
+<meta name="description" content="What a PRE-GEN answer, report, proof, licence and the directory prove, and what they do not: a page for providers and their counsel.">
 <meta property="og:title" content="What it proves — PRE-GEN">
-<meta property="og:description" content="What a PRE-GEN decision, licence, receipt and directory prove, and what they do not: a page for providers and their counsel.">
+<meta property="og:description" content="What a PRE-GEN answer, report, proof, licence and the directory prove, and what they do not: a page for providers and their counsel.">
 <meta property="og:image" content="https://www.pregen.org/assets/og-image.png">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://www.pregen.org/docs/proves">
@@ -28,7 +28,7 @@
 </div></header>
 <main><div class="wrap">
 <div class="doc"><aside><ul><li><a href="/docs">How it works</a></li><li><a href="/docs/two-layers">Two layers</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versions</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Add it to your service</a></li><li><a href="/docs/proves" aria-current="page">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Build it</a></li></ul></aside><article><h1>What it proves</h1>
-<p class="meta">For AI services and their lawyers · PRE-GEN v5 · the binding text is <a href="/spec/PRE-GEN-SPEC.md">PRE-GEN-SPEC.md</a> §10</p>
+<p class="meta">For AI services and their lawyers · PRE-GEN v5 · the full statement of limits is <a href="/spec/PRE-GEN-SPEC.md">PRE-GEN-SPEC.md</a> §10 (informative); the rules are <a href="/spec/PRE-GEN-CORE.md">PRE-GEN-CORE.md</a></p>
 <p>PRE-GEN is permission before generation, and evidence of it, among the services that choose to ask. It does not stop services that never ask, and it does not decide whether a use is lawful.</p>
 <div class="table"><table>
 <thead><tr><th>Say</th><th>Do not say</th></tr></thead>
@@ -39,21 +39,24 @@
 <div class="table"><table>
 <thead><tr><th>Object</th><th>Proves</th><th>Does not prove</th></tr></thead>
 <tbody>
-<tr><td>Decision</td><td>This registry gave this answer to this exact request, at that time, unchanged since</td><td>That a licence exists; that the output matched the request; that the use is lawful</td></tr>
-<tr><td>Licence</td><td>The subject's key and the registry's key signed these terms</td><td>Under managed custody, the subject's own act: the registry holds the key</td></tr>
-<tr><td>Receipt</td><td>The provider reported producing this output under this decision</td><td>That the report is true; that every generation was reported</td></tr>
-<tr><td>Observation</td><td>The provider reported a use that needed no licence</td><td>That the use happened as reported; anything granted</td></tr>
-<tr><td>Audit log</td><td>An event is included under a root timestamped outside the registry</td><td>That the log is complete; that what it records is true</td></tr>
+<tr><td>Answer (<code>pg.answer.v1</code>)</td><td>This registry gave this status to this exact request (<code>request_id</code>), under this profile, valid for at most 900 seconds</td><td>That the output matched the job; that the use is lawful</td></tr>
+<tr><td>Report and acknowledgement (<code>pg.report.v1</code>, <code>pg.report_ack.v1</code>)</td><td>The provider said it generated the output with this SHA-256, and the registry received that report at <code>received_at</code></td><td>That the report is true</td></tr>
+<tr><td>Proof bundle (<code>pg.proof.v1</code>)</td><td>For each subject: a valid allow when generation began, a report naming this file, acknowledged within 24 hours of the answer's expiry</td><td>That the use is lawful; anything about a file whose hash differs</td></tr>
+<tr><td>Decision (earlier interface, /v1)</td><td>This registry gave this answer to this exact request, at that time, unchanged since</td><td>That a licence exists; that the output matched the request; that the use is lawful</td></tr>
+<tr><td>Licence (earlier interface, /v1)</td><td>The subject's key and the registry's key signed these terms</td><td>Under managed custody, the subject's own act: the registry holds the key</td></tr>
+<tr><td>Receipt (earlier interface, /v1)</td><td>The provider reported producing this output under this decision</td><td>That the report is true; that every generation was reported</td></tr>
+<tr><td>Observation (earlier interface, /v1)</td><td>The provider reported a use that needed no licence</td><td>That the use happened as reported; anything granted</td></tr>
+<tr><td>Audit log (earlier interface, /v1)</td><td>An event is included under a root timestamped outside the registry</td><td>That the log is complete; that what it records is true</td></tr>
 <tr><td>Registry directory</td><td>Which registry may issue which codes, signed by the steward key</td><td>Any right over a person or a work</td></tr>
 </tbody></table></div>
 
 <h2>Refusals and opt-outs</h2>
 <ul>
-<li>An opt-out has priority over every licence <strong>in the registry that holds it</strong>. Another registry holding the same person is not bound by it in v5.</li>
+<li>An opt-out has priority over every licence <strong>in the registry that holds it</strong>. Under the identity extension, a client that finds the same person, confirmed on their own channel, in several registries applies a refusal from any of them.</li>
 <li>A new opt-out waits 14 days at PRAMPTA before it takes effect, because anyone claiming authority can file one. The subject's owner can pause the subject immediately.</li>
 <li>From its effective time every new decision refuses. A decision issued earlier stays usable until it expires (300 seconds at PRAMPTA); a cached allow never outlives its expiry.</li>
-<li>Even a refusal, including a request without valid credentials, comes back as a signed decision you can keep.</li>
-<li><code>PG_NO_SUBJECT</code> is not a prohibition. It says only that this registry does not know the subject; the user may hold rights it does not record. Decide under your own policy, and do not present the output as licensed by that registry.</li>
+<li>Every answer about a subject, refusals included, is a signed answer you can keep. A request the registry cannot authenticate gets HTTP 401 (<code>PG_NOT_AUTHENTICATED</code> on <code>/v2/requests</code>, <code>invalid_credential</code> on <code>/v1/verify</code>), which is not signed.</li>
+<li><code>PG_UNKNOWN_SUBJECT</code> (<code>PG_NO_SUBJECT</code> on /v1) is not a prohibition. It says only that this registry does not know the subject; the user may hold rights it does not record. Decide under your own policy, and do not present the output as licensed by that registry.</li>
 </ul>
 
 <h2>What to say plainly</h2>
@@ -62,17 +65,25 @@
 <li><strong>Recognition is the provider's job.</strong> Authorization is asked for a named subject; resemblance, style or composites without a name are not caught by PRE-GEN.</li>
 <li><strong>Managed custody</strong> (the reference registry today): consent rests on the registry's records, not on a key the subject holds.</li>
 <li><strong>A false allow</strong> from a compromised registry cannot be independently confirmed or ruled out without a verifiable licence and a trusted subject key.</li>
-<li><strong>One registry in production</strong> today (PRAMPTA). Codes from several registries never collide. When a provider knows two registries hold the same person and they disagree, neither answer decides by itself; the provider keeps both and does not call the output licensed while a refusal is unresolved. Nothing yet tells a provider that two registries hold the same person.</li>
+<li><strong>One registry in production</strong> today (PRAMPTA). Codes from several registries never collide. When a provider knows two registries hold the same person and they disagree, neither answer decides by itself; the provider keeps both and does not call the output licensed while a refusal is unresolved. Registries that declare the identity extension publish anchors (<code>GET /v2/anchors</code>) that tell a provider when two registries hold the same person; PRAMPTA does not publish them yet.</li>
 <li><strong>A listing is not a rights check.</strong> The steward admits and can revoke registries; whether each rights holder is genuine is the registry's responsibility. The decision's <code>subject_authority</code> says how well the registry established it: only <code>verified</code> means the registry checked identity and authority.</li>
 <li><strong>C2PA</strong>: the signed assertion exists, but an end-to-end C2PA integration has not been tested.</li>
-<li><strong>Licence sales are paused at PRAMPTA</strong>: requests go to the rights-holder and nothing is charged. Decisions and receipts work the same.</li>
+<li><strong>Licences are sold at PRAMPTA</strong> at prices the rights holder sets. Decisions and receipts work the same whether or not a licence was bought.</li>
 </ul>
 <nav class="pager" aria-label="Pages"><a href="/docs/sdk">← Add it to your service</a><a href="/docs/c2pa">C2PA →</a></nav></article></div>
 
 </div></main>
 <footer class="foot"><div class="wrap">
-<p>PRE-GEN is an open standard by Valerii Egorov, Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
-<nav aria-label="Site"><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification source</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
+<div class="foot-top">
+<div class="foot-brand"><a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="56" height="56" alt="PRE-GEN"></a><p>Pre-Generative Authorization Protocol. AI asks before it generates a real person.</p></div>
+<nav class="foot-cols" aria-label="Site">
+<div><p class="foot-h">Start</p><a href="/connect">Connect your AI</a><a href="/create-registry">Create a registry</a><a href="/lookup">Look up a code</a></div>
+<div><p class="foot-h">Learn</p><a href="/docs">How it works</a><a href="/docs/two-layers">Two layers</a><a href="/faq">FAQ</a><a href="/llms.txt">llms.txt</a></div>
+<div><p class="foot-h">Project</p><a href="/registries">Registries</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification</a><a href="/support">Support</a></div>
+<div><p class="foot-h">Legal</p><a href="/legal">Legal</a><a href="/contact">Contact</a></div>
+</nav>
+</div>
+<div class="foot-bottom"><p>&copy; 2026 Valerii Egorov. Open standard, Apache-2.0. Not owned by any registry, including PRAMPTA.</p><p class="foot-ver">v5</p></div>
 </div></footer>
 </body>
 </html>

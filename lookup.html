@@ -30,18 +30,26 @@
 <h1>Look up a PG code</h1>
 <p class="lede">Every person, work and licence in a registry has a permanent code. Enter one to see what the registry says about it. No account needed.</p>
 <form class="search" id="pgForm" autocomplete="off">
-<input id="pgInput" type="text" name="code" placeholder="PG-000042*" aria-label="PG code" spellcheck="false" autocapitalize="characters" maxlength="32">
+<input id="pgInput" type="text" name="code" placeholder="PG-PRAM-000037J" aria-label="PG code" spellcheck="false" autocapitalize="characters" maxlength="32">
 <button type="submit">Look up</button>
 </form>
-<p class="meta">Person <span class="mono">PG-000042*</span> · licence <span class="mono">PG-STD-000001-K7M2QX9</span> · old format <span class="mono">PG-0000016</span> · another registry <span class="mono">PG-NWRD-000042=</span></p>
+<p class="meta">Character <span class="mono">PG-PRAM-000037J</span> · brand, before v5 <span class="mono">PG-0000016</span> · format of another registry’s code <span class="mono">PG-NWRD-000042=</span> (example, not listed)</p>
 <div id="pgResult" class="pg-result" aria-live="polite"></div>
 <p class="meta">Looking up a code permits nothing. An AI service needs a signed yes from the registry before it generates (<a href="/docs/sdk">how to ask</a>). Format: <a href="/docs/pg-code">PG codes</a>.</p>
 <script src="/lookup.js"></script>
 
 </div></main>
 <footer class="foot"><div class="wrap">
-<p>PRE-GEN is an open standard by Valerii Egorov, Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
-<nav aria-label="Site"><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification source</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
+<div class="foot-top">
+<div class="foot-brand"><a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="56" height="56" alt="PRE-GEN"></a><p>Pre-Generative Authorization Protocol. AI asks before it generates a real person.</p></div>
+<nav class="foot-cols" aria-label="Site">
+<div><p class="foot-h">Start</p><a href="/connect">Connect your AI</a><a href="/create-registry">Create a registry</a><a href="/lookup">Look up a code</a></div>
+<div><p class="foot-h">Learn</p><a href="/docs">How it works</a><a href="/docs/two-layers">Two layers</a><a href="/faq">FAQ</a><a href="/llms.txt">llms.txt</a></div>
+<div><p class="foot-h">Project</p><a href="/registries">Registries</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification</a><a href="/support">Support</a></div>
+<div><p class="foot-h">Legal</p><a href="/legal">Legal</a><a href="/contact">Contact</a></div>
+</nav>
+</div>
+<div class="foot-bottom"><p>&copy; 2026 Valerii Egorov. Open standard, Apache-2.0. Not owned by any registry, including PRAMPTA.</p><p class="foot-ver">v5</p></div>
 </div></footer>
 </body>
 </html>

@@ -28,18 +28,19 @@
 </div></header>
 <main><div class="wrap">
 <div class="doc"><aside><ul><li><a href="/docs" aria-current="page">How it works</a></li><li><a href="/docs/two-layers">Two layers</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versions</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Add it to your service</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Build it</a></li></ul></aside><article><h1>How PRE-GEN works</h1>
-<p class="meta">PRE-GEN v5 · 12 October 2026 · Copyright Valerii Egorov · Apache-2.0 · <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/PRE-GEN-CORE.md">the core</a> · <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">source</a> · The text is the rule; the schemas and test vectors check it, and where they disagree the text wins and the vectors get fixed.</p>
-<p>Before an AI service generates a real person, a character, a brand or a work, it asks the registry that represents them. The registry answers and signs the answer. Anyone can check that answer later, offline, without trusting whoever shows it. The rules are the same for every kind of subject; a <em>profile</em> says what applies to each, and the first profile covers a person's face and voice.</p>
+<p class="meta">PRE-GEN v5 · 12 October 2026 · extensions provider-identity and bind added 6 November 2026 · Copyright Valerii Egorov · Apache-2.0 · <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/PRE-GEN-CORE.md">the core</a> · <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">source</a> · The text is the rule; the schemas and test vectors check it, and where they disagree the text wins and the vectors get fixed.</p>
+<p>Before an AI service generates a real person, a character or a brand, it asks the registry that represents them. The registry answers and signs the answer. Anyone can check that answer later, offline, without trusting whoever shows it. The rules are the same for every kind of subject; a <em>profile</em> says what applies to each, and the first profile covers a person's face and voice.</p>
 
 <h2>The five rules</h2>
 <p>They fit on one page: <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/PRE-GEN-CORE.md">PRE-GEN-CORE.md</a>. An AI service that does exactly this, and nothing more, implements PRE-GEN.</p>
 <ol>
 <li><strong>A code names the person and their registry.</strong> <code>PG-&lt;prefix&gt;-&lt;number&gt;&lt;check&gt;</code>, for example <code>PG-TEST-000001N</code>. The prefix names the registry. Codes without a prefix were issued before v5; they keep their meaning, and no registry issues new ones.</li>
 <li><strong>The directory says whom to trust.</strong> One <a href="/registries">directory</a>, signed by the steward key, lists each registry's prefix and keys. A registry's signature counts only for its own prefix, and the directory is loaded again at least every 24 hours.</li>
-<li><strong>Ask.</strong> <code>POST {api}/v2/requests</code> with one <code>pg.request.v1</code> about one subject: who, for what use, and a hash of the job. The prompt and the output never leave the AI service.</li>
+<li><strong>Ask.</strong> <code>POST {api}/v2/requests</code> with one <code>pg.request.v1</code> about one subject: who, for what use, and a hash of the job. The AI service signs it with its own key and is known by its domain, so it needs no account; a registry may also issue its own credentials. The prompt and the output never leave the AI service.</li>
 <li><strong>A signed answer.</strong> <code>allow</code>, <code>deny</code>, <code>review</code> or <code>not_blocked</code>, signed by the registry, bound to the exact request, valid for at most 900 seconds. <strong>Only <code>allow</code> permits.</strong></li>
 <li><strong>Generate only on a valid allow, and keep it.</strong> Every person in the job needs a valid <code>allow</code>. The kept answers are the service's proof.</li>
 </ol>
+<p class="note">Works today: on 7 November 2026 an AI app known only by its domain asked PRAMPTA with no account, a person connected a licence to it with <code>bind</code>, and the app got an allow, reported the output and kept a proof that was checked offline.</p>
 
 <h2>Messages</h2>
 <pre><code>envelope       = { type, body, signatures }      body.signers = [{ role, key_id }, …]
@@ -74,7 +75,7 @@ canonical      = UTF-8, keys in code-point order, no whitespace, integers only, 
 <p><a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/profiles/likeness-1.md">likeness/1</a> says what a request about a person's face and voice contains, and which refusals nothing overrides: an opt-out, a person who is not available, a minor in a prohibited category, a fixed refusal, and intimate content without the person's own signature.</p>
 
 <h2>One person, several registries</h2>
-<p>A claim the person confirmed on their own official channel wins over unconfirmed ones. A refusal of the person in any registry holds in all of them. Several unconfirmed claims stop generation until someone proves one. A registry answers a complaint within seven days, and the steward can mark a false claim in the directory. See <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/identity.md">identity</a>.</p>
+<p>A claim the person confirmed on their own official channel wins over unconfirmed ones. Among claims the person confirmed on their own official channel, a refusal of the person in any registry holds in all of them. With no confirmed claim PRE-GEN says nothing: the result is <code>not_blocked</code> (<code>PG_IDENTITY_UNCONFIRMED</code>), which permits nothing and refuses nothing. An impostor can neither permit nor freeze a person. A registry answers a complaint within seven days, and the steward can mark a false claim in the directory. See <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/identity.md">identity</a>.</p>
 
 <h2>No middleman</h2>
 <p>An AI service and a registry talk directly, free. Services that make this easier, such as checking an agent's authority, running a sale, reporting or settlement, are optional, and anyone may offer them.</p>
@@ -88,8 +89,16 @@ canonical      = UTF-8, keys in code-point order, no whitespace, integers only, 
 <nav class="pager" aria-label="Pages"><span></span><a href="/docs/pg-code">PG codes →</a></nav></article></div>
 </div></main>
 <footer class="foot"><div class="wrap">
-<p>PRE-GEN is an open standard by Valerii Egorov, Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
-<nav aria-label="Site"><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification source</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
+<div class="foot-top">
+<div class="foot-brand"><a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="56" height="56" alt="PRE-GEN"></a><p>Pre-Generative Authorization Protocol. AI asks before it generates a real person.</p></div>
+<nav class="foot-cols" aria-label="Site">
+<div><p class="foot-h">Start</p><a href="/connect">Connect your AI</a><a href="/create-registry">Create a registry</a><a href="/lookup">Look up a code</a></div>
+<div><p class="foot-h">Learn</p><a href="/docs">How it works</a><a href="/docs/two-layers">Two layers</a><a href="/faq">FAQ</a><a href="/llms.txt">llms.txt</a></div>
+<div><p class="foot-h">Project</p><a href="/registries">Registries</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification</a><a href="/support">Support</a></div>
+<div><p class="foot-h">Legal</p><a href="/legal">Legal</a><a href="/contact">Contact</a></div>
+</nav>
+</div>
+<div class="foot-bottom"><p>&copy; 2026 Valerii Egorov. Open standard, Apache-2.0. Not owned by any registry, including PRAMPTA.</p><p class="foot-ver">v5</p></div>
 </div></footer>
 </body>
 </html>

@@ -14,7 +14,7 @@ rotation and theft.
 | `kind` | `first`, `rotation` or `recovery` |
 | `provider_id` | the provider |
 | `previous` | `null` for `first`; otherwise the message id of the keyset it replaces |
-| `recovery_registry` | the prefix of the registry allowed to co-sign a recovery (`""` = origin). Fixed by `first`; only `recovery` may change it |
+| `recovery_registry` | the prefix of the registry allowed to co-sign a recovery (`""` for the closed legacy bare namespace). Fixed by `first`; only `recovery` may change it |
 | `keys` | `[{key_id, public_key_hex, status}]`; exactly one `current`, others `previous` or `revoked` |
 
 | Kind | Signers, in order | Accepted when |

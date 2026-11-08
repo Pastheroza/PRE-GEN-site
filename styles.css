@@ -28,6 +28,9 @@ a:hover { text-decoration-thickness: 2px; }
 :focus-visible { outline: 3px solid var(--fg); outline-offset: 3px; }
 
 .wrap { max-width: 880px; margin: 0 auto; padding: 0 16px; }
+/* Header and footer keep one width on every page, so the logo and the menu button never move. */
+.top .wrap, .foot .wrap { max-width: 1240px; padding: 0 24px; }
+@media (max-width: 640px) { .top .wrap, .foot .wrap { padding: 0 16px; } }
 
 /* Header: the logo and one menu button, on every screen. */
 .top { position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--soft); background: var(--bg); }
@@ -159,15 +162,25 @@ details p { margin: 10px 0 0; }
 .pg-card p { margin: 0 0 6px; }
 .pg-prompt { font-family: var(--mono); }
 
-/* Footer */
-.foot { border-top: 1px solid var(--rule); font-size: 14px; }
-.foot .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; padding-block: 20px 28px; }
-.foot nav { display: flex; flex-wrap: wrap; gap: 4px 16px; }
-@media (max-width: 720px) {
-  .foot .wrap { flex-direction: column; gap: 16px; }
-  .foot nav { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
+/* Footer: the mark and one line on the left, four short columns on the right, the small print below. */
+.foot { margin-top: 96px; border-top: 1px solid var(--soft); font-size: 15px; }
+.foot-top { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 2fr); gap: 48px; padding: 48px 0 40px; }
+.foot-brand .mark img { height: 56px; width: auto; }
+.foot-brand p { margin: 18px 0 0; max-width: 22em; font-size: 16px; line-height: 1.5; color: var(--muted); }
+.foot-cols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; }
+.foot-h { margin: 0 0 14px; font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
+.foot-cols a { display: block; padding: 5px 0; color: var(--muted); text-decoration: none; }
+.foot-cols a:hover { color: var(--fg); text-decoration: underline; }
+.foot-bottom { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; padding: 18px 0 28px; border-top: 1px solid var(--soft); font-size: 14px; color: var(--muted); }
+.foot-bottom p { margin: 0; }
+.foot-ver { font-family: var(--mono); }
+@media (max-width: 900px) {
+  .foot-top { grid-template-columns: 1fr; gap: 36px; }
 }
-.foot p { margin: 0; color: var(--muted); max-width: 34em; }
+@media (max-width: 640px) {
+  .foot-cols { grid-template-columns: 1fr 1fr; row-gap: 28px; }
+  .foot-top { padding: 40px 0 32px; }
+}
 
 /* Homepage below the paper: short, one idea per block. */
 .intro { margin: 0 0 8px; }

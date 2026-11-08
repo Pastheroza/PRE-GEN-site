@@ -5,6 +5,11 @@ static HTML/CSS/JS, no build step. The standard is in [`spec/`](spec/)
 (Apache-2.0, `spec/LICENSE`); the website itself is not (`NOTICE`).
 Start with the one-page core: [`spec/PRE-GEN-CORE.md`](spec/PRE-GEN-CORE.md).
 
+PRE-GEN is an open standard by Valerii Egorov for asking permission before AI
+generates a real person, a character or a brand. An AI service asks the registry
+that represents them, checks the signed answer, and generates only on a yes.
+It needs no account at any registry: its identity is its domain and a key.
+
 ## Steward key
 
 The registry directory [`registries.json`](registries.json) is signed by the
@@ -20,11 +25,19 @@ stolen; a directory it signs replaces the current line):
 - public key: `658544163d6abd5fef046407980d249817875d87d8cf4b67879a2e265fa5612f`
 - fingerprint: `pg-ed25519:3e5e20729ce8485eea274c4cb33721d6`
 
-The same values are in `spec/PG-CODE.md` §9.1, in the PRE-GEN v5 paper (§5)
-and in the DNS TXT record `_pregen-steward.pregen.org`.
+Both keys are in `spec/PG-CODE.md` §9.1 and the PRE-GEN v5 paper (§5); the current
+steward key is also in the DNS TXT record `_pregen-steward.pregen.org`.
 
 ```sh
 python3 spec/tools/steward.py verify registries.json
 ```
+
+## Libraries and reference registry (Apache-2.0)
+
+- Python: `pip install pregen` ([`packages/verify-py`](packages/verify-py)), https://pypi.org/project/pregen/
+- JavaScript: `npm install @pregen/verify` ([`packages/verify-js`](packages/verify-js)), https://www.npmjs.com/package/@pregen/verify
+- Reference registry: `pip install pregen-registry` ([`packages/registry`](packages/registry)), https://pypi.org/project/pregen-registry/
+- Guides: [`docs/provider.md`](docs/provider.md) (AI services, no account needed), [`docs/registry.md`](docs/registry.md) (running a registry)
+- Test network: test directory https://www.pregen.org/test/registries.json, sandbox registry https://sandbox.pregen.org
 
 Deploy: Vercel (production branch `main`).

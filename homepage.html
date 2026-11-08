@@ -40,40 +40,82 @@
 </nav>
 </section>
 
-<section class="sec" aria-labelledby="how">
-<h2 id="how">How it works</h2>
-<p class="say">Before an AI generates a real person, a character or a brand, it asks the registry that speaks for them, such as an agency or an estate. It goes ahead only on a signed yes.</p>
-<ol class="cols">
-<li><span class="n">1</span><b>Ask</b><p>The AI tells the registry who it wants to show, and for what.</p></li>
-<li><span class="n">2</span><b>Signed answer</b><p>The registry answers and signs it, so no one can fake it.</p></li>
-<li><span class="n">3</span><b>Only on yes</b><p>The AI generates only on a yes, and keeps the answer as proof.</p></li>
+<section class="num-sec" aria-labelledby="s1">
+<p class="num" aria-hidden="true">01</p>
+<h2 id="s1" class="num-h">PREGEN kills DeepFakes.</h2>
+<p class="num-lede">Fakes have no proof. Real ones carry it.</p>
+<div class="files">
+<figure class="file fake">
+<div class="thumb"><svg class="who" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="44" r="20"/><path d="M22 108c4-22 20-34 38-34s34 12 38 34"/></svg><span class="play" aria-hidden="true"></span></div>
+<figcaption><span class="badge">&#x2715; No proof</span><b>Deepfake</b><span>Easy to spot.</span></figcaption>
+</figure>
+<figure class="file real">
+<div class="thumb"><svg class="who" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="44" r="20"/><path d="M22 108c4-22 20-34 38-34s34 12 38 34"/></svg><span class="play" aria-hidden="true"></span><span class="pgcode">PG-ABCD-000001K</span></div>
+<figcaption><span class="badge">&#x2713; Signed by the registry</span><b>Authorized</b><span>Anyone can check it.</span></figcaption>
+</figure>
+</div>
+</section>
+
+<section class="num-sec" aria-labelledby="s2">
+<p class="num" aria-hidden="true">02</p>
+<h2 id="s2" class="num-h">Terms of Generation <span>(ToG)</span></h2>
+<p class="num-lede">Your rules for your face and voice.</p>
+<div class="tog">
+<div class="rules" aria-label="Example: a person's rules">
+<p class="rules-head"><span>Anna's rules</span><span class="ver">v3</span></p>
+<ul>
+<li><span>Ads</span><span class="ok">&#x2713;</span></li>
+<li><span>Films</span><span class="ok">&#x2713;</span></li>
+<li><span>Politics</span><span class="no">&#x2715;</span></li>
+<li><span>Alcohol</span><span class="no">&#x2715;</span></li>
+<li><span>Where</span><span>US, EU</span></li>
+</ul>
+<p class="rules-foot">Signed by Anna</p>
+</div>
+<ol class="tog-steps">
+<li><b>You write them</b><span>Once, in plain words.</span></li>
+<li><b>AI apps sign them</b><span>Before they make you.</span></li>
+<li><b>Videos show them</b><span>Which rules, which version.</span></li>
+<li><b>You can stop</b><span>No new videos from then on.</span></li>
 </ol>
+</div>
+<p class="num-note">Drafted. Not yet in the standard or on any registry.</p>
 </section>
 
-<section class="sec" aria-labelledby="answers">
-<h2 id="answers">The four answers</h2>
-<dl class="cols four">
-<div><dt>Allow</dt><dd>Yes. The only answer that lets the AI generate.</dd></div>
-<div><dt>Not blocked</dt><dd>No decision here. Not a yes.</dd></div>
-<div><dt>Review</dt><dd>The person decides first.</dd></div>
-<div><dt>Deny</dt><dd>No, with a reason.</dd></div>
-</dl>
-</section>
-
-<section class="sec" aria-labelledby="layers">
-<h2 id="layers">Two layers</h2>
-<p class="say">PRE-GEN is the one thing every AI app and every registry adds. Selling licences is a registry's own, optional layer on top.</p>
-<dl class="cols">
-<div><dt>No PRE-GEN yet?</dt><dd>Add it first: one library, one file on your website. <a href="/connect">Connect your AI</a></dd></div>
-<div><dt>Already have PRE-GEN?</dt><dd>Go straight to the registry you want to buy licences from, for example PRAMPTA. <a href="/docs/two-layers">Two layers</a></dd></div>
-<div><dt>What a yes proves</dt><dd>What the registry said, and when. Not that a use is lawful. PRE-GEN works only where AI apps choose to ask.</dd></div>
-</dl>
+<section class="num-sec" aria-labelledby="s3">
+<p class="num" aria-hidden="true">03</p>
+<h2 id="s3" class="num-h">Infrastructure for AI content commerce</h2>
+<p class="num-lede">How a licence is sold inside an AI app.</p>
+<ol class="flow">
+<li><span class="fn">1</span><b>A person sets a price</b><span>At their registry.</span></li>
+<li><span class="fn">2</span><b>An AI app offers it</b><span>To its users.</span></li>
+<li><span class="fn">3</span><b>A user buys</b><span>Inside the app.</span></li>
+<li><span class="fn">4</span><b>The AI may generate</b><span>A signed yes, a signed licence.</span></li>
+</ol>
+<div class="split" role="img" aria-label="Who is paid: 80% the rights holder, 15% the AI app that sold it, 5% the registry">
+<p class="split-t">Who is paid</p>
+<div class="split-bar" aria-hidden="true"><span class="s-owner">80%</span><span class="s-ai">15%</span><span class="s-reg">5%</span></div>
+<div class="split-keys">
+<div><b>80%</b>The person or brand</div>
+<div><b>15%</b>The AI app that sold it</div>
+<div><b>5%</b>The registry that keeps the right</div>
+</div>
+</div>
+<p class="num-note">Coming. PRE-GEN itself is free. <a href="/docs/two-layers">Two layers</a></p>
 </section>
 
 </div></main>
 <footer class="foot"><div class="wrap">
-<p>PRE-GEN is an open standard by Valerii Egorov, Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
-<nav aria-label="Site"><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification source</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
+<div class="foot-top">
+<div class="foot-brand"><a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="56" height="56" alt="PRE-GEN"></a><p>Pre-Generative Authorization Protocol. AI asks before it generates a real person.</p></div>
+<nav class="foot-cols" aria-label="Site">
+<div><p class="foot-h">Start</p><a href="/connect">Connect your AI</a><a href="/create-registry">Create a registry</a><a href="/lookup">Look up a code</a></div>
+<div><p class="foot-h">Learn</p><a href="/docs">How it works</a><a href="/docs/two-layers">Two layers</a><a href="/faq">FAQ</a><a href="/llms.txt">llms.txt</a></div>
+<div><p class="foot-h">Project</p><a href="/registries">Registries</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification</a><a href="/support">Support</a></div>
+<div><p class="foot-h">Legal</p><a href="/legal">Legal</a><a href="/contact">Contact</a></div>
+</nav>
+</div>
+<div class="foot-bottom"><p>&copy; 2026 Valerii Egorov. Open standard, Apache-2.0. Not owned by any registry, including PRAMPTA.</p><p class="foot-ver">v5</p></div>
 </div></footer>
 </body>
 </html>

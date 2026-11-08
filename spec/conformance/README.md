@@ -21,18 +21,17 @@ sufficient for a conformance claim: `PRE-GEN-SPEC.md` §8 defines the
 profiles and lists, requirement by requirement, what these checks do and do
 not cover. The text is normative; a vector that disagrees with it is an
 erratum (§0.3). **Level 2's refusal-code coverage is a
-representative subset, not all 36 registered codes** — one per category
+representative subset, not every registered code** — one per category
 (request/identity/subject_trust/license) plus happy-path, a receipt, and
 audit-chain re-validation. `review` (`PG_HELD_FOR_REVIEW`, the only code in
 that category) isn't covered — it needs a high-risk-subject precondition
-heavier than the others. Full 36-code coverage is real, separate, tracked
-work, not implied here.
+heavier than the others. Full coverage is separate work, not implied here.
 
 ## Level 1 — offline (`level1/`)
 
 A CLI adapter protocol: one JSON request on stdin, one JSON response on
 stdout, one process per call. This is what makes Level 1 usable by an
-implementation in *any* language, not just the four already in this repo.
+implementation in *any* language, not just the two libraries in this repository.
 
 ```
 {"op": "canonical_json", "input": {...}}
@@ -87,60 +86,27 @@ cases already carry a precomputed signature from a fixed public test key,
 so an adapter's job is to canonicalize the body and verify that signature
 — exactly what a real consumer does, never what only PRAMPTA does.
 
-Run against one implementation:
+Run against one implementation: write an adapter (any language) that answers the ops above, then, from the
+repository root,
 
 ```bash
-# Backend (source of truth)
-python3 level1/run_conformance.py --adapter "python3 level1/adapters/backend_adapter.py"
-
-# Reference server (pg_registry.py) -- crypto only, predates the PG-code redesign
-python3 level1/run_conformance.py --adapter "python3 level1/adapters/reference_adapter.py"
-
-# Python SDK -- crypto only
-python3 level1/run_conformance.py --adapter "python3 level1/adapters/python_sdk_adapter.py"
-
-# TypeScript SDK -- crypto, licenses and namespace directory; no code issuance
-cd ../../sdk/typescript && npm ci   # once, for sucrase-node + @noble/ed25519
-python3 ../../spec/conformance/level1/run_conformance.py \
-  --adapter "sdk/typescript/node_modules/.bin/sucrase-node spec/conformance/level1/adapters/typescript_sdk_adapter.ts" \
-  --env "NODE_PATH=$(pwd)/node_modules"
+python3 spec/conformance/level1/run_conformance.py --adapter "<your command>"
 ```
 
-`backend/tests/test_conformance_level1.py` runs all four in CI
-(`.github/workflows/ci.yml`'s `conformance` job) as part of the normal
-backend test suite.
-
-## Level 2 — live server (`level2/`)
-
-Pure JSON scenario files (`level2/scenarios/*.json`) — an ordered list of
-HTTP steps, each with an expected status and (optionally) fields to check
-in the response and values to save into named variables for later steps.
-No embedded crypto anywhere: every subject registers managed-custody (the
-only custody mode since self-custody registration was retired platform-
-wide — `backend/app/api/subjects/registration.py`'s own docstring), and
-managed-custody license issuance needs no client signature either
-(`backend/app/api/licenses.py::issue_presigned`). That's what keeps these
-scenarios genuinely portable to a foreign server implementation, not just
-readable as documentation of one.
-
-Run against any live server:
+The two libraries ship adapters, and each release runs them first:
 
 ```bash
-python3 level2/run_scenarios.py --base-url http://localhost:8000/v1
+python3 spec/conformance/level1/run_conformance.py --adapter "python3 packages/verify-py/tests/conformance_adapter.py"
+python3 spec/conformance/level1/run_conformance.py --adapter "node packages/verify-js/test/conformance-adapter.js"
 ```
 
-`scripts/conformance-level2-drill.sh` (repo root) spins up a real backend
-against a throwaway SQLite database, runs the scenarios, and tears down —
-the same background-uvicorn / poll-`/healthz` / `trap ... EXIT` shape
-`scripts/restore-drill.sh` already uses for the backup/restore drill, not
-a new pattern. This is what CI runs.
+## Level 2 — live server
+
+Level 2 is a set of HTTP scenarios: each step a request with an expected status and the fields to check in the
+answer. They run against the first registry's earlier interface (`/v1`) and are not published in this repository
+yet.
 
 ## Sabotage-testing this suite
 
-If you're modifying the runner or an adapter, prove it actually catches a
-real break before trusting it: temporarily corrupt one character of
-`backend/app/core/crypto.py::canonical_json`'s separator, rerun Level 1
-against the backend adapter, confirm a clear multi-case failure, then
-revert. This is exactly how Level 1 was itself verified while being built
-— see `future_warnings_for_valera.md`'s "Закрытые" log, 2026-08-24 entry,
-for the actual sabotage run and its output.
+If you change the runner or an adapter, prove it catches a real break before trusting it: corrupt one character of
+your implementation's canonical JSON, rerun Level 1, confirm a clear multi-case failure, then revert.

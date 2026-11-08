@@ -29,7 +29,7 @@
 <main><div class="wrap">
 <div class="doc"><aside><ul><li><a href="/docs">How it works</a></li><li><a href="/docs/two-layers">Two layers</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versions</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Add it to your service</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa" aria-current="page">C2PA</a></li><li><a href="/docs/implement">Build it</a></li></ul></aside><article><h1>PRE-GEN inside C2PA</h1>
     <p class="meta">PRE-GEN v5 · v5 bundle: <span class="mono">pg.proof.v1</span> (assertion label <span class="mono">org.pregen.proof</span>) · earlier assertion: <span class="mono">pg.assertion.v1</span> · not yet tested end to end with a platform</p>
-    <p><strong>Version 5.</strong> The <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/proof.md">proof</a> extension carries the whole signed record in a C2PA manifest: for every subject of the job, the request, the registry's answer, the provider's report naming the output's SHA-256 (and soft bindings that survive re-encoding), and the registry's acknowledgement. When metadata was stripped, a platform fetches the registry's part by the report id. A platform checks it as of the moment the output was made, and against the file. The rest of this page describes the earlier assertion, which stays valid.</p>
+    <p><strong>Version 5.</strong> The <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/proof.md">proof</a> extension carries the whole signed record in a C2PA manifest: for every subject of the job, the request, the registry's answer, the provider's report naming the output's SHA-256 (and soft bindings that survive re-encoding), and the registry's acknowledgement. When metadata was stripped, the holder presents the bundle, or a platform that knows the report id fetches the registry's part. A platform checks it as of the moment the output was made, and against the file. The rest of this page describes the earlier assertion, which stays valid.</p>
 
     <p>
       C2PA answers <strong>“who made this and when”</strong>. It does not answer
@@ -128,8 +128,16 @@ X-Licensee-ID: lic-…
     </p><nav class="pager" aria-label="Pages"><a href="/docs/proves">← What it proves</a><a href="/docs/implement">Build it →</a></nav></article></div>
 </div></main>
 <footer class="foot"><div class="wrap">
-<p>PRE-GEN is an open standard by Valerii Egorov, Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
-<nav aria-label="Site"><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification source</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
+<div class="foot-top">
+<div class="foot-brand"><a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="56" height="56" alt="PRE-GEN"></a><p>Pre-Generative Authorization Protocol. AI asks before it generates a real person.</p></div>
+<nav class="foot-cols" aria-label="Site">
+<div><p class="foot-h">Start</p><a href="/connect">Connect your AI</a><a href="/create-registry">Create a registry</a><a href="/lookup">Look up a code</a></div>
+<div><p class="foot-h">Learn</p><a href="/docs">How it works</a><a href="/docs/two-layers">Two layers</a><a href="/faq">FAQ</a><a href="/llms.txt">llms.txt</a></div>
+<div><p class="foot-h">Project</p><a href="/registries">Registries</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification</a><a href="/support">Support</a></div>
+<div><p class="foot-h">Legal</p><a href="/legal">Legal</a><a href="/contact">Contact</a></div>
+</nav>
+</div>
+<div class="foot-bottom"><p>&copy; 2026 Valerii Egorov. Open standard, Apache-2.0. Not owned by any registry, including PRAMPTA.</p><p class="foot-ver">v5</p></div>
 </div></footer>
 </body>
 </html>

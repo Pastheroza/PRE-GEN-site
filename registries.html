@@ -29,7 +29,7 @@
 <main><div class="wrap">
 <h1>Registries</h1>
 <p class="lede">Who runs PRE-GEN today. Registries and AI services are listed here so they can find each other.</p>
-<p class="meta">Updated 2026-10-14 · machine-readable: <a href="/registries.json">registries.json</a>, signed by the <a href="/docs/pg-code">steward key</a></p>
+<p class="meta">Updated 2026-11-06 · directory sequence 3 (2026-10-14) · machine-readable: <a href="/registries.json">registries.json</a>, signed by the <a href="/docs/pg-code">steward key</a></p>
 
 <h2>Status</h2>
 <div class="table"><table>
@@ -43,7 +43,7 @@
 <tr><td>Second registry</td><td>None yet</td></tr>
 <tr><td>Independent implementation passing the tests</td><td>None yet. <a href="/docs/implement">Build one</a></td></tr>
 <tr><td>Revoked registries or keys</td><td>None</td></tr>
-<tr><td>Same person in two registries</td><td>The claim the person confirmed on their own channel decides; unproven conflicts stop generation (<a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/identity.md">identity</a>)</td></tr>
+<tr><td>Same person in two registries</td><td>The claim the person confirmed on their own channel decides; with none confirmed, the result is <code>not_blocked</code>, which permits nothing (<a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/identity.md">identity</a>)</td></tr>
 <tr><td>Proof carried with the output</td><td>Specified (<a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/proof.md">proof</a>); not yet tested end to end with a platform</td></tr>
 </tbody></table></div>
 
@@ -78,7 +78,7 @@
 <h2>Working together</h2>
 <p><strong>Every code belongs to exactly one registry.</strong> Each registry issues codes under its own prefix, so codes never collide. Bare <code>PG-…</code> codes issued before version 5 keep their meaning; no registry issues new ones. A registry asked about another registry's code points here.</p>
 <ul>
-<li><strong>Who proved it, not who came first.</strong> When several registries claim the same public person, a claim the person confirmed on their own official channel wins. A refusal of the person in any registry holds in all of them. Several unconfirmed claims stop generation until someone proves one. A matching name is never evidence.</li>
+<li><strong>Who proved it, not who came first.</strong> When several registries claim the same public person, a claim the person confirmed on their own official channel wins. Among claims the person confirmed on their own official channel, a refusal of the person in any registry holds in all of them. With no confirmed claim PRE-GEN says nothing: the result is <code>not_blocked</code> (<code>PG_IDENTITY_UNCONFIRMED</code>), which permits nothing and refuses nothing. An impostor can neither permit nor freeze a person. A matching name is never evidence.</li>
 <li><strong>Complaints.</strong> A registry answers within seven days: a first response and protective steps such as a freeze, not necessarily a final decision. The steward can record a proven false claim in the directory. Repeated false claims are grounds for removal.</li>
 <li><strong>No middleman.</strong> AI services and registries talk directly. Services that make it easier are optional and open to anyone.</li>
 </ul>
@@ -86,8 +86,16 @@
 
 </div></main>
 <footer class="foot"><div class="wrap">
-<p>PRE-GEN is an open standard by Valerii Egorov, Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
-<nav aria-label="Site"><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification source</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
+<div class="foot-top">
+<div class="foot-brand"><a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="56" height="56" alt="PRE-GEN"></a><p>Pre-Generative Authorization Protocol. AI asks before it generates a real person.</p></div>
+<nav class="foot-cols" aria-label="Site">
+<div><p class="foot-h">Start</p><a href="/connect">Connect your AI</a><a href="/create-registry">Create a registry</a><a href="/lookup">Look up a code</a></div>
+<div><p class="foot-h">Learn</p><a href="/docs">How it works</a><a href="/docs/two-layers">Two layers</a><a href="/faq">FAQ</a><a href="/llms.txt">llms.txt</a></div>
+<div><p class="foot-h">Project</p><a href="/registries">Registries</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification</a><a href="/support">Support</a></div>
+<div><p class="foot-h">Legal</p><a href="/legal">Legal</a><a href="/contact">Contact</a></div>
+</nav>
+</div>
+<div class="foot-bottom"><p>&copy; 2026 Valerii Egorov. Open standard, Apache-2.0. Not owned by any registry, including PRAMPTA.</p><p class="foot-ver">v5</p></div>
 </div></footer>
 </body>
 </html>

@@ -38,7 +38,7 @@
     },
     "authority": {
       "type": "string",
-      "description": "the registry's prefix (\"\" for the origin's bare namespace)"
+      "description": "the registry's prefix (\"\" for the closed legacy bare namespace)"
     },
     "provider_id": {
       "type": "string",

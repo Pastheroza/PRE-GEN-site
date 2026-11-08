@@ -36,9 +36,10 @@ document, as in OAuth's client-id metadata documents.
 3. **Return.** The authority redirects to `redirect_uri?code=…&state=…&iss=<authority>`. The
    app checks `state` and that `iss` is the authority it started with.
 4. **Exchange.** The app posts `pg.bind_exchange.v1`, signed with its current key, to
-   `bind.token`: `{signers, provider_id, code, code_verifier, redirect_uri, issued_at}`. The code
-   is single-use, lives 60 seconds, and is bound to the client, the redirect URI and the
-   challenge.
+   `bind.token` with the header `X-Provider-ID: {provider URL}`:
+   `{signers, provider_id, code, code_verifier, redirect_uri, issued_at}`, with `issued_at`
+   within 60 seconds. The code is single-use, lives 60 seconds, and is bound to the client, the
+   redirect URI and the challenge.
 5. **Binding.** The answer is `{"binding": <pg.binding.v1>}`, which the app stores on the
    person's account in the app.
 
@@ -49,7 +50,7 @@ document, as in OAuth's client-id metadata documents.
 | Member | Rule |
 |---|---|
 | `signers` | `[{role: "registry", key_id}]` |
-| `authority` | the registry's prefix (`""` for the origin's bare namespace) |
+| `authority` | the registry's prefix (`""` for the closed legacy bare namespace) |
 | `provider_id` | the provider URL, or a registry-issued id |
 | `licensee_id` | what the app puts in requests: **random and new for every binding**, so it differs for every app and means nothing anywhere else |
 | `grants` | the grant and licence ids the person chose on the consent screen |
@@ -76,7 +77,8 @@ document, as in OAuth's client-id metadata documents.
   signed.
 - **B-3c The answer names the binding.** An `allow` on a request with a bound `licensee_id`
   carries `ext.bind = {"binding": <the binding's message id>}`. `basis` stays `{kind, grant}`,
-  which every current client checks; a proof verifier reads `ext.bind`.
+  which every current client checks; a proof verifier may read `ext.bind`; `check_proof` /
+  `checkProof` do not check it yet.
 - **B-4 Grant scope still applies.** A grant that names `providers` is reached only through a
   binding to one of them (`PG_SCOPE_VIOLATION` otherwise); a grant without `providers` is
   usable through any bound provider.
@@ -87,13 +89,24 @@ document, as in OAuth's client-id metadata documents.
 
 ## What the person holds
 
-`GET {api}/v2/grants?licensee_id=…` (with `PG-Access` or the provider's credential): only a
-provider bound to that licensee may call it, and it sees only the binding's `grants`:
-`{"grants": [{"id", "grant", "status", "remaining"}]}`. `grant` is the signed `pg.grant.v1`;
-`status` (`active`, `paused`, `revoked`, `expired`) and `remaining` are unsigned and inform the
-app's interface. Only an `allow` permits.
+`GET {api}/v2/grants?licensee_id=…` with `X-Provider-ID` and `PG-Access` (or the provider's own
+credential at a registry that issued one): only a provider bound to that licensee may call it,
+and it sees only the binding's `grants`:
+`{"grants": [{"id", "status", "remaining", "grant"?, "terms"?}]}`. `grant` is the signed
+`pg.grant.v1` where the registry declares `grants`; otherwise `terms` gives the licence's terms,
+unsigned. `status` (`active`, `paused`, `revoked`, `expired`) and `remaining` are unsigned and
+inform the app's interface. Only an `allow` permits.
+
+## Errors
+
+| Code | HTTP | Meaning |
+|---|---|---|
+| `PG_NOT_AUTHENTICATED` | 401 | the exchange's signature, `provider_id` or `issued_at` is not accepted |
+| `PG_BIND_CODE` | 400 | the code is unknown, used or expired, or not for this client, redirect URI or verifier |
+| `PG_NOT_BOUND` | 403 | a request names a licensee with no active binding to this provider (B-5) |
 
 ## Status
 
-A registry that offers it lists `bind` in its document, with its endpoints. The open reference
+A registry that offers it lists `bind` in its document, with its endpoints. PRAMPTA implements
+it (its registry document lists `bind`). The open reference
 registry (`packages/registry`) does not implement `bind` yet and lists it under its limits.

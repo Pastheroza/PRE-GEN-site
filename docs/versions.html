@@ -31,7 +31,7 @@
     <p class="meta"><strong>PRE-GEN v5</strong>, 12 October 2026 — the current version · <a href="/spec/PRE-GEN-v5.pdf">PDF</a> · <a href="/spec/VERSIONS.md">VERSIONS.md</a></p>
 
     <h2>Specification versions</h2>
-    <p>PRE-GEN has one version number, the same here, in the <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">specification source</a> and on Zenodo. Each version is one Zenodo release under the concept DOI <a href="https://doi.org/10.5281/zenodo.20129901">10.5281/zenodo.20129901</a>, which always resolves to the latest.</p>
+    <p>PRE-GEN has one version number, the same here, in the <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">specification source</a> and on Zenodo. Each version is one Zenodo release under the concept DOI <a href="https://doi.org/10.5281/zenodo.20129901">10.5281/zenodo.20129901</a>. Until the v5 record is published there, that DOI resolves to v4 (2026-06-01), which v5 supersedes. The current text is this site and the <a href="/spec/PRE-GEN-v5.pdf">v5 PDF</a>.</p>
     <div class="table"><table>
       <thead><tr><th>Version</th><th>Date</th><th>Title</th><th>DOI</th></tr></thead>
       <tbody>
@@ -50,7 +50,7 @@
     </ul>
 
     <h2>v5 message types</h2>
-    <p>The v5 interface names each message by its <code>type</code>, and the type is part of the signed bytes, so a signature over one kind of message can never be replayed as another: <code>pg.request.v1</code>, <code>pg.answer.v1</code>, <code>pg.report.v1</code>, <code>pg.report_ack.v1</code>, <code>pg.keyset.v1</code>, <code>pg.grant.v1</code>, <code>pg.anchors.v1</code>, and the bundle <code>pg.proof.v1</code>. JSON Schemas for each are in <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec/schemas">spec/schemas</a>. The markers below belong to the earlier interface, which stays valid.</p>
+    <p>The v5 interface names each message by its <code>type</code>, and the type is part of the signed bytes, so a signature over one kind of message can never be replayed as another: <code>pg.request.v1</code>, <code>pg.answer.v1</code>, <code>pg.report.v1</code>, <code>pg.report_ack.v1</code>, <code>pg.keyset.v1</code>, <code>pg.grant.v1</code>, <code>pg.anchors.v1</code>, <code>pg.access.v1</code> (provider-identity), <code>pg.bind_exchange.v1</code> and <code>pg.binding.v1</code> (bind), and the bundle <code>pg.proof.v1</code>. JSON Schemas for each are in <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec/schemas">spec/schemas</a>. The markers below belong to the earlier interface, which stays valid.</p>
 
     <h2>Signed object markers (earlier interface)</h2>
     <p class="meta">Updated 2026-10-17 · Independent of the specification version</p>
@@ -118,8 +118,16 @@
     </p><nav class="pager" aria-label="Pages"><a href="/docs/pg-code">← PG codes</a><a href="/docs/refusal-codes">Refusal codes →</a></nav></article></div>
 </div></main>
 <footer class="foot"><div class="wrap">
-<p>PRE-GEN is an open standard by Valerii Egorov, Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
-<nav aria-label="Site"><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification source</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
+<div class="foot-top">
+<div class="foot-brand"><a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="56" height="56" alt="PRE-GEN"></a><p>Pre-Generative Authorization Protocol. AI asks before it generates a real person.</p></div>
+<nav class="foot-cols" aria-label="Site">
+<div><p class="foot-h">Start</p><a href="/connect">Connect your AI</a><a href="/create-registry">Create a registry</a><a href="/lookup">Look up a code</a></div>
+<div><p class="foot-h">Learn</p><a href="/docs">How it works</a><a href="/docs/two-layers">Two layers</a><a href="/faq">FAQ</a><a href="/llms.txt">llms.txt</a></div>
+<div><p class="foot-h">Project</p><a href="/registries">Registries</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification</a><a href="/support">Support</a></div>
+<div><p class="foot-h">Legal</p><a href="/legal">Legal</a><a href="/contact">Contact</a></div>
+</nav>
+</div>
+<div class="foot-bottom"><p>&copy; 2026 Valerii Egorov. Open standard, Apache-2.0. Not owned by any registry, including PRAMPTA.</p><p class="foot-ver">v5</p></div>
 </div></footer>
 </body>
 </html>

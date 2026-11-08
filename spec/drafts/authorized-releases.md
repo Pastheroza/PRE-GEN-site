@@ -19,7 +19,7 @@ artist's name ([Spotify](https://support.spotify.com/us/artists/article/music-th
 |---|---|
 | The artist permits their voice for released music | A signed grant (`grants`): purposes, territory, time, limits |
 | A creator makes a track, possibly with several voices | The core request and answer, one per subject (`jobs`), for a connected creator (`licensee`) |
-| The track carries its stamp | The proof bundle (`proof`) in a C2PA manifest or a watermark, with soft bindings for re-encoded audio |
+| The track carries its stamp | The proof bundle (`proof`) in a C2PA manifest, with soft bindings for re-encoded audio |
 | A distributor or platform checks it | `checkProof` / `check_proof` in both libraries |
 | Use is recorded and billed | Signed reports and acknowledgements (`reports`); the registry's statement (`catalog`) |
 

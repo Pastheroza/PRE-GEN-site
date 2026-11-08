@@ -28,7 +28,7 @@
 </div></header>
 <main><div class="wrap">
 <div class="doc"><aside><ul><li><a href="/docs">How it works</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versions</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk" aria-current="page">Add it to your service</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Build it</a></li></ul></aside><article><h1>Add PRE-GEN to your AI service</h1>
-<p class="meta">HTTP · v5: <span class="mono">POST /v2/requests</span> and <span class="mono">checkAnswer</span> in <span class="mono">@pregen/verify</span> / <span class="mono">check_answer</span> in <span class="mono">pregen</span> 0.12.0 · earlier interface: <span class="mono">/v1/verify</span> and the reference TypeScript SDK <span class="mono">@prampta/sdk</span></p>
+<p class="meta">HTTP · v5: <span class="mono">POST /v2/requests</span> and <span class="mono">checkAnswer</span> in <span class="mono">@pregen/verify</span> / <span class="mono">check_answer</span> in <span class="mono">pregen</span> 0.12.0 · earlier interface: <span class="mono">/v1/verify</span></p>
 <p>Three steps: ask the registry, check its signed answer, generate only on a yes. No account anywhere: your identity is your domain and a key you make. Serve one small file on your domain, sign your requests, and every <a href="/registries">registry</a> that accepts apps by their domain answers you; it may check your app before it says yes. Selling licences is a registry's own, optional business (<a href="/docs/two-layers">two layers</a>).</p>
 <h2>Ask, check, generate</h2>
 <pre><code>POST {api}/v2/requests
@@ -60,10 +60,7 @@ pregen.check_answer(answer, request, directory)                 # raises with th
 <tbody>
 <tr><td class="mono">@pregen/verify</td><td class="mono">0.8.0</td><td><code>checkDecision</code>: signature by a key the directory lists for the namespace, not revoked (V-14); exact request match; supported <code>schema_version</code>; <code>issued_at</code> and <code>expires_at</code> at most 900 seconds apart; no unknown <code>critical</code> member (E-3); optional <code>requireVerifiedAuthority</code>. Directory: continuity, revocations kept across a steward handover (0.7.0: a thief's later revocations can be annulled), successor steward key. Offline simulator with PRAMPTA's receipt rules (0.8.0).</td></tr>
 <tr><td class="mono">pregen</td><td class="mono">0.8.0</td><td>the same, for Python</td></tr>
-<tr><td class="mono">@prampta/sdk</td><td class="mono">0.11.3</td><td><code>generateAuthorized</code> with a required journal: one worker per job through an atomic <code>claim</code>, one request per <code>generationId</code>, a re-check right before generating, the output hash stored before receipts, a receipt counted as filed only when the registry accepted exactly it. Strict decision checks with or without <code>pregenDirectory</code>. Also <code>createPregen</code> for the version 5 interface (<code>/v2</code>) as PRAMPTA serves it. Needs Node 20.19+ or 22.12+.</td></tr>
 </tbody></table></div>
-<p>The shortest safe path: install the SDK → sandbox secret → the setup below, which turns on every check → <code>generateAuthorized</code>. Over raw HTTP: <code>/v1/verify</code> → <code>checkDecision</code> → generate → receipt, and you build the job rules yourself.</p>
-<p class="note">Two libraries, two jobs: <span class="mono">@prampta/sdk</span> asks the PRAMPTA registry for a decision; <span class="mono">@pregen/verify</span> (on PyPI: <span class="mono">pregen</span>) checks that any registry's answer is genuine.</p>
 <p class="note">Keep the provider secret on your server. It never goes to a browser, a URL or client code. Send a hash of the prompt, never the prompt.</p>
 
 <h3>Ask before generating (legacy)</h3>
@@ -128,35 +125,6 @@ status, ack = sim.receipt(receipt, "acme", "lic-1")   # (200, {"status": "record
 <li><strong>Usage limits at PRAMPTA.</strong> On a licence with <code>max_uses</code>, every allow uses up one use, receipt or not. If you did not generate, give it back before any receipt and within 24 hours with <code>POST /v1/receipts/{decision_id}/release</code>; the statement is kept in the signed audit log. An allow on a licence with <code>concurrency_limit</code> holds a slot until its receipt, its release, or 24 hours.</li>
 <li><strong>Without receipts</strong> you keep only the decisions: proof of what you asked, not of what you made. A provider becomes available to users outside its own team only after one production allow followed by its receipt.</li>
 </ul>
-<h3>TypeScript SDK (legacy)</h3>
-<pre><code>npm install @prampta/sdk@^0.11.3</code></pre>
-<p>The main setup: the signed PRE-GEN directory, your independently pinned operator key, and a journal in your own database whose <code>claim</code> is atomic across all your servers.</p>
-<pre><code>import { Prampta, loadPregenDirectory } from "@prampta/sdk";
-
-const pregenDirectory = await loadPregenDirectory({ previous: saved }); // steward key built in
-const pg = new Prampta({
-  baseUrl: "https://api2.prampta.com", providerId, licenseeId,
-  token: process.env.PRAMPTA_TOKEN,                              // server-side only
-  operatorPublicKeyHex: process.env.PRAMPTA_OPERATOR_PUBLIC_KEY, // obtained independently
-  pregenDirectory,
-});
-
-// claim: INSERT ... ON CONFLICT DO NOTHING; if no row was inserted, return the stored entry
-const journal = {
-  claim: async (e) => (await db.insertIfAbsent(e.generationId, e)) ? null : db.get(e.generationId),
-  put: async (e) => db.update(e.generationId, e),
-};
-
-const result = await pg.generateAuthorized(
-  { subjectIds: [subjectCode], generationId: jobId, promptHash, model, modality: "image",
-    intendedUse: { useCase: "commercial" } },
-  async (decisions) => { const image = await render(prompt); return { output: image, outputBytes: image.bytes }; },
-  { journal },
-);
-// result.unreported: call again with the same jobId and request. result.conflicts: investigate.</code></pre>
-<p class="note">A journal is not a lock unless its <code>claim</code> is atomic in storage every worker shares. <code>singleProcessJournal()</code> is for tests and one process only.</p>
-<p><code>verify()</code>, <code>assertAllowed()</code> and <code>assertLicensed()</code> are lower-level: they check one decision and leave claiming, retries and receipts to you. Without <code>pregenDirectory</code> they check the signature against your pinned key but not the directory (namespace, revocation).</p>
-
 <h3>Sandbox test subjects (legacy)</h3>
 <div class="table"><table>
 <thead><tr><th>subject_id</th><th>Expected answer (research use, <code>lic-sandbox</code>)</th></tr></thead>
@@ -172,8 +140,16 @@ const result = await pg.generateAuthorized(
 <nav class="pager" aria-label="Pages"><a href="/docs/refusal-codes">← Refusal codes</a><a href="/docs/proves">What it proves →</a></nav></article></div>
 </div></main>
 <footer class="foot"><div class="wrap">
-<p>PRE-GEN is an open standard by Valerii Egorov, Apache-2.0. It is not owned by any registry, including PRAMPTA.</p>
-<nav aria-label="Site"><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification source</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="/legal">Legal</a><a href="/llms.txt">llms.txt</a></nav>
+<div class="foot-top">
+<div class="foot-brand"><a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="56" height="56" alt="PRE-GEN"></a><p>Pre-Generative Authorization Protocol. AI asks before it generates a real person.</p></div>
+<nav class="foot-cols" aria-label="Site">
+<div><p class="foot-h">Start</p><a href="/connect">Connect your AI</a><a href="/create-registry">Create a registry</a><a href="/lookup">Look up a code</a></div>
+<div><p class="foot-h">Learn</p><a href="/docs">How it works</a><a href="/docs/two-layers">Two layers</a><a href="/faq">FAQ</a><a href="/llms.txt">llms.txt</a></div>
+<div><p class="foot-h">Project</p><a href="/registries">Registries</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification</a><a href="/support">Support</a></div>
+<div><p class="foot-h">Legal</p><a href="/legal">Legal</a><a href="/contact">Contact</a></div>
+</nav>
+</div>
+<div class="foot-bottom"><p>&copy; 2026 Valerii Egorov. Open standard, Apache-2.0. Not owned by any registry, including PRAMPTA.</p><p class="foot-ver">v5</p></div>
 </div></footer>
 </body>
 </html>

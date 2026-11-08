@@ -759,7 +759,7 @@ class Registry:
         return {"provider_id": provider_id, "grants": list(out.values())}
 
     def proof(self, short_id: str) -> dict:
-        """proof.md: the part of a proof this registry holds, found from the id a watermark carries."""
+        """proof.md: the part of a proof this registry holds, found by its report id."""
         if not re.fullmatch(r"[0-9a-f]{16}", short_id):
             raise ProtocolError("PG_MALFORMED", "a proof id is 16 hex characters")
         rows = self._q("SELECT r.envelope AS report, r.ack, k.request, a.envelope AS answer FROM reports r "

@@ -1,7 +1,9 @@
 # PRE-GEN Protocol Specification
 
-**Version:** PRE-GEN v5 (2026-10-12) · Zenodo concept DOI
-[10.5281/zenodo.20129901](https://doi.org/10.5281/zenodo.20129901) ·
+**Version:** PRE-GEN v5 (2026-10-12, published on pregen.org; the Zenodo
+record is pending, so the concept DOI
+[10.5281/zenodo.20129901](https://doi.org/10.5281/zenodo.20129901) still
+resolves to v4) ·
 **Vectors:** `spec/test-vectors/vectors.json`
 · **License:** Apache License 2.0 — see [`spec/LICENSE`](LICENSE); licensed
 separately from the PRAMPTA service, same as [`spec/README.md`](README.md)
@@ -239,7 +241,7 @@ are in `PRE-GEN-EXTENSIONS.md` X.2.
 | `model` | string | |
 | `modality` | string | |
 | `intended_use` | object | echoes the request's `intended_use` |
-| `obligations` | object | obligations the licensee must satisfy (watermarking, disclosure, …) |
+| `obligations` | object | obligations the licensee must satisfy (disclosure, …; a legacy `watermark` value is recognised, not used) |
 | `subject_authority` | string | how well the registry has established who holds the subject's rights: `self` (the registrant's own claim), `agency_asserted` (an agent's claim), `consented` (the subject's documented consent), `verified` (the registry checked identity and authority). Distinct from whether a licence exists. A provider MAY refuse to generate commercially on anything below `verified` |
 | `generation_id` | string | echoed from the request |
 | `issued_at` | integer | Unix seconds |
@@ -358,7 +360,7 @@ inclusion — the one signed object where every field is unconditional):
 | `output_hash` | string — mandatory proof a generation actually happened |
 | `model` | string |
 | `obligations_applied` | object |
-| `watermark_embedded` | boolean |
+| `watermark_embedded` | boolean (legacy: recognised, not used) |
 | `generated_at` | integer, Unix seconds |
 
 `pg.receipt.v2` is the default when neither `v` nor `schema_version` is sent.
@@ -740,7 +742,8 @@ and human review (`PG_HELD_FOR_REVIEW`, disposition `review`).
 - **P-7** A decision authorizes the one generation it answers. It MAY be
   reused only as the registry's extension permits (first registry: X.3), and never
   after `expires_at`.
-- **P-8** Obligations returned in `obligations` (watermark, disclosure, …)
+- **P-8** Obligations returned in `obligations` (disclosure, …; a legacy `watermark`
+  value is recognised, not used)
   MUST be applied to an output generated under an allow, and reported in the
   receipt (§5.5).
 - **V-9** A license MUST be checked as §1.2 states: both signatures, the
@@ -785,7 +788,7 @@ and human review (`PG_HELD_FOR_REVIEW`, disposition `review`).
 After generating under an allow, the provider SHOULD file one receipt. The
 request carries `decision_id`, `prompt_hash`, `output_hash` (SHA-256 hex of
 the output; REQUIRED), `model`, `obligations_applied` (object),
-`watermark_embedded` (boolean), `generated_at` (Unix seconds), optionally
+`watermark_embedded` (boolean; legacy: recognised, not used), `generated_at` (Unix seconds), optionally
 `schema_version` / `v` (`pg.receipt.v2` default, `pg.receipt.v3`) and
 `event_type` (v3), and `provider_signature` (hex).
 
@@ -924,6 +927,18 @@ confused:
 An implementation claims conformance to one or more profiles of
 **PRE-GEN v5**, by name:
 
+- **PRE-GEN v5 Provider (message interface)** — `PRE-GEN-CORE.md` rules 1–5
+  and Messages; Level 1 operations `message_id`, `signing_input`,
+  `verify_envelope` and `check_answer`.
+- **PRE-GEN v5 Registry (message interface)** — `PRE-GEN-CORE.md`, its
+  registry document and a profile (`profiles/`).
+
+Extensions from `extensions/` (for example `provider-identity`, `bind`,
+`reports`, `proof`) are claimed by name on top of these two.
+
+The earlier interface (`pg.decision.v1`, `/v1/verify`, receipts) has three
+profiles:
+
 - **PRE-GEN v5 Verifier** — V-1 to V-4, V-9 to V-12, V-14, E-3; §2 and §2.1
   exactly; PG codes parsed and checked as `PG-CODE.md` states.
 - **PRE-GEN v5 Provider** — everything in Verifier, plus P-5 to P-10 and
@@ -949,10 +964,11 @@ required operations; optional unsupported operations are reported as skips.
 
 ### 8.2 What the published checks cover
 
-Passing the checks is necessary for a claim, **not sufficient**. The checks
-are the vectors (`test-vectors/vectors.json`), replayed by the Level 1
-runner, and the Level 2 HTTP scenarios (`conformance/`). Everything marked
-"not checked" below rests on the implementer's reading of the text.
+Passing the checks is necessary for a claim, **not sufficient**. The published
+checks are the vectors (`test-vectors/vectors.json`, `messages.json`,
+`answers.json`, `small-order-keys.json`), replayed by the Level 1 runner
+(`conformance/`). The Level 2 HTTP scenarios named below are not published in
+this repository yet. Everything marked "not checked" below rests on the implementer's reading of the text.
 
 | Requirement | Checked by |
 |---|---|
@@ -985,8 +1001,8 @@ has yet passed the checks. Until one has, compatibility between independent
 implementations is specified but **not demonstrated**.
 
 *Informative:* how to run the checks is in
-[`conformance/README.md`](conformance/README.md); CI runs them against the
-four implementations in this repository.
+[`conformance/README.md`](conformance/README.md); each release of the two
+libraries in this repository (`pregen`, `@pregen/verify`) runs Level 1 first.
 
 ---
 
@@ -1001,11 +1017,11 @@ extension in `PRE-GEN-EXTENSIONS.md`; its policy (E-5) is summarised in X.1.
   retired, and licenses signed under `self` custody earlier still verify.
 - **C2PA.** PRAMPTA issues `pg.assertion.v1` (extension X.7). No end-to-end
   integration with a C2PA manifest has been tested.
-- **Namespace.** PRAMPTA holds the legacy bare codes it issued before v5
-  and moves to the prefix `PRAM` for new codes once the directory lists it. The steward key is published (`PG-CODE.md` §9.1, 2026-10-03) and
-  the directory on pregen.org is signed; at the time of writing it is at
-  `sequence` 2, which adds the next PRAMPTA operator key and the successor
-  steward key. The verification libraries `@pregen/verify` (npm) and
+- **Namespace.** PRAMPTA holds the legacy bare codes it issued before v5;
+  the directory lists it under `PRAM` since `sequence` 3 (2026-10-14), and its
+  new codes carry that prefix. The steward key is published (`PG-CODE.md` §9.1, 2026-10-03) and
+  the directory on pregen.org is signed; `sequence` 2 added the next PRAMPTA
+  operator key and the successor steward key, `sequence` 3 the `PRAM` listing. The verification libraries `@pregen/verify` (npm) and
   `pregen` (PyPI) check it with the steward key built in (0.3.0 or later;
   0.4.0 adds the offline simulator; 0.5.0 checks revocation, V-14, and
   `critical`, E-3). `@prampta/sdk` 0.7.0 and later uses
@@ -1095,8 +1111,9 @@ before hitting one in production.
   an allow needs mechanisms v5 does not specify.
 - **Revocation reaches only verifiers that refresh.** The steward can
   revoke a registry or a key (`PG-CODE.md` §9.1, V-14), but a verifier
-  learns of it only from a directory it fetches, and v5 does not say how
-  often. An object's own `issued_at` does not show that it was signed before
+  learns of it only from a directory it fetches, at least once every
+  24 hours (`PRE-GEN-CORE.md` rule 2), so a revocation can take up to a day to
+  reach it. An object's own `issued_at` does not show that it was signed before
   a theft, so everything a revoked key signed loses its authority, the
   genuine included; proving "signed before" with external timestamps is
   future work. Admission is the steward's judgement on the registry, not a

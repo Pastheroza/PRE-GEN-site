@@ -4,7 +4,8 @@ PRE-GEN has one version number, and it is the same everywhere: in this
 repository, on https://www.pregen.org and on Zenodo. **Each version is one
 Zenodo release** under the concept DOI
 [10.5281/zenodo.20129901](https://doi.org/10.5281/zenodo.20129901), which
-always resolves to the latest one. (Founder, 2026-09-28: "синхронизировать
+resolves to the latest record published there: today v4, until the v5 record
+follows. (Founder, 2026-09-28: "синхронизировать
 версии из zenodo и PRE-GEN который в вебсайте".)
 
 | Version | Date | Title | DOI | Status |
@@ -51,12 +52,12 @@ without a prefix. The earlier interface below stays valid.
 
 What an implementation of v4 must change in the earlier interface:
 
-- **A small core and extensions.** `PRE-GEN-SPEC.md` is the core every
-  authorization registry, provider and verifier implements: the decision, the
+- **A small core and extensions.** `PRE-GEN-SPEC.md` keeps what the core builds
+  on and the earlier interface: the decision, the
   licence envelope, the receipt, 17 core refusal codes, the fixed floor of
   protections and the rule for several subjects in one output. A registry may
   add members, codes and stricter rules (E-1 to E-6), never allow more than
-  the core. The origin registry's additions are in `PRE-GEN-EXTENSIONS.md`.
+  the core. The first registry's additions are in `PRE-GEN-EXTENSIONS.md` (informative).
 - **Identifiers.** Subject codes are `PG-<serial><check>` (`PG-000042*`);
   licence ids are `PG-<CLASS>-<subject serial>-<tail><check>`. The mod-37 check
   character catches every single-character typo and adjacent transposition.
@@ -78,9 +79,9 @@ What an implementation of v4 must change in the earlier interface:
   with an output's lifecycle (`created`, `modified`, `published`, `removed`).
 - **Refusal codes** are one versioned registry with hard/soft classification
   (`REFUSAL-CODES.md`).
-- **Several registries.** Every registry except the origin one prefixes its
-  codes with four letters (`PG-NWRD-000042=`). A signed registry directory
-  on pregen.org binds each namespace to the keys allowed to sign in it, so
-  only the origin registry's keys make bare codes valid and only a prefix's
-  owner makes its codes valid (`PG-CODE.md` §9.1).
+- **Several registries.** Every registry prefixes the codes it issues with
+  four letters (`PG-NWRD-000042=`). Bare codes (`PG-000042*`) issued before v5
+  by the first registry are a closed legacy namespace. A signed registry
+  directory on pregen.org binds each namespace to the keys allowed to sign in
+  it (`PG-CODE.md` §9.1).
 - **Published test vectors and a conformance runner** define compatibility.

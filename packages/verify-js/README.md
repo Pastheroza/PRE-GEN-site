@@ -1,17 +1,85 @@
 # @pregen/verify
 
-Checks that a PRE-GEN decision or license was really signed by the registry
-that owns its PG code, using the signed registry directory at
-[pregen.org](https://www.pregen.org/registries.json). The PRE-GEN steward key
-is built in; no dependencies (Web Crypto, Node 20+ or a modern browser).
+The PRE-GEN client for JavaScript. Ask a registry before you generate, as a provider known by
+its domain (no account), and check what comes back against the signed registry directory at
+[pregen.org](https://www.pregen.org/registries.json). The PRE-GEN steward key is built in; no
+dependencies (Web Crypto, Node 20+ or a modern browser).
+
+Ask with a signed `pg.request.v1` (`POST {api}/v2/requests`), check the answer with
+`checkAnswer`, report with a signed `pg.report.v1`, keep the proof (`checkProof`). Guide:
+https://www.pregen.org/docs/provider.md
+
+## Ask and check (PRE-GEN v5, `PRE-GEN-CORE.md`)
 
 ```js
-import { loadDirectory, checkDecision } from "@pregen/verify";
+import { loadDirectory, checkAnswer } from "@pregen/verify";
 
 // Keep the last accepted directory (any storage) and pass it back each time.
 const directory = await loadDirectory({ previous: saved });
 saved = directory.toJSON();
 
+// request: the pg.request.v1 envelope you sent to POST /v2/requests; answer: the registry's reply
+await checkAnswer(answer, request, { directory });   // throws with the reason, or you may generate
+```
+
+`checkAnswer` does core rules 2 and 5: the answer is signed by a key the directory lists for
+the subject's prefix (registry and key not revoked), answers exactly this request under the
+same profile, is within its lifetime, is an `allow`, and is not a sandbox answer unless you
+pass `testing: true`.
+
+## No account: a provider known by its domain (`extensions/provider-identity.md`)
+
+```js
+import { newPrivateKeyHex, partyDocument, signEnvelope, pgAccess } from "@pregen/verify";
+const key = newPrivateKeyHex();     // make it once and keep it secret, server-side: a new key is a new identity
+const doc = await partyDocument("https://app.example", "App", key);  // serve at https://app.example/.well-known/pregen-party.json
+const req = await signEnvelope("pg.request.v1", body, key);         // body.signers = [{ role: "provider", key_id }]
+const hdr = await pgAccess("https://app.example", key, registryApi, "GET", path);  // the PG-Access header for GETs
+```
+
+Also exported: `checkProviderUrl`, `signingInput`, `publicKeyHex`, `messageId`, `verifyAnswer`.
+
+## One person in several registries, and proof in a video
+
+- `verifyAnchors(list, prefix, { directory })` — a registry's signed anchor list (`extensions/identity.md`).
+- `checkChannelProof(code, proofUrl, await wikidataOfficialUrls(anchor), getText)` — did the person
+  confirm this code on their own channel?
+- `decideIdentity(claims)` — "who proved it, not who came first"; generate only on `allow`.
+- `checkProof(bundle, { directory, outputSha256 })` — a platform's check of the `pg.proof.v1` bundle
+  carried with an output (`extensions/proof.md`).
+
+## The registry directory
+
+The directory check refuses an older directory, a newer one that removes
+a registry or key or undoes a revocation, and a different one with the same sequence. No registry is pinned by default: every registry, the first one included,
+is trusted only through the signed directory. You may pin any registry's keys
+yourself (`pinnedKeys` / `pinned_keys`, prefix → fingerprints, `""` for bare
+codes), so that even a stolen steward key cannot add a key to that prefix.
+
+A successor steward key (`pg-ed25519:3e5e20729ce8485eea274c4cb33721d6`) is
+pinned in the library: a directory it signs replaces those of the current
+steward key whatever their sequence, so a thief holding the old key cannot
+outbid it; it must keep every listing and revocation of the directory it
+replaces, except revocations the old key signed after the declared
+`steward_compromised_since`, which it names in `annulled`.
+
+A listing in the directory proves which registry may issue a code, not that
+it holds any right over a person or a work. A signed answer proves what the
+registry answered, not that the output was lawful.
+
+## Test v5 on the public test network
+
+Load the test directory with
+`loadDirectory({ url: "https://www.pregen.org/test/registries.json", stewardPublicKeyHex: "78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0" })`,
+ask the PRE-GEN Test Registry at `https://sandbox.pregen.org` (codes `PG-TEST-000001N` …
+`PG-TEST-000008H`; introduce yourself with `POST /v2/sandbox/party`), and pass `testing: true`
+to `checkAnswer` / `checkProof`. With the real directory, `checkAnswer` refuses `testing: true`.
+Walk-through: https://www.pregen.org/docs/provider.md, step 9.
+
+## Earlier interface (`pg.decision.v1`, `/v1/verify`): legacy, not for new integrations
+
+```js
+import { checkDecision } from "@pregen/verify";
 // request: what you sent to /v1/verify, plus provider_id and licensee_id
 await checkDecision(decision, request, { directory });   // throws with the reason, or you may generate
 ```
@@ -35,46 +103,7 @@ await checkDecision(decision, request, { directory });   // throws with the reas
 Pass `requireVerifiedAuthority: true` to also refuse a subject whose rights holder the
 registry has not verified (`subject_authority` other than `verified`).
 
-The directory check also refuses an older directory, a newer one that removes
-a registry or key or undoes a revocation, and a different one with the same sequence. No registry is pinned by default: every registry, the first one included,
-is trusted only through the signed directory. You may pin any registry's keys
-yourself (`pinnedKeys` / `pinned_keys`, prefix → fingerprints, `""` for bare
-codes), so that even a stolen steward key cannot add a key to that prefix.
-
-A successor steward key (`pg-ed25519:3e5e20729ce8485eea274c4cb33721d6`) is
-pinned in the library: a directory it signs replaces those of the current
-steward key whatever their sequence, so a thief holding the old key cannot
-outbid it; it must keep every listing and revocation of the directory it
-replaces, except revocations the old key signed after the declared
-`steward_compromised_since`, which it names in `annulled`.
-
-A listing in the directory proves which registry may issue a code, not that
-it holds any right over a person or a work. A signed decision proves what the
-registry answered, not that the output was lawful.
-
-## PRE-GEN v5 answers (`PRE-GEN-CORE.md`)
-
-```js
-import { loadDirectory, checkAnswer } from "@pregen/verify";
-// request: the pg.request.v1 envelope you sent to POST /v2/requests; answer: the registry's reply
-await checkAnswer(answer, request, { directory });   // throws with the reason, or you may generate
-```
-
-`checkAnswer` does core rules 2 and 5: the answer is signed by a key the directory lists for
-the subject's prefix (registry and key not revoked), answers exactly this request under the
-same profile, is within its lifetime, is an `allow`, and is not a sandbox answer unless you
-pass `testing: true`.
-
-## One person in several registries, and proof in a video
-
-- `verifyAnchors(list, prefix, { directory })` — a registry's signed anchor list (`extensions/identity.md`).
-- `checkChannelProof(code, proofUrl, await wikidataOfficialUrls(anchor), getText)` — did the person
-  confirm this code on their own channel?
-- `decideIdentity(claims)` — "who proved it, not who came first"; generate only on `allow`.
-- `checkProof(bundle, { directory, outputSha256 })` — a platform's check of the `pg.proof.v1` bundle
-  carried with an output (`extensions/proof.md`).
-
-## Test without a secret: the simulator
+### Offline simulator (legacy /v1 interface)
 
 ```js
 import { createSimulator, checkDecision } from "@pregen/verify";
@@ -86,7 +115,7 @@ await checkDecision(decision, request, { directory: sim.directory, fetch: sim.fe
 
 `sbx-allowed` → `allow`; `sbx-revoked`, `sbx-expired` → `PG_NO_LICENSE`;
 `sbx-exhausted` → `PG_USAGE_LIMIT`; `sbx-optedout` → `PG_SUBJECT_OPTED_OUT`;
-anything else → `PG_NO_SUBJECT`. Receipts follow PRAMPTA's rules (R-10): a receipt needs an
+anything else → `PG_NO_SUBJECT`. Receipts follow the earlier /v1 interface's rules (R-10): a receipt needs an
 allow issued to this provider and licensee for the same `prompt_hash`; the identical receipt
 again returns the first answer (`already_recorded`), a different one is `409 receipt_conflict`;
 `receipt_hash` binds each answer to the bytes sent. Release answers as the sandbox does
@@ -96,7 +125,9 @@ sim.operatorPublicKeyHex` and `pregenDirectory: sim.directory`. The simulator's
 keys are new on every run and its directory is signed by a throwaway steward,
 so nothing it signs is ever accepted by the real directory.
 
-Also exported: `verifyDecision` (signatures only), `verifyDirectory`,
+## Other functions
+
+`verifyDecision` (signatures only), `verifyDirectory`,
 `Directory.checkSigner` / `registryFor` / `publicKey`, `verifyLicense` (subject
 signature plus operator countersignature), `verifySigned`, `canonicalJson`,
 `fingerprint`, `checkPublicKey` (refuses keys no one can be held to), `issuerOf` (canonical codes only) and

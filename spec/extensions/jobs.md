@@ -10,7 +10,7 @@
 The provider fixes the job once, in its job input: a canonical JSON object with `job_id`,
 `provider_id`, the asks, and anything else the provider fixed about the job. The asks are
 sorted by `subject_ref`; each is `{subject_ref, registry, profile, use}`, where `registry` is
-the prefix (`""` for the origin).
+the prefix (`""` for the closed legacy bare namespace).
 
 `job_hash` = SHA-256 of the canonical job input. Every request of the job carries it. It is
 opaque: the job input never leaves the provider, a registry compares `job_hash` only for

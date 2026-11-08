@@ -27,7 +27,7 @@
     {
       "source": "/",
       "destination": "/homepage",
-      "permanent": false
+      "permanent": true
     },
     {
       "source": "/ecosystem",
