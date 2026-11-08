@@ -32,7 +32,7 @@ then 10. The rest of step 4 only when you rotate. Run every command from the fol
 ## 1. Install
 
 ```bash
-pip install "pregen-registry>=0.3.0"
+pip install "pregen-registry>=0.4.0"
 pregen-registry --help
 ```
 

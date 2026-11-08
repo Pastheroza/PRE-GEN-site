@@ -21,15 +21,19 @@ business, joined later and separately (the section "Selling and connected users"
    under a new `job_id` after a `deny` is, unless something you can name changed since: a new
    grant you were told of, the customer connected, a different purpose.)
 2. **No answer is not a refusal and not a permission.** After a timeout or an HTTP 5xx you
-   may send the **identical** request again (same `job_id`, same bytes): a registry answers
-   it with the answer it already gave (after that answer expires, the same bytes get a new
-   answer, which counts again: give back any allow you do not use). The same goes for a connection error with no HTTP
+   may send the **identical** request again (same `job_id`, same bytes): while its answer is
+   open, a registry answers it with the answer it already gave. The same goes for a connection error with no HTTP
    response, and for `/v2/keys` and `/v2/reports`. Wait 10 s for an answer; on none, wait
    3 s and send the same bytes again, up to 3 more times (4 sends in all). Any 4xx is final
    for those bytes: no answer; do not resend them unless the Errors table says to. After
-   that, you have no allow for
-   that person. Skipping the resend can leave an allow you never saw
-   counted against the grant.
+   that, you have no allow for that person, and **you never send that request again**: once
+   its answer had expired, the same bytes would get a new answer and count a second use.
+   Instead, give back an allow you may never have seen: once any answer would have expired (the
+   time of your first send, plus the registry's answer lifetime, at most 900 s, plus your sends
+   and waits; without a better number, 993 s), report `"outcome": "not_generated"` with
+   `"answer": null` and your `request` (step 7). The registry gives back every expired allow of
+   that request and closes it (`extensions/limits.md`). Skipping it can leave an allow you never
+   saw counted against the grant.
 3. **Never send the prompt or the output.** You send `job_hash`: a SHA-256 of what you
    fixed about the job: `hashlib.sha256(pregen.canonical_json(job_input)).hexdigest()`, where
    `job_input` is a dict of the prompt and settings (`canonical_json` returns bytes; in JS,
@@ -217,7 +221,11 @@ X-Provider-ID: https://frame.example
   it fixed in `job_hash`. A false declaration is your signed statement and your liability.
 - **`licensee_id`** (optional, a member of `body` beside `job_id`): your end customer's id,
   when you generate on their behalf and the registry connected that customer to you
-  (extension `licensee`). Leave it out otherwise. A licensee id belongs to one registry: send it
+  (extension `licensee`). Send it **only when the request rests on that customer's licence**:
+  under `bind`, when the code is among the binding's grants (`GET {api}/v2/grants?licensee_id=…`,
+  "Selling" below). For any other code leave it out and rest on your own grant. Your own grant
+  covers your customers only with the resale right (`extensions/catalog.md`), so a `licensee_id`
+  sent where the customer holds nothing turns an allow into a refusal. A licensee id belongs to one registry: send it
   only to the registry that connected it, and none to the other registries in the job. Some grants cover
   only one licensee. Send exactly the licensee id the registry gave you. An id that is not connected to you is
   refused: HTTP 403 `PG_NOT_BOUND` at a registry that uses `bind` (show "connect your licence",
@@ -454,6 +462,10 @@ report = pregen.sign_envelope("pg.report.v1", {
   up, for **every** allow already received in that job, soon (within 24 hours of the
   answer's `issued_at`). Otherwise the use stays counted. Name your own request and the answer
   you received, even when that answer was for another request.
+- **An answer you never received** (ground rule 2): once it would have expired, send the same
+  report with `"answer": None` / `answer: null` and `"request": request["body"]` beside
+  `request_id`. It gives back every expired allow of that request; the request is closed from
+  then on (409 `PG_ASK_CLOSED`). Send it once; never send the request itself again.
 - **Keep the signed report** you sent. If a report gets no answer, send the **same bytes**
   again: you get the same acknowledgement. A different report for the same answer is
   refused (409 `PG_REPORT_CONFLICT`). If the `generated` report is refused or never
@@ -875,6 +887,7 @@ FOLDER = "pregen-test" if TEST_STEWARD else "pregen"                       # tes
 TESTING = False                                                            # True only for a job whose every code is at a sandbox, under a test directory
 UA = {"User-Agent": "frame-ai (https://frame-ai.example/contact)"}        # who you are: Wikidata refuses anonymous clients
 LICENSEES = {}                                                             # prefix -> the licensee_id that registry gave this customer
+COVERED = set()                                                            # the codes their licences cover (GET /v2/grants)
 
 os.makedirs(os.path.join(FOLDER, "jobs"), exist_ok=True)
 SAVED, ANCHORS = os.path.join(FOLDER, "directory.json"), os.path.join(FOLDER, "anchors.json")
@@ -1018,7 +1031,7 @@ def ask(code):                                                            # step
         "signers": [{"role": "provider", "key_id": key_id}],
         "subject_ref": code, "provider_id": PROVIDER, "profile": "likeness/1",
         "use": {"purpose": "commercial"}, "job_id": job_id, "job_hash": job_hash,
-        **({"licensee_id": LICENSEES[entry["prefix"]]} if entry["prefix"] in LICENSEES else {})}, KEY)
+        **({"licensee_id": LICENSEES[entry["prefix"]]} if entry["prefix"] in LICENSEES and code in COVERED else {})}, KEY)
     answer = post(entry, "/v2/requests", request, "answer")
     if answer.get("body", {}).get("status") == "allow":
         allowed.append((entry, request, answer))                          # given back below if anything fails
@@ -1135,6 +1148,7 @@ const FOLDER = TEST_STEWARD ? "pregen-test" : "pregen";                       //
 const TESTING = false;                                                          // true only for a job whose every code is at a sandbox, under a test directory
 const UA = "frame-ai (https://frame-ai.example/contact)";                       // who you are: Wikidata refuses anonymous clients
 const LICENSEES = {};                                                           // prefix -> the licensee_id that registry gave this customer
+const COVERED = new Set();                                                      // the codes their licences cover (GET /v2/grants)
 
 mkdirSync(`${FOLDER}/jobs`, { recursive: true });
 const SAVED = `${FOLDER}/directory.json`, ANCHORS = `${FOLDER}/anchors.json`;
@@ -1244,7 +1258,7 @@ async function ask(code) {                                                      
   }
   const request = await signEnvelope("pg.request.v1", { signers: [{ role: "provider", key_id: keyId }],
     subject_ref: code, provider_id: PROVIDER, profile: "likeness/1", use: { purpose: "commercial" }, job_id: jobId,
-    job_hash: jobHash, ...(entry.prefix in LICENSEES ? { licensee_id: LICENSEES[entry.prefix] } : {}) }, KEY);
+    job_hash: jobHash, ...(entry.prefix in LICENSEES && COVERED.has(code) ? { licensee_id: LICENSEES[entry.prefix] } : {}) }, KEY);
   const answer = await post(entry, "/v2/requests", request, "answer");
   if (answer?.body?.status === "allow") allowed.push({ entry, request, answer }); // given back below if anything fails
   return { answer, request };

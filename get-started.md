@@ -354,7 +354,7 @@ Any company or person can run a registry on the same terms; the first one has no
 rights.
 
 1. **Run one.** The open reference registry:
-   `pip install "pregen-registry>=0.3.0"`,
+   `pip install "pregen-registry>=0.4.0"`,
    then `pregen-registry init --dir ./data --prefix ABCD --name "…" --api https://… --policy https://… --complaints mailto:… --open-providers`
    (`--open-providers`: answer any provider known by its domain and key, with no credential).
    Step by step: `https://www.pregen.org/docs/registry.md`. Or implement the core yourself
