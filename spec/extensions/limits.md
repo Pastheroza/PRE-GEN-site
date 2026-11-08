@@ -29,8 +29,10 @@ has expired, inside the window; those allows can never be reported again. An all
 stays reserved. The ask is then closed: no new answer is issued for it (`PG_ASK_CLOSED`). Send
 that report, never the request again, and only once any answer would have expired: no earlier
 than your last send of the request plus its timeout, plus the registry's answer lifetime (900
-seconds, the most core allows, if you do not know it), plus a margin for clocks (the reference
-provider uses 60 seconds: 993 seconds after the first send in all).
+seconds, the most core allows, if you do not know it), plus a margin for clocks (60 seconds is
+enough). The reference provider's own schedule, three sends with no Retry-After wait, comes to
+993 seconds after the first send; a provider that sends more, or waits on a 429, counts from its
+actual last send.
 
 **An allow never reported stays reserved** — that is, counted.
 

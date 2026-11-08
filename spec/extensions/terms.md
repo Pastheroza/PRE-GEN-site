@@ -89,6 +89,9 @@ no duplicates; no string holds a control or format character; every number is an
   `PG_TERMS_NOT_ACCEPTED`. It is signed, but the registry keeps no ask for it ([`jobs`](jobs.md)):
   the provider looks the terms up again and asks again under the same `job_id`, and that ask is
   not a conflict. A replay of the stale request gets the same refusal and spends nothing.
+  A request whose answer is masked (`provider-identity` P-5a) is kept and bound like any other
+  answer, terms included, so a repeat, a report or a conflict never tells a private code from an
+  unknown one.
 - **T-8 Only a provider known by its domain accepts.** A provider that asks with a credential
   the registry issued, or with a key the registry holds, cannot accept terms: a request from it
   that carries `terms` gets `deny`, `PG_TERMS_NOT_ACCEPTED`, after the floor.

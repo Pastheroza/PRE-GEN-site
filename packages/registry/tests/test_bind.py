@@ -3,13 +3,13 @@ import base64
 import hashlib
 import re
 import secrets
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, urlencode, urlsplit
 
 import pregen as lib
 import pytest
 from fastapi.testclient import TestClient
 
-from pregen_registry.app import create_app
+from pregen_registry.app import BIND_APPROVALS_PER_HOUR, create_app
 from pregen_registry.protocol import Key, check_body, message_id, mint_code, signing_input
 from pregen_registry.registry import Config, Registry
 from test_registry import Clock, OpenProvider, Provider, make
@@ -486,11 +486,18 @@ def test_grant_add_needs_a_licensee_or_any_provider(tmp_path, capsys):
     assert re.fullmatch(r"[0-9a-f]{64}\n", capsys.readouterr().out)
 
 
-def test_a_consent_body_that_is_not_utf8_is_a_bad_request_and_takes_no_slot():
+def test_a_consent_body_that_is_not_utf8_is_refused_and_takes_no_slot():
     reg, c, _ = make()
     p = app(reg, c)
-    r = c.post("/v2/bind/authorize", content=b"client_id=\xff\xfe", headers={"Content-Type":
-                                                                             "application/x-www-form-urlencoded"})
-    assert r.status_code == 400
+    _, challenge = pkce()
+    q = {"response_type": "code", "client_id": p.id, "redirect_uri": p.id + "/bind/callback", "state": "s1",
+         "code_challenge": challenge, "code_challenge_method": "S256"}
+    nonce = re.search(r'name="consent" value="([^"]+)"', c.get("/v2/bind/authorize", params=q).text).group(1)
+    form = urlencode({**q, "consent": nonce, "decision": "approve"}).encode()
+    for bad in (b"&state=\xff", b"&state=%FF"):                               # valid but for one byte, raw or escaped
+        for _ in range(BIND_APPROVALS_PER_HOUR + 1):
+            r = c.post("/v2/bind/authorize", content=form + bad, follow_redirects=False,
+                       headers={"Content-Type": "application/x-www-form-urlencoded"})
+            assert r.status_code == 400 and r.json()["error"] == "PG_MALFORMED"
     _, challenge = pkce()
     assert consent(c, p, challenge)[1].status_code == 303

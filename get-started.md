@@ -143,8 +143,9 @@ Content-Type: application/json
 The person connects their licences to your app at their registry. This is OAuth 2.0
 authorization code + PKCE against `bind.authorize` / `bind.token` from the registry document.
 `client_id` is your provider URL; `redirect_uri` is one of the `redirect_uris` in your party
-document. The registry returns a signed `pg.binding.v1`. Send its `licensee_id` in requests about
-that person. Spec: `https://www.pregen.org/spec/extensions/bind.md`.
+document. The registry returns a signed `pg.binding.v1`. Send its `licensee_id` only for codes
+among the binding's grants (`GET {api}/v2/grants?licensee_id=…`); for any other code leave it out
+and rest on your own grant. Spec: `https://www.pregen.org/spec/extensions/bind.md`.
 
 ### A6. Check the answer
 

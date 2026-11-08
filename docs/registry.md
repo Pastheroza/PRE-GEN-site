@@ -389,7 +389,11 @@ key chain in it, checks the signature on every request and report against that c
 the document again at least daily. A later document that does not extend the pinned chain is
 refused, so whoever takes over a domain does not get its keys. Until you vet a provider, it
 learns only refusals of the person, your published subjects, and what its own connected
-customers hold; everything else is `deny PG_PROVIDER_NOT_ACCEPTED`. Vetting is your own
+customers hold; everything else is `deny PG_PROVIDER_NOT_ACCEPTED`. This registry does not check
+that a `provider_id` is a registrable domain (Public Suffix List): it takes
+`https://app.frame.example` as a provider of its own, so every subdomain gets its own budget and
+its own document reads (P-7). A production registry should check it, with the Public Suffix List,
+or a wildcard of subdomains gets around P-7. Vetting is your own
 published procedure; once done:
 
 ```bash
@@ -424,7 +428,8 @@ one provider, so always write it as `<provider id>:<the customer's id at that pr
 `connect` refuses any other shape: a grant to a licensee covers every provider connected to
 that id, so two providers' `user-1` written bare would share each other's grants. The grant
 may come before or after `connect`. Tell the
-provider the exact licensee id (step 10); it sends it as `licensee_id`.
+provider the exact licensee id (step 10) and the codes that customer's licence covers; it sends
+the id as `licensee_id` only for those codes, and rests on its own grant for the others.
 
 **When things change**, each takes effect from the next answer; answers already given stay
 what they were:

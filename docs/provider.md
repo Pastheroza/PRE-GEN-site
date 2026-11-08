@@ -28,9 +28,9 @@ business, joined later and separately (the section "Selling and connected users"
    for those bytes: no answer; do not resend them unless the Errors table says to. After
    that, you have no allow for that person, and **you never send that request again**: once
    its answer had expired, the same bytes would get a new answer and count a second use.
-   Instead, give back an allow you may never have seen: once any answer would have expired (your
-   last send plus its timeout, plus the registry's answer lifetime, 900 s if you do not know it,
-   plus a margin for clocks; with the sends above and a 60 s margin, 993 s after the first send), report `"outcome": "not_generated"` with
+   Instead, give back an allow you may never have seen: once any answer would have expired (never
+   earlier than your actual last send, Retry-After waits included, plus its 10 s timeout, plus the
+   registry's answer lifetime, 900 s if you do not know it, plus 60 s for clocks), report `"outcome": "not_generated"` with
    `"answer": null` and your `request` (step 7). The registry gives back every expired allow of
    that request and closes it (`extensions/limits.md`). Skipping it can leave an allow you never
    saw counted against the grant.
@@ -84,8 +84,9 @@ nowhere to sign up (extension `provider-identity`,
 registered (eTLD+1 under the Public Suffix List), `https://frame.example`, never
 `https://app.frame.example` or `https://www.frame.example`. It is lower case, with no subdomain,
 path, port or trailing slash, and at most 100 characters; only a sandbox also takes a port, step 9.
-The libraries and a sandbox accept a subdomain, but a production registry refuses it (401
-`PG_NOT_AUTHENTICATED`). It goes in every request as `provider_id` and in the `X-Provider-ID`
+The libraries and a sandbox accept a subdomain. Checking the registrable domain is the registry's
+job: a production registry that does it refuses a subdomain (401 `PG_NOT_AUTHENTICATED`); the
+reference registry does not check it. It goes in every request as `provider_id` and in the `X-Provider-ID`
 header. Pick the domain the product owns and keep it: changing it is becoming a new provider.
 
 **Make the key once** and keep it with your other secrets:
@@ -222,8 +223,9 @@ X-Provider-ID: https://frame.example
 - **`licensee_id`** (optional, a member of `body` beside `job_id`): your end customer's id,
   when you generate on their behalf and the registry connected that customer to you
   (extension `licensee`). Send it **only when the request rests on that customer's licence**:
-  under `bind`, when the code is among the binding's grants (`GET {api}/v2/grants?licensee_id=…`,
-  "Selling" below). For any other code leave it out and rest on your own grant. Your own grant
+  under `bind`, a code among the binding's grants (`GET {api}/v2/grants?licensee_id=…`,
+  "Selling" below); under a registry's own connect (extension `licensee`), the codes that registry
+  told you the customer's licence covers. For any other code leave it out and rest on your own grant. Your own grant
   covers your customers only with the resale right (`extensions/catalog.md`), so a `licensee_id`
   sent where the customer holds nothing turns an allow into a refusal. A licensee id belongs to one registry: send it
   only to the registry that connected it, and none to the other registries in the job. Some grants cover
@@ -850,7 +852,8 @@ that sells nothing is still a complete registry. Two layers, one picture:
   `code`. Post `pregen.sign_envelope("pg.bind_exchange.v1", {signers, provider_id, code,
   code_verifier, redirect_uri, issued_at}, KEY)` to `bind.token`, with `X-Provider-ID`. It returns
   `{"binding": <pg.binding.v1>}`, signed by the registry, with a random `licensee_id`. Send that
-  id in requests about that person (step 4). HTTP 403 `PG_NOT_BOUND`
+  id only for codes among the binding's grants (`GET {api}/v2/grants?licensee_id=…`); for any
+  other code leave it out and rest on your own grant (step 4). HTTP 403 `PG_NOT_BOUND`
   means "connect your licence", never a refusal. A registry's own connect procedure (extension
   `licensee`) does the same with an id the registry gives you.
 - **Buying for your product or your users.** Each registry publishes its commerce page and
@@ -887,7 +890,7 @@ FOLDER = "pregen-test" if TEST_STEWARD else "pregen"                       # tes
 TESTING = False                                                            # True only for a job whose every code is at a sandbox, under a test directory
 UA = {"User-Agent": "frame-ai (https://frame-ai.example/contact)"}        # who you are: Wikidata refuses anonymous clients
 LICENSEES = {}                                                             # prefix -> the licensee_id that registry gave this customer
-COVERED = set()                                                            # the codes their licences cover (GET /v2/grants)
+COVERED = set()                                                            # the codes their licences cover: GET /v2/grants under bind, or what a registry's connect told you
 
 os.makedirs(os.path.join(FOLDER, "jobs"), exist_ok=True)
 SAVED, ANCHORS = os.path.join(FOLDER, "directory.json"), os.path.join(FOLDER, "anchors.json")
@@ -1122,7 +1125,7 @@ json.dump(bundle, open("output.bin.proof.json", "w"))                    # kept 
 
 It prints `{'output_hash': '…', 'job_id': 'job-…', 'subjects': [{'code': 'PG-ABCD-000001K',
 'level': 'verified', 'basis': {'kind': 'grant', …}}]}`. Not shown, in either example: the
-identical resend of rule 2, the directory reload on `issuer_mismatch` (step 3),
+`answer: null` report of rule 2 after an answer that never arrived (step 7), the directory reload on `issuer_mismatch` (step 3),
 `verify_answer` to log why a refusal refused (step 5), and saving the key sets for offline
 checks (step 8: if you check proofs offline in the same folder, run its save right after
 `load_directory`, since `directory.json`, `key_sets.json` and `saved_at.json` must be written
@@ -1148,7 +1151,7 @@ const FOLDER = TEST_STEWARD ? "pregen-test" : "pregen";                       //
 const TESTING = false;                                                          // true only for a job whose every code is at a sandbox, under a test directory
 const UA = "frame-ai (https://frame-ai.example/contact)";                       // who you are: Wikidata refuses anonymous clients
 const LICENSEES = {};                                                           // prefix -> the licensee_id that registry gave this customer
-const COVERED = new Set();                                                      // the codes their licences cover (GET /v2/grants)
+const COVERED = new Set();                                                      // the codes their licences cover: GET /v2/grants under bind, or what a registry's connect told you
 
 mkdirSync(`${FOLDER}/jobs`, { recursive: true });
 const SAVED = `${FOLDER}/directory.json`, ANCHORS = `${FOLDER}/anchors.json`;

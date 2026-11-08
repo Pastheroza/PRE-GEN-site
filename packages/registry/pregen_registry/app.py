@@ -183,9 +183,12 @@ def create_app(registry: Registry, policy_file=None) -> FastAPI:
         if origin and origin != _origin(registry.config.api):
             raise ProtocolError("PG_MALFORMED", "the consent form is answered only from this registry's own page",
                                 status=403)
-        raw = await request.body()
+        try:                                      # before the limit: a form that is not UTF-8 takes no slot
+            q = {k: v[-1] for k, v in parse_qs((await request.body()).decode(), keep_blank_values=True,
+                                               errors="strict").items()}
+        except UnicodeDecodeError:
+            raise ProtocolError("PG_MALFORMED", "the consent form is not UTF-8", status=400) from None
         give_back = take(approvals, request, BIND_APPROVALS_PER_HOUR, "consents")
-        q = {k: v[-1] for k, v in parse_qs(raw.decode(errors="replace"), keep_blank_values=True).items()}
 
         def decide():                             # blocking (it may read the app's party document): off the event loop
             _authorize_params(registry, q)

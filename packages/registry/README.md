@@ -112,7 +112,9 @@ never signs again. Move its private key file offline.
   `Registry.publish_terms(code, purposes=…, excluded_categories=…, template=…, legal=…, factor=…)`, on the subject's
   own instruction; you check the second factor yourself. There is no CLI command.
 - **Party documents** are fetched after a one-shot address check; a resolver that pins the checked address closes
-  the rebinding gap before holding real people. The registrable-domain rule (Public Suffix List) is not enforced.
+  the rebinding gap before holding real people. The registrable-domain rule is not enforced: a subdomain is
+  taken as a provider of its own, with its own budget and document reads. A production registry must check it with
+  the Public Suffix List, or a wildcard of subdomains gets around P-7.
 
 ## Tests
 

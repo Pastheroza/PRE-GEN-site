@@ -22,7 +22,8 @@ Text only: no message format, required schema member or vector changes.
 
 Four clarifications of existing extensions (approved 2026-11-07), no new extension:
 - **`licensee`, `catalog`:** a provider sends a person's `licensee_id` only when the request rests on that person's
-  licence (under `bind`, the subject is among the binding's grants); otherwise `""`, on its own grant, which covers
+  licence (under `bind`, the subject is among the binding's grants; under a registry's own connect, the subjects that
+  registry said the licence covers); otherwise `""`, on its own grant, which covers
   its users only with resale. **`bind` B-3c:** `ext.bind` only on an allow whose basis is one of the binding's grants.
 - **`limits`, `jobs`:** a `not_generated` report with `answer: null` releases every reserved allow of the ask (by
   `request_id`) that has expired, inside the give-back window, and those allows cannot be reported again; the ask is
@@ -99,6 +100,9 @@ keep working.
   made at the exchange. A sandbox's database never starts as a production registry. A masked answer (P-5a) carries
   the level of an unknown code, so the level no longer tells a private code from an unknown one. `grant add` needs
   `--licensee` or `--any-provider`.
+- **`terms` T-7, `provider-identity` P-5a:** a request whose answer is masked is kept and bound like any other
+  answer, terms included; T-7's "keeps no ask" applies only to an answer that is not masked, so a repeat, a report or
+  a conflict never tells a private code from an unknown one.
 - **Reference provider** (`examples/reference-provider`): an app that signs creators in, connects their licence
   through `bind`, journals each job before asking, renders only what it asked about, reports and attaches the proof,
   and recovers after a crash; with a self-check over sandbox codes 1–12.
