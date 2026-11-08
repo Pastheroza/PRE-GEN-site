@@ -204,7 +204,7 @@ function checkInvariants(d) {
   }
 }
 
-const RFC3339 = /^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{3})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$/;
+const RFC3339 = /^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\.[0-9]{3})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$/;
 // Unix seconds of a real instant, read as Python's datetime reads it: Date.parse rolls February 30 into March and
 // 24:00 into the next day, so the written date and time must come back unchanged.
 function when(s) {
