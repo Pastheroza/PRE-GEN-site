@@ -1043,6 +1043,60 @@
    },
    "testing": false,
    "ok": false
+  },
+  {
+   "name": "allow for a request that accepts a person's terms",
+   "request": {
+    "type": "pg.request.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "provider",
+       "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "provider_id": "https://frame.example",
+     "profile": "likeness/1",
+     "use": {
+      "purpose": "personal",
+      "categories": [
+       "fashion"
+      ]
+     },
+     "job_id": "job-8842",
+     "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "terms": "cc2a015557935a3bb6801243e544838f476a7c6beb08ed77fb96ffbe2e7ac2ae"
+    },
+    "signatures": [
+     "d02c9475a2f543169aceb922e38540f1aa6eb259f37e866ccb508bc43736bcfec42b31b839cfd48964fe58dfd3e60f90c066890f1c9884b8dd88f9f347557b06"
+    ]
+   },
+   "answer": {
+    "type": "pg.answer.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "request_id": "c08b800e750e5f3263a503e67f60c315e76cf501bb249b680202bb71eea64905",
+     "profile": "likeness/1",
+     "status": "allow",
+     "basis": {
+      "kind": "policy",
+      "rule": "test"
+     },
+     "issued_at": 1789999990,
+     "expires_at": 1790000290
+    },
+    "signatures": [
+     "8b631f6518606a42355ee2c412152b0fc0afb09754760346f7b514a5cb063093c7bec3eab635695cdd19ed74810c3e224b2bc1f350c4a50f6a560d9a0f430602"
+    ]
+   },
+   "testing": false,
+   "ok": true
   }
  ]
 }

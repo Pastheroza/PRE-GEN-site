@@ -23,8 +23,11 @@ export class Directory {
   readonly sequence: number;
   /** Unix seconds when it was accepted. checkAnswer refuses a directory older than DIRECTORY_MAX_AGE. */
   readonly loadedAt: number;
-  /** The steward marked this code a false claim (identity.md). */
-  isFalseClaim(code: string): boolean;
+  /** The steward found `code` a false claim under `anchor` and has not reversed it (identity.md); without `anchor`,
+   * under any anchor (a private person's code is then never generated). The latest entry by `at` decides; a tie stays false. */
+  isFalseClaim(code: string, anchor?: string | null): boolean;
+  /** The steward's freeze of `anchor` in effect at `now` (at <= now < until), or null: pass it to decideIdentity. */
+  frozen(anchor: string, now?: number): { anchor: string; at: string; until: string; reason: string } | null;
   readonly registries: RegistryEntry[];
   /** The signed directory itself: persist it and pass it back as `previous`. */
   toJSON(): Record<string, unknown>;
@@ -92,20 +95,57 @@ export function verifyAnswer(answer: Record<string, unknown>, request: Record<st
 /** Refusals of the person (not a missing licence): one of them in any of a person's registries holds everywhere. */
 export const FLOOR_REASONS: readonly string[];
 export interface AnchorEntry { anchor: string; code: string; level: string; proof_url: string; status: string }
-/** A registry's signed pg.anchors.v1 list, at most a day old, without the steward's false claims (identity.md). */
+/** A registry's signed pg.anchors.v1 list, at most a day old, without the steward's false claims and another registry's
+ * codes (identity.md). Throws on a list naming one of its codes twice. */
 export function verifyAnchors(envelope: Record<string, unknown>, prefix: string,
   options: { directory: Directory; fetch?: Fetch; now?: number }): Promise<AnchorEntry[]>;
-/** Not who came first, but who proved it (identity.md). Generate only on status "allow". */
-export function decideIdentity(claims: { code: string; confirmed: boolean; answer: Record<string, unknown> }[],
-  options?: { allowUnconfirmed?: boolean }): { status: "allow" | "deny" | "review" | "not_blocked"; reason: string | null; code: string | null };
-/** True when `proofUrl` lies on one of the person's official channels and shows "PRE-GEN: <code>". */
+/** Not who came first, but who proved it (identity.md). Generate only on status "allow". `answer` null: none to weigh
+ * (no valid answer, or its registry's anchor list failed); throws PregenError (no decision) when such a claim is
+ * confirmed or refusal-only and no such claim refuses the person. Only a `settled` claim's allow permits (its channel
+ * was official SETTLED_AFTER earlier too; missing: not settled); a `refusal_only` claim counts for a refusal of the
+ * person only. `frozen` (directory.frozen(anchor)) denies first, PG_SUBJECT_UNAVAILABLE. */
+export function decideIdentity(claims: { code: string; confirmed: boolean; answer: Record<string, unknown> | null;
+  settled?: boolean; refusal_only?: boolean }[],
+  options?: { allowUnconfirmed?: boolean; frozen?: object | null }): { status: "allow" | "deny" | "review" | "not_blocked"; reason: string | null; code: string | null };
+/** What `getText` returns for an official account: who wrote it, by the platform's own record, and what they wrote. */
+export interface AccountText { author: string; text: string }
+/** True when the line "PRE-GEN: <code>" stands at https://<official host>/.well-known/pregen (getText returns a string)
+ * or in a post or profile by the official account itself (getText returns {author, text}). If getText throws, false,
+ * unless seenConfirmed: then it throws (no decision). */
 export function checkChannelProof(code: string, proofUrl: string, officialUrls: string[],
-  getText: (url: string) => Promise<string> | string): Promise<boolean>;
-/** The official channels Wikidata lists for "wikidata:Q…". */
-export function wikidataOfficialUrls(anchor: string, options?: { fetch?: Fetch }): Promise<string[]>;
+  getText: (url: string) => Promise<string | AccountText> | string | AccountText,
+  options?: { seenConfirmed?: boolean }): Promise<boolean>;
+/** The official channels Wikidata currently lists for "wikidata:Q…": not deprecated, not ended, started, well-formed.
+ * With `at` (Unix seconds, normally now - SETTLED_AFTER), those of the item as it stood then. */
+export function wikidataOfficialUrls(anchor: string, options?: { fetch?: Fetch; now?: number; at?: number }): Promise<string[]>;
+/** 7 days in seconds: a new official channel permits only after it; a steward freeze lasts at most it. */
+export const SETTLED_AFTER: number;
+/** likeness/1's closed vocabulary of content categories: a request that accepts a person's terms names only these. */
+export const CATEGORIES: readonly string[];
+/** Never a minor's likeness, whatever the licence. */
+export const PROHIBITED_FOR_MINORS: readonly string[];
+/** Only on a grant the person signs with their own key, never on terms. */
+export const INTIMATE: readonly string[];
+export interface TermsRules { purposes: string[]; excluded_categories?: string[] }
+/** likeness/1's fixed protections: "PG_PROHIBITED_USE" (a minor), then "PG_PERSONAL_SIGNATURE_REQUIRED" (intimate), or null. */
+export function floor(use: { categories?: string[]; [member: string]: unknown }, minor: boolean): "PG_PROHIBITED_USE" | "PG_PERSONAL_SIGNATURE_REQUIRED" | null;
+/** The first part of a declared use the person's rules rule out ("purpose …" or "categories […]"), or null. */
+export function forbids(rules: TermsRules, use: { purpose?: string; categories?: string[] }): string | null;
+/** Whether a version of a person's terms opens anything (rule 5), so it takes the person's own press with a second factor. */
+export function termsOpens(old: { rules: TermsRules; minor?: boolean; template?: unknown } | null,
+  next: { rules: TermsRules; minor?: boolean; template?: unknown }): boolean;
+/** A person's terms (pg.terms.v1) as their registry published them: signed by one key the directory lists for the code's
+ * prefix, for this code, in shape. Returns the body; assent is always "registry". Throws PregenError. */
+export function checkTerms(env: Record<string, unknown>, code: string, options?: { directory?: Directory; fetch?: Fetch }): Promise<{
+  signers: { role: "registry"; key_id: string }[]; subject_ref: string; profile: "likeness/1"; version: number; amends?: string;
+  template: { id: string; version: number; jurisdiction: string }; legal: { sha256: string; url: string }; rules: TermsRules;
+  minor: boolean; assent: "registry"; instruction: string; factor?: "authenticator" | "email"; issued_at: number }>;
 /** A pg.proof.v1 bundle: every subject allowed when the output was made, each report acknowledged, and (given its
- * SHA-256) this very file (proof.md). Throws PregenError with the reason. */
+ * SHA-256) this very file (proof.md). Each subject says what the proof shows about the terms its request accepted.
+ * Throws PregenError with the reason. */
 export function checkProof(bundle: Record<string, unknown>, options?: { directory?: Directory; fetch?: Fetch;
-  outputSha256?: string; now?: number; testing?: boolean }): Promise<{ outputHash: string; jobId: string; subjects: { code: string; level?: string; basis?: unknown }[] }>;
+  outputSha256?: string; now?: number; testing?: boolean }): Promise<{ outputHash: string; jobId: string; subjects: {
+    code: string; level?: string; basis?: unknown;
+    terms: "absent" | "ok" | "outside" | "unverified"; termsAssent: "registry" | null }[] }>;
 /** Offline sandbox registry for tests and CI. Never accepted by the real directory. */
 export function createSimulator(options?: { baseUrl?: string }): Promise<{ baseUrl: string; directory: Directory; operatorPublicKeyHex: string; fetch: Fetch & ((url: string, init?: { method?: string; headers?: Record<string, string>; body?: string }) => Promise<Response>) }>;

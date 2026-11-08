@@ -71,6 +71,8 @@ The provider sends the registry one request about one subject.
 - **`job_hash` is the provider's fingerprint of the job.** The prompt and the output never
   leave the provider.
 - **The request id** is the request's message id (§Messages).
+- **A request may accept the subject's terms:** `terms`, their message id, in a signed
+  request (`extensions/terms.md`).
 
 **4. A signed answer.**
 The registry replies `{"answer": <envelope>}`:
@@ -157,7 +159,11 @@ JSON Schemas: `schemas/`. Byte vectors: `test-vectors/messages.json`.
   - `sandbox`;
   - `providers`: `open` when providers known by their domain are accepted
     (`extensions/provider-identity.md`), `registered` when it issues its own credentials;
-  - `bind`: its `authorize` and `token` endpoints, if it declares `bind`.
+  - `bind`: its `authorize` and `token` endpoints, if it declares `bind`;
+  - `terms`: `optional`, if it declares `terms`.
+- **`GET {api}/v2/codes/{code}`** — what a code names, if it declares `lookup`.
+- **`GET {api}/v2/terms/{id}`** — every version of a subject's terms it ever published, if it
+  declares `terms`.
 
 **A client sends members of an extension only to a registry that declares it.**
 
@@ -167,7 +173,9 @@ The core knows nothing about faces, voices or licences. A **profile** says what 
 contains, which reasons and obligations exist, and which refusals no grant can override. A
 profile's name is fixed: it names a vocabulary of uses, never a version of anyone's policy, and
 it is compared only as a name. A new vocabulary is a new name. An answer carries nothing that
-names a version, hash or counter of a registry's rules.
+names a version, hash or counter of a registry's rules. A subject's terms (`terms`) are a
+signed record the request names by its message id, not a version of the registry's rules: the
+answer covers them through `request_id`.
 - `profiles/likeness-1.md` is the first profile: a person's likeness and voice.
 - Works, characters and other subjects are profiles to come. The core does not change.
 
@@ -186,12 +194,13 @@ extension may turn a refusal the core or a profile requires into a permission.
 | [`licensee`](extensions/licensee.md) | Answers for a connected end user |
 | [`observe`](extensions/observe.md) | Trial mode: generate and record, without blocking |
 | [`sandbox`](extensions/sandbox.md) | Standard test subjects and a test directory |
-| [`lookup`](extensions/lookup.md) | Public lookup of a code |
+| [`lookup`](extensions/lookup.md) | Public lookup of a code, with the subject's current terms |
 | [`identity`](extensions/identity.md) | One person in several registries: anchors, confirmation on the person's own channel, "who proved it, not who came first", disputes |
 | [`proof`](extensions/proof.md) | The signed record travels with the output (C2PA manifest and the file's SHA-256); platforms check it |
 | [`catalog`](extensions/catalog.md) | Providers sell what registries offer: catalog, resale right, billing by issued allows |
 | [`provider-identity`](extensions/provider-identity.md) | A provider known by its domain and key: party document at `/.well-known/pregen-party.json`, signed requests, no account at any registry |
 | [`bind`](extensions/bind.md) | A person connects their licences to an app: OAuth 2.0 code + PKCE at their registry, a per-app `licensee_id` |
+| [`terms`](extensions/terms.md) | A person's terms of generation: a public, signed, versioned `pg.terms.v1`; a provider accepts them by signing its request |
 
 ## The earlier interface
 

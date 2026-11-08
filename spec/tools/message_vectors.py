@@ -69,14 +69,24 @@ def build():
                                       "answer_status": "allow", "counted": answer["message_id"], "released": [],
                                       "provider_key_id": KEYS["provider"][2], "received_at": 1791800101},
                  [("registry", "registry")])
+    terms = sealed("pg.terms.v1", {"subject_ref": req["subject_ref"], "profile": "likeness/1", "version": 1,
+                                   "template": {"id": "example-likeness", "version": 1, "jurisdiction": "US"},
+                                   "legal": {"sha256": "b" * 64, "url": "https://registry.test.example/terms-template-1.txt"},
+                                   "rules": {"purposes": ["editorial", "educational", "personal", "research"],
+                                             "excluded_categories": ["adult", "gambling", "political"]},
+                                   "minor": False, "assent": "registry", "instruction": "c" * 64,
+                                   "factor": "authenticator", "issued_at": 1791700000}, [("registry", "registry")])
+    accepting = sealed("pg.request.v1", {**req, "provider_id": "https://frame.example", "job_id": "job-8842",
+                                         "use": {"purpose": "personal", "categories": ["fashion"]},
+                                         "terms": terms["message_id"]}, [("provider", "provider")])
     for v, n in ((answer, "pg.answer.v1 (allow)"), (deny, "pg.answer.v1 (deny)"), (keyset, "pg.keyset.v1 (first)"),
-                 (rotation, "pg.keyset.v1 (rotation)")):
+                 (rotation, "pg.keyset.v1 (rotation)"), (accepting, "pg.request.v1 (signed, accepting terms)")):
         v["name"] = n
     return {
         "description": "PRE-GEN v5 message vectors (PRE-GEN-CORE.md, extensions/*.md). Keys are derived as "
                        "Ed25519 seed = SHA-256('pregen-vector-<name>'). Signatures are deterministic (RFC 8032).",
         "keys": {n: {"public_key_hex": k[1], "key_id": k[2]} for n, k in KEYS.items()},
-        "vectors": [v_req, grant, answer, deny, keyset, rotation, report, ack],
+        "vectors": [v_req, grant, answer, deny, keyset, rotation, report, ack, terms, accepting],
     }
 
 

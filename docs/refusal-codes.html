@@ -39,7 +39,7 @@
 <p><b>Protections of likeness/1</b>, checked before any licence; no licence, extension or registry policy overrides them:</p>
 <ul>
 <li><code>PG_SUBJECT_OPTED_OUT</code> — an opt-out in effect.</li>
-<li><code>PG_SUBJECT_UNAVAILABLE</code> — the subject is pending, paused, disputed or withdrawn.</li>
+<li><code>PG_SUBJECT_UNAVAILABLE</code> — the subject is pending, paused or withdrawn.</li>
 <li><code>PG_PROHIBITED_USE</code> — a fixed protection forbids the use: a minor's likeness in a sexualised or otherwise prohibited category.</li>
 <li><code>PG_IMMUTABLE_DENIAL</code> — an immutable denial.</li>
 <li><code>PG_PERSONAL_SIGNATURE_REQUIRED</code> — an intimate category (<code>sexual</code>, <code>adult</code>) without the person's own signature.</li>
@@ -48,6 +48,7 @@
 <ul>
 <li><code>PG_NO_LICENSE</code> — no grant covers this licensee and use.</li>
 <li><code>PG_USAGE_LIMIT</code> — the grant's uses are spent.</li>
+<li><code>PG_SUBJECT_DISPUTED</code> — a complaint about this code is being examined. Refused at this registry only: it is not a refusal of the person in other registries.</li>
 <li><code>PG_SCOPE_VIOLATION</code> — outside the grant's scope.</li>
 <li><code>PG_REVIEW_REQUIRED</code> — held for a human; comes with status <code>review</code>.</li>
 <li><code>PG_NOT_CONNECTED</code> — this use needs a connected end user; show it as “connect your account”, not as a refusal.</li>

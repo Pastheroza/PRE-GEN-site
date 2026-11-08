@@ -185,11 +185,38 @@ function checkInvariants(d) {
       && d.revoked_keys.every((k) => k && FINGERPRINT.test(String(k.key_id)) && typeof k.at === "string"))) {
     fail("revoked_keys must list {key_id, at}");
   }
-  const fc = d.false_claims;
-  if (fc !== undefined && !(Array.isArray(fc) && fc.every((f) => f && typeof f.code === "string" && typeof f.at === "string"))) {
-    fail("false_claims must list {anchor, code, at, reason}");
+  // identity.md: steward findings on one person, every member required, times in RFC 3339.
+  for (const [field, members] of [["false_claims", ["anchor", "code", "at", "reason"]],
+    ["false_claim_reversals", ["anchor", "code", "at", "reason"]], ["freezes", ["anchor", "at", "until", "reason"]]]) {
+    const v = d[field];
+    if (v !== undefined && !(Array.isArray(v) && v.every((f) => f && typeof f === "object"
+        && members.every((m) => typeof f[m] === "string" && f[m])))) fail(`${field} must list {${members.join(", ")}}`);
+    for (const f of v || []) {
+      for (const m of ["at", "until"].filter((x) => members.includes(x))) {
+        if (!RFC3339.test(f[m])) fail(`${field}: not an RFC 3339 time`);
+        when(f[m]);
+      }
+    }
+  }
+  for (const f of d.freezes || []) {
+    const span = when(f.until) - when(f.at);
+    if (!(span > 0 && span <= SETTLED_AFTER)) fail("a freeze lasts more than nothing and at most 7 days");
   }
 }
+
+const RFC3339 = /^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{3})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$/;
+// Unix seconds of a real instant, read as Python's datetime reads it: Date.parse rolls February 30 into March and
+// 24:00 into the next day, so the written date and time must come back unchanged.
+function when(s) {
+  const ms = RFC3339.test(s) ? Date.parse(s) : NaN;
+  const off = s.endsWith("Z") ? 0 : (s.at(-6) === "-" ? -1 : 1) * (Number(s.slice(-5, -3)) * 60 + Number(s.slice(-2)));
+  if (Number.isNaN(ms) || new Date(ms + off * 60_000).toISOString().slice(0, 19) !== s.slice(0, 19)) {
+    fail(`not an RFC 3339 time: ${s}`);
+  }
+  return ms / 1000;
+}
+/** identity.md: a new channel permits after 7 days; a steward freeze lasts at most 7 days. */
+export const SETTLED_AFTER = 7 * 86_400;
 
 /** A directory accepted under V-12. Build one with verifyDirectory() or loadDirectory(). */
 export class Directory {
@@ -218,8 +245,28 @@ export class Directory {
     return r ? structuredClone(r) : null;
   }
 
-  /** The steward marked this code a false claim (identity.md): ignore it. */
-  isFalseClaim(code) { return (this.#d.false_claims || []).some((f) => f.code === code); }
+  /** The steward found `code` a false claim under `anchor` and has not reversed it (identity.md): drop that claim. For
+   * one anchor and code the latest entry of false_claims and false_claim_reversals by `at` decides; a tie stays false.
+   * Without `anchor`, under any anchor: a code asked as a private person is then never generated. */
+  isFalseClaim(code, anchor = null) {
+    const latest = new Map();
+    for (const [isFalse, field] of [[true, "false_claims"], [false, "false_claim_reversals"]]) {
+      for (const f of this.#d[field] || []) {
+        if (f.code !== code || (anchor !== null && anchor !== undefined && f.anchor !== anchor)) continue;
+        const at = when(f.at), was = latest.get(f.anchor);
+        if (!was || at > was[0] || (at === was[0] && isFalse)) latest.set(f.anchor, [at, isFalse]);
+      }
+    }
+    return [...latest.values()].some(([, isFalse]) => isFalse);
+  }
+
+  /** The steward's freeze of `anchor` in effect at `now` (at <= now < until), or null (identity.md rule 0).
+   * Pass it to decideIdentity(claims, { frozen }). */
+  frozen(anchor, now = Math.floor(Date.now() / 1000)) {
+    const f = (this.#d.freezes || []).find((x) => x.anchor === anchor
+      && when(x.at) <= now && now < when(x.until));
+    return f ? structuredClone(f) : null;
+  }
 
   /** V-10, V-14: "valid", "unknown_issuer", "issuer_mismatch" or "revoked". */
   checkSigner(code, signerKeyId) {
@@ -282,6 +329,12 @@ function keepsHistory(next, previous, annulled = []) {
   }
   for (const f of previous.false_claims || []) {
     if (!(next.false_claims || []).some((x) => same(x, f))) fail(`the false claim ${f.code} was removed`);
+  }
+  for (const f of previous.false_claim_reversals || []) {
+    if (!(next.false_claim_reversals || []).some((x) => same(x, f))) fail(`the reversal of the false claim ${f.code} was removed`);
+  }
+  for (const f of previous.freezes || []) {
+    if (!(next.freezes || []).some((x) => same(x, f))) fail(`the freeze of ${f.anchor} was removed`);
   }
   for (const k of previous.revoked_keys || []) {
     if (!(next.revoked_keys || []).some((x) => same(x, k))
@@ -552,9 +605,6 @@ export async function verifyAnswer(answer, request, { directory, fetch: fetchFn 
     .includes(directory.toJSON().steward_key_id)) {
     fail("testing is for a test directory only: the PRE-GEN steward's directory never accepts a sandbox answer");
   }
-  if (directory.isFalseClaim(asked.subject_ref)) {                              // identity.md: the steward ruled it false
-    fail(`${asked.subject_ref} is a false claim the steward recorded: no answer counts`);
-  }
   const body = await registrySigned(answer, "pg.answer.v1", asked.subject_ref, directory, fetchFn);
   const unknown = Object.keys(body).filter((k) => !ANSWER_MEMBERS.has(k)).sort();
   if (unknown.length) fail(`the answer carries members the core does not define: ${unknown.join(", ")}`);
@@ -575,12 +625,18 @@ export async function verifyAnswer(answer, request, { directory, fetch: fetchFn 
 /** PRE-GEN-CORE.md rule 5: may I generate on this answer? `request` is the pg.request.v1 envelope you
  * sent. Checks that a key the directory lists for the subject's prefix signed it (and is not revoked),
  * that it answers exactly this request under the same profile, that it is within its lifetime, that it
- * is not a sandbox answer outside testing, and that it is an `allow`. `profile` is compared as a name: the
+ * is not a sandbox answer outside testing, that the steward recorded no unreversed false claim on the code under any
+ * anchor, and that it is an `allow`. `profile` is compared as a name: the
  * fixed name of a vocabulary of uses (`likeness/1`), never a version of anyone's policy; nothing that names
  * a version, hash or counter of a registry's rules is carried or compared. Throws PregenError with the reason; returns the answer body when you
  * may generate. Keep the answer with the output. */
 export async function checkAnswer(answer, request, options = {}) {
-  const body = await verifyAnswer(answer, request, options);
+  const directory = options.directory ?? await loadDirectory({ fetch: options.fetch ?? globalThis.fetch });
+  const code = request?.body?.subject_ref;
+  if (typeof code === "string" && directory.isFalseClaim(code)) {           // identity.md: the steward ruled it false
+    fail(`${code} is a false claim the steward recorded: never generated`);
+  }
+  const body = await verifyAnswer(answer, request, { ...options, directory });
   if (body.status !== "allow") fail(`not an allow: ${body.status} ${body.reason ?? ""}`.trim());
   return body;
 }
@@ -593,7 +649,10 @@ export const FLOOR_REASONS = Object.freeze(["PG_SUBJECT_OPTED_OUT", "PG_SUBJECT_
   "PG_IMMUTABLE_DENIAL", "PG_PERSONAL_SIGNATURE_REQUIRED"]);
 
 /** A registry's signed anchor list (pg.anchors.v1), checked through the directory and at most a day old, so an
- * old copy cannot hide a new opt-out. Returns its entries, without the codes the steward marked false. */
+ * old copy cannot hide a new opt-out. Returns its entries, without those the steward found false under their own anchor
+ * (a false claim under another anchor silences no one). An entry naming
+ * another registry's code is dropped, not the whole list: one foreign line must not make the list fail. A list naming
+ * one of its codes twice is refused: its anchor would depend on which line a client read last. */
 export async function verifyAnchors(envelope, prefix, { directory, fetch: fetchFn = globalThis.fetch,
   now = Math.floor(Date.now() / 1000) } = {}) {
   const body = await registrySigned(envelope, "pg.anchors.v1", `PG-${prefix}-0000000`, directory, fetchFn); // names the prefix
@@ -601,79 +660,306 @@ export async function verifyAnchors(envelope, prefix, { directory, fetch: fetchF
     fail("not an anchor list of this registry");
   }
   if (now - body.issued_at < -60 || now - body.issued_at > DIRECTORY_MAX_AGE) fail("the anchor list is more than 24 hours old");
-  for (const e of body.anchors) {
-    if (!e || typeof e !== "object" || issuerOf(String(e.code ?? "")) !== prefix) {
-      fail("an anchor list names only its own registry's codes");
-    }
+  if (!body.anchors.every((e) => e && typeof e === "object" && !Array.isArray(e) && typeof e.code === "string")) {
+    fail("an anchor list entry is {anchor, code, level, proof_url, status}");
   }
-  return body.anchors.filter((e) => !directory.isFalseClaim(e.code));
+  const own = body.anchors.filter((e) => CANONICAL_CODE.test(e.code) && issuerOf(e.code) === prefix);
+  if (new Set(own.map((e) => e.code)).size !== own.length) fail("an anchor list names each code once");
+  return own.filter((e) => !directory.isFalseClaim(e.code, e.anchor));
 }
 
 /** One public person, held by several registries (spec/extensions/identity.md). `claims` lists, for every code
- * the anchor lists name, {code, confirmed, answer}: `confirmed` is whether the person confirmed this code on their
- * own official channel; `answer` is the body verifyAnswer returned. Rule: not who came first, but who proved it.
- * Returns {status: "allow" | "deny" | "review", reason, code}: generate only on "allow". */
-export function decideIdentity(claims, { allowUnconfirmed = false } = {}) {
+ * the anchor lists name, {code, confirmed, answer, settled, refusal_only}: `confirmed` is whether the person confirmed
+ * this code on a current official channel; `settled` whether that channel was also official SETTLED_AFTER (7 days)
+ * earlier: only a settled claim's allow permits, so a fresh Wikidata edit can refuse at once and permit only after a
+ * week (missing: not settled); `refusal_only` that it still counts, for a refusal of the person only, because its line
+ * stands at a channel official 7 days earlier and no longer, or you saw it confirmed in the last 7 days and its line is
+ * gone (a recent refusal survives a channel change); `answer` is the body verifyAnswer returned, or null when there is none to weigh: the code's
+ * registry gave no valid answer, or its anchor list failed (pass the entries of its last verified list with answer
+ * null, so a broken list blocks only the people it held). Rule: not who came first, but who proved it.
+ * `frozen` is directory.frozen(anchor): while the steward freezes the person, the result is deny, PG_SUBJECT_UNAVAILABLE.
+ * Returns {status: "allow" | "deny" | "review" | "not_blocked", reason, code}: generate only on "allow". Throws
+ * PregenError (no decision: do not generate) when a confirmed or refusal-only claim has no answer and no other such
+ * claim refuses the person. */
+export function decideIdentity(claims, { allowUnconfirmed = false, frozen = null } = {}) {
   // Before the person confirmed, PRE-GEN says nothing either way; an unconfirmed claim
   // neither permits nor refuses (allowUnconfirmed no longer permits anything). Rule 9: never the claims' order.
-  const group = claims.filter((c) => c.confirmed).sort((a, b) => (a.code < b.code ? -1 : a.code > b.code ? 1 : 0));
-  if (!group.length) {
-    return { status: "not_blocked", reason: claims.length ? "PG_IDENTITY_UNCONFIRMED" : "PG_UNKNOWN_SUBJECT", code: null };
-  }
-  for (const c of group) {
-    if (c.answer.status !== "allow" && FLOOR_REASONS.includes(c.answer.reason)) {
+  if (frozen != null && frozen !== false) return { status: "deny", reason: "PG_SUBJECT_UNAVAILABLE", code: null }; // rule 0
+  const counted = claims.filter((c) => c.confirmed || c.refusal_only)
+    .sort((a, b) => (a.code < b.code ? -1 : a.code > b.code ? 1 : 0));
+  for (const c of counted) {
+    if (c.answer != null && c.answer.status !== "allow" && FLOOR_REASONS.includes(c.answer.reason)) {
       return { status: "deny", reason: c.answer.reason, code: c.code };
     }
   }
-  const allowed = group.find((c) => c.answer.status === "allow");
+  // It may hold the person's refusal: unknown is not unconfirmed.
+  if (counted.some((c) => c.answer == null)) fail("no decision: a claim the person confirmed has no answer");
+  const group = counted.filter((c) => !c.refusal_only);
+  const allowed = group.find((c) => c.answer.status === "allow" && c.settled);
   if (allowed) return { status: "allow", reason: null, code: allowed.code };
+  const refusals = group.filter((c) => c.answer.status !== "allow");
+  if (!refusals.length) { // nobody confirmed, or only on channels younger than a week
+    return { status: "not_blocked", reason: claims.length ? "PG_IDENTITY_UNCONFIRMED" : "PG_UNKNOWN_SUBJECT", code: null };
+  }
   const severity = (c) => ({ deny: 0, review: 1 })[c.answer.status] ?? 2; // the strongest refusal, ties by code
-  const worst = group.reduce((w, c) => (severity(c) < severity(w) ? c : w));
+  const worst = refusals.reduce((w, c) => (severity(c) < severity(w) ? c : w));
   return { status: worst.answer.status, reason: worst.answer.reason ?? null, code: worst.code };
 }
 
-/** Did the person confirm `code` on an official channel? `proofUrl` must lie on one of `officialUrls`
- * (for example from wikidataOfficialUrls) and its text must contain "PRE-GEN: <code>". */
-export async function checkChannelProof(code, proofUrl, officialUrls, getText) {
-  // A host may resolve "/@person/../@other" (or %2e, or an encoded slash) to another profile: such a path proves nothing.
-  const rawPath = String(proofUrl).split(/[?#]/)[0].replace(/^[a-z]+:\/\/[^/]*/i, "");
-  if (/%2f|%5c|\\/i.test(rawPath) || rawPath.split("/").some((s) => { try { return [".", ".."].includes(decodeURIComponent(s)); } catch { return true; } })) {
-    return false;
-  }
-  if (/[?#]/.test(String(proofUrl))) return false;                             // a page that echoes its query shows what anyone types
-  let p;
-  try { p = new URL(proofUrl); } catch { return false; }
-  const under = (u) => { // same host, and the official path itself or below it ("/cristiano", not "/cristiano_fan")
-    let o;
-    try { o = new URL(u); } catch { return false; }
-    const base = o.pathname.replace(/\/+$/, "");
-    return p.hostname === o.hostname && (p.pathname.replace(/\/+$/, "") === base || p.pathname.startsWith(base + "/"));
-  };
-  // The whole code: a longer code that starts the same way (a legacy code has six or more digits) confirms nothing.
-  const line = new RegExp(`PRE-GEN: ${code.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w-])`);
-  return p.protocol === "https:" && officialUrls.some(under) && line.test(String((await getText(proofUrl)) ?? ""));
+// A proof URL or official channel, exactly as written: https, a lower-case ASCII host, no credentials, port, query,
+// fragment, percent-escape or dot segment, at most 512 characters, so every client reads the same page (stress B-9, D-1).
+const CHANNEL_URL = /^https:\/\/([a-z0-9.-]{1,253})((?:\/(?!\.\.?(?:\/|$))[A-Za-z0-9._~@-]+)*\/?)$/;
+const WELL_KNOWN = "/.well-known/pregen";
+
+function channelUrl(url) {
+  const m = typeof url === "string" && url.length <= 512 ? CHANNEL_URL.exec(url) : null;
+  return m && HOST.test(m[1]) ? [m[1], m[2]] : null;
 }
 
-// Wikidata properties naming a person's own channels: official website, X, Instagram, YouTube channel, TikTok.
-const OFFICIAL = { P856: (v) => v, P2002: (v) => `https://x.com/${v}`, P2003: (v) => `https://www.instagram.com/${v}`,
-  P2397: (v) => `https://www.youtube.com/channel/${v}`, P7085: (v) => `https://www.tiktok.com/@${v}` };
+/** Did the person confirm `code` on an official channel (`officialUrls`, for example from wikidataOfficialUrls)?
+ * Only two places count, never any other page on the host:
+ * - an official website ("https://<host>", no path): exactly https://<host>/.well-known/pregen, whose text `getText`
+ *   returns as a string;
+ * - an official account ("https://x.com/<handle>" and the like): a post or profile at or below that path, for which
+ *   `getText` returns {author: <handle or channel id>, text: <what the account itself wrote there>} from the
+ *   platform's own record of who wrote it. The author must be the account (letter case aside); a string, a comment or
+ *   another account's post confirms nothing.
+ * The text must have a line "PRE-GEN: <code>", the whole code, alone or followed by a space and more words; a line
+ * "PRE-GEN: <code> withdraw <party>" confirms nothing. `proofUrl` is taken exactly as written: https, a lower-case
+ * host, no credentials, port, query, fragment, percent-escape or dot segment, at most 512 characters; `getText` must
+ * not follow redirects (treat a 3xx like a 404: return ""). If `getText` throws (the page cannot be read), the claim
+ * is unconfirmed, unless `seenConfirmed` (you saw it confirmed at the last check): then the error is thrown, and you
+ * have no decision for this person. */
+export async function checkChannelProof(code, proofUrl, officialUrls, getText, { seenConfirmed = false } = {}) {
+  const p = channelUrl(proofUrl);
+  let account = null;
+  const on = p && officialUrls.map(channelUrl).some((o) => {
+    if (!o || o[0] !== p[0]) return false;
+    const base = o[1].replace(/\/+$/, ""), path = p[1].replace(/\/+$/, "");
+    if (!base) return p[1] === WELL_KNOWN;
+    if (path !== base && !path.startsWith(base + "/")) return false;
+    account = base.slice(base.lastIndexOf("/") + 1).replace(/^@+/, "").toLowerCase();
+    return true;
+  });
+  if (!on) return false;
+  let got;
+  try { got = await getText(proofUrl); } catch (e) {
+    if (seenConfirmed) throw e;
+    return false;
+  }
+  if (account !== null) {
+    const author = got && typeof got === "object" ? got.author : null;
+    if (!(typeof author === "string" && /^[A-Za-z0-9._-]+$/.test(author) && author.toLowerCase() === account)) return false;
+    got = got.text;
+  }
+  return (typeof got === "string" ? got : "").split("\n").some((line) => {
+    const words = line.replace(/^[ \t\r]+|[ \t\r]+$/g, "").split(/[ \t]+/);
+    return words[0] === "PRE-GEN:" && words[1] === code && words[2] !== "withdraw";
+  });
+}
 
-/** The official channels Wikidata lists for an anchor "wikidata:Q…". */
-export async function wikidataOfficialUrls(anchor, { fetch: fetchFn = globalThis.fetch } = {}) {
+// Wikidata properties naming a person's own channels (official website, X, Instagram, YouTube channel, TikTok), each
+// with the value it must have: anything else is dropped, never repaired (stress B-11).
+const OFFICIAL = {
+  P2002: [/^[A-Za-z0-9_]{1,15}$/, (v) => `https://x.com/${v}`],
+  P2003: [/^[A-Za-z0-9_][A-Za-z0-9._]{0,29}$/, (v) => `https://www.instagram.com/${v}`],
+  P2397: [/^UC[0-9A-Za-z_-]{22}$/, (v) => `https://www.youtube.com/channel/${v}`],
+  P7085: [/^[A-Za-z0-9_][A-Za-z0-9._]{0,23}$/, (v) => `https://www.tiktok.com/@${v}`],
+};
+
+// A Wikidata time qualifier as [year, month, day], month and day 0 below that precision; null if it has none.
+function wdDay(snak) {
+  const t = snak?.snaktype === "value" ? snak.datavalue?.value?.time : undefined;
+  const m = typeof t === "string" ? /^([+-])0*([0-9]{1,16})-([0-9]{2})-([0-9]{2})T[0-9:]{8}Z$/.exec(t) : null;
+  return m ? [Number(m[2]) * (m[1] === "-" ? -1 : 1), Number(m[3]), Number(m[4])] : null;
+}
+const dayLE = (a, b) => a[0] !== b[0] ? a[0] < b[0] : a[1] !== b[1] ? a[1] < b[1] : a[2] <= b[2];
+
+// Not deprecated, not ended (an end time today or before, or an unknown one), not yet to start (stress B-1).
+function current(statement, today) {
+  const q = statement.qualifiers || {};
+  const ended = (q.P582 || []).some((s) => s?.snaktype !== "novalue" && dayLE(wdDay(s) ?? today, today));
+  const started = (q.P580 || []).every((s) => s?.snaktype !== "value" || dayLE(wdDay(s) ?? [1e17, 0, 0], today));
+  return statement.rank !== "deprecated" && !ended && started;
+}
+
+/** The official channels Wikidata currently lists for an anchor "wikidata:Q…": statements that are not deprecated,
+ * have not ended and have started, with a value of the property's own form. A website counts by its host alone
+ * ("https://<host>"): only its /.well-known/pregen can confirm (checkChannelProof).
+ * Given `at` (Unix seconds, normally now - SETTLED_AFTER), the channels of the item as it stood then, from its last
+ * revision at or before `at` ([] if the item did not exist yet), current as of that day: a claim is settled when its
+ * channel is in both lists, and its refusal survives when its line stands at a channel only in this one. */
+export async function wikidataOfficialUrls(anchor, { fetch: fetchFn = globalThis.fetch, now = Math.floor(Date.now() / 1000),
+  at } = {}) {
   const qid = anchor.replace(/^wikidata:/, "");
   if (!/^Q[0-9]+$/.test(qid)) fail("not a wikidata anchor");
-  const res = await fetchFn(`https://www.wikidata.org/wiki/Special:EntityData/${qid}.json`, { redirect: "error" });
+  let url = `https://www.wikidata.org/wiki/Special:EntityData/${qid}.json`;
+  if (at !== undefined && at !== null) {
+    now = Math.floor(at);
+    const stamp = new Date(now * 1000).toISOString().replace(/\.[0-9]{3}Z$/, "Z");
+    const r = await fetchFn("https://www.wikidata.org/w/api.php?action=query&format=json&formatversion=2&prop=revisions"
+      + `&rvprop=ids&rvdir=older&rvlimit=1&titles=${qid}&rvstart=${stamp}`, { redirect: "error" });
+    if (!r.ok) fail(`wikidata: HTTP ${r.status}`);
+    const pages = (await r.json())?.query?.pages;
+    const page = Array.isArray(pages) && pages[0] && typeof pages[0] === "object" ? pages[0] : null;
+    if (!page || page.missing) fail(`wikidata: no entity ${qid} (merged or redirected)`);
+    const revs = page.revisions;
+    if (!revs || !revs.length) return []; // no revision at or before `at`: the item had no channels then
+    const revid = Array.isArray(revs) ? revs[0]?.revid : undefined;
+    if (!Number.isSafeInteger(revid)) fail(`wikidata: no revision of ${qid} to read`);
+    url += `?revision=${revid}`;
+  }
+  const res = await fetchFn(url, { redirect: "error" });
   if (!res.ok) fail(`wikidata: HTTP ${res.status}`);
-  const claims = (await res.json()).entities[qid].claims;
-  return Object.entries(OFFICIAL).flatMap(([prop, fmt]) =>
-    (claims[prop] || []).filter((c) => c.mainsnak?.datavalue).map((c) => fmt(c.mainsnak.datavalue.value)));
+  const entity = (await res.json())?.entities?.[qid];
+  if (!entity || typeof entity !== "object" || Array.isArray(entity)) fail(`wikidata: no entity ${qid} (merged or redirected)`);
+  const d = new Date(now * 1000), today = [d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate()];
+  const claims = entity.claims || {}, urls = [];
+  for (const prop of ["P856", ...Object.keys(OFFICIAL)]) {
+    for (const c of claims[prop] || []) {
+      if (!c || typeof c !== "object") continue;
+      const v = c.mainsnak?.datavalue?.value;
+      if (typeof v !== "string" || !current(c, today)) continue;
+      if (prop === "P856") {
+        const m = /^https?:\/\/([A-Za-z0-9.-]+)(?:[/?#][!-~]*)?$/.exec(v);
+        if (m && HOST.test(m[1].toLowerCase())) urls.push("https://" + m[1].toLowerCase());
+      } else if (OFFICIAL[prop][0].test(v)) urls.push(OFFICIAL[prop][1](v));
+    }
+  }
+  return urls;
+}
+
+// ── extension terms (spec/extensions/terms.md) ──
+
+/** likeness/1's closed vocabulary of content categories (spec/profiles/likeness-1.md). A request that accepts a
+ * person's terms names only these; any other word or spelling is refused, never normalised or passed (stress test TC1, TH1). */
+export const CATEGORIES = Object.freeze(["adult", "advertising", "alcohol", "cannabis", "drugs", "endorsement", "fashion",
+  "financial", "gambling", "health", "political", "religion", "sexual", "tobacco", "violence", "weapons"]);
+export const PROHIBITED_FOR_MINORS = Object.freeze(["adult", "sexual", "violence"]); // never a minor's likeness, whatever the licence
+export const INTIMATE = Object.freeze(["adult", "sexual"]);     // only on a grant the person signs with their own key, never on terms
+const PURPOSES = ["personal", "educational", "research", "editorial", "commercial"];
+
+function categoriesOf(use) {
+  const cats = use && typeof use === "object" && !Array.isArray(use) ? (Object.hasOwn(use, "categories") ? use.categories : []) : null;
+  if (!Array.isArray(cats) || !cats.every((c) => typeof c === "string")) fail("use.categories is a list of words");
+  return new Set(cats);
+}
+
+/** likeness/1's fixed protections, which no terms and no licence lift: a minor's likeness in a prohibited category
+ * gives "PG_PROHIBITED_USE", then any intimate category "PG_PERSONAL_SIGNATURE_REQUIRED". null when neither applies.
+ * A word outside CATEGORIES matches nothing here: refuse it before. */
+export function floor(use, minor) {
+  const cats = categoriesOf(use);
+  if (minor === true && PROHIBITED_FOR_MINORS.some((c) => cats.has(c))) return "PG_PROHIBITED_USE";
+  return INTIMATE.some((c) => cats.has(c)) ? "PG_PERSONAL_SIGNATURE_REQUIRED" : null;
+}
+
+/** The first part of a declared use that a person's rules rule out, or null: a purpose they do not allow, then the
+ * categories they exclude. An absent `excluded_categories` excludes nothing. */
+export function forbids(rules, use) {
+  if (!rules.purposes.includes(use.purpose)) return "purpose " + canonicalJson(use.purpose ?? null);
+  const cats = categoriesOf(use), excluded = [...new Set(rules.excluded_categories ?? [])].filter((c) => cats.has(c)).sort();
+  return excluded.length ? "categories " + canonicalJson(excluded) : null;
+}
+
+/** Whether a version of a person's terms opens anything (rule 5): a first version (`old` is null), a purpose added,
+ * an exclusion removed, another template, or `minor` going from true to false. A version that opens takes the
+ * person's own press with a second factor; all else only narrows. `old` and `next` are pg.terms.v1 bodies, or just
+ * {rules, minor}. */
+export function termsOpens(old, next) {
+  if (old == null) return true;
+  const r = old.rules, s = next.rules;
+  return s.purposes.some((p) => !r.purposes.includes(p))
+    || (r.excluded_categories ?? []).some((c) => !(s.excluded_categories ?? []).includes(c))
+    || !same(old.template ?? null, next.template ?? null)
+    || (old.minor === true && next.minor !== true);
+}
+
+const TERMS_MEMBERS = ["signers", "subject_ref", "profile", "version", "amends", "template", "legal", "rules", "minor",
+  "assent", "instruction", "factor", "issued_at"];
+// No control or format character in any member name or string: a zero-width joiner hides inside a word (TC1), and a
+// trailing newline slips past a pattern that ends in `$` (TL2). As Python's str.isprintable: Other or Separator, but " ".
+const UNPRINTABLE = /(?! )[\p{C}\p{Z}]/u;
+const printable = (v) => (Array.isArray(v) ? v.every(printable)
+  : v && typeof v === "object" ? Object.entries(v).every(([k, x]) => printable(k) && printable(x))
+  : typeof v !== "string" || !UNPRINTABLE.test(v));
+const hex64 = (v) => typeof v === "string" && /^[0-9a-f]{64}$/.test(v);
+const count = (v, low = 1) => Number.isSafeInteger(v) && v >= low;
+/** A sorted list of distinct words from `vocabulary`. */
+const words = (v, vocabulary, atLeast = 0) => Array.isArray(v) && v.length >= atLeast
+  && v.every((x) => typeof x === "string" && vocabulary.includes(x)) && same(v, [...new Set(v)].sort());
+const isObject = (v) => Boolean(v) && typeof v === "object" && !Array.isArray(v);
+
+/** A person's terms (pg.terms.v1, spec/extensions/terms.md) as their registry published them: signed by exactly one
+ * key the directory lists for the code's prefix (PM10), for `code` itself (PM1), every member in shape and every
+ * string printable, `amends` present exactly when it is not the first version, and a first version naming its second
+ * factor. `assent` is always "registry": the registry's word on the person's authenticated instruction, never the
+ * person's own key. It shows what was signed, not that this version still stands. Throws PregenError; returns the
+ * body. Its message id, messageId("pg.terms.v1", body), is what a request accepts in `terms`. */
+export async function checkTerms(env, code, { directory, fetch: fetchFn = globalThis.fetch } = {}) {
+  directory ??= await loadDirectory({ fetch: fetchFn });
+  const b = await registrySigned(env, "pg.terms.v1", code, directory, fetchFn);
+  if (b.subject_ref !== code) fail("these terms are another person's");
+  const has = (k) => Object.hasOwn(b, k);
+  if (!TERMS_MEMBERS.every((k) => has(k) || k === "amends" || k === "factor") || !Object.keys(b).every((k) => TERMS_MEMBERS.includes(k))
+      || !printable(b) || !same(Object.keys(b.signers[0]).sort(), ["key_id", "role"])) {
+    fail("not a pg.terms.v1 body: a member missing or unknown, or a control or format character");
+  }
+  if (b.assent !== "registry" || b.profile !== "likeness/1") fail('terms are the registry\'s word under likeness/1 (assent "registry")');
+  if (!count(b.version) || has("amends") !== b.version > 1 || (has("amends") && !hex64(b.amends))) {
+    fail("a later version names the message id of the one it amends, and a first version names none");
+  }
+  if (!["authenticator", "email"].includes(has("factor") ? b.factor : "email") || (b.version === 1 && !has("factor"))) {
+    fail("a first version, and any that opens, names the second factor the registry checked");
+  }
+  const t = b.template, legal = b.legal, rules = b.rules;
+  if (!(hex64(b.instruction) && typeof b.minor === "boolean" && count(b.issued_at, 0)
+      && isObject(t) && same(Object.keys(t).sort(), ["id", "jurisdiction", "version"])
+      && typeof t.id === "string" && /^[a-z0-9-]{1,40}$/.test(t.id) && count(t.version)
+      && typeof t.jurisdiction === "string" && /^[A-Z]{2}$/.test(t.jurisdiction)
+      && isObject(legal) && same(Object.keys(legal).sort(), ["sha256", "url"])
+      && hex64(legal.sha256) && typeof legal.url === "string" && /^https:\/\/[!-~]{1,2040}$/.test(legal.url) // printable ASCII, no space
+      && isObject(rules) && same(Object.keys(rules).sort(), ["excluded_categories", "purposes"])
+      && words(rules.purposes, PURPOSES, 1) && words(rules.excluded_categories, CATEGORIES))) {
+    fail("not a pg.terms.v1 body: instruction, minor, issued_at, template, legal or rules");
+  }
+  return b;
+}
+
+/** What a proof shows about the terms the provider's signed request accepted: "absent" when it accepted none;
+ * "unverified" when the record is not carried, not the one accepted, or not validly signed; "outside" when the use
+ * reaches the floor, names a word outside CATEGORIES, or, on a policy basis, is outside the person's rules (a grant
+ * decides its own scope); else "ok". */
+async function termsFinding(item, asked, basis, code, directory, fetchFn) {
+  if (!("terms" in asked)) return { terms: "absent", termsAssent: null };
+  const pregenOnly = (e) => { if (!(e instanceof PregenError)) throw e; };
+  let terms;
+  try {
+    terms = await checkTerms(item.terms, code, { directory, fetch: fetchFn });
+    if ((await messageId("pg.terms.v1", terms)) !== asked.terms) fail("not the terms the request accepted");
+  } catch (e) {
+    pregenOnly(e);
+    return { terms: "unverified", termsAssent: null };
+  }
+  const use = asked.use, policy = isObject(basis) && basis.kind === "policy";
+  let out;
+  try {
+    out = Boolean(floor(use, terms.minor) || [...categoriesOf(use)].some((c) => !CATEGORIES.includes(c))
+      || (policy && forbids(terms.rules, use)));
+  } catch (e) {
+    pregenOnly(e);
+    out = true;
+  }
+  return { terms: out ? "outside" : "ok", termsAssent: terms.assent };
 }
 
 // ── extension proof (spec/extensions/proof.md) ──
 
 /** A pg.proof.v1 bundle carried with an output: was every subject of the job allowed at the moment it was
  * generated, did each registry acknowledge the provider's report of this output, and (given its SHA-256) is it
- * this file? Throws PregenError with the reason; returns {outputHash, jobId, subjects}. */
+ * this file? Throws PregenError with the reason; returns {outputHash, jobId, subjects}. Each subject also says what the
+ * proof shows about the terms its request accepted (`terms`: "absent", "ok", "outside" or "unverified", and
+ * `termsAssent`, "registry" for a record that checked out): what was signed, not that those terms still stand. */
 export async function checkProof(bundle, { directory, fetch: fetchFn = globalThis.fetch, outputSha256,
   now = Math.floor(Date.now() / 1000), testing = false } = {}) {
   directory ??= await loadDirectory({ fetch: fetchFn });
@@ -684,6 +970,9 @@ export async function checkProof(bundle, { directory, fetch: fetchFn = globalThi
   for (const it of items) {
     const code = it.request?.body?.subject_ref, rbody = it.report?.body;
     if (!rbody || typeof rbody !== "object" || it.report.type !== "pg.report.v1") fail("each subject needs its report");
+    if (typeof code === "string" && directory.isFalseClaim(code)) {           // identity.md: the steward ruled it false
+      fail(`${code} is a false claim the steward recorded: never generated`);
+    }
     // The answer had to be valid when the output was made, not today.
     const answer = await verifyAnswer(it.answer, it.request, { directory, fetch: fetchFn, now: rbody.occurred_at, testing });
     if (answer.status !== "allow") fail(`${code}: not an allow: ${answer.status} ${answer.reason ?? ""}`.trim());
@@ -697,7 +986,8 @@ export async function checkProof(bundle, { directory, fetch: fetchFn = globalThi
     }
     outputs.add(rbody.output_hash);
     jobs.add(rbody.job_id);
-    subjects.push({ code, level: answer.level, basis: answer.basis });
+    subjects.push({ code, level: answer.level, basis: answer.basis,
+      ...(await termsFinding(it, it.request.body, answer.basis, code, directory, fetchFn)) });
   }
   if (outputs.size !== 1 || jobs.size !== 1) fail("the reports are about different outputs");
   const [outputHash] = outputs, [jobId] = jobs;

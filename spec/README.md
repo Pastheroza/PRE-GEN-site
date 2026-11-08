@@ -12,7 +12,7 @@ it without asking permission.
 | File | What it is |
 |---|---|
 | `PRE-GEN-CORE.md` | **The core**: codes, directory, ask, signed answer, generate only on allow — one page |
-| `extensions/` | Optional extensions, one page each: reports, provider-keys, limits, jobs, grants, licensee, observe, sandbox, lookup, identity, proof, catalog, provider-identity, bind |
+| `extensions/` | Optional extensions, one page each: reports, provider-keys, limits, jobs, grants, licensee, observe, sandbox, lookup, identity, proof, catalog, provider-identity, bind, terms |
 | `profiles/likeness-1.md` | The first profile: a person's likeness and voice |
 | `schemas/`, `test-vectors/messages.json` | JSON Schemas and byte vectors for the v5 messages |
 | `PRE-GEN-SPEC.md` | Foundations the core builds on (canonical bytes, keys, refusal codes) and the earlier interface (`/v1/verify`, receipts), still valid |

@@ -54,6 +54,7 @@
           "catalog",
           "provider-identity",
           "bind",
+          "terms",
           "commerce"
         ]
       },
@@ -95,6 +96,10 @@
         }
       },
       "description": "extension bind: where a person connects their licences to an app"
+    },
+    "terms": {
+      "const": "optional",
+      "description": "extension terms: subjects may have terms, and a request may accept them; absent means the registry publishes none"
     }
   }
 }

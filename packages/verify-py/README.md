@@ -40,17 +40,51 @@ Also exported: `check_provider_url`, `signing_input`, `public_key_hex`, `message
 
 ## One person in several registries, and proof in a video
 
-- `verify_anchors(list, prefix, directory)` — a registry's signed anchor list (`extensions/identity.md`).
-- `check_channel_proof(code, proof_url, wikidata_official_urls(anchor), get_text)` — did the person
-  confirm this code on their own channel?
-- `decide_identity(claims)` — "who proved it, not who came first"; generate only on `allow`.
+- `verify_anchors(list, prefix, directory)` — a registry's signed anchor list (`extensions/identity.md`). Another
+  registry's codes are dropped, and so is an entry the steward found false under its own anchor; a list naming a code
+  twice is refused.
+- `wikidata_official_urls(anchor)` — the channels Wikidata lists as current: not deprecated, not ended, started, each
+  value in its property's own form. A website counts by its host alone. With `at=now - pregen.SETTLED_AFTER`, the
+  channels of the item as it stood 7 days earlier (its last revision then).
+- `check_channel_proof(code, proof_url, official_urls, get_text, seen_confirmed=False)` — did the person
+  confirm this code on their own channel? Only at `https://<official host>/.well-known/pregen` (`get_text` returns
+  the text) or in a post or profile by the official account itself (`get_text` returns `{"author", "text"}` from the
+  platform's record of who wrote it), as a line `PRE-GEN: <code>`. A page that cannot be read (`get_text` raises) is
+  unconfirmed, unless you saw it confirmed at the last check (`seen_confirmed=True`): then it raises, no decision.
+- `decide_identity(claims, frozen=directory.frozen(anchor))` — "who proved it, not who came first"; generate only on
+  `allow`. A steward freeze denies first (`PG_SUBJECT_UNAVAILABLE`). Each claim is `{"code", "confirmed", "settled",
+  "refusal_only", "answer"}`: only a `settled` claim's allow permits (its channel stood on Wikidata 7 days ago too;
+  missing means not settled), and a `refusal_only` claim counts only for a refusal of the person. An `answer` of `None`
+  (no valid answer, or its registry's anchor list failed: pass that list's last verified entries) raises, no
+  decision, only when that claim is confirmed or refusal-only and no such claim refuses the person. For one claim:
+
+  ```python
+  now_urls = pregen.wikidata_official_urls(anchor)
+  then_urls = pregen.wikidata_official_urls(anchor, at=int(time.time()) - pregen.SETTLED_AFTER)
+  confirmed = pregen.check_channel_proof(code, proof_url, now_urls, get_text, seen_confirmed=seen_this_week)
+  settled = confirmed and pregen.check_channel_proof(code, proof_url, [u for u in now_urls if u in then_urls], get_text)
+  gone = [u for u in then_urls if u not in now_urls]          # removed, replaced or ended this week
+  refusal_only = not confirmed and (seen_this_week or pregen.check_channel_proof(code, proof_url, gone, get_text))
+  ```
+  Keep, for 7 days, which claims you saw confirmed (`seen_this_week`).
+- `directory.is_false_claim(code, anchor)` — the steward found this claim false and has not reversed it
+  (`false_claim_reversals`; the latest entry by `at` decides). Without `anchor`, under any anchor: `check_answer`
+  refuses such a code, so a private person's code an entry names is never generated; `verify_answer` still weighs it.
 - `check_proof(bundle, directory, output_sha256=...)` — a platform's check of the `pg.proof.v1` bundle
-  carried with an output (`extensions/proof.md`).
+  carried with an output (`extensions/proof.md`): each subject also says what it shows about the terms its request
+  accepted, `terms`: `absent`, `ok`, `outside` or `unverified` (and `terms_assent`: `registry`).
+
+## A person's terms (`extensions/terms.md`)
+
+- `check_terms(envelope, code, directory)` — a `pg.terms.v1` record as the person's registry published it.
+  Accept it by putting `message_id("pg.terms.v1", body)` in your request's `terms`.
+- `floor(use, minor)`, `forbids(rules, use)`, `terms_opens(old, new)`; `CATEGORIES` (the closed vocabulary of
+  likeness/1, which a request carrying `terms` must keep to), `PROHIBITED_FOR_MINORS`, `INTIMATE`.
 
 ## The registry directory
 
 The directory check refuses an older directory, a newer one that removes
-a registry or key or undoes a revocation, and a different one with the same sequence. No registry is pinned by default: every registry, the first one included,
+a registry or key, undoes a revocation or drops a false claim, a reversal or a freeze, and a different one with the same sequence. No registry is pinned by default: every registry, the first one included,
 is trusted only through the signed directory. You may pin any registry's keys
 yourself (`pinnedKeys` / `pinned_keys`, prefix → fingerprints, `""` for bare
 codes), so that even a stolen steward key cannot add a key to that prefix.
@@ -71,7 +105,7 @@ registry answered, not that the output was lawful.
 Load the test directory with
 `pregen.load_directory("https://www.pregen.org/test/registries.json", steward_public_key_hex="78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0")`,
 ask the PRE-GEN Test Registry at `https://sandbox.pregen.org` (codes `PG-TEST-000001N` …
-`PG-TEST-000008H`; introduce yourself with `POST /v2/sandbox/party`), and pass `testing=True`
+`PG-TEST-000011Y`, where 9 tests a purchase, 10 a person's terms and 11 a minor; introduce yourself with `POST /v2/sandbox/party`), and pass `testing=True`
 to `check_answer` / `check_proof`. With the real directory, `check_answer` refuses `testing=True`.
 Walk-through: https://www.pregen.org/docs/provider.md, step 9.
 

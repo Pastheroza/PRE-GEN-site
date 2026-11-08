@@ -775,7 +775,10 @@ and human review (`PG_HELD_FOR_REVIEW`, disposition `review`).
   registries hold the same subject. The provider MUST keep both decisions,
   SHOULD tell both registries, and decides under its own policy; it MUST NOT
   present the output as licensed while it knows of an unresolved refusal.
-  The registries resolve the conflict between themselves (R-15).
+  The registries resolve the conflict between themselves (R-15). For a public
+  person whose registries publish anchors, the `identity` extension's rule
+  decides instead: only claims the person confirmed count, and a dispute holds
+  only at the registry that examines it (`extensions/identity.md`).
 - **P-9** When one output involves several subjects — a person, a voice, a
   brand, a work — the provider MUST ask for each subject, with one
   `generation_id` for all of them, MUST NOT generate on the registries'

@@ -56,6 +56,15 @@
               "body",
               "signatures"
             ]
+          },
+          "terms": {
+            "type": "object",
+            "required": [
+              "type",
+              "body",
+              "signatures"
+            ],
+            "description": "extension terms: the pg.terms.v1 envelope whose message id the request carries"
           }
         }
       }

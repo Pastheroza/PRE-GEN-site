@@ -67,7 +67,10 @@ def load(d: str) -> Registry:
     if not cfg_path.exists():
         sys.exit(f"no registry in {d}: run `pregen-registry init` first")
     key_hex = os.environ.get("PREGEN_OPERATOR_KEY_HEX") or key_path.read_text().strip()
-    return Registry(Config(**json.loads(cfg_path.read_text())), Key(key_hex), str(db_path))
+    try:
+        return Registry(Config(**json.loads(cfg_path.read_text())), Key(key_hex), str(db_path))
+    except ValueError as e:                 # a retired key, or a sandbox whose test serials hold other subjects
+        sys.exit(str(e))
 
 
 def main(argv=None):
@@ -160,16 +163,15 @@ def main(argv=None):
                 {"verify": "<who may register a person, and how we check they are that person or may act for them>",
                  "anchors": "<the anchor we record: a Wikidata item (clients confirm only these today); and how the "
                             "person confirms on their own channel>"}), sandbox=(
-                "\nThis is a sandbox: it holds no real people, only the standard test subjects (codes 1-7; code 8 is "
-                "deliberately unregistered), and its "
+                "\nThis is a sandbox: it holds no real people, only the standard test subjects (codes 1-7 and 9-11; code "
+                "8 is deliberately unregistered), and its "
                 "answers are marked as sandbox answers.\n" if a.sandbox else "")))
         print(f"Registry created in {a.dir}.\n  prefix: {a.prefix}\n  operator key id: {key.id}\n"
               f"  public key: {key.public_hex}\nGive the key id to the steward (step 9 of docs/registry.md); it reads "
               f"the public key from {a.api.rstrip('/')}/keys.\n"
               f"The private key is in {key_path} (mode 600): back it up offline.\n"
               f"A policy to edit is in {policy}; `serve` publishes it at {a.api.rstrip('/')}/policy.")
-        if a.sandbox:
-            reg.seed_sandbox()
+        if a.sandbox:                       # Registry() seeded the standard test subjects
             print("Sandbox test subjects (copy them; the last character is a check character):")
             for s in reg._q("SELECT code, name FROM subjects ORDER BY serial"):
                 print(f"  {s['code']}  {s['name']}")

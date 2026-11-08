@@ -12,16 +12,18 @@ added or changes its keys.
   python3 steward.py revoke-key ~/PRE-GEN-steward.pem registries.json KEY_ID --reason "..."
   python3 steward.py revoke-registry ~/PRE-GEN-steward.pem registries.json ABCD --reason "..."
   python3 steward.py false-claim ~/PRE-GEN-steward.pem registries.json --anchor wikidata:Q42 --code PG-ABCD-... --reason "..."
+  python3 steward.py reverse-false-claim ~/PRE-GEN-steward.pem registries.json --anchor wikidata:Q42 --code PG-ABCD-... --reason "..."
+  python3 steward.py freeze ~/PRE-GEN-steward.pem registries.json --anchor wikidata:Q42 --days 7 --reason "..."
   python3 steward.py sign ~/PRE-GEN-steward.pem registries.json          # after a hand edit; checked against the published one
   python3 steward.py sign --handover ~/PRE-GEN-steward-successor.pem registries.json   # only if the steward key is lost or stolen
   python3 steward.py verify registries.json [--steward <public key hex>]
 
 Every command that signs refuses a directory that verifiers would refuse: one
-that drops a listing, a key, a revocation or a false claim of the directory it
-replaces. The runbook is spec/tools/STEWARD.md.
+that drops a listing, a key, a revocation, a false claim, a reversal or a freeze
+of the directory it replaces. The runbook is spec/tools/STEWARD.md.
 
 Needs the `cryptography` package, and the `pregen` library (this repository's
-packages/verify-py is used when present, else `pip install "pregen>=0.11.0"`).
+packages/verify-py is used when present, else `pip install "pregen>=0.13.0"`).
 """
 
 import argparse
@@ -31,7 +33,7 @@ import os
 import subprocess
 import sys
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -99,6 +101,11 @@ def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _false_claim(d: dict, code: str, anchor: str) -> bool:
+    """Whether verifiers drop this claim now: the library's own rule, on the unsigned directory being edited."""
+    return pregen.Directory(d, pregen._TOKEN).is_false_claim(code, anchor)
+
+
 def _signed_by(d: dict, pub: str) -> bool:
     try:
         verify_directory(d, pub)
@@ -154,6 +161,10 @@ def _print_listing(d: dict) -> None:
         print(f"  revoked key {k['key_id']} at {k['at']}")
     for f in d.get("false_claims") or []:
         print(f"  false claim {f['code']} ({f.get('anchor')}) at {f['at']}")
+    for f in d.get("false_claim_reversals") or []:
+        print(f"  reversed false claim {f['code']} ({f['anchor']}) at {f['at']}")
+    for f in d.get("freezes") or []:
+        print(f"  freeze of {f['anchor']} from {f['at']} until {f['until']}")
 
 
 def cmd_sign(args) -> None:
@@ -328,10 +339,29 @@ def cmd_false_claim(args) -> None:
             sys.exit(f"{args.code!r}: {e}")
         if not any(r["prefix"] == issuer for r in d["registries"]):
             sys.exit(f"No listed registry holds the namespace of {args.code}.")
-        if any(f["code"] == args.code for f in d.get("false_claims") or []):
-            sys.exit(f"{args.code} is already recorded as a false claim.")
+        if _false_claim(d, args.code, args.anchor):
+            sys.exit(f"{args.code} is already a false claim under {args.anchor}.")
         d.setdefault("false_claims", []).append(
             {"anchor": args.anchor, "code": args.code, "at": _now(), "reason": args.reason})
+    _edit(args, change)
+
+
+def cmd_reverse_false_claim(args) -> None:
+    def change(d):
+        if not _false_claim(d, args.code, args.anchor):
+            sys.exit(f"{args.code} is not a false claim under {args.anchor}: nothing to reverse.")
+        d.setdefault("false_claim_reversals", []).append(
+            {"anchor": args.anchor, "code": args.code, "at": _now(), "reason": args.reason})
+        if _false_claim(d, args.code, args.anchor):          # a tie by `at` stays false
+            sys.exit("The false claim was recorded this very second: run it again.")
+    _edit(args, change)
+
+
+def cmd_freeze(args) -> None:
+    def change(d):
+        at = _now()
+        until = (datetime.fromisoformat(at.replace("Z", "+00:00")) + timedelta(days=args.days)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        d.setdefault("freezes", []).append({"anchor": args.anchor, "at": at, "until": until, "reason": args.reason})
     _edit(args, change)
 
 
@@ -396,6 +426,24 @@ def main() -> None:
     s.add_argument("--code", required=True)
     s.add_argument("--reason", required=True)
     s.set_defaults(fn=cmd_false_claim)
+
+    s = sub.add_parser("reverse-false-claim", help="reverse a false claim the steward found wrong, and sign")
+    s.add_argument("--first", action="store_true", help="start a directory that was never published")
+    s.add_argument("keyfile")
+    s.add_argument("directory")
+    s.add_argument("--anchor", required=True)
+    s.add_argument("--code", required=True)
+    s.add_argument("--reason", required=True)
+    s.set_defaults(fn=cmd_reverse_false_claim)
+
+    s = sub.add_parser("freeze", help="refuse a person everywhere from now for up to 7 days (never lifted early), and sign")
+    s.add_argument("--first", action="store_true", help="start a directory that was never published")
+    s.add_argument("keyfile")
+    s.add_argument("directory")
+    s.add_argument("--anchor", required=True)
+    s.add_argument("--days", type=int, choices=range(1, 8), default=7)
+    s.add_argument("--reason", required=True)
+    s.set_defaults(fn=cmd_freeze)
 
     s = sub.add_parser("sign", help="sign the registry directory after a hand edit")
     s.add_argument("--handover", action="store_true",

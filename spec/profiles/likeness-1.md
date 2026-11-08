@@ -13,6 +13,23 @@ exist, and which refusals nothing can override.
   `sexual`, `political` or `violence`. The floor and immutable denials are checked against
   them.
 
+## The closed vocabulary
+
+`adult`, `advertising`, `alcohol`, `cannabis`, `drugs`, `endorsement`, `fashion`, `financial`,
+`gambling`, `health`, `political`, `religion`, `sexual`, `tobacco`, `violence`, `weapons`.
+A code, once listed, is never removed or renamed.
+
+Each is a language-neutral ASCII code; a registry shows it in the reader's language. A
+subject's terms are written only in these codes, and a request that accepts terms
+([`terms`](../extensions/terms.md)) declares `categories` only in them: any other word, case,
+look-alike letter or hidden character is `PG_MALFORMED`, never normalised and never passed. A
+request without `terms` may still use other words in this version.
+
+- **Prohibited for minors:** `sexual`, `adult`, `violence`.
+- **Intimate:** `sexual`, `adult`.
+
+Both lists only grow.
+
 ## Answer members this profile adds
 
 - **`level`** — `self`, `asserted`, `consented` or `verified`, as defined in
@@ -29,8 +46,8 @@ These refusals are never overridden by a grant, an extension or a registry polic
 | Case | Reason |
 |---|---|
 | An opt-out in effect | `PG_SUBJECT_OPTED_OUT` |
-| The subject is pending, paused, disputed or withdrawn | `PG_SUBJECT_UNAVAILABLE` |
-| A fixed protection forbids the use — a minor's likeness in a sexualised or otherwise prohibited category | `PG_PROHIBITED_USE` |
+| The subject is pending, paused or withdrawn | `PG_SUBJECT_UNAVAILABLE` |
+| A fixed protection forbids the use — a minor's likeness in a sexualised or otherwise prohibited category, or in a category outside the closed vocabulary | `PG_PROHIBITED_USE` |
 | An immutable denial | `PG_IMMUTABLE_DENIAL` |
 | An intimate category (`sexual`, `adult`) without the person's own signature — see below | `PG_PERSONAL_SIGNATURE_REQUIRED` |
 
@@ -51,7 +68,19 @@ This is not a ban: it is consent the registry cannot fake, where the harm is gre
 | `PG_USAGE_LIMIT` | the grant's uses are spent |
 | `PG_SCOPE_VIOLATION` | outside the grant's scope |
 | `PG_REVIEW_REQUIRED` | with status `review` |
+| `PG_SUBJECT_DISPUTED` | a complaint about this code is being examined; refused at this registry before any grant, but not a refusal of the person ([`identity`](../extensions/identity.md)) |
 | `PG_NOT_CONNECTED` | this use needs a connected end user |
+| `PG_TERMS_NOT_ACCEPTED` | the request's `terms` is not the subject's current terms, or the provider cannot accept them ([`terms`](../extensions/terms.md)) |
+| `PG_TERMS_EXCLUDED` | no grant covers the use, and the subject's terms exclude it |
+
+## Terms under this profile
+
+A subject's `pg.terms.v1` `rules` are `{purposes, excluded_categories}`: the purposes the
+subject allows (at least one) and the categories they refuse (possibly none), both sorted. A
+category can only be excluded, so terms never lower the floor. `minor` is whether the registry
+knew the subject to be a minor when it signed the version, so that anyone can run the whole
+floor from the record. Intimate categories stay on the subject's own-key grant path above; terms
+never permit them.
 
 ## Grants under this profile
 

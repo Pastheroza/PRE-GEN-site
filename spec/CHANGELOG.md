@@ -18,6 +18,56 @@ Text only: no message format, required schema member or vector changes.
 - **`licensee`:** a licensee not bound to a provider URL gets 403 `PG_NOT_BOUND` (`bind` B-5), not 401.
 - **Conformance:** two profiles for the message interface (`PRE-GEN-SPEC.md` §8.1).
 
+## pregen 0.13.0, @pregen/verify 0.13.0, pregen-registry 0.4.0 (unreleased)
+
+A person's terms of generation, as one more extension: additive to v5. The answer does not change, so apps on 0.12
+keep working.
+- **`terms`** (`extensions/terms.md`, `schemas/terms.json`): a subject's terms are a public, signed `pg.terms.v1`
+  that keeps every version (`version`, `amends`): the purposes they allow and the categories they exclude, a template
+  with a pinned legal text, `minor`. Signed by the registry alone; `assent` is `registry` (`self` and `agent` are
+  reserved and refused). A version that opens (the first one, a purpose added, an exclusion removed, another template,
+  `minor` cleared) takes the subject's own instruction with a second factor and names it (`factor`); one that only
+  closes names none. `GET {api}/v2/terms/{id}` serves every version ever published, otherwise 404 `PG_UNKNOWN_TERMS`.
+- **Accepting:** a signed request may carry `terms`, the current version's message id (`schemas/request.json`; it
+  requires `signers`, and then `use.categories` only in the closed vocabulary). The answer's `request_id` covers it.
+  New answer reasons `PG_TERMS_NOT_ACCEPTED` (a stale or foreign id, or a provider that cannot accept; it binds no
+  ask, so the provider asks again under the same `job_id`) and `PG_TERMS_EXCLUDED` (no grant covers the use and the
+  terms exclude it, personal use included). The gate reads the floor and the subject's own refusals before anything
+  about who asks. An allow about a subject with terms lives at most 300 seconds.
+- **`likeness/1`:** a closed vocabulary of 16 category codes, `advertising` among them; prohibited for minors
+  `sexual`, `adult`, `violence`; intimate `sexual`, `adult`. A request without `terms` may still use other words.
+- **`lookup`:** `terms: {id, url}` and `status_url` for a subject that has terms. **`proof`:** a subject's entry may
+  carry its `pg.terms.v1`; a platform reports `terms` (`absent`, `ok`, `outside`, `unverified`) and `terms_assent`,
+  without changing whether the bundle is accepted.
+- **Registry document:** `terms` in `extensions`, and `"terms": "optional"`.
+- **Libraries:** `CATEGORIES`, `PROHIBITED_FOR_MINORS`, `INTIMATE`, `floor`, `forbids`, `terms_opens` / `termsOpens`,
+  `check_terms` / `checkTerms`; `check_proof` / `checkProof` report `terms` per subject. `check_channel_proof` no longer
+  takes a `withdraw` line as a confirmation.
+- **`identity`, additive v5 clarifications** (identity stress round, 2026-11-07; no message format or schema
+  change). Official channels come only from current Wikidata statements (not deprecated, not ended, started), with a
+  value of the property's own form. A confirmation stands only at a fixed place: `https://<host>/.well-known/pregen`
+  on the official website, or a post or the profile of the official account that the platform itself says the
+  account wrote; no other page on the host counts, and a `proof_url` is taken exactly as written (at most 512
+  characters, no user part, port, query, fragment, percent-escape or dot segment). An unreadable place means
+  unconfirmed; no decision only for a claim the client saw confirmed at its previous check. A channel permits only
+  once it has stood on Wikidata for 7 days, and for 7 days a refusal survives the loss of its channel or line. A
+  failed anchor list blocks only the people who confirmed a claim at that registry, and a revoked registry's last
+  verified `opted_out` or `paused` entries keep refusing the person while the person confirms them. A dispute is not a refusal of the person:
+  `likeness/1` answers it `PG_SUBJECT_DISPUTED` at that registry only, no longer `PG_SUBJECT_UNAVAILABLE`; only the
+  person, or a steward `freezes` entry of at most 7 days, refuses a person everywhere. `false_claims` match on
+  anchor and code together and are corrected by `false_claim_reversals` (`PG-CODE.md` §9.1). A written complaint
+  procedure: who files, what evidence counts, deadlines, outcomes, correction.
+- **Reference registry 0.4.0:** declares `terms`; publishes terms, serves `GET /v2/terms/{id}`, and answers a request
+  that carries `terms` in the gate order above.
+- **`sandbox`:** standard serials 9–11 (1–8 unchanged): 9 buy first, with a test purchase
+  (`POST {api}/v2/sandbox/purchases`, one use per purchase, sandbox only); 10 the person's terms; 11 a minor. For a
+  known minor, a category outside the closed vocabulary is `PG_PROHIBITED_USE` (`likeness/1`, the floor).
+  A test purchase is its buyer's alone: another provider naming the buyer as its `licensee_id` gets `PG_NO_LICENSE`.
+  **Upgrading a 0.3 sandbox:** 0.4.0 adds the missing standard subjects each time a sandbox starts, so an existing
+  one gains 9–11 by restarting on 0.4.0. 0.3 numbered the operator's own test people from 9; a sandbox whose 9, 10
+  or 11 is such a subject refuses to start and says so: make a fresh one (`init --sandbox`) and add those people
+  again (from 0.4.0 they are numbered from 12).
+
 ## pregen 0.12.0, @pregen/verify 0.12.0, pregen-registry 0.3.0 (2026-11-06)
 
 Two extensions, so that PRE-GEN is integrated once, with no account at any registry, and a registry's commerce

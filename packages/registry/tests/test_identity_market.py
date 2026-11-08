@@ -72,15 +72,20 @@ class World:
                 if e["anchor"] != RONALDO:
                     continue
                 request, answer = self.ask(prefix, e["code"])
+                confirmed = check_channel_proof(e["code"], e["proof_url"], official,
+                                                lambda url: official_page_text.get(url, ""))
+                # The Wikidata item here never changes, so every official channel stood a week ago too:
+                # a confirmed claim is settled, and none counts for a refusal only.
                 out.append({"code": e["code"], "answer": verify_answer(answer, request, self.directory, self.get_json,
                                                                        now=NOW + 10),
-                            "confirmed": check_channel_proof(e["code"], e["proof_url"], official,
-                                                             lambda url: official_page_text.get(url, ""))})
+                            "confirmed": confirmed, "settled": confirmed})
         return out
 
 
 def page(*codes_by_prefix):
-    return {f"https://www.instagram.com/cristiano/p/{p}": f"Licensing my face — PRE-GEN: {c}" for p, c in codes_by_prefix}
+    """The account's own posts, as the platform records who wrote them (check_channel_proof)."""
+    return {f"https://www.instagram.com/cristiano/p/{p}": {"author": "cristiano", "text": f"Licensing my face\nPRE-GEN: {c}"}
+            for p, c in codes_by_prefix}
 
 
 # ── identity: not who came first, but who proved it ─────────────────────
@@ -118,6 +123,23 @@ def test_i4_one_person_in_two_registries_a_refusal_in_either_holds_everywhere():
     assert (d["status"], d["reason"], d["code"]) == ("deny", "PG_SUBJECT_OPTED_OUT", b)
 
 
+@pytest.mark.parametrize("flags,verdict,here", [
+    ({"status": "disputed"}, ("allow", None, "BBBB"), "PG_SUBJECT_DISPUTED"),   # a complaint holds where it was made
+    ({"status": "disputed", "opted_out": 1}, ("deny", "PG_SUBJECT_OPTED_OUT", "AAAA"), "PG_SUBJECT_OPTED_OUT"),
+    ({"status": "paused"}, ("deny", "PG_SUBJECT_UNAVAILABLE", "AAAA"), "PG_SUBJECT_UNAVAILABLE")])
+def test_a_dispute_is_not_a_refusal_of_the_person(flags, verdict, here):
+    """Stress round C: a disputed code answers PG_SUBJECT_DISPUTED, outside the floor, so one complaint at one
+    registry does not freeze the person at every other."""
+    w = World()
+    codes = {"AAAA": w.person("AAAA", confirmed=True, **flags), "BBBB": w.person("BBBB", confirmed=True)}
+    d = decide_identity(w.claims(page(*codes.items())))
+    assert (d["status"], d["reason"], d["code"]) == (*verdict[:2], codes[verdict[2]])
+    alone = decide_identity([c for c in w.claims(page(*codes.items())) if c["code"] == codes["AAAA"]])
+    assert (alone["status"], alone["reason"]) == ("deny", here)                   # at its own registry, it refuses
+    listed = w.regs["AAAA"][1].get("/v2/anchors").json()["body"]["anchors"][0]["status"]
+    assert listed == ("opted_out" if flags.get("opted_out") else flags["status"])    # still visible on the list
+
+
 def test_i5_unproven_claims_freeze_no_one():
     w = World()                          # an impostor's listing freezes no one
     w.person("XXXX", confirmed=False)
@@ -127,12 +149,12 @@ def test_i5_unproven_claims_freeze_no_one():
 
 def test_a_proof_must_be_on_the_persons_own_channel():
     official = ["https://www.instagram.com/cristiano"]
-    fake = lambda url: "PRE-GEN: PG-XXXX-000001V"                     # noqa: E731
+    fake = lambda url: {"author": "cristiano", "text": "PRE-GEN: PG-XXXX-000001V"}     # noqa: E731
     assert check_channel_proof("PG-XXXX-000001V", "https://www.instagram.com/cristiano/p/1", official, fake)
     assert not check_channel_proof("PG-XXXX-000001V", "https://www.instagram.com/cristiano_fan/p/1", official, fake)
     assert not check_channel_proof("PG-XXXX-000001V", "https://xxxx.example/cristiano", official, fake)
     assert not check_channel_proof("PG-AAAA-000001V", "https://www.instagram.com/cristiano/p/1", official, fake)
-    legacy = lambda url: "PRE-GEN: PG-ABC-0000421"                    # noqa: E731  another legacy code, same start
+    legacy = lambda url: {"author": "cristiano", "text": "PRE-GEN: PG-ABC-0000421"}    # noqa: E731  another legacy code
     assert not check_channel_proof("PG-ABC-000042", "https://www.instagram.com/cristiano/p/1", official, legacy)
 
 

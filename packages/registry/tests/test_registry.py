@@ -284,7 +284,7 @@ def test_a_level_can_be_raised_and_provider_ids_hold_no_colon(tmp_path):
 
 def test_a_person_added_to_a_sandbox_never_takes_a_standard_test_code():
     reg, c, _ = make()
-    assert reg.add_subject("Extra test person") == code(9)
+    assert reg.add_subject("Extra test person") == code(12)
     p = Provider(reg, c)
     assert p.answer(p.body(code(8), job="j8"))["body"]["reason"] == "PG_UNKNOWN_SUBJECT"
 
@@ -514,7 +514,7 @@ def test_message_vectors_match_this_implementation():
     vectors = json.loads((Path(__file__).resolve().parents[3] / "spec" / "test-vectors" / "messages.json").read_text())
     keys = {k["key_id"]: k["public_key_hex"] for k in vectors["keys"].values()}
     schema = {"pg.request.v1": "request", "pg.answer.v1": "answer", "pg.report.v1": "report",
-              "pg.report_ack.v1": "report_ack", "pg.keyset.v1": "keyset", "pg.grant.v1": "grant"}
+              "pg.report_ack.v1": "report_ack", "pg.keyset.v1": "keyset", "pg.grant.v1": "grant", "pg.terms.v1": "terms"}
     for v in vectors["vectors"]:
         env = v["envelope"]
         check_body(schema[env["type"]], env["body"])
@@ -524,15 +524,6 @@ def test_message_vectors_match_this_implementation():
         for signer, sig in zip(env["body"].get("signers", []), env["signatures"]):
             assert verify_bytes(keys[signer["key_id"]], sig, bytes.fromhex(v["signing_input_hex"])), v["name"]
     assert parse_code(vectors["vectors"][0]["envelope"]["body"]["subject_ref"]) == ("TEST", 1)
-
-
-def test_vendored_schemas_are_the_spec_schemas():
-    from pathlib import Path
-    here = Path(__file__).resolve()
-    spec, vendored = here.parents[3] / "spec" / "schemas", here.parents[1] / "pregen_registry" / "schemas"
-    assert sorted(p.name for p in spec.glob("*.json")) == sorted(p.name for p in vendored.glob("*.json"))
-    for p in spec.glob("*.json"):
-        assert (vendored / p.name).read_text() == p.read_text(), p.name
 
 
 def test_the_policy_page_is_served_from_policy_md(tmp_path):

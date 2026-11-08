@@ -2,7 +2,7 @@
 
 What the steward does, step by step, with `spec/tools/steward.py` (PG-CODE.md §9.1). Every
 command that signs refuses a directory verifiers would refuse: one that drops a listing, a key,
-a revocation or a false claim of the directory it replaces. Never edit `registries.json` by
+a revocation, a false claim, a reversal or a freeze of the directory it replaces. Never edit `registries.json` by
 hand when a command exists for the change.
 
 Run from the repository root with `cryptography` installed (`pip install cryptography`); the
@@ -67,6 +67,16 @@ reassigned. Announce it with the reason.
 After the dispute is decided (extensions/identity.md):
 `python3 $S false-claim $K registries.json --anchor wikidata:Q… --code PG-ABCD-… --reason "…"`.
 The entry is never removed. Repeated false claims are a ground to revoke the registry.
+If the finding was wrong:
+`python3 $S reverse-false-claim $K registries.json --anchor wikidata:Q… --code PG-ABCD-… --reason "…"`.
+For one anchor and code the latest entry of the two decides; record the claim again with `false-claim`.
+
+## Freeze a person
+
+Ongoing harm while a complaint is examined (extensions/identity.md):
+`python3 $S freeze $K registries.json --anchor wikidata:Q… --days 7 --reason "…"`.
+Every verifier refuses the person from now for 1–7 days; a freeze is never lifted early.
+A longer one is a new freeze with its own reason.
 
 ## After a hand edit
 

@@ -28,7 +28,7 @@
 </div></header>
 <main><div class="wrap">
 <div class="doc"><aside><ul><li><a href="/docs">How it works</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versions</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk" aria-current="page">Add it to your service</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Build it</a></li></ul></aside><article><h1>Add PRE-GEN to your AI service</h1>
-<p class="meta">HTTP · v5: <span class="mono">POST /v2/requests</span> and <span class="mono">checkAnswer</span> in <span class="mono">@pregen/verify</span> / <span class="mono">check_answer</span> in <span class="mono">pregen</span> 0.12.0 · earlier interface: <span class="mono">/v1/verify</span></p>
+<p class="meta">HTTP · v5: <span class="mono">POST /v2/requests</span> and <span class="mono">checkAnswer</span> in <span class="mono">@pregen/verify</span> / <span class="mono">check_answer</span> in <span class="mono">pregen</span> 0.13.0 · earlier interface: <span class="mono">/v1/verify</span></p>
 <p>Three steps: ask the registry, check its signed answer, generate only on a yes. No account anywhere: your identity is your domain and a key you make. Serve one small file on your domain, sign your requests, and every <a href="/registries">registry</a> that accepts apps by their domain answers you; it may check your app before it says yes. Selling licences is a registry's own, optional business (<a href="/docs/two-layers">two layers</a>).</p>
 <h2>Ask, check, generate</h2>
 <pre><code>POST {api}/v2/requests
@@ -48,8 +48,8 @@ await checkAnswer(answer, request, { directory });              // throws with t
 <pre><code>import pregen
 directory = pregen.load_directory(previous=saved)
 pregen.check_answer(answer, request, directory)                 # raises with the reason, or you may generate</code></pre>
-<p>Generate only when every person in the job has a valid <code>allow</code>, and keep the answers with the output. The prompt and the output never leave your servers. Test on the public test network first: the sandbox at <code>sandbox.pregen.org</code> takes your party document by post and answers the eight standard test subjects.</p>
-<p>Install: <code>npm install @pregen/verify</code> (0.12.0) · <code>pip install "pregen>=0.12.0"</code>. Step by step, with complete tested examples: <a href="/docs/provider.md">the provider guide</a>; to run a registry, <a href="/docs/registry.md">the registry guide</a>.</p>
+<p>Generate only when every person in the job has a valid <code>allow</code>, and keep the answers with the output. The prompt and the output never leave your servers. Test on the public test network first: the sandbox at <code>sandbox.pregen.org</code> takes your party document by post and answers the eleven standard test subjects, <code>PG-TEST-000001N</code> to <code>PG-TEST-000011Y</code>: every refusal, a test purchase (9), a person's terms (10) and a minor (11). What each tests: <a href="/docs/provider.md">provider guide</a>, step 9.</p>
+<p>Install: <code>npm install @pregen/verify</code> (0.13.0) · <code>pip install "pregen>=0.13.0"</code>. Step by step, with complete tested examples: <a href="/docs/provider.md">the provider guide</a>; to run a registry, <a href="/docs/registry.md">the registry guide</a>.</p>
 
 <h2 id="legacy">Earlier interface (legacy)</h2>
 <p class="note">Everything below is the earlier interface, <code>/v1/verify</code>. The first registry still serves it and everything issued under it stays valid. New integrations use version 5 above.</p>

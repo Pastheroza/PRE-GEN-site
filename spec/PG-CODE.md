@@ -360,7 +360,9 @@ signed by the **steward key**:
 | `registries` | array; each entry has `name`, `prefix` (`""` for the legacy bare namespace, otherwise four letters of the PG alphabet), `api`, `keys` (the registry's key set URL, `PRE-GEN-SPEC.md` §2.3) and `key_fingerprints` (every operator key the registry has ever signed with, current and retired, plus keys announced for future use, `PRE-GEN-SPEC.md` §2.1) |
 | `revoked` (in an entry) | optional: `{"at": RFC 3339 time, "reason": text}` — the registry is revoked (below) |
 | `revoked_keys` | optional array of `{"key_id", "at", "reason"}` — single operator keys revoked (below) |
-| `false_claims` | optional array of `{anchor, code, at, reason}` — codes the steward found to claim a person the registry cannot prove (`extensions/identity.md`); never removed |
+| `false_claims` | optional array of `{anchor, code, at, reason}`, every member required — a code the steward found to claim, under that anchor, a person the registry cannot prove (`extensions/identity.md`); matched on anchor and code together; never removed |
+| `false_claim_reversals` | optional array of `{anchor, code, at, reason}` — a false claim the steward found wrong; for one anchor and code the latest entry of the two lists, by `at`, decides; never removed |
+| `freezes` | optional array of `{anchor, at, until, reason}`, `until` at most 7 days after `at` — the steward refuses the person everywhere while `at` ≤ now < `until` (`extensions/identity.md`); never removed |
 | `steward_compromised_since`, `annulled` | only after a steward handover (below) |
 | `steward_key_id` | fingerprint of the steward key |
 | `signature` | Ed25519 by the steward key over the canonical JSON (`PRE-GEN-SPEC.md` §2) of the object without `signature`, hex |
@@ -394,7 +396,7 @@ A verifier that keeps the last directory it accepted SHOULD also refuse a
 newer one that removes a listed namespace or fingerprint, and one that
 differs from it at the same `sequence` (two directories signed with one
 number mean the steward key signed twice), and one that drops or changes a
-revocation. A verifier MAY additionally pin
+revocation, a false claim, a reversal or a freeze. A verifier MAY additionally pin
 the fingerprints of any registry it chooses and accept that registry's codes
 only from a key in both the directory and its pin, so that a stolen steward
 key cannot add a key to that namespace. Pins are the verifier's own choice:
@@ -412,7 +414,8 @@ a fake registry out, so the steward lists a registry only when it has:
    subject, and an anchor for every public person it registers
    (`extensions/identity.md`);
 3. accepted the core, including its fixed floor and the conflict rule
-   (`PRE-GEN-SPEC.md` R-15, P-10);
+   (`PRE-GEN-SPEC.md` R-15, P-10), and, for public persons, the identity rule and its
+   complaint procedure (`extensions/identity.md`);
 4. an operator key set published at its `keys` URL, its fingerprints given to
    the steward out of band, and its next key announced (above). The steward
    takes each public key itself, not only its fingerprint, and refuses a
@@ -433,7 +436,10 @@ conditions and can be revoked.
 **Revocation.** The steward revokes a registry by adding `revoked` to its
 entry: the entry, its prefix and its keys stay listed forever (the prefix is
 never reassigned), but nothing signed by its keys authorizes anything again
-(`PRE-GEN-SPEC.md` V-14). Grounds: licences for subjects it had no authority
+(`PRE-GEN-SPEC.md` V-14). A revocation does not erase a person's refusal held there: a client
+keeps the registry's last verified anchor list, and an entry there that stands opted out or
+paused still refuses the person everywhere while the person confirms it
+(`extensions/identity.md`). Grounds: licences for subjects it had no authority
 to license, refusing to act on proven complaints within 7 days, repeated false
 claims (`extensions/identity.md`), breaking the core floor, or a compromise of
 its operation. The steward revokes a single stolen key by

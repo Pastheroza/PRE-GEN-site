@@ -1,6 +1,6 @@
 [project]
 name = "pregen-registry"
-version = "0.3.0"
+version = "0.4.0"
 description = "Reference PRE-GEN registry: ask before you generate, get a signed answer anyone can check."
 readme = "README.md"
 license = "Apache-2.0"
@@ -8,7 +8,7 @@ license-files = ["LICENSE"]
 requires-python = ">=3.10"
 authors = [{ name = "Valerii Egorov (Pastheroza)" }]
 keywords = ["pre-gen", "pregen", "registry", "ed25519"]
-dependencies = ["pregen>=0.12.0", "fastapi>=0.110", "uvicorn>=0.29", "cryptography>=42", "jsonschema>=4.21"]
+dependencies = ["pregen>=0.13.0", "fastapi>=0.110", "uvicorn>=0.29", "cryptography>=42", "jsonschema>=4.21"]
 
 [project.urls]
 Homepage = "https://www.pregen.org"

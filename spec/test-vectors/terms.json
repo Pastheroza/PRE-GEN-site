@@ -1,0 +1,3714 @@
+{
+ "description": "Generate spec/test-vectors/terms.json: extension terms (spec/extensions/terms.md) under likeness/1, for every implementation to agree on.",
+ "code": "PG-TEST-000001N",
+ "vocabulary": {
+  "categories": [
+   "adult",
+   "advertising",
+   "alcohol",
+   "cannabis",
+   "drugs",
+   "endorsement",
+   "fashion",
+   "financial",
+   "gambling",
+   "health",
+   "political",
+   "religion",
+   "sexual",
+   "tobacco",
+   "violence",
+   "weapons"
+  ],
+  "prohibited_for_minors": [
+   "adult",
+   "sexual",
+   "violence"
+  ],
+  "intimate": [
+   "adult",
+   "sexual"
+  ]
+ },
+ "records": [
+  {
+   "name": "version 1",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "gambling",
+       "political"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "6fd7107f4804daf44d567690eaba270e49cd0be25a0f8099d3f43332e0c35936300561d88470079913f9dd90f3d741766a12ad8b1d64718ccb2de1275a52b908"
+    ]
+   },
+   "ok": true
+  },
+  {
+   "name": "version 2 only closes: no factor",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 2,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "personal"
+      ],
+      "excluded_categories": [
+       "adult",
+       "gambling",
+       "political"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "issued_at": 1789999900,
+     "amends": "cc2a015557935a3bb6801243e544838f476a7c6beb08ed77fb96ffbe2e7ac2ae"
+    },
+    "signatures": [
+     "73d86f0920a50ac57a85ea1d55b6e4ac9d3cb609a9df3193b002f79bd0ebac367f462f480facf17abc9173e85c294ea766569b7da845de90077dbf1102a1a600"
+    ]
+   },
+   "ok": true
+  },
+  {
+   "name": "version 2 opens: names its factor",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 2,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "commercial",
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "gambling",
+       "political"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "email",
+     "issued_at": 1789999900,
+     "amends": "cc2a015557935a3bb6801243e544838f476a7c6beb08ed77fb96ffbe2e7ac2ae"
+    },
+    "signatures": [
+     "31bc5fb778007b88597c3de7a69be0baa7b271f7a0c046da8994c6072695eb99467653dc1dc0bd48df4209f83aadb1fbee5d814ccbbd4585d7785a9de5222603"
+    ]
+   },
+   "ok": true
+  },
+  {
+   "name": "assent self is reserved",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "gambling",
+       "political"
+      ]
+     },
+     "minor": false,
+     "assent": "self",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "16e504b37700c01356a72360d84a8275cd2d021038d87fd9f9940c177f058a207f7c56e9511695567c42fb88d24fe8d727d01b1c9678ffdee93ebad778baad00"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "assent agent is reserved",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "gambling",
+       "political"
+      ]
+     },
+     "minor": false,
+     "assent": "agent",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "fc27b537b057019e65dc6a2c9e3114736fb848d3b4a3040c0b3845e8f387af26f51922170bea126e4f5f65eca580e0d5d17e82890707873e9f47baa6f8f5f806"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "another profile",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "work/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "gambling",
+       "political"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "c143a7e1d00b984faccb69af2562d0d4b735005acf91f7247e7064ee9c22012575a5f47d1c98c80ce81ab9bffb37650f752e2eb427d067921cd6770cc4366903"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "version 0",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 0,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "gambling",
+       "political"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "7adb0a38021167a183914652320c1a1ecd8da187644d8b0961000284be050d75be7a51bd9731eac12817397d5f65c886a31ed4a51e2f7ea2b332118b3c05fd06"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "version 2 without amends",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 2,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "gambling",
+       "political"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "744a7308dd0323fa1226387b8ebf00373718e8a88a8596bbcb28ea82d5aa59db63dc05e8393ded8935b4db540cea8b014aed3176f3c672ba28f9f6919c37d50d"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "version 1 with amends",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "gambling",
+       "political"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900,
+     "amends": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "signatures": [
+     "f83467122c2d66a6d437988c117e179eeb0359bc5be2e0b4aa2be727ef56cf6aa11c358cfbc7813811d93cb80dba35b1814632ad1c49a2ecf7f9df8ebec40c02"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "version 1 without factor",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "gambling",
+       "political"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "a947b5a5b23ee78b1aa503e71373017e52075446f5ebd280d8ea53261baaa18a0d701a45ece710fae505681afc47bddf5493c60f4b29c0afb7954614acfaee03"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "an unknown factor",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "gambling",
+       "political"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "sms",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "f04bb11d83823105cbefb45317b2949c472429a6ac09e97c1b7d727b92e1e21cea9bdeb17a0adb781828d6bac3c08db67937690cb96ecfc0e4c20402e5aa2c0b"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "another person's terms (PM1)",
+   "code": "PG-TEST-000003X",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "gambling",
+       "political"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "6fd7107f4804daf44d567690eaba270e49cd0be25a0f8099d3f43332e0c35936300561d88470079913f9dd90f3d741766a12ad8b1d64718ccb2de1275a52b908"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "signed by another registry's key (PM10)",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a8807bb07969da1558ec42d39fd3493d"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "gambling",
+       "political"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "183896a697224851b583fff7c00a04f0b31563e66e7a636eafbd3c9c2c7162309d16b93757e74e802faef6d93d1db279375090dde4afc2d6a9c4d23a05421001"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "a tampered body",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "gambling",
+       "political"
+      ]
+     },
+     "minor": true,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "6fd7107f4804daf44d567690eaba270e49cd0be25a0f8099d3f43332e0c35936300561d88470079913f9dd90f3d741766a12ad8b1d64718ccb2de1275a52b908"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "two registry signers",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      },
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "gambling",
+       "political"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "6fd7107f4804daf44d567690eaba270e49cd0be25a0f8099d3f43332e0c35936300561d88470079913f9dd90f3d741766a12ad8b1d64718ccb2de1275a52b908",
+     "6fd7107f4804daf44d567690eaba270e49cd0be25a0f8099d3f43332e0c35936300561d88470079913f9dd90f3d741766a12ad8b1d64718ccb2de1275a52b908"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "an unknown member",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "gambling",
+       "political"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900,
+     "note": "x"
+    },
+    "signatures": [
+     "b97b6593efe3e68f289d39230836b7737b174a36f8aadf047d50560f300b4fc214d61e3d872a542267131a495f3834991a3e9f064ec68adfba6e560ddc924108"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "TL2: amends with a trailing newline",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 2,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "gambling",
+       "political"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "issued_at": 1789999900,
+     "amends": "cc2a015557935a3bb6801243e544838f476a7c6beb08ed77fb96ffbe2e7ac2ae\n"
+    },
+    "signatures": [
+     "293721d8283c75d8c44488c437aeb2125f476f273b696f495e48d28d4efb68575dba72765ba4fc14b52c9d06e59cb54000df1a0a7033757d629177442f14e20f"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "TL2: instruction with a trailing newline",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "gambling",
+       "political"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\n",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "badea436a38e283096bd370346147c7c424a8c5626be462b8b24fe182c4a10a4eaab5f711109a202a632ec57987abc4506994388a1552b937f54fd3b4e113809"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "TC1: an exclusion with a capital",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "Gambling"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "4f1685a5256ea4edacc31a617c09951cf9efec7b0c7d79fa70ae7001050b07a1fa5e62f3504e44ce86f4781af408725c427e0f37041e2eab86e5ec08c58dca0e"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "TC1: an exclusion with all capitals",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "GAMBLING"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "2b3acd294ad1828c9a0d7902fce5b4a598677f4a709c914b41d0a2aa63e3ae7e9b4e05a6fed94cd4ef525cd76809f184790c807aace45ae99a4ed16d3fc18f0b"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "TC1: an exclusion with a zero-width joiner",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "gam\u200dbling"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "3cc1e652d88c01e5c48dcd7fb3043b57bb106a6494413200283d9339488b00e75dffd3dba0cfdc2e4c8f9d7ad587d85f5adcfb79e004b22cebecba8155768b0e"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "TC1: an exclusion with a trailing space",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "gambling "
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "69b0dab2515a826553647815c44de8b7f98007a9224ce5d0991edd1b543caa47c162ce23b55203821595eff370e72655663d01b874b793acfbb9850104d29504"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "TC1: an exclusion with a Cyrillic letter",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "g\u0430mbling"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "10577244315ab913f73f2ba00ff16b4ee3d66fd4f37fc9205ba17b26333e3eeb71042e0892c4bc28e37850d6951320e7116a12ed40444c75adf6b8d21942320e"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "TC1: an exclusion with a nested list",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       [
+        "gambling"
+       ]
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "3962210050a8c6adf65d52334125c00cab92d145d5f3333cadc3db9984e959ad5f081bbd14766449ab954b1d4f775f71acdc37d9d9b377f79b4b4efae74dec0c"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "TC1: an exclusion with a string, not a list",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": "gambling"
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "e6be744a9b14be3c0c6a4f3d1b24d222781e905d1b8553cff4d25316ce737f6b08d1342bab24a7987cd7de8313b891b89234e8b8ed1608bff3ae7b6d8cc40c05"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "TC1: an exclusion with a word outside the vocabulary",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "beer"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "a6d4677e2eac775e12747a8907a28c4d58d0ba15585d49e509bd3940758a24186d39754267a27e8718c5bef0dfae3e8ec028c67881bf5f2ffe8f200222463a01"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "purposes unsorted",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "personal",
+       "editorial"
+      ],
+      "excluded_categories": [
+       "gambling",
+       "political"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "813cc8b364ce1c95800b25f9e44ac230257aa355882c0f9b35f20cecffddf1e7c1b51751c6809d18ab97bfe66c2a0cb7b9d9b08b966e61b3b41a66c626fd940e"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "a purpose twice",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "personal",
+       "personal"
+      ],
+      "excluded_categories": [
+       "gambling",
+       "political"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "68126afe41abd1a109b964e94901bfb63939df10928e2cf56750ac4f6c7a2a5df176b4e8c28bd65ccc847b7413610d07a3d5ebeb5e9d58a8f367a291c8c6cc07"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "no purpose",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [],
+      "excluded_categories": [
+       "gambling",
+       "political"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "c6246f113ffd4046ac136c093e661eae6bdf89998786454a257fd140fcc83a23e570d69d732ec013e887988366f77edf543bed62b435f702137ab1167c165700"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "no excluded_categories",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "personal"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "11f7eb30dbade6a9cb63f03ca0d2182bad78c3fc386260a9d39d851006ed9d6d5948b129539d99f887e625d6f33204fe5f802d39b340968d45990f9a65ccf608"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "territories (phase 1 sends none)",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "gambling",
+       "political"
+      ],
+      "territories": [
+       "US"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "b9f418a5ed713f29a471ddd472e4f1a2e6fb206ea891cce3a1909e6c17d85bd991d3d43a80d0cbde4f6c9b226ac3173bd5992720bb213a523a6fd28ba3673808"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "a lower-case jurisdiction",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "us"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "gambling",
+       "political"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "c0adf4578e8f2a5166916414f4d7dacb42276adab37ea29147cc44ed7ed0e09e65b346605e01e1fe552055e115fad5cafbff54466cc7bf58550becc4c5f89506"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "legal text over http",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "http://registry.test.example/t.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "gambling",
+       "political"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "f1b0f6df904faafe1fc4b5986aa46187ca6541eea47325294abf92b0e7ed218cf908be4ccc5d4cd09bad374bf7492e6ff0b09a38b664509455ddf0499ef2240d"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "PL1: version a fraction",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 1.5,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "gambling",
+       "political"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "6fd7107f4804daf44d567690eaba270e49cd0be25a0f8099d3f43332e0c35936300561d88470079913f9dd90f3d741766a12ad8b1d64718ccb2de1275a52b908"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "name": "PL1: version 2^53",
+   "code": "PG-TEST-000001N",
+   "envelope": {
+    "type": "pg.terms.v1",
+    "body": {
+     "signers": [
+      {
+       "role": "registry",
+       "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+      }
+     ],
+     "subject_ref": "PG-TEST-000001N",
+     "profile": "likeness/1",
+     "version": 9007199254740992,
+     "template": {
+      "id": "example-likeness",
+      "version": 1,
+      "jurisdiction": "US"
+     },
+     "legal": {
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://registry.test.example/terms-template-1.txt"
+     },
+     "rules": {
+      "purposes": [
+       "editorial",
+       "personal"
+      ],
+      "excluded_categories": [
+       "gambling",
+       "political"
+      ]
+     },
+     "minor": false,
+     "assent": "registry",
+     "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "authenticator",
+     "issued_at": 1789999900
+    },
+    "signatures": [
+     "6fd7107f4804daf44d567690eaba270e49cd0be25a0f8099d3f43332e0c35936300561d88470079913f9dd90f3d741766a12ad8b1d64718ccb2de1275a52b908"
+    ]
+   },
+   "ok": false
+  }
+ ],
+ "floor": [
+  {
+   "use": {
+    "purpose": "personal",
+    "categories": [
+     "violence"
+    ]
+   },
+   "minor": true,
+   "result": "PG_PROHIBITED_USE"
+  },
+  {
+   "use": {
+    "purpose": "personal",
+    "categories": [
+     "violence"
+    ]
+   },
+   "minor": false,
+   "result": null
+  },
+  {
+   "use": {
+    "purpose": "personal",
+    "categories": [
+     "sexual"
+    ]
+   },
+   "minor": true,
+   "result": "PG_PROHIBITED_USE"
+  },
+  {
+   "use": {
+    "purpose": "personal",
+    "categories": [
+     "adult"
+    ]
+   },
+   "minor": false,
+   "result": "PG_PERSONAL_SIGNATURE_REQUIRED"
+  },
+  {
+   "use": {
+    "purpose": "personal",
+    "categories": [
+     "advertising",
+     "fashion"
+    ]
+   },
+   "minor": true,
+   "result": null
+  },
+  {
+   "use": {
+    "purpose": "personal",
+    "categories": []
+   },
+   "minor": true,
+   "result": null
+  },
+  {
+   "use": {
+    "purpose": "personal"
+   },
+   "minor": true,
+   "result": null
+  },
+  {
+   "use": {
+    "purpose": "personal",
+    "categories": [
+     "Gambling"
+    ]
+   },
+   "minor": true,
+   "result": null
+  },
+  {
+   "use": {
+    "purpose": "personal",
+    "categories": [
+     "GAMBLING"
+    ]
+   },
+   "minor": true,
+   "result": null
+  },
+  {
+   "use": {
+    "purpose": "personal",
+    "categories": [
+     "gam\u200dbling"
+    ]
+   },
+   "minor": true,
+   "result": null
+  },
+  {
+   "use": {
+    "purpose": "personal",
+    "categories": [
+     "gambling "
+    ]
+   },
+   "minor": true,
+   "result": null
+  },
+  {
+   "use": {
+    "purpose": "personal",
+    "categories": [
+     "g\u0430mbling"
+    ]
+   },
+   "minor": true,
+   "result": null
+  }
+ ],
+ "forbids": [
+  {
+   "rules": {
+    "purposes": [
+     "editorial",
+     "personal"
+    ],
+    "excluded_categories": [
+     "gambling",
+     "political"
+    ]
+   },
+   "use": {
+    "purpose": "personal",
+    "categories": [
+     "fashion"
+    ]
+   },
+   "result": null
+  },
+  {
+   "rules": {
+    "purposes": [
+     "editorial",
+     "personal"
+    ],
+    "excluded_categories": [
+     "gambling",
+     "political"
+    ]
+   },
+   "use": {
+    "purpose": "commercial"
+   },
+   "result": "purpose \"commercial\""
+  },
+  {
+   "rules": {
+    "purposes": [
+     "editorial",
+     "personal"
+    ],
+    "excluded_categories": [
+     "gambling",
+     "political"
+    ]
+   },
+   "use": {
+    "purpose": "personal",
+    "categories": [
+     "political",
+     "gambling",
+     "fashion"
+    ]
+   },
+   "result": "categories [\"gambling\",\"political\"]"
+  },
+  {
+   "rules": {
+    "purposes": [
+     "editorial",
+     "personal"
+    ],
+    "excluded_categories": [
+     "gambling",
+     "political"
+    ]
+   },
+   "use": {
+    "categories": [
+     "fashion"
+    ]
+   },
+   "result": "purpose null"
+  },
+  {
+   "rules": {
+    "purposes": [
+     "personal"
+    ]
+   },
+   "use": {
+    "purpose": "personal",
+    "categories": [
+     "gambling"
+    ]
+   },
+   "result": null
+  },
+  {
+   "rules": {
+    "purposes": [
+     "editorial",
+     "personal"
+    ],
+    "excluded_categories": [
+     "gambling",
+     "political"
+    ]
+   },
+   "use": {
+    "purpose": "personal",
+    "categories": [
+     "beer"
+    ]
+   },
+   "result": null
+  }
+ ],
+ "opens": [
+  {
+   "old": null,
+   "new": {
+    "rules": {
+     "purposes": [
+      "editorial",
+      "personal"
+     ],
+     "excluded_categories": [
+      "gambling",
+      "political"
+     ]
+    },
+    "minor": false
+   },
+   "result": true
+  },
+  {
+   "old": {
+    "rules": {
+     "purposes": [
+      "editorial",
+      "personal"
+     ],
+     "excluded_categories": [
+      "gambling",
+      "political"
+     ]
+    },
+    "minor": false
+   },
+   "new": {
+    "rules": {
+     "purposes": [
+      "editorial",
+      "personal"
+     ],
+     "excluded_categories": [
+      "gambling",
+      "political"
+     ]
+    },
+    "minor": false
+   },
+   "result": false
+  },
+  {
+   "old": {
+    "rules": {
+     "purposes": [
+      "editorial",
+      "personal"
+     ],
+     "excluded_categories": [
+      "gambling",
+      "political"
+     ]
+    },
+    "minor": false
+   },
+   "new": {
+    "rules": {
+     "purposes": [
+      "commercial",
+      "editorial",
+      "personal"
+     ],
+     "excluded_categories": [
+      "gambling",
+      "political"
+     ]
+    },
+    "minor": false
+   },
+   "result": true
+  },
+  {
+   "old": {
+    "rules": {
+     "purposes": [
+      "editorial",
+      "personal"
+     ],
+     "excluded_categories": [
+      "gambling",
+      "political"
+     ]
+    },
+    "minor": false
+   },
+   "new": {
+    "rules": {
+     "purposes": [
+      "personal"
+     ],
+     "excluded_categories": [
+      "gambling",
+      "political"
+     ]
+    },
+    "minor": false
+   },
+   "result": false
+  },
+  {
+   "old": {
+    "rules": {
+     "purposes": [
+      "editorial",
+      "personal"
+     ],
+     "excluded_categories": [
+      "gambling",
+      "political"
+     ]
+    },
+    "minor": false
+   },
+   "new": {
+    "rules": {
+     "purposes": [
+      "editorial",
+      "personal"
+     ],
+     "excluded_categories": [
+      "gambling"
+     ]
+    },
+    "minor": false
+   },
+   "result": true
+  },
+  {
+   "old": {
+    "rules": {
+     "purposes": [
+      "editorial",
+      "personal"
+     ],
+     "excluded_categories": [
+      "gambling",
+      "political"
+     ]
+    },
+    "minor": false
+   },
+   "new": {
+    "rules": {
+     "purposes": [
+      "editorial",
+      "personal"
+     ],
+     "excluded_categories": [
+      "adult",
+      "gambling",
+      "political"
+     ]
+    },
+    "minor": false
+   },
+   "result": false
+  },
+  {
+   "old": {
+    "rules": {
+     "purposes": [
+      "editorial",
+      "personal"
+     ],
+     "excluded_categories": [
+      "gambling",
+      "political"
+     ]
+    },
+    "minor": true
+   },
+   "new": {
+    "rules": {
+     "purposes": [
+      "editorial",
+      "personal"
+     ],
+     "excluded_categories": [
+      "gambling",
+      "political"
+     ]
+    },
+    "minor": false
+   },
+   "result": true
+  },
+  {
+   "old": {
+    "rules": {
+     "purposes": [
+      "editorial",
+      "personal"
+     ],
+     "excluded_categories": [
+      "gambling",
+      "political"
+     ]
+    },
+    "minor": false
+   },
+   "new": {
+    "rules": {
+     "purposes": [
+      "editorial",
+      "personal"
+     ],
+     "excluded_categories": [
+      "gambling",
+      "political"
+     ]
+    },
+    "minor": true
+   },
+   "result": false
+  },
+  {
+   "old": {
+    "rules": {
+     "purposes": [
+      "editorial",
+      "personal"
+     ],
+     "excluded_categories": [
+      "gambling",
+      "political"
+     ]
+    },
+    "minor": false,
+    "template": {
+     "id": "a",
+     "version": 1,
+     "jurisdiction": "US"
+    }
+   },
+   "new": {
+    "rules": {
+     "purposes": [
+      "editorial",
+      "personal"
+     ],
+     "excluded_categories": [
+      "gambling",
+      "political"
+     ]
+    },
+    "minor": false,
+    "template": {
+     "id": "a",
+     "version": 2,
+     "jurisdiction": "US"
+    }
+   },
+   "result": true
+  }
+ ],
+ "requests": [
+  {
+   "name": "accepts the current terms",
+   "body": {
+    "signers": [
+     {
+      "role": "provider",
+      "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+     }
+    ],
+    "subject_ref": "PG-TEST-000001N",
+    "provider_id": "https://frame.example",
+    "profile": "likeness/1",
+    "use": {
+     "purpose": "personal",
+     "categories": [
+      "fashion"
+     ]
+    },
+    "job_id": "job-8842",
+    "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "terms": "cc2a015557935a3bb6801243e544838f476a7c6beb08ed77fb96ffbe2e7ac2ae"
+   },
+   "ok": true
+  },
+  {
+   "name": "TC1: a category with a capital",
+   "body": {
+    "signers": [
+     {
+      "role": "provider",
+      "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+     }
+    ],
+    "subject_ref": "PG-TEST-000001N",
+    "provider_id": "https://frame.example",
+    "profile": "likeness/1",
+    "use": {
+     "purpose": "personal",
+     "categories": [
+      "Gambling"
+     ]
+    },
+    "job_id": "job-8842",
+    "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "terms": "cc2a015557935a3bb6801243e544838f476a7c6beb08ed77fb96ffbe2e7ac2ae"
+   },
+   "ok": false
+  },
+  {
+   "name": "TC1: a category with all capitals",
+   "body": {
+    "signers": [
+     {
+      "role": "provider",
+      "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+     }
+    ],
+    "subject_ref": "PG-TEST-000001N",
+    "provider_id": "https://frame.example",
+    "profile": "likeness/1",
+    "use": {
+     "purpose": "personal",
+     "categories": [
+      "GAMBLING"
+     ]
+    },
+    "job_id": "job-8842",
+    "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "terms": "cc2a015557935a3bb6801243e544838f476a7c6beb08ed77fb96ffbe2e7ac2ae"
+   },
+   "ok": false
+  },
+  {
+   "name": "TC1: a category with a zero-width joiner",
+   "body": {
+    "signers": [
+     {
+      "role": "provider",
+      "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+     }
+    ],
+    "subject_ref": "PG-TEST-000001N",
+    "provider_id": "https://frame.example",
+    "profile": "likeness/1",
+    "use": {
+     "purpose": "personal",
+     "categories": [
+      "gam\u200dbling"
+     ]
+    },
+    "job_id": "job-8842",
+    "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "terms": "cc2a015557935a3bb6801243e544838f476a7c6beb08ed77fb96ffbe2e7ac2ae"
+   },
+   "ok": false
+  },
+  {
+   "name": "TC1: a category with a trailing space",
+   "body": {
+    "signers": [
+     {
+      "role": "provider",
+      "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+     }
+    ],
+    "subject_ref": "PG-TEST-000001N",
+    "provider_id": "https://frame.example",
+    "profile": "likeness/1",
+    "use": {
+     "purpose": "personal",
+     "categories": [
+      "gambling "
+     ]
+    },
+    "job_id": "job-8842",
+    "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "terms": "cc2a015557935a3bb6801243e544838f476a7c6beb08ed77fb96ffbe2e7ac2ae"
+   },
+   "ok": false
+  },
+  {
+   "name": "TC1: a category with a Cyrillic letter",
+   "body": {
+    "signers": [
+     {
+      "role": "provider",
+      "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+     }
+    ],
+    "subject_ref": "PG-TEST-000001N",
+    "provider_id": "https://frame.example",
+    "profile": "likeness/1",
+    "use": {
+     "purpose": "personal",
+     "categories": [
+      "g\u0430mbling"
+     ]
+    },
+    "job_id": "job-8842",
+    "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "terms": "cc2a015557935a3bb6801243e544838f476a7c6beb08ed77fb96ffbe2e7ac2ae"
+   },
+   "ok": false
+  },
+  {
+   "name": "TC1: a category with a nested list",
+   "body": {
+    "signers": [
+     {
+      "role": "provider",
+      "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+     }
+    ],
+    "subject_ref": "PG-TEST-000001N",
+    "provider_id": "https://frame.example",
+    "profile": "likeness/1",
+    "use": {
+     "purpose": "personal",
+     "categories": [
+      [
+       "gambling"
+      ]
+     ]
+    },
+    "job_id": "job-8842",
+    "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "terms": "cc2a015557935a3bb6801243e544838f476a7c6beb08ed77fb96ffbe2e7ac2ae"
+   },
+   "ok": false
+  },
+  {
+   "name": "TC1: a category with a string, not a list",
+   "body": {
+    "signers": [
+     {
+      "role": "provider",
+      "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+     }
+    ],
+    "subject_ref": "PG-TEST-000001N",
+    "provider_id": "https://frame.example",
+    "profile": "likeness/1",
+    "use": {
+     "purpose": "personal",
+     "categories": "gambling"
+    },
+    "job_id": "job-8842",
+    "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "terms": "cc2a015557935a3bb6801243e544838f476a7c6beb08ed77fb96ffbe2e7ac2ae"
+   },
+   "ok": false
+  },
+  {
+   "name": "TC1: a category with a word outside the vocabulary",
+   "body": {
+    "signers": [
+     {
+      "role": "provider",
+      "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+     }
+    ],
+    "subject_ref": "PG-TEST-000001N",
+    "provider_id": "https://frame.example",
+    "profile": "likeness/1",
+    "use": {
+     "purpose": "personal",
+     "categories": [
+      "beer"
+     ]
+    },
+    "job_id": "job-8842",
+    "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "terms": "cc2a015557935a3bb6801243e544838f476a7c6beb08ed77fb96ffbe2e7ac2ae"
+   },
+   "ok": false
+  },
+  {
+   "name": "TL2: a terms id with a trailing newline",
+   "body": {
+    "signers": [
+     {
+      "role": "provider",
+      "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+     }
+    ],
+    "subject_ref": "PG-TEST-000001N",
+    "provider_id": "https://frame.example",
+    "profile": "likeness/1",
+    "use": {
+     "purpose": "personal",
+     "categories": [
+      "fashion"
+     ]
+    },
+    "job_id": "job-8842",
+    "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "terms": "cc2a015557935a3bb6801243e544838f476a7c6beb08ed77fb96ffbe2e7ac2ae\n"
+   },
+   "ok": false
+  },
+  {
+   "name": "a terms id in capitals",
+   "body": {
+    "signers": [
+     {
+      "role": "provider",
+      "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+     }
+    ],
+    "subject_ref": "PG-TEST-000001N",
+    "provider_id": "https://frame.example",
+    "profile": "likeness/1",
+    "use": {
+     "purpose": "personal",
+     "categories": [
+      "fashion"
+     ]
+    },
+    "job_id": "job-8842",
+    "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "terms": "CC2A015557935A3BB6801243E544838F476A7C6BEB08ED77FB96FFBE2E7AC2AE"
+   },
+   "ok": false
+  },
+  {
+   "name": "terms without signers",
+   "body": {
+    "subject_ref": "PG-TEST-000001N",
+    "provider_id": "https://frame.example",
+    "profile": "likeness/1",
+    "use": {
+     "purpose": "personal",
+     "categories": [
+      "fashion"
+     ]
+    },
+    "job_id": "job-8842",
+    "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "terms": "cc2a015557935a3bb6801243e544838f476a7c6beb08ed77fb96ffbe2e7ac2ae"
+   },
+   "ok": false
+  },
+  {
+   "name": "no terms: another word is still allowed",
+   "body": {
+    "signers": [
+     {
+      "role": "provider",
+      "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+     }
+    ],
+    "subject_ref": "PG-TEST-000001N",
+    "provider_id": "https://frame.example",
+    "profile": "likeness/1",
+    "use": {
+     "purpose": "personal",
+     "categories": [
+      "beer"
+     ]
+    },
+    "job_id": "job-8842",
+    "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "ok": true
+  },
+  {
+   "name": "no terms: another spelling is still allowed",
+   "body": {
+    "signers": [
+     {
+      "role": "provider",
+      "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+     }
+    ],
+    "subject_ref": "PG-TEST-000001N",
+    "provider_id": "https://frame.example",
+    "profile": "likeness/1",
+    "use": {
+     "purpose": "personal",
+     "categories": [
+      "Gambling"
+     ]
+    },
+    "job_id": "job-8842",
+    "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "ok": true
+  }
+ ],
+ "proofs": [
+  {
+   "name": "the use keeps to the terms",
+   "bundle": {
+    "format": "pg.proof.v1",
+    "subjects": [
+     {
+      "request": {
+       "type": "pg.request.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "provider",
+          "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+         }
+        ],
+        "subject_ref": "PG-TEST-000001N",
+        "provider_id": "https://frame.example",
+        "profile": "likeness/1",
+        "use": {
+         "purpose": "personal",
+         "categories": [
+          "fashion"
+         ]
+        },
+        "job_id": "job-8842",
+        "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "terms": "cc2a015557935a3bb6801243e544838f476a7c6beb08ed77fb96ffbe2e7ac2ae"
+       },
+       "signatures": [
+        "d02c9475a2f543169aceb922e38540f1aa6eb259f37e866ccb508bc43736bcfec42b31b839cfd48964fe58dfd3e60f90c066890f1c9884b8dd88f9f347557b06"
+       ]
+      },
+      "answer": {
+       "type": "pg.answer.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+         }
+        ],
+        "request_id": "c08b800e750e5f3263a503e67f60c315e76cf501bb249b680202bb71eea64905",
+        "profile": "likeness/1",
+        "status": "allow",
+        "basis": {
+         "kind": "policy",
+         "rule": "test"
+        },
+        "issued_at": 1789999990,
+        "expires_at": 1790000290
+       },
+       "signatures": [
+        "8b631f6518606a42355ee2c412152b0fc0afb09754760346f7b514a5cb063093c7bec3eab635695cdd19ed74810c3e224b2bc1f350c4a50f6a560d9a0f430602"
+       ]
+      },
+      "report": {
+       "type": "pg.report.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "provider",
+          "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+         }
+        ],
+        "request_id": "c08b800e750e5f3263a503e67f60c315e76cf501bb249b680202bb71eea64905",
+        "answer": "24391f94a1f660df14cf0ca86f07656e6c3a933829fad2717a6a4fcecf896ac9",
+        "job_id": "job-8842",
+        "outcome": "generated",
+        "output_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "occurred_at": 1790000000
+       },
+       "signatures": [
+        "3c4c77c6fa017afe76ccc0476c4c026f20f17c63bb55881f2462b77f3867f5d86359678f5d4ac60e171be35fdb1d38f59c1791afd58480edbf62b83c405d3009"
+       ]
+      },
+      "ack": {
+       "type": "pg.report_ack.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+         }
+        ],
+        "report": "7566ae87143fffe109cfb7e11f1143e2be65ed18abe24359c439fc1162a98e7e",
+        "answer": "24391f94a1f660df14cf0ca86f07656e6c3a933829fad2717a6a4fcecf896ac9",
+        "answer_status": "allow",
+        "counted": "24391f94a1f660df14cf0ca86f07656e6c3a933829fad2717a6a4fcecf896ac9",
+        "released": [],
+        "provider_key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d",
+        "received_at": 1790000000
+       },
+       "signatures": [
+        "f5b7a6a27c6d171765ec2bd09fbd0475e6724ec1c87d9d0e47b12670b3d651ca6b0a25daba6cb01ee836b512eceb198f136d2225c68ae4c54b570b6c89819506"
+       ]
+      },
+      "terms": {
+       "type": "pg.terms.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+         }
+        ],
+        "subject_ref": "PG-TEST-000001N",
+        "profile": "likeness/1",
+        "version": 1,
+        "template": {
+         "id": "example-likeness",
+         "version": 1,
+         "jurisdiction": "US"
+        },
+        "legal": {
+         "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+         "url": "https://registry.test.example/terms-template-1.txt"
+        },
+        "rules": {
+         "purposes": [
+          "editorial",
+          "personal"
+         ],
+         "excluded_categories": [
+          "gambling",
+          "political"
+         ]
+        },
+        "minor": false,
+        "assent": "registry",
+        "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "factor": "authenticator",
+        "issued_at": 1789999900
+       },
+       "signatures": [
+        "6fd7107f4804daf44d567690eaba270e49cd0be25a0f8099d3f43332e0c35936300561d88470079913f9dd90f3d741766a12ad8b1d64718ccb2de1275a52b908"
+       ]
+      }
+     }
+    ]
+   },
+   "terms": "ok",
+   "terms_assent": "registry"
+  },
+  {
+   "name": "the request accepted no terms",
+   "bundle": {
+    "format": "pg.proof.v1",
+    "subjects": [
+     {
+      "request": {
+       "type": "pg.request.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "provider",
+          "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+         }
+        ],
+        "subject_ref": "PG-TEST-000001N",
+        "provider_id": "https://frame.example",
+        "profile": "likeness/1",
+        "use": {
+         "purpose": "personal",
+         "categories": [
+          "fashion"
+         ]
+        },
+        "job_id": "job-8842",
+        "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       },
+       "signatures": [
+        "25c564a18b108ae3535683f354949c7473b7e92bd8942ec9199cdf58884285c7dc9d07385d90bc3fe5d8df0645a75c7ac786530b9b7539a27e194f9dcbf61804"
+       ]
+      },
+      "answer": {
+       "type": "pg.answer.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+         }
+        ],
+        "request_id": "a5f6d81ea9dece5bd75ca07e9aa2685a3ece6fa355dc7a3fa98fddbc00d4e5ad",
+        "profile": "likeness/1",
+        "status": "allow",
+        "basis": {
+         "kind": "policy",
+         "rule": "test"
+        },
+        "issued_at": 1789999990,
+        "expires_at": 1790000290
+       },
+       "signatures": [
+        "2b1185da51464f05989da7e957a1b4e1508beec8267b9d2b3f2035016a2d99e9c340dee5c9dd64fb0a63a446483c9c3e6c4e7833fefc1feda677d69bf9169f09"
+       ]
+      },
+      "report": {
+       "type": "pg.report.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "provider",
+          "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+         }
+        ],
+        "request_id": "a5f6d81ea9dece5bd75ca07e9aa2685a3ece6fa355dc7a3fa98fddbc00d4e5ad",
+        "answer": "8bae9a6b28b91761b613b7535a2b5e11bacd41747e39e763689b13ed2e47ce1f",
+        "job_id": "job-8842",
+        "outcome": "generated",
+        "output_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "occurred_at": 1790000000
+       },
+       "signatures": [
+        "c19e6d7493ac659ff8ea0d05517891e70b619fc65bb5ebff9fb8c7fbf21aee01ff161450c5b885d6fa3855bc4c99b539b723929d09a8cc28e3ec287e9650890c"
+       ]
+      },
+      "ack": {
+       "type": "pg.report_ack.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+         }
+        ],
+        "report": "648974d7f5353cbdc543e637a011eb7b654f096b6eea03b78edd78a7d1bcc2f8",
+        "answer": "8bae9a6b28b91761b613b7535a2b5e11bacd41747e39e763689b13ed2e47ce1f",
+        "answer_status": "allow",
+        "counted": "8bae9a6b28b91761b613b7535a2b5e11bacd41747e39e763689b13ed2e47ce1f",
+        "released": [],
+        "provider_key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d",
+        "received_at": 1790000000
+       },
+       "signatures": [
+        "4a20a3e8ec353701c06733ead229476442b00a2b2b7e5b09d9e1f74fc752bdb694ce88a13f7dfc8e5018ce00427e2cc427eb558830a30523115271da2871a90a"
+       ]
+      },
+      "terms": {
+       "type": "pg.terms.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+         }
+        ],
+        "subject_ref": "PG-TEST-000001N",
+        "profile": "likeness/1",
+        "version": 1,
+        "template": {
+         "id": "example-likeness",
+         "version": 1,
+         "jurisdiction": "US"
+        },
+        "legal": {
+         "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+         "url": "https://registry.test.example/terms-template-1.txt"
+        },
+        "rules": {
+         "purposes": [
+          "editorial",
+          "personal"
+         ],
+         "excluded_categories": [
+          "gambling",
+          "political"
+         ]
+        },
+        "minor": false,
+        "assent": "registry",
+        "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "factor": "authenticator",
+        "issued_at": 1789999900
+       },
+       "signatures": [
+        "6fd7107f4804daf44d567690eaba270e49cd0be25a0f8099d3f43332e0c35936300561d88470079913f9dd90f3d741766a12ad8b1d64718ccb2de1275a52b908"
+       ]
+      }
+     }
+    ]
+   },
+   "terms": "absent",
+   "terms_assent": null
+  },
+  {
+   "name": "the record is not carried",
+   "bundle": {
+    "format": "pg.proof.v1",
+    "subjects": [
+     {
+      "request": {
+       "type": "pg.request.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "provider",
+          "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+         }
+        ],
+        "subject_ref": "PG-TEST-000001N",
+        "provider_id": "https://frame.example",
+        "profile": "likeness/1",
+        "use": {
+         "purpose": "personal",
+         "categories": [
+          "fashion"
+         ]
+        },
+        "job_id": "job-8842",
+        "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "terms": "cc2a015557935a3bb6801243e544838f476a7c6beb08ed77fb96ffbe2e7ac2ae"
+       },
+       "signatures": [
+        "d02c9475a2f543169aceb922e38540f1aa6eb259f37e866ccb508bc43736bcfec42b31b839cfd48964fe58dfd3e60f90c066890f1c9884b8dd88f9f347557b06"
+       ]
+      },
+      "answer": {
+       "type": "pg.answer.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+         }
+        ],
+        "request_id": "c08b800e750e5f3263a503e67f60c315e76cf501bb249b680202bb71eea64905",
+        "profile": "likeness/1",
+        "status": "allow",
+        "basis": {
+         "kind": "policy",
+         "rule": "test"
+        },
+        "issued_at": 1789999990,
+        "expires_at": 1790000290
+       },
+       "signatures": [
+        "8b631f6518606a42355ee2c412152b0fc0afb09754760346f7b514a5cb063093c7bec3eab635695cdd19ed74810c3e224b2bc1f350c4a50f6a560d9a0f430602"
+       ]
+      },
+      "report": {
+       "type": "pg.report.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "provider",
+          "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+         }
+        ],
+        "request_id": "c08b800e750e5f3263a503e67f60c315e76cf501bb249b680202bb71eea64905",
+        "answer": "24391f94a1f660df14cf0ca86f07656e6c3a933829fad2717a6a4fcecf896ac9",
+        "job_id": "job-8842",
+        "outcome": "generated",
+        "output_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "occurred_at": 1790000000
+       },
+       "signatures": [
+        "3c4c77c6fa017afe76ccc0476c4c026f20f17c63bb55881f2462b77f3867f5d86359678f5d4ac60e171be35fdb1d38f59c1791afd58480edbf62b83c405d3009"
+       ]
+      },
+      "ack": {
+       "type": "pg.report_ack.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+         }
+        ],
+        "report": "7566ae87143fffe109cfb7e11f1143e2be65ed18abe24359c439fc1162a98e7e",
+        "answer": "24391f94a1f660df14cf0ca86f07656e6c3a933829fad2717a6a4fcecf896ac9",
+        "answer_status": "allow",
+        "counted": "24391f94a1f660df14cf0ca86f07656e6c3a933829fad2717a6a4fcecf896ac9",
+        "released": [],
+        "provider_key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d",
+        "received_at": 1790000000
+       },
+       "signatures": [
+        "f5b7a6a27c6d171765ec2bd09fbd0475e6724ec1c87d9d0e47b12670b3d651ca6b0a25daba6cb01ee836b512eceb198f136d2225c68ae4c54b570b6c89819506"
+       ]
+      }
+     }
+    ]
+   },
+   "terms": "unverified",
+   "terms_assent": null
+  },
+  {
+   "name": "the record is signed by another registry's key (PM10)",
+   "bundle": {
+    "format": "pg.proof.v1",
+    "subjects": [
+     {
+      "request": {
+       "type": "pg.request.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "provider",
+          "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+         }
+        ],
+        "subject_ref": "PG-TEST-000001N",
+        "provider_id": "https://frame.example",
+        "profile": "likeness/1",
+        "use": {
+         "purpose": "personal",
+         "categories": [
+          "fashion"
+         ]
+        },
+        "job_id": "job-8842",
+        "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "terms": "446aed7c474023c44db6d5aca4962118de6cd83d4d4405ae6477b23dd126b8ea"
+       },
+       "signatures": [
+        "4040772691b59777796921bc9014194ea68e9f3422313d93a40ce2e6167aa534be15b18ad7f1a03052d5fe15496937c2e839c2ccffae9d1f530b68895b7ee302"
+       ]
+      },
+      "answer": {
+       "type": "pg.answer.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+         }
+        ],
+        "request_id": "f499635dec3dcc6be03d7964c320a776ee8eeb584f4acd9ba644c95e93190c8b",
+        "profile": "likeness/1",
+        "status": "allow",
+        "basis": {
+         "kind": "policy",
+         "rule": "test"
+        },
+        "issued_at": 1789999990,
+        "expires_at": 1790000290
+       },
+       "signatures": [
+        "7c46d0ee64bfa36ad9e5767e68c122f64e5f2b779de27b0f814220f4e059e9b74a8accd95566e7b7a384a599885aa1bdbef1e103cc60a42c1bc4d546c92da108"
+       ]
+      },
+      "report": {
+       "type": "pg.report.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "provider",
+          "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+         }
+        ],
+        "request_id": "f499635dec3dcc6be03d7964c320a776ee8eeb584f4acd9ba644c95e93190c8b",
+        "answer": "f3939aba7f1b710ca9f7e1393b705397edc6419d44d3833bbe90ab6138c330c8",
+        "job_id": "job-8842",
+        "outcome": "generated",
+        "output_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "occurred_at": 1790000000
+       },
+       "signatures": [
+        "7eb6339866b4a4f189da786fc287d1e66bef051c9a46974998b17577d5156f249c378c6f34aecd14c0e4abdad172f133f17317f8b7eef34744ea767310f4240f"
+       ]
+      },
+      "ack": {
+       "type": "pg.report_ack.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+         }
+        ],
+        "report": "a99a9e84169bfc5fbc2adb4be5fcf118ef65868a5e8923358fed0393d433213d",
+        "answer": "f3939aba7f1b710ca9f7e1393b705397edc6419d44d3833bbe90ab6138c330c8",
+        "answer_status": "allow",
+        "counted": "f3939aba7f1b710ca9f7e1393b705397edc6419d44d3833bbe90ab6138c330c8",
+        "released": [],
+        "provider_key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d",
+        "received_at": 1790000000
+       },
+       "signatures": [
+        "804deb6b3339696f9ff1509902c4bed3fb11ca8dce5332155133ee406a06fb0c2aab16ffaf045ee3cdb6013129356a65f54f10a58e691645a55863843ab7880a"
+       ]
+      },
+      "terms": {
+       "type": "pg.terms.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a8807bb07969da1558ec42d39fd3493d"
+         }
+        ],
+        "subject_ref": "PG-TEST-000001N",
+        "profile": "likeness/1",
+        "version": 1,
+        "template": {
+         "id": "example-likeness",
+         "version": 1,
+         "jurisdiction": "US"
+        },
+        "legal": {
+         "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+         "url": "https://registry.test.example/terms-template-1.txt"
+        },
+        "rules": {
+         "purposes": [
+          "editorial",
+          "personal"
+         ],
+         "excluded_categories": [
+          "gambling",
+          "political"
+         ]
+        },
+        "minor": false,
+        "assent": "registry",
+        "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "factor": "authenticator",
+        "issued_at": 1789999900
+       },
+       "signatures": [
+        "183896a697224851b583fff7c00a04f0b31563e66e7a636eafbd3c9c2c7162309d16b93757e74e802faef6d93d1db279375090dde4afc2d6a9c4d23a05421001"
+       ]
+      }
+     }
+    ]
+   },
+   "terms": "unverified",
+   "terms_assent": null
+  },
+  {
+   "name": "a category the terms exclude, on a policy basis",
+   "bundle": {
+    "format": "pg.proof.v1",
+    "subjects": [
+     {
+      "request": {
+       "type": "pg.request.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "provider",
+          "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+         }
+        ],
+        "subject_ref": "PG-TEST-000001N",
+        "provider_id": "https://frame.example",
+        "profile": "likeness/1",
+        "use": {
+         "purpose": "personal",
+         "categories": [
+          "gambling"
+         ]
+        },
+        "job_id": "job-8842",
+        "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "terms": "cc2a015557935a3bb6801243e544838f476a7c6beb08ed77fb96ffbe2e7ac2ae"
+       },
+       "signatures": [
+        "662710cc1e000a07ab1c207b4519b890f88c0dad886ac5a3fcebaa99f2c25f4b6f68a12b6e431fdc0744ef44273a327848152932729bc6860487f51999d7ad0d"
+       ]
+      },
+      "answer": {
+       "type": "pg.answer.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+         }
+        ],
+        "request_id": "2bbb66fe442658b06eb489d899130d035ab861cd0bf3fb3332c39ddfd5d8cdcb",
+        "profile": "likeness/1",
+        "status": "allow",
+        "basis": {
+         "kind": "policy",
+         "rule": "test"
+        },
+        "issued_at": 1789999990,
+        "expires_at": 1790000290
+       },
+       "signatures": [
+        "293cf7fba3ca8f9e2055de0ade2318177edb10197de4f9af33d4f94b7f19c2e065554f82b3e2ed7804f7154387a0ed1b7437bafa79af4eb5b528686e92aaf10b"
+       ]
+      },
+      "report": {
+       "type": "pg.report.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "provider",
+          "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+         }
+        ],
+        "request_id": "2bbb66fe442658b06eb489d899130d035ab861cd0bf3fb3332c39ddfd5d8cdcb",
+        "answer": "758286ab6819beba159a732e2ffd737ebf2dc1384356b6eac72b220f6db85bc1",
+        "job_id": "job-8842",
+        "outcome": "generated",
+        "output_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "occurred_at": 1790000000
+       },
+       "signatures": [
+        "5c3c6ce227603f5f954ee08395ef4183ec301b38d89bfd5a00a2747037b4c863115952acdfffb16aa29e5fc01d204cb33fdd906806d8aa71c1d293a17e69df0b"
+       ]
+      },
+      "ack": {
+       "type": "pg.report_ack.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+         }
+        ],
+        "report": "b6793de437e8fc3a3dac52efba4bc9d9c5ecca22a2544d592af421801e2343f3",
+        "answer": "758286ab6819beba159a732e2ffd737ebf2dc1384356b6eac72b220f6db85bc1",
+        "answer_status": "allow",
+        "counted": "758286ab6819beba159a732e2ffd737ebf2dc1384356b6eac72b220f6db85bc1",
+        "released": [],
+        "provider_key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d",
+        "received_at": 1790000000
+       },
+       "signatures": [
+        "e85d4dbd712506dc3523ca9b21199214df35f83e030316a751445b5b877d2a779bb4f3c3ad75822b8dbf58b4aaa52212b8ac16658a19e7a3eb12993436a4a90c"
+       ]
+      },
+      "terms": {
+       "type": "pg.terms.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+         }
+        ],
+        "subject_ref": "PG-TEST-000001N",
+        "profile": "likeness/1",
+        "version": 1,
+        "template": {
+         "id": "example-likeness",
+         "version": 1,
+         "jurisdiction": "US"
+        },
+        "legal": {
+         "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+         "url": "https://registry.test.example/terms-template-1.txt"
+        },
+        "rules": {
+         "purposes": [
+          "editorial",
+          "personal"
+         ],
+         "excluded_categories": [
+          "gambling",
+          "political"
+         ]
+        },
+        "minor": false,
+        "assent": "registry",
+        "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "factor": "authenticator",
+        "issued_at": 1789999900
+       },
+       "signatures": [
+        "6fd7107f4804daf44d567690eaba270e49cd0be25a0f8099d3f43332e0c35936300561d88470079913f9dd90f3d741766a12ad8b1d64718ccb2de1275a52b908"
+       ]
+      }
+     }
+    ]
+   },
+   "terms": "outside",
+   "terms_assent": "registry"
+  },
+  {
+   "name": "a grant decides its own scope",
+   "bundle": {
+    "format": "pg.proof.v1",
+    "subjects": [
+     {
+      "request": {
+       "type": "pg.request.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "provider",
+          "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+         }
+        ],
+        "subject_ref": "PG-TEST-000001N",
+        "provider_id": "https://frame.example",
+        "profile": "likeness/1",
+        "use": {
+         "purpose": "personal",
+         "categories": [
+          "gambling"
+         ]
+        },
+        "job_id": "job-8842",
+        "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "terms": "cc2a015557935a3bb6801243e544838f476a7c6beb08ed77fb96ffbe2e7ac2ae"
+       },
+       "signatures": [
+        "662710cc1e000a07ab1c207b4519b890f88c0dad886ac5a3fcebaa99f2c25f4b6f68a12b6e431fdc0744ef44273a327848152932729bc6860487f51999d7ad0d"
+       ]
+      },
+      "answer": {
+       "type": "pg.answer.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+         }
+        ],
+        "request_id": "2bbb66fe442658b06eb489d899130d035ab861cd0bf3fb3332c39ddfd5d8cdcb",
+        "profile": "likeness/1",
+        "status": "allow",
+        "basis": {
+         "kind": "grant",
+         "grant": {
+          "format": "pg.grant.v1",
+          "id": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+         }
+        },
+        "issued_at": 1789999990,
+        "expires_at": 1790000290
+       },
+       "signatures": [
+        "733b734548bb4066ee8a93d07ac58e2aaeb035b626afec19067afd7956d7f3808a9de765d3fdbfc9fb3d33f5cfb9c24cc4e1711b3dc390d747c5be2c1428c90f"
+       ]
+      },
+      "report": {
+       "type": "pg.report.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "provider",
+          "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+         }
+        ],
+        "request_id": "2bbb66fe442658b06eb489d899130d035ab861cd0bf3fb3332c39ddfd5d8cdcb",
+        "answer": "697252f12cce4f1badc926a73e243619315a41246a28596906dc9605ac646d8d",
+        "job_id": "job-8842",
+        "outcome": "generated",
+        "output_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "occurred_at": 1790000000
+       },
+       "signatures": [
+        "07a2c9951e97909ff4f24bfed58ffd52b331a4f8ae985feac489fa7e3060c8d8c6307e3bcfb88c0f0f267a5bd9d2daaf56446645c40e5966b6cccc14d9345e00"
+       ]
+      },
+      "ack": {
+       "type": "pg.report_ack.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+         }
+        ],
+        "report": "907e98599991bfc7430ec21a8e2ab0c9dc5b803333264de1247aa33d35fad2f3",
+        "answer": "697252f12cce4f1badc926a73e243619315a41246a28596906dc9605ac646d8d",
+        "answer_status": "allow",
+        "counted": "697252f12cce4f1badc926a73e243619315a41246a28596906dc9605ac646d8d",
+        "released": [],
+        "provider_key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d",
+        "received_at": 1790000000
+       },
+       "signatures": [
+        "3af2934f3ea42a4650ec83a196a7a310702e6bcc02119c16319ea85ddc69c4cfc8660cdb6cbb226593b641e904883ff0a3850ea0436273d447a1014f913c0c02"
+       ]
+      },
+      "terms": {
+       "type": "pg.terms.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+         }
+        ],
+        "subject_ref": "PG-TEST-000001N",
+        "profile": "likeness/1",
+        "version": 1,
+        "template": {
+         "id": "example-likeness",
+         "version": 1,
+         "jurisdiction": "US"
+        },
+        "legal": {
+         "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+         "url": "https://registry.test.example/terms-template-1.txt"
+        },
+        "rules": {
+         "purposes": [
+          "editorial",
+          "personal"
+         ],
+         "excluded_categories": [
+          "gambling",
+          "political"
+         ]
+        },
+        "minor": false,
+        "assent": "registry",
+        "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "factor": "authenticator",
+        "issued_at": 1789999900
+       },
+       "signatures": [
+        "6fd7107f4804daf44d567690eaba270e49cd0be25a0f8099d3f43332e0c35936300561d88470079913f9dd90f3d741766a12ad8b1d64718ccb2de1275a52b908"
+       ]
+      }
+     }
+    ]
+   },
+   "terms": "ok",
+   "terms_assent": "registry"
+  },
+  {
+   "name": "the floor under any basis: a minor, violence",
+   "bundle": {
+    "format": "pg.proof.v1",
+    "subjects": [
+     {
+      "request": {
+       "type": "pg.request.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "provider",
+          "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+         }
+        ],
+        "subject_ref": "PG-TEST-000001N",
+        "provider_id": "https://frame.example",
+        "profile": "likeness/1",
+        "use": {
+         "purpose": "personal",
+         "categories": [
+          "violence"
+         ]
+        },
+        "job_id": "job-8842",
+        "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "terms": "e62b5bcc60f65cade76257c382556374e277e7acd396b44f3b2cfbe1685634e9"
+       },
+       "signatures": [
+        "49891cc6621b09f14e4b9c65bb19bdc4787ecae6c31ed46efda2d3e8904266f2de89077409f497f2b01b703d3fb1217d056d732a9b131396b31c580e6fce2304"
+       ]
+      },
+      "answer": {
+       "type": "pg.answer.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+         }
+        ],
+        "request_id": "d082d4a1f601e145dcc1b627799c36437859b22d2433c08566bba19948870d38",
+        "profile": "likeness/1",
+        "status": "allow",
+        "basis": {
+         "kind": "grant",
+         "grant": {
+          "format": "pg.grant.v1",
+          "id": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+         }
+        },
+        "issued_at": 1789999990,
+        "expires_at": 1790000290
+       },
+       "signatures": [
+        "0d0523a400e498658bf4ff559d6193bcebffe190906d1323ba980d34b1f541bd0c2f0a3261e97dc7a8bd7de33ec5e0bad4fbf85d8f9c55f77195618c49604a05"
+       ]
+      },
+      "report": {
+       "type": "pg.report.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "provider",
+          "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+         }
+        ],
+        "request_id": "d082d4a1f601e145dcc1b627799c36437859b22d2433c08566bba19948870d38",
+        "answer": "959d32639b6360d4e86b9f75b7a316860b7b5d8b733e8c2d6fef80a25aaf0e64",
+        "job_id": "job-8842",
+        "outcome": "generated",
+        "output_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "occurred_at": 1790000000
+       },
+       "signatures": [
+        "d3ad3e4cfc68c20dcf7306bd240ff19fc27efd3317e6cb2bb2a618bba3b829a2df70a3fab427e147261fab26db005cb852066e4f41e3ff4b1c17495654214f03"
+       ]
+      },
+      "ack": {
+       "type": "pg.report_ack.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+         }
+        ],
+        "report": "0fd8d934feae3c127f24a2f73ab9b83dbd6c02d574823bc24f927bf288ab1be7",
+        "answer": "959d32639b6360d4e86b9f75b7a316860b7b5d8b733e8c2d6fef80a25aaf0e64",
+        "answer_status": "allow",
+        "counted": "959d32639b6360d4e86b9f75b7a316860b7b5d8b733e8c2d6fef80a25aaf0e64",
+        "released": [],
+        "provider_key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d",
+        "received_at": 1790000000
+       },
+       "signatures": [
+        "f899d1270ac42f3500f356edaaca817f4187d306a9bac461d7d3c0aa296c55d9d62ea92aa17df9193049d0047a15561baa5b9765e19c2565eeb4b4dcc758130c"
+       ]
+      },
+      "terms": {
+       "type": "pg.terms.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+         }
+        ],
+        "subject_ref": "PG-TEST-000001N",
+        "profile": "likeness/1",
+        "version": 1,
+        "template": {
+         "id": "example-likeness",
+         "version": 1,
+         "jurisdiction": "US"
+        },
+        "legal": {
+         "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+         "url": "https://registry.test.example/terms-template-1.txt"
+        },
+        "rules": {
+         "purposes": [
+          "editorial",
+          "personal"
+         ],
+         "excluded_categories": [
+          "gambling",
+          "political"
+         ]
+        },
+        "minor": true,
+        "assent": "registry",
+        "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "factor": "authenticator",
+        "issued_at": 1789999900
+       },
+       "signatures": [
+        "34e0229d4c36573dbc52bfd4c3379e5258e87fd80dee0b7567a1d38ce5b4e7a1521a4f5e927c393ed04529d29e9de3ab4087da833feed1fb9b2537f834ff1102"
+       ]
+      }
+     }
+    ]
+   },
+   "terms": "outside",
+   "terms_assent": "registry"
+  },
+  {
+   "name": "an intimate category, whatever the basis",
+   "bundle": {
+    "format": "pg.proof.v1",
+    "subjects": [
+     {
+      "request": {
+       "type": "pg.request.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "provider",
+          "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+         }
+        ],
+        "subject_ref": "PG-TEST-000001N",
+        "provider_id": "https://frame.example",
+        "profile": "likeness/1",
+        "use": {
+         "purpose": "personal",
+         "categories": [
+          "sexual"
+         ]
+        },
+        "job_id": "job-8842",
+        "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "terms": "cc2a015557935a3bb6801243e544838f476a7c6beb08ed77fb96ffbe2e7ac2ae"
+       },
+       "signatures": [
+        "8b8700439b0daa58d3330f7af63b05045fabe1400769a189c94bbe434f6968ce598131b9329b850b2f688ac4f3467906272bdb13bde538d817bf3dd185d7180e"
+       ]
+      },
+      "answer": {
+       "type": "pg.answer.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+         }
+        ],
+        "request_id": "8f0e1c8518d40e9493c1012d887123847ca0b3dfc260241dd72d3c601815c820",
+        "profile": "likeness/1",
+        "status": "allow",
+        "basis": {
+         "kind": "grant",
+         "grant": {
+          "format": "pg.grant.v1",
+          "id": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+         }
+        },
+        "issued_at": 1789999990,
+        "expires_at": 1790000290
+       },
+       "signatures": [
+        "75b55ac8bc77f073efc14551c3696633f1e6f32420729f3431369209c1910fe4fa47baecf87b00b272749a2cf0ac09a21da0fecbec74531b8e536c7eeb8b1d00"
+       ]
+      },
+      "report": {
+       "type": "pg.report.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "provider",
+          "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+         }
+        ],
+        "request_id": "8f0e1c8518d40e9493c1012d887123847ca0b3dfc260241dd72d3c601815c820",
+        "answer": "6427ac082ceb48607eafd84c9ce2061650b83785a42251f691b6fc5a3f744881",
+        "job_id": "job-8842",
+        "outcome": "generated",
+        "output_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "occurred_at": 1790000000
+       },
+       "signatures": [
+        "50c9f906a711e4a71fb7fa4db2bc7eb73c34abca29e8fcccd3f3fe749f0097a837c53ea45393f89710779befd9b7ab0e0681bd054c0d54979610cbf98448a602"
+       ]
+      },
+      "ack": {
+       "type": "pg.report_ack.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+         }
+        ],
+        "report": "8cef248faff046d0f99fd66ca830006b0be8908e0e64965164101a7fb41d5030",
+        "answer": "6427ac082ceb48607eafd84c9ce2061650b83785a42251f691b6fc5a3f744881",
+        "answer_status": "allow",
+        "counted": "6427ac082ceb48607eafd84c9ce2061650b83785a42251f691b6fc5a3f744881",
+        "released": [],
+        "provider_key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d",
+        "received_at": 1790000000
+       },
+       "signatures": [
+        "6294d0a2c8ae080c8a972db213a050f3aec06433a91839bd297b7584f701982d9f36e770e25f148f6f52a60a22f88510c72264f70736cd044bdc2db6dfd82608"
+       ]
+      },
+      "terms": {
+       "type": "pg.terms.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+         }
+        ],
+        "subject_ref": "PG-TEST-000001N",
+        "profile": "likeness/1",
+        "version": 1,
+        "template": {
+         "id": "example-likeness",
+         "version": 1,
+         "jurisdiction": "US"
+        },
+        "legal": {
+         "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+         "url": "https://registry.test.example/terms-template-1.txt"
+        },
+        "rules": {
+         "purposes": [
+          "editorial",
+          "personal"
+         ],
+         "excluded_categories": [
+          "gambling",
+          "political"
+         ]
+        },
+        "minor": false,
+        "assent": "registry",
+        "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "factor": "authenticator",
+        "issued_at": 1789999900
+       },
+       "signatures": [
+        "6fd7107f4804daf44d567690eaba270e49cd0be25a0f8099d3f43332e0c35936300561d88470079913f9dd90f3d741766a12ad8b1d64718ccb2de1275a52b908"
+       ]
+      }
+     }
+    ]
+   },
+   "terms": "outside",
+   "terms_assent": "registry"
+  },
+  {
+   "name": "a category outside the vocabulary, on a policy basis",
+   "bundle": {
+    "format": "pg.proof.v1",
+    "subjects": [
+     {
+      "request": {
+       "type": "pg.request.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "provider",
+          "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+         }
+        ],
+        "subject_ref": "PG-TEST-000001N",
+        "provider_id": "https://frame.example",
+        "profile": "likeness/1",
+        "use": {
+         "purpose": "personal",
+         "categories": [
+          "beer"
+         ]
+        },
+        "job_id": "job-8842",
+        "job_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "terms": "cc2a015557935a3bb6801243e544838f476a7c6beb08ed77fb96ffbe2e7ac2ae"
+       },
+       "signatures": [
+        "4fc55184739196baf90cfb070c7d75cf3b5b9ae42a9e4fc450db32b0553ae782b33ac95f44bc2b3fdf2065e95a8e34025b7af269422dad5bfc4cca52806ff20a"
+       ]
+      },
+      "answer": {
+       "type": "pg.answer.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+         }
+        ],
+        "request_id": "8d3b3f98b43abee13c7f7d9f47f1dd3b60528e1f70e0cbeaff5da90401352b4d",
+        "profile": "likeness/1",
+        "status": "allow",
+        "basis": {
+         "kind": "policy",
+         "rule": "test"
+        },
+        "issued_at": 1789999990,
+        "expires_at": 1790000290
+       },
+       "signatures": [
+        "fca0e3da9572d13e28a8d56a5d061ae8f94a630dee1bf888c3287298bb21d0d7bb38a0181d2c8c531c43b95e7ba1d4a52a0345f5b5a435724663a0f21e95ab05"
+       ]
+      },
+      "report": {
+       "type": "pg.report.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "provider",
+          "key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d"
+         }
+        ],
+        "request_id": "8d3b3f98b43abee13c7f7d9f47f1dd3b60528e1f70e0cbeaff5da90401352b4d",
+        "answer": "9dc6a5341aacb76cff81616890887293036b82cda81c0be9a92a1114c4f47eff",
+        "job_id": "job-8842",
+        "outcome": "generated",
+        "output_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "occurred_at": 1790000000
+       },
+       "signatures": [
+        "0b7eb190170ff75d9e82bd0d173f3bf20842126d1e7ca164832889fd27cf66aabed3632acd38ce7a33ecf3720e1a5f42041e7269008c1a8cc950073d91e0bd02"
+       ]
+      },
+      "ack": {
+       "type": "pg.report_ack.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+         }
+        ],
+        "report": "1cbdbc25287ae533c9ff030b7108817020c461281c94f90c4f9a81c5e713bf61",
+        "answer": "9dc6a5341aacb76cff81616890887293036b82cda81c0be9a92a1114c4f47eff",
+        "answer_status": "allow",
+        "counted": "9dc6a5341aacb76cff81616890887293036b82cda81c0be9a92a1114c4f47eff",
+        "released": [],
+        "provider_key_id": "pg-ed25519:39d2fb3b4689f695722c40273484911d",
+        "received_at": 1790000000
+       },
+       "signatures": [
+        "cfcacfcfb060c471df90e39623cb0cda446a5ca9ca6316b6b594d31707c5b1fbde27a31f0f409f945f30e5107e39a22fffc051f5cbb5f8fb74df74ef9520d300"
+       ]
+      },
+      "terms": {
+       "type": "pg.terms.v1",
+       "body": {
+        "signers": [
+         {
+          "role": "registry",
+          "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+         }
+        ],
+        "subject_ref": "PG-TEST-000001N",
+        "profile": "likeness/1",
+        "version": 1,
+        "template": {
+         "id": "example-likeness",
+         "version": 1,
+         "jurisdiction": "US"
+        },
+        "legal": {
+         "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+         "url": "https://registry.test.example/terms-template-1.txt"
+        },
+        "rules": {
+         "purposes": [
+          "editorial",
+          "personal"
+         ],
+         "excluded_categories": [
+          "gambling",
+          "political"
+         ]
+        },
+        "minor": false,
+        "assent": "registry",
+        "instruction": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "factor": "authenticator",
+        "issued_at": 1789999900
+       },
+       "signatures": [
+        "6fd7107f4804daf44d567690eaba270e49cd0be25a0f8099d3f43332e0c35936300561d88470079913f9dd90f3d741766a12ad8b1d64718ccb2de1275a52b908"
+       ]
+      }
+     }
+    ]
+   },
+   "terms": "outside",
+   "terms_assent": "registry"
+  }
+ ]
+}

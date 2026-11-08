@@ -1,5 +1,5 @@
 """The registry: state in SQLite, the core rules, profile likeness/1 and the extensions
-reports, provider-keys, limits, jobs, grants, licensee, observe, sandbox, lookup and provider-identity.
+reports, provider-keys, limits, jobs, grants, licensee, observe, sandbox, lookup, provider-identity and terms.
 
 ponytail: one process-wide lock around one SQLite connection serializes every write. That is the
 spec's three locks (provider+job, ask, grant counter) collapsed into one: correct, simple, and enough
@@ -21,7 +21,8 @@ import urllib.request
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
-from pregen import PregenError, check_provider_url, check_public_key, fingerprint, issuer_of
+from pregen import (CATEGORIES, INTIMATE, PROHIBITED_FOR_MINORS, PregenError, check_provider_url, check_public_key,
+                    fingerprint, forbids, issuer_of, terms_opens)
 from urllib.parse import urlsplit
 
 from .protocol import Key, ProtocolError, canonical, check_body, check_envelope, message_id, mint_code, parse_code, seal
@@ -33,8 +34,7 @@ TTL = 300                       # seconds an answer stays valid (≤ 900)
 GIVE_BACK_WINDOW = 86400        # likeness/1: 24 hours from issued_at
 PURPOSES = {"personal", "educational", "research", "editorial", "commercial"}
 USE_MEMBERS = {"purpose", "rights", "territory", "channel", "categories"}
-PROHIBITED_FOR_MINORS = {"sexual", "adult", "violence"}
-INTIMATE = {"sexual", "adult"}  # likeness/1: only with the person's own signature on the grant
+TERMS_LEVELS = {"consented", "verified"}    # terms T-1: the person confirmed, or the registry verified
 UNAVAILABLE = {"pending", "paused", "disputed", "withdrawn"}
 # provider-identity P-5: a refusal of the person is never masked, whoever asks
 FLOOR = {"PG_SUBJECT_OPTED_OUT", "PG_SUBJECT_UNAVAILABLE", "PG_PROHIBITED_USE", "PG_IMMUTABLE_DENIAL",
@@ -42,6 +42,11 @@ FLOOR = {"PG_SUBJECT_OPTED_OUT", "PG_SUBJECT_UNAVAILABLE", "PG_PROHIBITED_USE", 
 PARTY_REFRESH = 86400           # provider-identity P-3: the party document is read again at least daily
 PARTY_MIN_INTERVAL = 60         # P-7: and at most once a minute per provider
 PARTY_MAX_BYTES = 65536
+# extensions/sandbox.md, serial 10: a test template; its text governs nothing
+SANDBOX_TEMPLATE = {"id": "pregen-sandbox", "version": 1, "jurisdiction": "US"}
+SANDBOX_LEGAL = {"sha256": hashlib.sha256(b"PRE-GEN sandbox template 1: a test record for test subjects. It governs "
+                                          b"nothing.\n").hexdigest(),
+                 "url": "https://www.pregen.org/test/terms-template-1.txt"}
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL);
@@ -67,7 +72,9 @@ CREATE TABLE IF NOT EXISTS jobs (provider_id TEXT NOT NULL, job_id TEXT NOT NULL
   PRIMARY KEY (provider_id, job_id));
 CREATE TABLE IF NOT EXISTS asks (id TEXT PRIMARY KEY, provider_id TEXT NOT NULL, job_id TEXT NOT NULL,
   subject_ref TEXT NOT NULL, request TEXT NOT NULL, closing_ack TEXT, null_report TEXT,
-  UNIQUE (provider_id, job_id, subject_ref));
+  signatures TEXT NOT NULL DEFAULT '[]', UNIQUE (provider_id, job_id, subject_ref));
+CREATE TABLE IF NOT EXISTS terms (id TEXT PRIMARY KEY, subject_code TEXT NOT NULL, version INTEGER NOT NULL,
+  envelope TEXT NOT NULL, act TEXT NOT NULL, UNIQUE (subject_code, version));
 CREATE TABLE IF NOT EXISTS answers (id TEXT PRIMARY KEY, ask_id TEXT NOT NULL, envelope TEXT NOT NULL,
   status TEXT NOT NULL, issued_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, grant_id TEXT, use TEXT,
   report_id TEXT);
@@ -90,6 +97,7 @@ class Config:
     sandbox: bool = False
     profiles: list = field(default_factory=lambda: [PROFILE])
     providers: str = "registered"   # "open": providers known by their domain (provider-identity); a sandbox always is
+    terms: bool = True              # extension terms: subjects may publish terms, and requests may accept them; open only
 
     def __post_init__(self):
         if not re.fullmatch(r"[ABCDEFGHJKMNPQRSTVWXYZ]{4}", self.prefix):
@@ -98,6 +106,7 @@ class Config:
             raise ValueError("providers is open or registered")
         if self.sandbox:
             self.providers = "open"
+        self.terms = self.terms and self.providers == "open"   # terms requires provider-identity: none could accept them
 
 
 def fetch_party(provider_url: str) -> dict:
@@ -129,9 +138,15 @@ class Registry:
         self.db = sqlite3.connect(db_path, check_same_thread=False, isolation_level=None)
         self.db.row_factory = sqlite3.Row
         self.db.executescript(SCHEMA)
+        if "signatures" not in {r["name"] for r in self.db.execute("PRAGMA table_info(asks)")}:   # a 0.3 database
+            self.db.execute("ALTER TABLE asks ADD COLUMN signatures TEXT NOT NULL DEFAULT '[]'")
         self.lock = threading.RLock()  # one sqlite connection: every use of it holds this lock
         self.activated_at = int(self._meta("activated_at") or self._set_meta("activated_at", str(clock())))
+        if config.sandbox:
+            self._check_sandbox_serials()   # before anything is written: a refused start changes nothing
         self._record_key()
+        if config.sandbox:
+            self.seed_sandbox()
 
     # ── storage helpers ──────────────────────────────────────────────────
     @contextmanager
@@ -195,8 +210,8 @@ class Registry:
         with self.tx() as db:
             if serial is None:
                 serial = (db.execute("SELECT COALESCE(MAX(serial), 0) FROM subjects").fetchone()[0] or 0) + 1
-                if self.config.sandbox:                     # 1-8 are the standard test codes; 8 stays unregistered
-                    serial = max(serial, 9)
+                if self.config.sandbox:                     # 1-11 are the standard test codes; 8 stays unregistered
+                    serial = max(serial, 12)
             code = mint_code(self.config.prefix, serial)
             key = None if holder_public else Key()
             flags["immutable_denials"] = json.dumps(flags.get("immutable_denials", []))
@@ -210,7 +225,7 @@ class Registry:
 
     def add_grant(self, subject_code: str, *, licensee_id: str = "", purposes=("research",), days: int = 365,
                   max_uses: int | None = None, uses_offset: int = 0, resale: bool = False, categories=(),
-                  holder_key: Key | None = None) -> str:
+                  holder_key: Key | None = None, ext: dict | None = None) -> str:
         """`resale`: licensee_id is a provider that may sell generations to its own users (catalog.md).
         `categories`: content categories granted explicitly; intimate ones need `holder_key`, the person's own key."""
         with self.tx() as db:
@@ -228,7 +243,7 @@ class Registry:
                 use["resale"] = True
             env = seal("pg.grant.v1", {"subject_ref": subject_code, "licensee_id": licensee_id, "profile": PROFILE,
                                        "use": use, "not_before": now, "expires_at": now + days * 86400,
-                                       "max_uses": max_uses},
+                                       "max_uses": max_uses, **({"ext": ext} if ext else {})},
                        [("rights_holder", signer), ("registry", self.key)])
             gid = message_id(env["type"], env["body"])
             db.execute("INSERT INTO grants VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -275,6 +290,52 @@ class Registry:
             if not db.execute("UPDATE subjects SET opted_out = 1 WHERE code = ?", (code,)).rowcount:
                 raise ValueError(f"no subject {code} in this registry")
 
+    def publish_terms(self, code: str, *, purposes, excluded_categories=(), template: dict, legal: dict,
+                      factor: str | None = None) -> str:
+        """extensions/terms.md: a new version of the subject's terms, made on the subject's own instruction, for a
+        published subject that is consented or verified (T-1). One that opens anything (T-3: the first, a purpose added,
+        an exclusion removed, another template) needs `factor`, the second factor the operator checked, and names it;
+        one that only closes names none. Nothing changed: no new version. Returns the current terms id."""
+        rules = {"purposes": sorted(set(purposes)), "excluded_categories": sorted(set(excluded_categories))}
+        if not rules["purposes"] or not set(rules["purposes"]) <= PURPOSES or not set(rules["excluded_categories"]) <= CATEGORIES:
+            raise ValueError(f"purposes from {sorted(PURPOSES)}, at least one; exclusions from {sorted(CATEGORIES)}")
+        with self.tx() as db:
+            s = db.execute("SELECT * FROM subjects WHERE code = ?", (code,)).fetchone()
+            if not self.config.terms or s is None or not s["published"] or s["level"] not in TERMS_LEVELS:
+                raise ValueError("terms are published only for a published subject that is consented or verified (T-1)")
+            last = db.execute("SELECT id, envelope FROM terms WHERE subject_code = ? ORDER BY version DESC LIMIT 1",
+                              (code,)).fetchone()
+            old = json.loads(last["envelope"])["body"] if last else None
+            new = {"rules": rules, "minor": bool(s["minor"]), "template": template, "legal": legal}
+            if old is not None and all(old[k] == v for k, v in new.items()):
+                return last["id"]
+            if old is not None and old["template"] == template and old["legal"] != legal:
+                raise ValueError("a template's legal text is fixed: another text is another template version")
+            opens = terms_opens(old, new)
+            if opens and factor not in ("authenticator", "email"):
+                raise ValueError("this version opens: it needs the subject's own instruction with a second factor (T-3)")
+            now = self.clock()
+            act = {"subject": code, **new, "factor": factor if opens else None, "at": now}   # the private record of the act
+            body = {"subject_ref": code, "profile": PROFILE, "version": old["version"] + 1 if old else 1,
+                    **({"amends": last["id"]} if old else {}), **new, "assent": "registry",
+                    "instruction": hashlib.sha256(canonical(act)).hexdigest(), **({"factor": factor} if opens else {}),
+                    "issued_at": now}
+            env = seal("pg.terms.v1", body, [("registry", self.key)])
+            check_body("terms", env["body"])
+            tid = message_id(env["type"], env["body"])
+            db.execute("INSERT INTO terms VALUES (?, ?, ?, ?, ?)",
+                       (tid, code, body["version"], json.dumps(env), canonical(act).decode()))
+            return tid
+
+    def _current_terms(self, db, s):
+        """(id, body) of the subject's current terms, or None: a subject that is not, or no longer, published and
+        consented or verified is answered as if it had no terms (T-1)."""
+        if not self.config.terms or not s["published"] or s["level"] not in TERMS_LEVELS:
+            return None
+        row = db.execute("SELECT id, envelope FROM terms WHERE subject_code = ? ORDER BY version DESC LIMIT 1",
+                         (s["code"],)).fetchone()
+        return (row["id"], json.loads(row["envelope"])["body"]) if row else None
+
     def revoke_grant(self, grant_id: str):
         """The grant ends now: no answer from now on rests on it. Answers already given stay what they were."""
         with self.tx() as db:
@@ -289,17 +350,69 @@ class Registry:
                 raise ValueError(f"no provider {provider_id} in this registry")
             db.execute("DELETE FROM connections WHERE provider_id = ?", (provider_id,))
 
+    SANDBOX_NAMES = {1: "Test subject 1 (allow)", 2: "Test subject 2 (no licence)", 3: "Test subject 3 (opted out)",
+                     4: "Test subject 4 (usage limit)", 5: "Test subject 5 (prohibited)", 6: "Test subject 6 (review)",
+                     7: "Test subject 7 (not blocked)", 9: "Test subject 9 (buy first)",
+                     10: "Test subject 10 (the person's terms)", 11: "Test subject 11 (a minor)"}
+
+    def _check_sandbox_serials(self) -> dict:
+        have = {r["serial"]: r["name"] for r in self._q("SELECT serial, name FROM subjects WHERE serial <= 11")}
+        taken = [f"{mint_code(self.config.prefix, n)} ({have[n]!r})" for n, name in self.SANDBOX_NAMES.items()
+                 if have.get(n, name) != name]
+        if taken:
+            raise ValueError(f"this sandbox's {', '.join(taken)} must be the standard test subjects 1-7 and 9-11 "
+                             "(extensions/sandbox.md). Make a fresh sandbox with `pregen-registry init --sandbox` and "
+                             "add your own test people there again; they get serials from 12.")
+        return have
+
     def seed_sandbox(self):
-        """The standard sandbox subjects (extensions/sandbox.md), serials 1–7; serial 8 stays unregistered."""
-        one = self.add_subject("Test subject 1 (allow)", serial=1, level="verified")
-        self.add_grant(one, purposes=PURPOSES, days=36500)
-        self.add_subject("Test subject 2 (no licence)", serial=2, level="verified")
-        self.add_subject("Test subject 3 (opted out)", serial=3, level="verified", opted_out=1)
-        four = self.add_subject("Test subject 4 (usage limit)", serial=4, level="verified")
-        self.add_grant(four, purposes=PURPOSES, days=36500, max_uses=1, uses_offset=1)
-        self.add_subject("Test subject 5 (prohibited)", serial=5, level="verified", fixed_refusal="PG_PROHIBITED_USE")
-        self.add_subject("Test subject 6 (review)", serial=6, level="verified", review=1)
-        self.add_subject("Test subject 7 (not blocked)", serial=7, level="verified", no_grant_status="not_blocked")
+        """The standard sandbox subjects (extensions/sandbox.md), serials 1–7 and 9–11; serial 8 stays unregistered.
+        A sandbox runs this on every start and adds only those missing, so one made by 0.3 (1–7) gains 9–11. A serial
+        held by another subject (0.3 numbered the operator's own from 9) is refused: that code would answer wrongly."""
+        have = self._check_sandbox_serials()
+        name, new = self.SANDBOX_NAMES, lambda n: n not in have
+        if new(1):
+            self.add_grant(self.add_subject(name[1], serial=1, level="verified"), purposes=PURPOSES, days=36500)
+        if new(2):
+            self.add_subject(name[2], serial=2, level="verified")
+        if new(3):
+            self.add_subject(name[3], serial=3, level="verified", opted_out=1)
+        if new(4):
+            self.add_grant(self.add_subject(name[4], serial=4, level="verified"), purposes=PURPOSES, days=36500,
+                           max_uses=1, uses_offset=1)
+        if new(5):
+            self.add_subject(name[5], serial=5, level="verified", fixed_refusal="PG_PROHIBITED_USE")
+        if new(6):
+            self.add_subject(name[6], serial=6, level="verified", review=1)
+        if new(7):
+            self.add_subject(name[7], serial=7, level="verified", no_grant_status="not_blocked")
+        if new(9):
+            self.set_identity(self.add_subject(name[9], serial=9, level="verified"), offer={
+                "purposes": sorted(PURPOSES), "price": {"amount": 100, "currency": "USD", "unit": "generation"}})
+        if new(10) and self.config.terms:       # a sandbox built with terms off has no 10 until they are on
+            self.publish_terms(self.add_subject(name[10], serial=10, level="verified"), purposes=("editorial", "research"),
+                               excluded_categories=("advertising",), template=SANDBOX_TEMPLATE, legal=SANDBOX_LEGAL,
+                               factor="authenticator")
+        if new(11):
+            own = Key()                # the person's own key, so the grant names intimate categories too; then dropped
+            eleven = self.add_subject(name[11], serial=11, level="verified", minor=1, holder_public=own.public_hex)
+            self.add_grant(eleven, purposes=PURPOSES, days=36500, categories=CATEGORIES, holder_key=own)
+
+    def purchase(self, provider_id: str, authorization: str | None, env) -> dict:
+        """extensions/sandbox.md: a test purchase, no money. The request, authenticated as for /v2/requests, names a
+        subject in the catalog; its provider gets a grant of one use on the offer's terms. Buy again: one more."""
+        if not self.config.sandbox:
+            raise ProtocolError("PG_NOT_FOUND", "this registry is not a sandbox", status=404)
+        body = self._checked_request(provider_id, authorization, env)
+        offer = next((o for o in self.catalog()["offers"] if o["subject_ref"] == body["subject_ref"]), None)
+        if offer is None:
+            raise ProtocolError("PG_NOT_FOUND", "this subject is not in the catalog", status=404)
+        with self.lock:                # the purchase number keeps two purchases in one second two grants
+            n = self._row("SELECT COUNT(*) FROM grants WHERE subject_code = ? AND licensee_id = ?",
+                          (body["subject_ref"], provider_id))[0] + 1
+            return self.grant(self.add_grant(body["subject_ref"], licensee_id=provider_id, purposes=offer["purposes"],
+                                             max_uses=1, resale=bool(offer.get("resale")),
+                                             ext={"sandbox": True, "purchase": n}))
 
     # ── authentication ───────────────────────────────────────────────────
     def authenticate(self, provider_id: str, authorization: str | None):
@@ -313,6 +426,26 @@ class Registry:
 
     # ── core: requests ───────────────────────────────────────────────────
     def request(self, provider_id: str, authorization: str | None, env) -> dict:
+        body = self._checked_request(provider_id, authorization, env)
+        with self.tx() as db:
+            now = self.clock()
+            ask = db.execute("SELECT * FROM asks WHERE id = ?", (message_id("pg.request.v1", body),)).fetchone()
+            if ask is not None:                  # the identical request again (jobs.md)
+                if ask["closing_ack"]:
+                    raise ProtocolError("PG_ASK_CLOSED", "this subject of the job was reported generated", status=409,
+                                        ack=json.loads(ask["closing_ack"]))
+                open_ = db.execute("SELECT envelope FROM answers WHERE ask_id = ? AND expires_at > ? "
+                                   "ORDER BY issued_at DESC", (ask["id"], now)).fetchone()
+                if open_:
+                    return {"answer": json.loads(open_["envelope"]), "attachments": []}
+            decision = self._decide(db, body, now)
+            if decision[1] == "PG_TERMS_NOT_ACCEPTED":  # T-7, decided before any mask: signed, but binds no job, no ask
+                return {"answer": self._answer(db, None, body, decision, now), "attachments": []}
+            ask = ask or self._bind(db, body, env["signatures"])
+            return {"answer": self._answer(db, ask["id"], body, decision, now), "attachments": []}
+
+    def _checked_request(self, provider_id: str, authorization: str | None, env) -> dict:
+        """A request's shape and its provider's authentication: signed by an open provider, or a registered one's token."""
         if self.is_open(provider_id):            # provider-identity P-1: signed with the current key of its chain
             self._check_open(provider_id, authorization)
             body = self._signed_by_provider(env, "pg.request.v1", provider_id)
@@ -323,6 +456,8 @@ class Registry:
             issuer_of(body["subject_ref"])
         except PregenError:
             raise ProtocolError("PG_MALFORMED", "subject_ref is not a canonical PG code (PG-CODE.md §7)") from None
+        if "terms" in body and not self.config.terms:   # terms T-5: sent only to a registry that declares it
+            raise ProtocolError("PG_MALFORMED", "this registry does not declare the extension terms")
         if not self.is_open(provider_id):
             self.authenticate(provider_id, authorization)
         if body["provider_id"] != provider_id:
@@ -334,28 +469,20 @@ class Registry:
         if licensee and not self.config.sandbox and not self._row(
                 "SELECT 1 FROM connections WHERE provider_id = ? AND licensee_id = ?", (provider_id, licensee)):
             raise ProtocolError("PG_NOT_AUTHENTICATED", "this licensee is not connected to this provider", status=401)
-        with self.tx() as db:
-            ask = self._bind(db, body)
-            if ask["closing_ack"]:
-                raise ProtocolError("PG_ASK_CLOSED", "this subject of the job was reported generated", status=409,
-                                    ack=json.loads(ask["closing_ack"]))
-            now = self.clock()
-            open_ = db.execute("SELECT envelope FROM answers WHERE ask_id = ? AND expires_at > ? ORDER BY issued_at DESC",
-                               (ask["id"], now)).fetchone()
-            if open_:
-                return {"answer": json.loads(open_["envelope"]), "attachments": []}
-            return {"answer": self._answer(db, ask, body, now), "attachments": []}
+        return body
 
     @staticmethod
     def _check_use(use):
         if set(use) - USE_MEMBERS or use.get("purpose") not in PURPOSES \
                 or not all(isinstance(use.get(k, []), list) for k in ("rights", "categories")) \
+                or not all(isinstance(c, str) for c in use.get("categories", [])) \
                 or not all(isinstance(use.get(k, ""), str) for k in ("territory", "channel")):
             raise ProtocolError("PG_MALFORMED", "use: purpose personal|educational|research|editorial|commercial; "
                                                 "optional rights, territory, channel, categories")
 
-    def _bind(self, db, body: dict):
-        """extensions/jobs.md: one job_hash per job, one request per subject of the job."""
+    def _bind(self, db, body: dict, signatures=()):
+        """extensions/jobs.md: one job_hash per job, one request per subject of the job. The request's signatures are
+        kept for its proof (a provider's signature is its acceptance of the subject's terms, terms T-5)."""
         row = db.execute("SELECT job_hash FROM jobs WHERE provider_id = ? AND job_id = ?",
                          (body["provider_id"], body["job_id"])).fetchone()
         if row is None:
@@ -366,15 +493,33 @@ class Registry:
         ask = db.execute("SELECT * FROM asks WHERE provider_id = ? AND job_id = ? AND subject_ref = ?",
                          (body["provider_id"], body["job_id"], body["subject_ref"])).fetchone()
         if ask is None:
-            db.execute("INSERT INTO asks (id, provider_id, job_id, subject_ref, request) VALUES (?, ?, ?, ?, ?)",
-                       (rid, body["provider_id"], body["job_id"], body["subject_ref"], json.dumps(body)))
+            db.execute("INSERT INTO asks (id, provider_id, job_id, subject_ref, request, signatures) VALUES (?, ?, ?, ?, ?, ?)",
+                       (rid, body["provider_id"], body["job_id"], body["subject_ref"], json.dumps(body),
+                        json.dumps(list(signatures))))
             ask = db.execute("SELECT * FROM asks WHERE id = ?", (rid,)).fetchone()
         elif ask["id"] != rid:
-            raise ProtocolError("PG_ASK_CONFLICT", "this subject of the job was asked with another request", status=409)
+            if ask["closing_ack"] or not self._stale(db, json.loads(ask["request"])) or db.execute(
+                    "SELECT 1 FROM answers WHERE ask_id = ? AND status = 'allow' AND expires_at > ?",
+                    (ask["id"], self.clock())).fetchone():
+                raise ProtocolError("PG_ASK_CONFLICT", "this subject of the job was asked with another request", status=409)
+            # T-7: an ask bound to terms that are no longer current never locks the job. It steps aside under its own
+            # id, keeping its answers (still billed, still reportable), and the new request binds.
+            db.execute("UPDATE asks SET subject_ref = id WHERE id = ?", (ask["id"],))
+            return self._bind(db, body, signatures)
         return ask
 
+    def _stale(self, db, req: dict) -> bool:
+        """T-7: the request cites terms that are not the subject's current terms."""
+        if "terms" not in req:
+            return False
+        s = db.execute("SELECT * FROM subjects WHERE code = ?", (req["subject_ref"],)).fetchone()
+        terms = self._current_terms(db, s) if s is not None else None
+        return terms is None or terms[0] != req["terms"]
+
     def _decide(self, db, req: dict, now: int):
-        """(status, reason, grant row, level) under likeness/1. Floor first, then grants."""
+        """(status, reason, grant row, level) under likeness/1, in the order of extensions/terms.md (The gate): the
+        subject step, the floor and the person's refusals, the registry's state, the person's exclusions where no grant
+        covers the use, who asks, then grants."""
         parsed = parse_code(req["subject_ref"])
         if parsed is not None and parsed[0] != self.config.prefix:
             return "deny", "PG_OTHER_REGISTRY", None, "self"
@@ -383,17 +528,19 @@ class Registry:
             return "deny", "PG_UNKNOWN_SUBJECT", None, "self"
         use, level = req["use"], s["level"]
         categories = set(use.get("categories", []))
-        if s["status"] in UNAVAILABLE:
+        if s["status"] in UNAVAILABLE - {"disputed"}:
             return "deny", "PG_SUBJECT_UNAVAILABLE", None, level
         if s["opted_out"]:
             return "deny", "PG_SUBJECT_OPTED_OUT", None, level
-        if s["fixed_refusal"] or (s["minor"] and categories & PROHIBITED_FOR_MINORS):
+        if s["fixed_refusal"] or (s["minor"] and (categories & PROHIBITED_FOR_MINORS or categories - CATEGORIES)):
             return "deny", s["fixed_refusal"] or "PG_PROHIBITED_USE", None, level
         if categories & set(json.loads(s["immutable_denials"])):
             return "deny", "PG_IMMUTABLE_DENIAL", None, level
         intimate = categories & INTIMATE
         if intimate and (s["custody"] != "self" or level != "verified"):
             return "deny", "PG_PERSONAL_SIGNATURE_REQUIRED", None, level
+        if s["status"] == "disputed":     # identity.md: a complaint is not a refusal of the person; it holds here only
+            return "deny", "PG_SUBJECT_DISPUTED", None, level
         if s["review"]:
             return "review", "PG_REVIEW_REQUIRED", None, level
         licensee, provider = req.get("licensee_id", ""), req["provider_id"]
@@ -401,10 +548,17 @@ class Registry:
             "SELECT * FROM grants WHERE subject_code = ? AND not_before <= ? AND expires_at > ? ORDER BY not_before",
             (s["code"], now, now)).fetchall()
             # catalog.md: an open grant, a grant to this licensee, or the provider's own grant — which covers
-            # its users only with the resale right
-            if g["licensee_id"] in ("", licensee) or (g["licensee_id"] == provider and (not licensee or g["resale"]))]
+            # its users only with the resale right. A sandbox purchase is its buyer's alone (sandbox.md): a sandbox
+            # connects any licensee, so another provider could otherwise name the buyer as its licensee.
+            if g["licensee_id"] == "" or (g["licensee_id"] == licensee and not self._bought_by_another(g, provider))
+            or (g["licensee_id"] == provider and (not licensee or g["resale"]))]
         fitting = [g for g in grants if use["purpose"] in json.loads(g["purposes"])
                    and intimate <= set(json.loads(g["categories"]))]
+        terms = self._current_terms(db, s)
+        if not fitting and terms and forbids(terms[1]["rules"], use):   # a grant decides its own scope; here only
+            return "deny", "PG_TERMS_EXCLUDED", None, level
+        if "terms" in req and (terms is None or req["terms"] != terms[0] or not self.is_open(provider)):
+            return "deny", "PG_TERMS_NOT_ACCEPTED", None, level            # T-7 stale or foreign, T-8 not by its domain
         if not fitting:
             reason = "PG_SCOPE_VIOLATION" if grants else "PG_NO_LICENSE"
             if not grants and not licensee and db.execute(  # licensee.md: only one of this provider's customers would do
@@ -421,6 +575,10 @@ class Registry:
                 return "allow", None, g, level
         return "deny", "PG_USAGE_LIMIT", None, level
 
+    def _bought_by_another(self, g, provider: str) -> bool:
+        return self.config.sandbox and g["licensee_id"] != provider \
+            and "purchase" in json.loads(g["envelope"])["body"].get("ext", {})
+
     def _masked(self, db, req: dict, status: str, reason, grant) -> bool:
         """provider-identity P-5a: a provider this registry has not vetted learns a refusal of the person, a published
         subject, and what its own bound licensee holds; everything else is deny PG_PROVIDER_NOT_ACCEPTED."""
@@ -434,11 +592,12 @@ class Registry:
         licensee = req.get("licensee_id", "")
         return not (status == "allow" and licensee and grant["licensee_id"] == licensee)
 
-    def _answer(self, db, ask, req: dict, now: int) -> dict:
-        status, reason, grant, level = self._decide(db, req, now)
+    def _answer(self, db, ask_id, req: dict, decision, now: int) -> dict:
+        """The signed answer to `decision`, kept under `ask_id`; with none (terms T-7) it is kept nowhere."""
+        status, reason, grant, level = decision
         if self._masked(db, req, status, reason, grant):
             status, reason, grant = "deny", "PG_PROVIDER_NOT_ACCEPTED", None
-        body = {"request_id": ask["id"], "profile": req["profile"], "status": status, "level": level,
+        body = {"request_id": message_id("pg.request.v1", req), "profile": req["profile"], "status": status, "level": level,
                 "obligations": [], "issued_at": now, "expires_at": now + TTL}
         if status == "allow":
             body["basis"] = {"kind": "grant", "grant": {"format": "pg.grant.v1", "id": grant["id"]}}
@@ -448,8 +607,10 @@ class Registry:
             body["ext"] = {"sandbox": True}
         env = seal("pg.answer.v1", body, [("registry", self.key)])
         use = "reserved" if status == "allow" else None   # catalog.md: every allow is billed unless given back
+        if ask_id is None:
+            return env
         db.execute("INSERT INTO answers VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)",
-                   (message_id(env["type"], env["body"]), ask["id"], json.dumps(env), status, now, now + TTL,
+                   (message_id(env["type"], env["body"]), ask_id, json.dumps(env), status, now, now + TTL,
                     grant["id"] if grant is not None else None, use))
         return env
 
@@ -725,9 +886,34 @@ class Registry:
         s = self._row("SELECT * FROM subjects WHERE code = ?", (code,))
         if s is None or not s["published"]:
             return {"code": code, "registry": self.config.prefix, "status": "unknown"}
-        return {"code": code, "registry": self.config.prefix, "status": "active", "name": s["name"], "level": s["level"],
-                "subject_key": {"key_id": fingerprint(s["key_public"]),
-                                "public_key_hex": s["key_public"], "custody": s["custody"]}}
+        out = {"code": code, "registry": self.config.prefix, "status": "active", "name": s["name"], "level": s["level"],
+               "subject_key": {"key_id": fingerprint(s["key_public"]),
+                               "public_key_hex": s["key_public"], "custody": s["custody"]}}
+        with self.lock:
+            terms = self._current_terms(self.db, s)
+        if terms:
+            api = self.config.api.rstrip("/")
+            out |= {"terms": {"id": terms[0], "url": f"{api}/v2/terms/{terms[0]}"},
+                    "status_url": f"{api}/v2/codes/{code}/terms"}
+        return out
+
+    def status(self, code: str) -> dict:
+        """lookup.md `status_url`: a published subject's current terms and every earlier version, newest first; for
+        any other code, nothing (the versions themselves stay fetchable by id, T-2)."""
+        s = self._row("SELECT * FROM subjects WHERE code = ?", (code,))
+        with self.lock:
+            if s is None or self._current_terms(self.db, s) is None:
+                raise ProtocolError("PG_NOT_FOUND", "no published terms for this code", status=404)
+            rows = self.db.execute("SELECT envelope FROM terms WHERE subject_code = ? ORDER BY version DESC",
+                                   (code,)).fetchall()
+        return {"code": code, "terms": [json.loads(r["envelope"]) for r in rows]}
+
+    def terms(self, terms_id: str) -> dict:
+        """terms T-2: every version ever published, whatever became of the subject since."""
+        row = self._row("SELECT envelope FROM terms WHERE id = ?", (terms_id,))
+        if not row:
+            raise ProtocolError("PG_UNKNOWN_TERMS", "no terms with this id were ever published here", status=404)
+        return {"terms": json.loads(row["envelope"])}
 
     def anchors(self) -> dict:
         """identity.md: every anchored subject, signed, with its status, so a refusal is visible across registries."""
@@ -762,23 +948,26 @@ class Registry:
         """proof.md: the part of a proof this registry holds, found by its report id."""
         if not re.fullmatch(r"[0-9a-f]{16}", short_id):
             raise ProtocolError("PG_MALFORMED", "a proof id is 16 hex characters")
-        rows = self._q("SELECT r.envelope AS report, r.ack, k.request, a.envelope AS answer FROM reports r "
-                       "JOIN asks k ON k.id = r.ask_id JOIN answers a ON a.report_id = r.id "
+        rows = self._q("SELECT r.envelope AS report, r.ack, k.request, k.signatures, a.envelope AS answer, t.envelope AS "
+                       "terms FROM reports r JOIN asks k ON k.id = r.ask_id JOIN answers a ON a.report_id = r.id "
+                       "LEFT JOIN terms t ON t.id = json_extract(k.request, '$.terms') "
                        "WHERE r.id LIKE ? AND k.closing_ack IS NOT NULL", (short_id + "%",))
         if len(rows) != 1:
             raise ProtocolError("PG_NOT_FOUND", "no such proof", status=404)
         r = rows[0]
-        return {"format": "pg.proof.v1", "subjects": [{
-            "request": {"type": "pg.request.v1", "body": json.loads(r["request"]), "signatures": []},
-            "answer": json.loads(r["answer"]), "report": json.loads(r["report"]), "ack": json.loads(r["ack"])}]}
+        item = {"request": {"type": "pg.request.v1", "body": json.loads(r["request"]), "signatures": json.loads(r["signatures"])},
+                "answer": json.loads(r["answer"]), "report": json.loads(r["report"]), "ack": json.loads(r["ack"])}
+        if r["terms"]:                                     # terms: the record the request accepted travels with it
+            item["terms"] = json.loads(r["terms"])
+        return {"format": "pg.proof.v1", "subjects": [item]}
 
     def document(self) -> dict:
         api = self.config.api.rstrip("/")
         return {"prefix": self.config.prefix, "name": self.config.name, "api": api, "keys": api + "/keys",
                 "profiles": self.config.profiles, "extensions": EXTENSIONS + (["sandbox"] if self.config.sandbox else [])
-                + (["provider-identity"] if self.config.providers == "open" else []),
+                + (["provider-identity"] if self.config.providers == "open" else []) + (["terms"] if self.config.terms else []),
                 "policy": self.config.policy, "complaints": self.config.complaints, "sandbox": self.config.sandbox,
-                "providers": self.config.providers, "spec": "PRE-GEN v5"}
+                "providers": self.config.providers, "spec": "PRE-GEN v5", **({"terms": "optional"} if self.config.terms else {})}
 
     def key_set(self) -> dict:
         """PRE-GEN-SPEC.md §2.3: every key ever signed with, current and retired, and the announced next key; self-signed,

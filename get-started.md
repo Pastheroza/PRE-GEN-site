@@ -69,11 +69,11 @@ guide, with tested examples: `https://www.pregen.org/docs/provider.md`.
 ### A2. Install a verification library
 
 ```bash
-npm install @pregen/verify@^0.12.0
+npm install @pregen/verify@^0.13.0
 ```
 
 ```bash
-pip install "pregen>=0.12.0"
+pip install "pregen>=0.13.0"
 ```
 
 Both libraries carry the steward key, load and check the directory, and check answers and
@@ -132,7 +132,9 @@ Content-Type: application/json
 - **`use` under `likeness/1`:** `{purpose, rights?, territory?, channel?, categories?}`;
   `purpose` is `personal`, `educational`, `research`, `editorial` or `commercial`.
   Declare `categories` honestly (e.g. `political`, `violence`): fixed protections are
-  checked against them.
+  checked against them. A registry cannot see the output: your server, never the end user's own
+  claim, determines the subject and the use, and renders exactly the inputs fixed in `job_hash`.
+  A false declaration is your signed statement and your liability.
 - One request per subject. A job with several subjects asks each one (extension `jobs`).
 - The request id is the request's message id (Part B).
 
@@ -223,9 +225,10 @@ categories need the person's own signed grant).
 
 ### Testing
 
-- **A registry's sandbox.** A registry whose document says `"sandbox": true` publishes eight
+- **A registry's sandbox.** A registry whose document says `"sandbox": true` publishes the
   standard test subjects on its prefix (`…000001` allows; `…000002`–`…000007` refuse,
-  hold or answer `not_blocked`; `…000008` is unknown). Check its answers against the test
+  hold or answer `not_blocked`; `…000008` is unknown; `…000009` tests payment, `…000010` a
+  person's terms, `…000011` a minor; table below). Check its answers against the test
   directory, never the real one:
   `const testDir = await loadDirectory({ url: "https://www.pregen.org/test/registries.json", stewardPublicKeyHex: "78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0" })`
   / `pregen.load_directory("https://www.pregen.org/test/registries.json", steward_public_key_hex="78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0")`,
@@ -245,11 +248,37 @@ categories need the person's own signed grant).
   expected. The shared test directory is online: `https://www.pregen.org/test/registries.json`,
   signed by the test steward key `78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0`. It lists PRE-GEN's own
   sandbox, the PRE-GEN Test Registry (`https://sandbox.pregen.org`, prefix `TEST`, codes
-  `PG-TEST-000001N` to `PG-TEST-000008H`): with it, `checkAnswer(…, { directory: testDir, testing: true })`
+  `PG-TEST-000001N` to `PG-TEST-000011Y`): with it, `checkAnswer(…, { directory: testDir, testing: true })`
   accepts sandbox answers end to end. Post your party document to
   `https://sandbox.pregen.org/v2/sandbox/party` first (an `https://<domain>` id: lower case, no path, query or trailing slash; a sandbox also
   takes a port, and `https://localhost:<port>`), then ask
   with signed requests.
+- **What to test.** One job (a new `job_id`) per row, `purpose: "research"` unless the row
+  says otherwise. Codes at the PRE-GEN Test Registry:
+
+  | Code | Tests | Ask | Answer |
+  |---|---|---|---|
+  | `PG-TEST-000001N` | the whole flow | ask, check, generate, report, proof | `allow` |
+  | `PG-TEST-000002Z` | no licence | ask | `deny` `PG_NO_LICENSE` |
+  | `PG-TEST-0000034` | an opt-out | ask | `deny` `PG_SUBJECT_OPTED_OUT` |
+  | `PG-TEST-000004E` | a used-up grant | ask | `deny` `PG_USAGE_LIMIT` |
+  | `PG-TEST-000005R` | a fixed protection | ask | `deny` `PG_PROHIBITED_USE` |
+  | `PG-TEST-000006$` | held for a person | ask | `review` `PG_REVIEW_REQUIRED` |
+  | `PG-TEST-0000077` | nothing blocks, nothing grants | ask | `not_blocked` `PG_NO_LICENSE` |
+  | `PG-TEST-000008H` | a code no one holds | ask | `deny` `PG_UNKNOWN_SUBJECT` |
+  | `PG-TEST-000009V` | payment: buy first | ask before buying | `deny` `PG_NO_LICENSE` |
+  | `PG-TEST-000009V` | one use per purchase | buy one use, then ask; ask again | `allow`; then `deny` `PG_USAGE_LIMIT` |
+  | `PG-TEST-000009V` | a race | buy one use, then two jobs at once | one `allow`, one `deny` `PG_USAGE_LIMIT` |
+  | `PG-TEST-000009V` | a give-back | after an allow, report `not_generated`, then ask | `allow` again |
+  | `PG-TEST-000010M` | the person's terms | no `terms`, or `terms` = the current id | `deny` `PG_NO_LICENSE`: terms grant nothing |
+  | `PG-TEST-000010M` | a stale id | `terms` = any other id, or any id on the credential path | `deny` `PG_TERMS_NOT_ACCEPTED` |
+  | `PG-TEST-000010M` | an excluded use | `purpose: "commercial"`, or `categories: ["advertising"]` | `deny` `PG_TERMS_EXCLUDED` |
+  | `PG-TEST-000011Y` | a minor: the floor | no `categories`, or `["fashion"]` | `allow` |
+  | `PG-TEST-000011Y` | a minor: the floor | `["violence"]`, `["sexual"]`, `["adult"]`, or an unknown word such as `["nsfw-art"]` | `deny` `PG_PROHIBITED_USE` |
+
+  To buy, `POST https://sandbox.pregen.org/v2/sandbox/purchases` with the same signed
+  `pg.request.v1` you would ask with (any `job_id`): HTTP 200 `{"grant": …}`, one use, yours
+  only, no money. Then ask under a new `job_id`. The details: `https://www.pregen.org/docs/provider.md`, step 9.
 - **Bytes.** `spec/test-vectors/messages.json` gives eight messages with their canonical
   body, signing input, message id and signatures. Reproduce every one.
 

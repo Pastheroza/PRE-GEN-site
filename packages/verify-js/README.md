@@ -41,17 +41,51 @@ Also exported: `checkProviderUrl`, `signingInput`, `publicKeyHex`, `messageId`, 
 
 ## One person in several registries, and proof in a video
 
-- `verifyAnchors(list, prefix, { directory })` — a registry's signed anchor list (`extensions/identity.md`).
-- `checkChannelProof(code, proofUrl, await wikidataOfficialUrls(anchor), getText)` — did the person
-  confirm this code on their own channel?
-- `decideIdentity(claims)` — "who proved it, not who came first"; generate only on `allow`.
+- `verifyAnchors(list, prefix, { directory })` — a registry's signed anchor list (`extensions/identity.md`). Another
+  registry's codes are dropped, and so is an entry the steward found false under its own anchor; a list naming a code
+  twice is refused.
+- `wikidataOfficialUrls(anchor, { fetch })` — the channels Wikidata lists as current: not deprecated, not ended,
+  started, each value in its property's own form. A website counts by its host alone. With
+  `at: now - SETTLED_AFTER`, the channels of the item as it stood 7 days earlier (its last revision then).
+- `checkChannelProof(code, proofUrl, officialUrls, getText, { seenConfirmed })` — did the person
+  confirm this code on their own channel? Only at `https://<official host>/.well-known/pregen` (`getText` returns
+  the text) or in a post or profile by the official account itself (`getText` returns `{ author, text }` from the
+  platform's record of who wrote it), as a line `PRE-GEN: <code>`. A page that cannot be read (`getText` throws) is
+  unconfirmed, unless you saw it confirmed at the last check (`seenConfirmed: true`): then it throws, no decision.
+- `decideIdentity(claims, { frozen: directory.frozen(anchor) })` — "who proved it, not who came first"; generate only
+  on `allow`. A steward freeze denies first (`PG_SUBJECT_UNAVAILABLE`). Each claim is `{ code, confirmed, settled,
+  refusal_only, answer }`: only a `settled` claim's allow permits (its channel stood on Wikidata 7 days ago too;
+  missing means not settled), and a `refusal_only` claim counts only for a refusal of the person. An `answer` of
+  `null` (no valid answer, or its registry's anchor list failed: pass that list's last verified entries) throws, no
+  decision, only when that claim is confirmed or refusal-only and no such claim refuses the person. For one claim:
+
+  ```js
+  const nowUrls = await wikidataOfficialUrls(anchor, { fetch });
+  const thenUrls = await wikidataOfficialUrls(anchor, { fetch, at: Math.floor(Date.now() / 1000) - SETTLED_AFTER });
+  const confirmed = await checkChannelProof(code, proofUrl, nowUrls, getText, { seenConfirmed: seenThisWeek });
+  const settled = confirmed && await checkChannelProof(code, proofUrl, nowUrls.filter((u) => thenUrls.includes(u)), getText);
+  const gone = thenUrls.filter((u) => !nowUrls.includes(u));   // removed, replaced or ended this week
+  const refusal_only = !confirmed && (seenThisWeek || await checkChannelProof(code, proofUrl, gone, getText));
+  ```
+  Keep, for 7 days, which claims you saw confirmed (`seenThisWeek`).
+- `directory.isFalseClaim(code, anchor)` — the steward found this claim false and has not reversed it
+  (`false_claim_reversals`; the latest entry by `at` decides). Without `anchor`, under any anchor: `checkAnswer`
+  refuses such a code, so a private person's code an entry names is never generated; `verifyAnswer` still weighs it.
 - `checkProof(bundle, { directory, outputSha256 })` — a platform's check of the `pg.proof.v1` bundle
-  carried with an output (`extensions/proof.md`).
+  carried with an output (`extensions/proof.md`): each subject also says what it shows about the terms its request
+  accepted, `terms`: `absent`, `ok`, `outside` or `unverified` (and `termsAssent`: `registry`).
+
+## A person's terms (`extensions/terms.md`)
+
+- `checkTerms(envelope, code, { directory })` — a `pg.terms.v1` record as the person's registry published it.
+  Accept it by putting `await messageId("pg.terms.v1", body)` in your request's `terms`.
+- `floor(use, minor)`, `forbids(rules, use)`, `termsOpens(old, next)`; `CATEGORIES` (the closed vocabulary of
+  likeness/1, which a request carrying `terms` must keep to), `PROHIBITED_FOR_MINORS`, `INTIMATE`.
 
 ## The registry directory
 
 The directory check refuses an older directory, a newer one that removes
-a registry or key or undoes a revocation, and a different one with the same sequence. No registry is pinned by default: every registry, the first one included,
+a registry or key, undoes a revocation or drops a false claim, a reversal or a freeze, and a different one with the same sequence. No registry is pinned by default: every registry, the first one included,
 is trusted only through the signed directory. You may pin any registry's keys
 yourself (`pinnedKeys` / `pinned_keys`, prefix → fingerprints, `""` for bare
 codes), so that even a stolen steward key cannot add a key to that prefix.
@@ -72,7 +106,7 @@ registry answered, not that the output was lawful.
 Load the test directory with
 `loadDirectory({ url: "https://www.pregen.org/test/registries.json", stewardPublicKeyHex: "78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0" })`,
 ask the PRE-GEN Test Registry at `https://sandbox.pregen.org` (codes `PG-TEST-000001N` …
-`PG-TEST-000008H`; introduce yourself with `POST /v2/sandbox/party`), and pass `testing: true`
+`PG-TEST-000011Y`, where 9 tests a purchase, 10 a person's terms and 11 a minor; introduce yourself with `POST /v2/sandbox/party`), and pass `testing: true`
 to `checkAnswer` / `checkProof`. With the real directory, `checkAnswer` refuses `testing: true`.
 Walk-through: https://www.pregen.org/docs/provider.md, step 9.
 

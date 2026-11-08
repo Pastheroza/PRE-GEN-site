@@ -304,7 +304,7 @@ test("decideIdentity: not who came first, but who proved it (identity.md I1–I5
   const { decideIdentity } = await import("../index.js");
   const allow = { status: "allow" }, out = { status: "deny", reason: "PG_SUBJECT_OPTED_OUT" };
   const noLicence = { status: "deny", reason: "PG_NO_LICENSE" };
-  assert.equal(decideIdentity([{ code: "A", confirmed: true, answer: allow }]).status, "allow");
+  assert.equal(decideIdentity([{ code: "A", confirmed: true, settled: true, answer: allow }]).status, "allow");
   assert.equal(decideIdentity([{ code: "X", confirmed: false, answer: allow }]).reason, "PG_IDENTITY_UNCONFIRMED");
   assert.deepEqual(decideIdentity([{ code: "A", confirmed: true, answer: noLicence }, { code: "X", confirmed: false, answer: allow },
     { code: "Y", confirmed: false, answer: out }]), { status: "deny", reason: "PG_NO_LICENSE", code: "A" });
@@ -317,21 +317,6 @@ test("decideIdentity: not who came first, but who proved it (identity.md I1–I5
   const ab = [{ code: "A", confirmed: true, answer: review }, { code: "B", confirmed: true, answer: noLicence }];
   assert.deepEqual(decideIdentity(ab), decideIdentity([...ab].reverse()));
   assert.equal(decideIdentity(ab).status, "deny");
-});
-
-test("checkChannelProof: only the person's own channel counts", async () => {
-  const { checkChannelProof } = await import("../index.js");
-  const official = ["https://www.instagram.com/cristiano"], text = () => "PRE-GEN: PG-XXXX-000001V";
-  assert.equal(await checkChannelProof("PG-XXXX-000001V", "https://www.instagram.com/cristiano/p/1", official, text), true);
-  assert.equal(await checkChannelProof("PG-XXXX-000001V", "https://www.instagram.com/cristiano_fan/p/1", official, text), false);
-  for (const sneaky of ["https://www.instagram.com/cristiano/../attacker/p/1", "https://www.instagram.com/cristiano/%2e%2e/attacker",
-    "https://www.instagram.com/cristiano/%2E./attacker", "https://www.instagram.com/cristiano%2f..%2fattacker", "https://www.instagram.com/cristiano/./p/1",
-    "https://www.instagram.com/cristiano/?s=PRE-GEN:+PG-XXXX-000001V", "https://www.instagram.com/cristiano/p/1#x"]) {
-    assert.equal(await checkChannelProof("PG-XXXX-000001V", sneaky, official, text), false, sneaky);
-  }
-  assert.equal(await checkChannelProof("PG-AAAA-000001V", "https://www.instagram.com/cristiano/p/1", official, text), false);
-  const legacy = async () => "PRE-GEN: PG-ABC-0000421";             // another legacy code with the same start
-  assert.equal(await checkChannelProof("PG-ABC-000042", "https://www.instagram.com/cristiano/p/1", official, legacy), false);
 });
 
 test("no registry is pinned by default, and any prefix can be pinned", async () => {

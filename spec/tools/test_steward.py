@@ -168,3 +168,48 @@ def test_the_test_passphrase_variable_never_opens_the_real_steward_key(env, monk
     monkeypatch.setattr(steward, "STEWARD_PUBLIC_KEY_HEX", public_hex(env.key))
     with pytest.raises(SystemExit, match="test steward key only"):
         steward._load(env.pem)
+
+
+def fc(e, cmd, anchor="wikidata:Q1", code="PG-ABCD-000001N"):
+    getattr(steward, cmd)(Namespace(keyfile=e.pem, directory=str(e.d), anchor=anchor, code=code, reason="r"))
+    return steward.pregen.verify_directory(json.loads(e.d.read_text()), public_hex(e.key), successor_public_key_hex=None)
+
+
+def test_a_false_claim_is_reversed_and_recorded_again_under_its_own_anchor(env, monkeypatch):
+    add(env)
+    clock = iter(range(60))                                                   # one second per reading
+    monkeypatch.setattr(steward, "_now", lambda: f"2026-11-06T00:00:{next(clock):02d}Z")
+    assert fc(env, "cmd_false_claim").is_false_claim("PG-ABCD-000001N", "wikidata:Q1")
+    assert fc(env, "cmd_false_claim", anchor="wikidata:Q2").is_false_claim("PG-ABCD-000001N", "wikidata:Q2")
+    d = fc(env, "cmd_reverse_false_claim")
+    assert not d.is_false_claim("PG-ABCD-000001N", "wikidata:Q1") and d.is_false_claim("PG-ABCD-000001N")
+    with pytest.raises(SystemExit, match="nothing to reverse"):
+        fc(env, "cmd_reverse_false_claim")
+    assert fc(env, "cmd_false_claim").is_false_claim("PG-ABCD-000001N", "wikidata:Q1")
+    with pytest.raises(SystemExit, match="already a false claim"):
+        fc(env, "cmd_false_claim")
+
+
+def test_a_reversal_in_the_same_second_is_refused(env, monkeypatch):
+    add(env)
+    monkeypatch.setattr(steward, "_now", lambda: "2026-11-06T00:00:00Z")
+    fc(env, "cmd_false_claim")
+    before = env.d.read_text()
+    with pytest.raises(SystemExit, match="this very second"):
+        fc(env, "cmd_reverse_false_claim")
+    assert env.d.read_text() == before
+
+
+def test_a_freeze_lasts_the_days_given_and_is_never_dropped(env, monkeypatch):
+    add(env)
+    monkeypatch.setattr(steward, "_now", lambda: "2026-11-06T00:00:00Z")
+    steward.cmd_freeze(Namespace(keyfile=env.pem, directory=str(env.d), anchor="wikidata:Q1", days=7, reason="harm"))
+    published = env.tmp / "published.json"
+    published.write_text(env.d.read_text())
+    d = steward.pregen.verify_directory(json.loads(published.read_text()), public_hex(env.key), successor_public_key_hex=None)
+    assert d.frozen("wikidata:Q1", 1794527999) and not d.frozen("wikidata:Q1", 1794528000)   # until 2026-11-13T00:00:00Z
+    edited = json.loads(published.read_text())
+    edited.pop("freezes")
+    env.d.write_text(json.dumps(edited))
+    with pytest.raises(SystemExit, match="Not signed"):
+        sign(env, published)

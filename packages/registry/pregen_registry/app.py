@@ -68,6 +68,14 @@ def create_app(registry: Registry, policy_file=None) -> FastAPI:
     def lookup(code: str):
         return registry.lookup(code)
 
+    @app.get("/v2/codes/{code}/terms")
+    def status(code: str):
+        return registry.status(code)
+
+    @app.get("/v2/terms/{terms_id}")
+    def terms(terms_id: str):
+        return registry.terms(terms_id)
+
     @app.get("/v2/anchors")
     def anchors():
         return registry.anchors()
@@ -92,6 +100,11 @@ def create_app(registry: Registry, policy_file=None) -> FastAPI:
         return {"party_id": pid, "note": "Pinned: requests and reports signed by this chain's current key are accepted "
                 "here with X-Provider-ID: " + pid + " and no Authorization header. A production registry reads the "
                 "same document from your domain."}
+
+    @app.post("/v2/sandbox/purchases")
+    def sandbox_purchase(env=Body(...), x_provider_id: str = Header(""), authorization: str | None = Header(None)):
+        """extensions/sandbox.md: a test purchase, no money — one more use of a catalog subject for this provider."""
+        return registry.purchase(x_provider_id, authorization, env)
 
     @app.get("/v2/proofs/{short_id}")
     def proof(short_id: str):

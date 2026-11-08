@@ -1,0 +1,2918 @@
+{
+ "now": 1794052800,
+ "channel": [
+  {
+   "name": "the website's /.well-known/pregen",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "other line\nPRE-GEN: PG-XXXX-000001V\n",
+   "seen_confirmed": false,
+   "expect": true
+  },
+  {
+   "name": "a whole line: spaces and CRLF around it",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "  PRE-GEN: PG-XXXX-000001V \r\n",
+   "seen_confirmed": false,
+   "expect": true
+  },
+  {
+   "name": "a line naming the person's key",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "PRE-GEN: PG-XXXX-000001V pg-ed25519:ab self",
+   "seen_confirmed": false,
+   "expect": true
+  },
+  {
+   "name": "an official URL with a trailing slash is the same site",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com/"
+   ],
+   "page": "PRE-GEN: PG-XXXX-000001V",
+   "seen_confirmed": false,
+   "expect": true
+  },
+  {
+   "name": "any other page on the host (B-2)",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://cristianoronaldo.com/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "PRE-GEN: PG-XXXX-000001V",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "a search page echoing its path (B-2)",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://cristianoronaldo.com/search/PRE-GEN-PG-XXXX-000001V/",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "PRE-GEN: PG-XXXX-000001V",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "the fixed place with a trailing slash",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen/",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "PRE-GEN: PG-XXXX-000001V",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "the fixed place under a path",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://cristianoronaldo.com/blog/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "PRE-GEN: PG-XXXX-000001V",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "the line inside HTML is not a line",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "<p>PRE-GEN: PG-XXXX-000001V</p>",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "the line in the middle of a sentence",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "see PRE-GEN: PG-XXXX-000001V",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "a withdrawal line (rule 1)",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "PRE-GEN: PG-XXXX-000001V withdraw *",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "a longer code that starts the same way",
+   "code": "PG-ABC-000042",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "PRE-GEN: PG-ABC-0000421",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "another code",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "PRE-GEN: PG-XXXX-000002T",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "www. is another host",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://www.cristianoronaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "PRE-GEN: PG-XXXX-000001V",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "an upper-case host is not as written",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://CristianoRonaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "PRE-GEN: PG-XXXX-000001V",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "a port (B-15)",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://cristianoronaldo.com:8443/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "PRE-GEN: PG-XXXX-000001V",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "a backslash and userinfo (B-9)",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://cr7-media.example\\@cristianoronaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "PRE-GEN: PG-XXXX-000001V",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "userinfo (B-10)",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://cristianoronaldo.com@cr7-media.example/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "PRE-GEN: PG-XXXX-000001V",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "http",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "http://cristianoronaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "PRE-GEN: PG-XXXX-000001V",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "a query",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen?x=1",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "PRE-GEN: PG-XXXX-000001V",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "a fragment",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen#x",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "PRE-GEN: PG-XXXX-000001V",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "a non-ASCII host (B-10)",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://cristianoronaldо.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldо.com"
+   ],
+   "page": "PRE-GEN: PG-XXXX-000001V",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "an official URL with userinfo counts for nothing (B-10)",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://cr7-media.example/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com@cr7-media.example"
+   ],
+   "page": "PRE-GEN: PG-XXXX-000001V",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "an official URL with a port counts for nothing (B-15)",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com:443"
+   ],
+   "page": "PRE-GEN: PG-XXXX-000001V",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "a string page that would raise is never fetched off the channels",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://cr7-media.example/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "RAISE",
+   "seen_confirmed": true,
+   "expect": false
+  },
+  {
+   "name": "a post whose author is the account",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://www.instagram.com/cristiano/p/1",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": {
+    "author": "cristiano",
+    "text": "PRE-GEN: PG-XXXX-000001V"
+   },
+   "seen_confirmed": false,
+   "expect": true
+  },
+  {
+   "name": "the author's letter case aside",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://x.com/Cristiano/status/1",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": {
+    "author": "cristiano",
+    "text": "PRE-GEN: PG-XXXX-000001V"
+   },
+   "seen_confirmed": false,
+   "expect": true
+  },
+  {
+   "name": "the profile page itself (bio)",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://www.instagram.com/cristiano",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": {
+    "author": "Cristiano",
+    "text": "PRE-GEN: PG-XXXX-000001V"
+   },
+   "seen_confirmed": false,
+   "expect": true
+  },
+  {
+   "name": "a TikTok handle with @",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://www.tiktok.com/@cristiano/video/1",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": {
+    "author": "cristiano",
+    "text": "PRE-GEN: PG-XXXX-000001V"
+   },
+   "seen_confirmed": false,
+   "expect": true
+  },
+  {
+   "name": "another account's post or a comment (B-2)",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://www.instagram.com/cristiano/p/1",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": {
+    "author": "cr7_fan",
+    "text": "PRE-GEN: PG-XXXX-000001V"
+   },
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "a look-alike author",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://www.instagram.com/cristiano/p/1",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": {
+    "author": "crіstiano",
+    "text": "PRE-GEN: PG-XXXX-000001V"
+   },
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "no author: a page string is not a post",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://www.instagram.com/cristiano/p/1",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "PRE-GEN: PG-XXXX-000001V",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "an author that is not a string",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://www.instagram.com/cristiano/p/1",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": {
+    "author": null,
+    "text": "PRE-GEN: PG-XXXX-000001V"
+   },
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "the account's own post without the line",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://www.instagram.com/cristiano/p/1",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": {
+    "author": "cristiano",
+    "text": "hello"
+   },
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "the account's post with a withdrawal line",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://www.instagram.com/cristiano/p/1",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": {
+    "author": "cristiano",
+    "text": "PRE-GEN: PG-XXXX-000001V withdraw PG-XXXX-000002T"
+   },
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "a handle that starts the same way",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://www.instagram.com/cristiano_fan/p/1",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": {
+    "author": "cristiano_fan",
+    "text": "PRE-GEN: PG-XXXX-000001V"
+   },
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "the handle's letter case in the URL",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://x.com/cristiano/status/1",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": {
+    "author": "cristiano",
+    "text": "PRE-GEN: PG-XXXX-000001V"
+   },
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "a dot segment",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://www.instagram.com/cristiano/../attacker/p/1",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": {
+    "author": "cristiano",
+    "text": "PRE-GEN: PG-XXXX-000001V"
+   },
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "a single dot segment",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://www.instagram.com/cristiano/./p/1",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": {
+    "author": "cristiano",
+    "text": "PRE-GEN: PG-XXXX-000001V"
+   },
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "an encoded dot segment",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://www.instagram.com/cristiano/%2e%2e/attacker",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": {
+    "author": "cristiano",
+    "text": "PRE-GEN: PG-XXXX-000001V"
+   },
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "an encoded slash",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://www.instagram.com/cristiano%2f..%2fattacker",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": {
+    "author": "cristiano",
+    "text": "PRE-GEN: PG-XXXX-000001V"
+   },
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "an empty segment",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://www.instagram.com/cristiano//p/1",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": {
+    "author": "cristiano",
+    "text": "PRE-GEN: PG-XXXX-000001V"
+   },
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "a percent-escape of a control character (D-1)",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://www.instagram.com/cristiano/p/%00",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": {
+    "author": "cristiano",
+    "text": "PRE-GEN: PG-XXXX-000001V"
+   },
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "a path over 512 characters (D-1)",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://www.instagram.com/cristiano/p/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": {
+    "author": "cristiano",
+    "text": "PRE-GEN: PG-XXXX-000001V"
+   },
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "a query echo",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://www.instagram.com/cristiano/?s=PRE-GEN:+PG-XXXX-000001V",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": {
+    "author": "cristiano",
+    "text": "PRE-GEN: PG-XXXX-000001V"
+   },
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "unreadable, never seen confirmed: unconfirmed",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "RAISE",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "unreadable, seen confirmed: no decision",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "RAISE",
+   "seen_confirmed": true,
+   "expect": "raises"
+  },
+  {
+   "name": "unreadable post, seen confirmed: no decision",
+   "code": "PG-XXXX-000001V",
+   "proof_url": "https://www.instagram.com/cristiano/p/1",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "RAISE",
+   "seen_confirmed": true,
+   "expect": "raises"
+  }
+ ],
+ "wikidata": [
+  {
+   "name": "a current website",
+   "claims": {
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "https://cristianoronaldo.com"
+       }
+      },
+      "rank": "normal"
+     }
+    ]
+   },
+   "expect": [
+    "https://cristianoronaldo.com"
+   ]
+  },
+  {
+   "name": "preferred rank",
+   "claims": {
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "https://cristianoronaldo.com"
+       }
+      },
+      "rank": "preferred"
+     }
+    ]
+   },
+   "expect": [
+    "https://cristianoronaldo.com"
+   ]
+  },
+  {
+   "name": "deprecated rank (B-1)",
+   "claims": {
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "https://cristianoronaldo.com"
+       }
+      },
+      "rank": "deprecated"
+     }
+    ]
+   },
+   "expect": []
+  },
+  {
+   "name": "an end time in the past (B-1)",
+   "claims": {
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "https://cristianoronaldo.com"
+       }
+      },
+      "rank": "normal",
+      "qualifiers": {
+       "P582": [
+        {
+         "snaktype": "value",
+         "datavalue": {
+          "value": {
+           "time": "+2015-01-01T00:00:00Z"
+          }
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "expect": []
+  },
+  {
+   "name": "an end time today",
+   "claims": {
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "https://cristianoronaldo.com"
+       }
+      },
+      "rank": "normal",
+      "qualifiers": {
+       "P582": [
+        {
+         "snaktype": "value",
+         "datavalue": {
+          "value": {
+           "time": "+2026-11-07T00:00:00Z"
+          }
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "expect": []
+  },
+  {
+   "name": "an end time this year, to the year",
+   "claims": {
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "https://cristianoronaldo.com"
+       }
+      },
+      "rank": "normal",
+      "qualifiers": {
+       "P582": [
+        {
+         "snaktype": "value",
+         "datavalue": {
+          "value": {
+           "time": "+2026-00-00T00:00:00Z"
+          }
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "expect": []
+  },
+  {
+   "name": "an unknown end time",
+   "claims": {
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "https://cristianoronaldo.com"
+       }
+      },
+      "rank": "normal",
+      "qualifiers": {
+       "P582": [
+        {
+         "snaktype": "somevalue"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "expect": []
+  },
+  {
+   "name": "an unreadable end time",
+   "claims": {
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "https://cristianoronaldo.com"
+       }
+      },
+      "rank": "normal",
+      "qualifiers": {
+       "P582": [
+        {
+         "snaktype": "value",
+         "datavalue": {
+          "value": {
+           "time": "2015"
+          }
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "expect": []
+  },
+  {
+   "name": "an end time in the future",
+   "claims": {
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "https://cristianoronaldo.com"
+       }
+      },
+      "rank": "normal",
+      "qualifiers": {
+       "P582": [
+        {
+         "snaktype": "value",
+         "datavalue": {
+          "value": {
+           "time": "+2027-01-01T00:00:00Z"
+          }
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "expect": [
+    "https://cristianoronaldo.com"
+   ]
+  },
+  {
+   "name": "no end time (novalue)",
+   "claims": {
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "https://cristianoronaldo.com"
+       }
+      },
+      "rank": "normal",
+      "qualifiers": {
+       "P582": [
+        {
+         "snaktype": "novalue"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "expect": [
+    "https://cristianoronaldo.com"
+   ]
+  },
+  {
+   "name": "a start time in the future",
+   "claims": {
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "https://cristianoronaldo.com"
+       }
+      },
+      "rank": "normal",
+      "qualifiers": {
+       "P580": [
+        {
+         "snaktype": "value",
+         "datavalue": {
+          "value": {
+           "time": "+2026-11-08T00:00:00Z"
+          }
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "expect": []
+  },
+  {
+   "name": "an unreadable start time",
+   "claims": {
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "https://cristianoronaldo.com"
+       }
+      },
+      "rank": "normal",
+      "qualifiers": {
+       "P580": [
+        {
+         "snaktype": "value",
+         "datavalue": {
+          "value": {
+           "time": "soon"
+          }
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "expect": []
+  },
+  {
+   "name": "a start time in the past",
+   "claims": {
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "https://cristianoronaldo.com"
+       }
+      },
+      "rank": "normal",
+      "qualifiers": {
+       "P580": [
+        {
+         "snaktype": "value",
+         "datavalue": {
+          "value": {
+           "time": "+2003-00-00T00:00:00Z"
+          }
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "expect": [
+    "https://cristianoronaldo.com"
+   ]
+  },
+  {
+   "name": "an unknown start time",
+   "claims": {
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "https://cristianoronaldo.com"
+       }
+      },
+      "rank": "normal",
+      "qualifiers": {
+       "P580": [
+        {
+         "snaktype": "somevalue"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "expect": [
+    "https://cristianoronaldo.com"
+   ]
+  },
+  {
+   "name": "a website by its host, lower case",
+   "claims": {
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "http://CristianoRonaldo.com/en/?x#y"
+       }
+      },
+      "rank": "normal"
+     }
+    ]
+   },
+   "expect": [
+    "https://cristianoronaldo.com"
+   ]
+  },
+  {
+   "name": "a website with userinfo (B-10)",
+   "claims": {
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "https://cristianoronaldo.com@cr7-media.example"
+       }
+      },
+      "rank": "normal"
+     }
+    ]
+   },
+   "expect": []
+  },
+  {
+   "name": "a website with a port (B-15)",
+   "claims": {
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "https://cristianoronaldo.com:8443"
+       }
+      },
+      "rank": "normal"
+     }
+    ]
+   },
+   "expect": []
+  },
+  {
+   "name": "a non-ASCII website host (B-10)",
+   "claims": {
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "https://cristianoronaldо.com"
+       }
+      },
+      "rank": "normal"
+     }
+    ]
+   },
+   "expect": []
+  },
+  {
+   "name": "a website with a trailing dot",
+   "claims": {
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "https://cristianoronaldo.com."
+       }
+      },
+      "rank": "normal"
+     }
+    ]
+   },
+   "expect": []
+  },
+  {
+   "name": "not a URL",
+   "claims": {
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "cristianoronaldo.com"
+       }
+      },
+      "rank": "normal"
+     }
+    ]
+   },
+   "expect": []
+  },
+  {
+   "name": "an X handle",
+   "claims": {
+    "P2002": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "Cristiano"
+       }
+      },
+      "rank": "normal"
+     }
+    ]
+   },
+   "expect": [
+    "https://x.com/Cristiano"
+   ]
+  },
+  {
+   "name": "an X handle with /.. (B-11)",
+   "claims": {
+    "P2002": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "Cristiano/.."
+       }
+      },
+      "rank": "normal"
+     }
+    ]
+   },
+   "expect": []
+  },
+  {
+   "name": "an Instagram handle",
+   "claims": {
+    "P2003": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "cristiano"
+       }
+      },
+      "rank": "normal"
+     }
+    ]
+   },
+   "expect": [
+    "https://www.instagram.com/cristiano"
+   ]
+  },
+  {
+   "name": "an Instagram value of dots",
+   "claims": {
+    "P2003": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": ".."
+       }
+      },
+      "rank": "normal"
+     }
+    ]
+   },
+   "expect": []
+  },
+  {
+   "name": "a YouTube channel id",
+   "claims": {
+    "P2397": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "UCtxD0x6AuNNqdXO9Wp5GHew"
+       }
+      },
+      "rank": "normal"
+     }
+    ]
+   },
+   "expect": [
+    "https://www.youtube.com/channel/UCtxD0x6AuNNqdXO9Wp5GHew"
+   ]
+  },
+  {
+   "name": "a YouTube id with /.. (B-11)",
+   "claims": {
+    "P2397": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "UCtxD0x6AuNNqdXO9Wp5GHew/.."
+       }
+      },
+      "rank": "normal"
+     }
+    ]
+   },
+   "expect": []
+  },
+  {
+   "name": "a TikTok handle",
+   "claims": {
+    "P7085": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "cristiano"
+       }
+      },
+      "rank": "normal"
+     }
+    ]
+   },
+   "expect": [
+    "https://www.tiktok.com/@cristiano"
+   ]
+  },
+  {
+   "name": "a TikTok handle with a slash",
+   "claims": {
+    "P7085": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "cristiano/video"
+       }
+      },
+      "rank": "normal"
+     }
+    ]
+   },
+   "expect": []
+  },
+  {
+   "name": "a value that is not a string",
+   "claims": {
+    "P2002": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": {
+         "id": 1
+        }
+       }
+      },
+      "rank": "normal"
+     }
+    ]
+   },
+   "expect": []
+  },
+  {
+   "name": "no value (somevalue)",
+   "claims": {
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "somevalue"
+      },
+      "rank": "normal"
+     }
+    ]
+   },
+   "expect": []
+  },
+  {
+   "name": "in property order",
+   "claims": {
+    "P7085": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "cristiano"
+       }
+      },
+      "rank": "normal"
+     }
+    ],
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "https://cristianoronaldo.com"
+       }
+      },
+      "rank": "normal"
+     }
+    ]
+   },
+   "expect": [
+    "https://cristianoronaldo.com",
+    "https://www.tiktok.com/@cristiano"
+   ]
+  }
+ ],
+ "decide": [
+  {
+   "name": "a confirmed claim with no answer: no decision",
+   "claims": [
+    {
+     "code": "A",
+     "confirmed": true,
+     "answer": null
+    }
+   ],
+   "expect": "raises"
+  },
+  {
+   "name": "a confirmed refusal of the person outranks an unknown",
+   "claims": [
+    {
+     "code": "A",
+     "confirmed": true,
+     "answer": null
+    },
+    {
+     "code": "B",
+     "confirmed": true,
+     "answer": {
+      "status": "deny",
+      "reason": "PG_SUBJECT_OPTED_OUT"
+     }
+    }
+   ],
+   "expect": {
+    "status": "deny",
+    "reason": "PG_SUBJECT_OPTED_OUT",
+    "code": "B"
+   }
+  },
+  {
+   "name": "an unknown outranks a confirmed allow",
+   "claims": [
+    {
+     "code": "A",
+     "confirmed": true,
+     "answer": {
+      "status": "allow"
+     }
+    },
+    {
+     "code": "B",
+     "confirmed": true,
+     "answer": null
+    }
+   ],
+   "expect": "raises"
+  },
+  {
+   "name": "an unknown outranks a confirmed non-floor refusal",
+   "claims": [
+    {
+     "code": "A",
+     "confirmed": true,
+     "answer": {
+      "status": "deny",
+      "reason": "PG_NO_LICENSE"
+     }
+    },
+    {
+     "code": "B",
+     "confirmed": true,
+     "answer": null
+    }
+   ],
+   "expect": "raises"
+  },
+  {
+   "name": "an unconfirmed claim with no answer changes nothing",
+   "claims": [
+    {
+     "code": "A",
+     "confirmed": true,
+     "answer": {
+      "status": "allow"
+     },
+     "settled": true
+    },
+    {
+     "code": "B",
+     "confirmed": false,
+     "answer": null
+    }
+   ],
+   "expect": {
+    "status": "allow",
+    "reason": null,
+    "code": "A"
+   }
+  },
+  {
+   "name": "only unconfirmed claims, one unknown",
+   "claims": [
+    {
+     "code": "B",
+     "confirmed": false,
+     "answer": null
+    }
+   ],
+   "expect": {
+    "status": "not_blocked",
+    "reason": "PG_IDENTITY_UNCONFIRMED",
+    "code": null
+   }
+  },
+  {
+   "name": "no claims: an unknown subject",
+   "claims": [],
+   "expect": {
+    "status": "not_blocked",
+    "reason": "PG_UNKNOWN_SUBJECT",
+    "code": null
+   }
+  },
+  {
+   "name": "a settled confirmed allow permits",
+   "claims": [
+    {
+     "code": "A",
+     "confirmed": true,
+     "settled": true,
+     "answer": {
+      "status": "allow"
+     }
+    }
+   ],
+   "expect": {
+    "status": "allow",
+    "reason": null,
+    "code": "A"
+   }
+  },
+  {
+   "name": "an allow on a channel younger than 7 days permits nothing (rule 5)",
+   "claims": [
+    {
+     "code": "A",
+     "confirmed": true,
+     "settled": false,
+     "answer": {
+      "status": "allow"
+     }
+    }
+   ],
+   "expect": {
+    "status": "not_blocked",
+    "reason": "PG_IDENTITY_UNCONFIRMED",
+    "code": null
+   }
+  },
+  {
+   "name": "an allow without `settled` is not settled",
+   "claims": [
+    {
+     "code": "A",
+     "confirmed": true,
+     "answer": {
+      "status": "allow"
+     }
+    }
+   ],
+   "expect": {
+    "status": "not_blocked",
+    "reason": "PG_IDENTITY_UNCONFIRMED",
+    "code": null
+   }
+  },
+  {
+   "name": "of two allows, the settled one permits",
+   "claims": [
+    {
+     "code": "A",
+     "confirmed": true,
+     "settled": false,
+     "answer": {
+      "status": "allow"
+     }
+    },
+    {
+     "code": "B",
+     "confirmed": true,
+     "settled": true,
+     "answer": {
+      "status": "allow"
+     }
+    }
+   ],
+   "expect": {
+    "status": "allow",
+    "reason": null,
+    "code": "B"
+   }
+  },
+  {
+   "name": "an unsettled allow beside a licence refusal: the refusal",
+   "claims": [
+    {
+     "code": "A",
+     "confirmed": true,
+     "settled": false,
+     "answer": {
+      "status": "allow"
+     }
+    },
+    {
+     "code": "B",
+     "confirmed": true,
+     "settled": true,
+     "answer": {
+      "status": "deny",
+      "reason": "PG_NO_LICENSE"
+     }
+    }
+   ],
+   "expect": {
+    "status": "deny",
+    "reason": "PG_NO_LICENSE",
+    "code": "B"
+   }
+  },
+  {
+   "name": "an unsettled allow beside a review: the review",
+   "claims": [
+    {
+     "code": "A",
+     "confirmed": true,
+     "settled": false,
+     "answer": {
+      "status": "allow"
+     }
+    },
+    {
+     "code": "B",
+     "confirmed": true,
+     "settled": false,
+     "answer": {
+      "status": "review"
+     }
+    }
+   ],
+   "expect": {
+    "status": "review",
+    "reason": null,
+    "code": "B"
+   }
+  },
+  {
+   "name": "a claim on a fresh channel refuses at once",
+   "claims": [
+    {
+     "code": "A",
+     "confirmed": true,
+     "settled": true,
+     "answer": {
+      "status": "allow"
+     }
+    },
+    {
+     "code": "B",
+     "confirmed": true,
+     "settled": false,
+     "answer": {
+      "status": "deny",
+      "reason": "PG_SUBJECT_OPTED_OUT"
+     }
+    }
+   ],
+   "expect": {
+    "status": "deny",
+    "reason": "PG_SUBJECT_OPTED_OUT",
+    "code": "B"
+   }
+  },
+  {
+   "name": "a recent refusal survives a channel change",
+   "claims": [
+    {
+     "code": "A",
+     "confirmed": true,
+     "settled": true,
+     "answer": {
+      "status": "allow"
+     }
+    },
+    {
+     "code": "B",
+     "confirmed": false,
+     "refusal_only": true,
+     "answer": {
+      "status": "deny",
+      "reason": "PG_SUBJECT_OPTED_OUT"
+     }
+    }
+   ],
+   "expect": {
+    "status": "deny",
+    "reason": "PG_SUBJECT_OPTED_OUT",
+    "code": "B"
+   }
+  },
+  {
+   "name": "a refusal-only claim alone refuses",
+   "claims": [
+    {
+     "code": "B",
+     "confirmed": false,
+     "refusal_only": true,
+     "answer": {
+      "status": "deny",
+      "reason": "PG_SUBJECT_OPTED_OUT"
+     }
+    }
+   ],
+   "expect": {
+    "status": "deny",
+    "reason": "PG_SUBJECT_OPTED_OUT",
+    "code": "B"
+   }
+  },
+  {
+   "name": "a refusal-only claim never permits",
+   "claims": [
+    {
+     "code": "B",
+     "confirmed": false,
+     "refusal_only": true,
+     "settled": true,
+     "answer": {
+      "status": "allow"
+     }
+    }
+   ],
+   "expect": {
+    "status": "not_blocked",
+    "reason": "PG_IDENTITY_UNCONFIRMED",
+    "code": null
+   }
+  },
+  {
+   "name": "a refusal-only claim counts for the person's refusal only, even if confirmed",
+   "claims": [
+    {
+     "code": "B",
+     "confirmed": true,
+     "refusal_only": true,
+     "settled": true,
+     "answer": {
+      "status": "allow"
+     }
+    }
+   ],
+   "expect": {
+    "status": "not_blocked",
+    "reason": "PG_IDENTITY_UNCONFIRMED",
+    "code": null
+   }
+  },
+  {
+   "name": "a refusal-only licence refusal does not count",
+   "claims": [
+    {
+     "code": "A",
+     "confirmed": true,
+     "settled": true,
+     "answer": {
+      "status": "allow"
+     }
+    },
+    {
+     "code": "B",
+     "confirmed": false,
+     "refusal_only": true,
+     "answer": {
+      "status": "deny",
+      "reason": "PG_NO_LICENSE"
+     }
+    }
+   ],
+   "expect": {
+    "status": "allow",
+    "reason": null,
+    "code": "A"
+   }
+  },
+  {
+   "name": "a refusal-only claim with no answer: no decision",
+   "claims": [
+    {
+     "code": "A",
+     "confirmed": true,
+     "settled": true,
+     "answer": {
+      "status": "allow"
+     }
+    },
+    {
+     "code": "B",
+     "confirmed": false,
+     "refusal_only": true,
+     "answer": null
+    }
+   ],
+   "expect": "raises"
+  },
+  {
+   "name": "a steward freeze decides first (rule 0)",
+   "claims": [
+    {
+     "code": "A",
+     "confirmed": true,
+     "settled": true,
+     "answer": {
+      "status": "allow"
+     }
+    }
+   ],
+   "frozen": {
+    "anchor": "wikidata:Q11571",
+    "at": "2026-11-06T00:00:00Z",
+    "until": "2026-11-12T00:00:00Z",
+    "reason": "ongoing harm"
+   },
+   "expect": {
+    "status": "deny",
+    "reason": "PG_SUBJECT_UNAVAILABLE",
+    "code": null
+   }
+  },
+  {
+   "name": "a steward freeze with no claims at all",
+   "claims": [],
+   "frozen": {
+    "anchor": "wikidata:Q11571",
+    "at": "2026-11-06T00:00:00Z",
+    "until": "2026-11-12T00:00:00Z",
+    "reason": "ongoing harm"
+   },
+   "expect": {
+    "status": "deny",
+    "reason": "PG_SUBJECT_UNAVAILABLE",
+    "code": null
+   }
+  },
+  {
+   "name": "a freeze given as an empty object still freezes",
+   "claims": [
+    {
+     "code": "A",
+     "confirmed": true,
+     "settled": true,
+     "answer": {
+      "status": "allow"
+     }
+    }
+   ],
+   "frozen": {},
+   "expect": {
+    "status": "deny",
+    "reason": "PG_SUBJECT_UNAVAILABLE",
+    "code": null
+   }
+  },
+  {
+   "name": "a refusal-only claim without `confirmed` still refuses",
+   "claims": [
+    {
+     "code": "B",
+     "refusal_only": true,
+     "answer": {
+      "status": "deny",
+      "reason": "PG_SUBJECT_OPTED_OUT"
+     }
+    }
+   ],
+   "expect": {
+    "status": "deny",
+    "reason": "PG_SUBJECT_OPTED_OUT",
+    "code": "B"
+   }
+  },
+  {
+   "name": "a claim without `confirmed` is unconfirmed",
+   "claims": [
+    {
+     "code": "A",
+     "settled": true,
+     "answer": {
+      "status": "allow"
+     }
+    }
+   ],
+   "expect": {
+    "status": "not_blocked",
+    "reason": "PG_IDENTITY_UNCONFIRMED",
+    "code": null
+   }
+  },
+  {
+   "name": "frozen false is no freeze",
+   "claims": [
+    {
+     "code": "A",
+     "confirmed": true,
+     "settled": true,
+     "answer": {
+      "status": "allow"
+     }
+    }
+   ],
+   "frozen": false,
+   "expect": {
+    "status": "allow",
+    "reason": null,
+    "code": "A"
+   }
+  }
+ ],
+ "wikidata_at": [
+  {
+   "name": "the item's last revision at or before `at`",
+   "revisions": {
+    "query": {
+     "pages": [
+      {
+       "title": "Q11571",
+       "revisions": [
+        {
+         "revid": 123
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "claims": {
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "https://cristianoronaldo.com"
+       }
+      },
+      "rank": "normal"
+     }
+    ]
+   },
+   "expect": [
+    "https://cristianoronaldo.com"
+   ]
+  },
+  {
+   "name": "current as of that day: an end time after it counts",
+   "revisions": {
+    "query": {
+     "pages": [
+      {
+       "title": "Q11571",
+       "revisions": [
+        {
+         "revid": 123
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "claims": {
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "https://cristianoronaldo.com"
+       }
+      },
+      "rank": "normal",
+      "qualifiers": {
+       "P582": [
+        {
+         "snaktype": "value",
+         "datavalue": {
+          "value": {
+           "time": "+2026-11-03T00:00:00Z"
+          }
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "expect": [
+    "https://cristianoronaldo.com"
+   ]
+  },
+  {
+   "name": "current as of that day: an end time on it does not",
+   "revisions": {
+    "query": {
+     "pages": [
+      {
+       "title": "Q11571",
+       "revisions": [
+        {
+         "revid": 123
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "claims": {
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "https://cristianoronaldo.com"
+       }
+      },
+      "rank": "normal",
+      "qualifiers": {
+       "P582": [
+        {
+         "snaktype": "value",
+         "datavalue": {
+          "value": {
+           "time": "+2026-10-31T00:00:00Z"
+          }
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "expect": []
+  },
+  {
+   "name": "current as of that day: a start time after it does not",
+   "revisions": {
+    "query": {
+     "pages": [
+      {
+       "title": "Q11571",
+       "revisions": [
+        {
+         "revid": 123
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "claims": {
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "datavalue": {
+        "value": "https://cristianoronaldo.com"
+       }
+      },
+      "rank": "normal",
+      "qualifiers": {
+       "P580": [
+        {
+         "snaktype": "value",
+         "datavalue": {
+          "value": {
+           "time": "+2026-11-03T00:00:00Z"
+          }
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "expect": []
+  },
+  {
+   "name": "no revision yet: no channels",
+   "revisions": {
+    "query": {
+     "pages": [
+      {
+       "title": "Q11571"
+      }
+     ]
+    }
+   },
+   "claims": {},
+   "expect": []
+  },
+  {
+   "name": "a missing item",
+   "revisions": {
+    "query": {
+     "pages": [
+      {
+       "title": "Q11571",
+       "missing": true
+      }
+     ]
+    }
+   },
+   "claims": {},
+   "expect": {
+    "raises": "no entity"
+   }
+  },
+  {
+   "name": "no page in the answer",
+   "revisions": {
+    "query": {
+     "pages": []
+    }
+   },
+   "claims": {},
+   "expect": {
+    "raises": "no entity"
+   }
+  },
+  {
+   "name": "an unreadable revision id",
+   "revisions": {
+    "query": {
+     "pages": [
+      {
+       "title": "Q11571",
+       "revisions": [
+        {
+         "revid": "123"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "claims": {},
+   "expect": {
+    "raises": "no revision"
+   }
+  }
+ ],
+ "wikidata_at_api": "https://www.wikidata.org/w/api.php?action=query&format=json&formatversion=2&prop=revisions&rvprop=ids&rvdir=older&rvlimit=1&titles=Q11571&rvstart=2026-10-31T12:00:00Z",
+ "wikidata_at_entity": "https://www.wikidata.org/wiki/Special:EntityData/Q11571.json?revision=123",
+ "directory": [
+  {
+   "name": "a freeze is in effect from `at` until just before `until`",
+   "add": {
+    "freezes": [
+     {
+      "anchor": "wikidata:Q11571",
+      "at": "2026-11-06T00:00:00Z",
+      "until": "2026-11-09T00:00:00Z",
+      "reason": "ongoing harm"
+     }
+    ]
+   },
+   "frozen": [
+    [
+     "wikidata:Q11571",
+     1793923199,
+     false
+    ],
+    [
+     "wikidata:Q11571",
+     1793923200,
+     true
+    ],
+    [
+     "wikidata:Q11571",
+     1794182399,
+     true
+    ],
+    [
+     "wikidata:Q11571",
+     1794182400,
+     false
+    ],
+    [
+     "wikidata:Q999",
+     1793923201,
+     false
+    ]
+   ]
+  },
+  {
+   "name": "a freeze of exactly 7 days",
+   "add": {
+    "freezes": [
+     {
+      "anchor": "wikidata:Q11571",
+      "at": "2026-11-06T00:00:00Z",
+      "until": "2026-11-13T00:00:00Z",
+      "reason": "ongoing harm"
+     }
+    ]
+   },
+   "frozen": [
+    [
+     "wikidata:Q11571",
+     1794527999,
+     true
+    ]
+   ]
+  },
+  {
+   "name": "a freeze longer than 7 days is refused",
+   "add": {
+    "freezes": [
+     {
+      "anchor": "wikidata:Q11571",
+      "at": "2026-11-06T00:00:00Z",
+      "until": "2026-11-13T00:00:01Z",
+      "reason": "ongoing harm"
+     }
+    ]
+   },
+   "raises": "at most 7 days"
+  },
+  {
+   "name": "a freeze that ends before it starts is refused",
+   "add": {
+    "freezes": [
+     {
+      "anchor": "wikidata:Q11571",
+      "at": "2026-11-06T00:00:00Z",
+      "until": "2026-11-05T00:00:00Z",
+      "reason": "ongoing harm"
+     }
+    ]
+   },
+   "raises": "at most 7 days"
+  },
+  {
+   "name": "a freeze without a reason is refused",
+   "add": {
+    "freezes": [
+     {
+      "anchor": "wikidata:Q11571",
+      "at": "2026-11-06T00:00:00Z",
+      "until": "2026-11-07T00:00:00Z"
+     }
+    ]
+   },
+   "raises": "freezes must list"
+  },
+  {
+   "name": "a freeze with a date only is refused",
+   "add": {
+    "freezes": [
+     {
+      "anchor": "wikidata:Q11571",
+      "at": "2026-11-06",
+      "until": "2026-11-07T00:00:00Z",
+      "reason": "ongoing harm"
+     }
+    ]
+   },
+   "raises": "RFC 3339"
+  },
+  {
+   "name": "a freeze with an offset and milliseconds, 7 days to the millisecond",
+   "add": {
+    "freezes": [
+     {
+      "anchor": "wikidata:Q11571",
+      "at": "2026-11-06T02:00:00.500+02:00",
+      "until": "2026-11-13T00:00:00.500Z",
+      "reason": "ongoing harm"
+     }
+    ]
+   },
+   "frozen": [
+    [
+     "wikidata:Q11571",
+     1793923200,
+     false
+    ],
+    [
+     "wikidata:Q11571",
+     1793923201,
+     true
+    ],
+    [
+     "wikidata:Q11571",
+     1794528000,
+     true
+    ],
+    [
+     "wikidata:Q11571",
+     1794528001,
+     false
+    ]
+   ]
+  },
+  {
+   "name": "a freeze with microseconds is refused",
+   "add": {
+    "freezes": [
+     {
+      "anchor": "wikidata:Q11571",
+      "at": "2026-11-06T00:00:00.000001Z",
+      "until": "2026-11-07T00:00:00Z",
+      "reason": "ongoing harm"
+     }
+    ]
+   },
+   "raises": "RFC 3339"
+  },
+  {
+   "name": "a false claim matches on anchor and code together",
+   "add": {
+    "false_claims": [
+     {
+      "anchor": "wikidata:Q999",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-06T00:00:00Z",
+      "reason": "not the person"
+     }
+    ]
+   },
+   "false_claim": [
+    [
+     "PG-TEST-000001N",
+     "wikidata:Q999",
+     true
+    ],
+    [
+     "PG-TEST-000001N",
+     "wikidata:Q11571",
+     false
+    ],
+    [
+     "PG-TEST-000001N",
+     null,
+     true
+    ],
+    [
+     "PG-TEST-000003X",
+     null,
+     false
+    ]
+   ]
+  },
+  {
+   "name": "a false claim without an anchor is refused",
+   "add": {
+    "false_claims": [
+     {
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-06T00:00:00Z",
+      "reason": "not the person"
+     }
+    ]
+   },
+   "raises": "false_claims must list"
+  },
+  {
+   "name": "a false claim without a reason is refused",
+   "add": {
+    "false_claims": [
+     {
+      "anchor": "wikidata:Q999",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-06T00:00:00Z"
+     }
+    ]
+   },
+   "raises": "false_claims must list"
+  },
+  {
+   "name": "a later reversal clears the false claim",
+   "add": {
+    "false_claims": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-06T00:00:00Z",
+      "reason": "not the person"
+     }
+    ],
+    "false_claim_reversals": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-07T00:00:00Z",
+      "reason": "the steward was wrong"
+     }
+    ]
+   },
+   "false_claim": [
+    [
+     "PG-TEST-000001N",
+     "wikidata:Q11571",
+     false
+    ],
+    [
+     "PG-TEST-000001N",
+     null,
+     false
+    ]
+   ]
+  },
+  {
+   "name": "an earlier reversal clears nothing",
+   "add": {
+    "false_claims": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-06T00:00:00Z",
+      "reason": "not the person"
+     }
+    ],
+    "false_claim_reversals": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-05T00:00:00Z",
+      "reason": "the steward was wrong"
+     }
+    ]
+   },
+   "false_claim": [
+    [
+     "PG-TEST-000001N",
+     "wikidata:Q11571",
+     true
+    ]
+   ]
+  },
+  {
+   "name": "a reversal at the same time leaves the false claim",
+   "add": {
+    "false_claims": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-06T00:00:00Z",
+      "reason": "not the person"
+     }
+    ],
+    "false_claim_reversals": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-06T00:00:00Z",
+      "reason": "the steward was wrong"
+     }
+    ]
+   },
+   "false_claim": [
+    [
+     "PG-TEST-000001N",
+     "wikidata:Q11571",
+     true
+    ]
+   ]
+  },
+  {
+   "name": "a reversal under another anchor clears nothing",
+   "add": {
+    "false_claims": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-06T00:00:00Z",
+      "reason": "not the person"
+     }
+    ],
+    "false_claim_reversals": [
+     {
+      "anchor": "wikidata:Q999",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-07T00:00:00Z",
+      "reason": "the steward was wrong"
+     }
+    ]
+   },
+   "false_claim": [
+    [
+     "PG-TEST-000001N",
+     "wikidata:Q11571",
+     true
+    ],
+    [
+     "PG-TEST-000001N",
+     null,
+     true
+    ]
+   ]
+  },
+  {
+   "name": "a false claim again after its reversal",
+   "add": {
+    "false_claims": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-06T00:00:00Z",
+      "reason": "not the person"
+     },
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-08T00:00:00Z",
+      "reason": "not the person"
+     }
+    ],
+    "false_claim_reversals": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-07T00:00:00Z",
+      "reason": "the steward was wrong"
+     }
+    ]
+   },
+   "false_claim": [
+    [
+     "PG-TEST-000001N",
+     "wikidata:Q11571",
+     true
+    ]
+   ]
+  },
+  {
+   "name": "a reversal at the same instant written with an offset leaves the false claim",
+   "add": {
+    "false_claims": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-06T00:00:00.500Z",
+      "reason": "not the person"
+     }
+    ],
+    "false_claim_reversals": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-06T02:00:00.500+02:00",
+      "reason": "the steward was wrong"
+     }
+    ]
+   },
+   "false_claim": [
+    [
+     "PG-TEST-000001N",
+     "wikidata:Q11571",
+     true
+    ],
+    [
+     "PG-TEST-000001N",
+     null,
+     true
+    ]
+   ]
+  },
+  {
+   "name": "a reversal a millisecond later clears the false claim",
+   "add": {
+    "false_claims": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-06T00:00:00.500Z",
+      "reason": "not the person"
+     }
+    ],
+    "false_claim_reversals": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-06T00:00:00.501Z",
+      "reason": "the steward was wrong"
+     }
+    ]
+   },
+   "false_claim": [
+    [
+     "PG-TEST-000001N",
+     "wikidata:Q11571",
+     false
+    ],
+    [
+     "PG-TEST-000001N",
+     null,
+     false
+    ]
+   ]
+  },
+  {
+   "name": "without an anchor, one standing false claim among reversed ones counts",
+   "add": {
+    "false_claims": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-06T00:00:00Z",
+      "reason": "not the person"
+     },
+     {
+      "anchor": "wikidata:Q999",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-06T00:00:00Z",
+      "reason": "not the person"
+     }
+    ],
+    "false_claim_reversals": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-07T00:00:00Z",
+      "reason": "the steward was wrong"
+     }
+    ]
+   },
+   "false_claim": [
+    [
+     "PG-TEST-000001N",
+     "wikidata:Q11571",
+     false
+    ],
+    [
+     "PG-TEST-000001N",
+     "wikidata:Q999",
+     true
+    ],
+    [
+     "PG-TEST-000001N",
+     null,
+     true
+    ],
+    [
+     "PG-TEST-000002Z",
+     null,
+     false
+    ]
+   ]
+  },
+  {
+   "name": "a reversal alone, with no false claim, changes nothing",
+   "add": {
+    "false_claim_reversals": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-07T00:00:00Z",
+      "reason": "the steward was wrong"
+     }
+    ]
+   },
+   "false_claim": [
+    [
+     "PG-TEST-000001N",
+     "wikidata:Q11571",
+     false
+    ],
+    [
+     "PG-TEST-000001N",
+     null,
+     false
+    ]
+   ]
+  },
+  {
+   "name": "a reversal without a reason is refused",
+   "add": {
+    "false_claim_reversals": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-06T00:00:00Z"
+     }
+    ]
+   },
+   "raises": "false_claim_reversals must list"
+  },
+  {
+   "name": "a newer directory may add a freeze",
+   "previous": {},
+   "add": {
+    "freezes": [
+     {
+      "anchor": "wikidata:Q11571",
+      "at": "2026-11-06T00:00:00Z",
+      "until": "2026-11-07T00:00:00Z",
+      "reason": "ongoing harm"
+     }
+    ]
+   },
+   "frozen": [
+    [
+     "wikidata:Q11571",
+     1793923200,
+     true
+    ]
+   ]
+  },
+  {
+   "name": "a newer directory may not drop a freeze",
+   "previous": {
+    "freezes": [
+     {
+      "anchor": "wikidata:Q11571",
+      "at": "2026-11-06T00:00:00Z",
+      "until": "2026-11-07T00:00:00Z",
+      "reason": "ongoing harm"
+     }
+    ]
+   },
+   "add": {},
+   "raises": "freeze of wikidata:Q11571 was removed"
+  },
+  {
+   "name": "a newer directory may not drop a reversal",
+   "previous": {
+    "false_claims": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-06T00:00:00Z",
+      "reason": "not the person"
+     }
+    ],
+    "false_claim_reversals": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-07T00:00:00Z",
+      "reason": "the steward was wrong"
+     }
+    ]
+   },
+   "add": {
+    "false_claims": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-06T00:00:00Z",
+      "reason": "not the person"
+     }
+    ]
+   },
+   "raises": "reversal of the false claim"
+  },
+  {
+   "name": "a newer directory may not drop a false claim",
+   "previous": {
+    "false_claims": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-11-06T00:00:00Z",
+      "reason": "not the person"
+     }
+    ]
+   },
+   "add": {},
+   "raises": "false claim PG-TEST-000001N was removed"
+  },
+  {
+   "name": "a reversal on February 30 is refused, not rolled into March",
+   "add": {
+    "false_claims": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-02-01T00:00:00Z",
+      "reason": "not the person"
+     }
+    ],
+    "false_claim_reversals": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-02-30T00:00:00Z",
+      "reason": "the steward was wrong"
+     }
+    ]
+   },
+   "raises": "RFC 3339"
+  },
+  {
+   "name": "a reversal at 24:00 is refused, not rolled into the next day",
+   "add": {
+    "false_claims": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-02-01T00:00:00Z",
+      "reason": "not the person"
+     }
+    ],
+    "false_claim_reversals": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-02-01T24:00:00Z",
+      "reason": "the steward was wrong"
+     }
+    ]
+   },
+   "raises": "RFC 3339"
+  },
+  {
+   "name": "a false claim at second 60 is refused",
+   "add": {
+    "false_claims": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-02-01T23:59:60Z",
+      "reason": "not the person"
+     }
+    ]
+   },
+   "raises": "RFC 3339"
+  },
+  {
+   "name": "a false claim with an offset of 60 minutes is refused",
+   "add": {
+    "false_claims": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2026-02-01T00:00:00+00:60",
+      "reason": "not the person"
+     }
+    ]
+   },
+   "raises": "RFC 3339"
+  },
+  {
+   "name": "a false claim in year 0000 is refused",
+   "add": {
+    "false_claims": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "0000-01-01T00:00:00Z",
+      "reason": "not the person"
+     }
+    ]
+   },
+   "raises": "RFC 3339"
+  },
+  {
+   "name": "a freeze until 24:00 is refused",
+   "add": {
+    "freezes": [
+     {
+      "anchor": "wikidata:Q11571",
+      "at": "2026-11-07T00:00:00Z",
+      "until": "2026-11-13T24:00:00Z",
+      "reason": "ongoing harm"
+     }
+    ]
+   },
+   "raises": "RFC 3339"
+  },
+  {
+   "name": "a freeze until April 31 is refused",
+   "add": {
+    "freezes": [
+     {
+      "anchor": "wikidata:Q11571",
+      "at": "2026-04-30T00:00:00Z",
+      "until": "2026-04-31T00:00:00Z",
+      "reason": "ongoing harm"
+     }
+    ]
+   },
+   "raises": "RFC 3339"
+  },
+  {
+   "name": "a reversal on February 29 of a leap year counts",
+   "add": {
+    "false_claims": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2028-02-28T00:00:00Z",
+      "reason": "not the person"
+     }
+    ],
+    "false_claim_reversals": [
+     {
+      "anchor": "wikidata:Q11571",
+      "code": "PG-TEST-000001N",
+      "at": "2028-02-29T00:00:00Z",
+      "reason": "the steward was wrong"
+     }
+    ]
+   },
+   "false_claim": [
+    [
+     "PG-TEST-000001N",
+     "wikidata:Q11571",
+     false
+    ]
+   ]
+  }
+ ]
+}

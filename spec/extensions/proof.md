@@ -9,7 +9,9 @@ of *this* output, even after re-encoding.
 
 `{"format": "pg.proof.v1", "subjects": [{request, answer, report, ack}, …]}` — one entry per
 subject of the job, each part exactly as signed. Schema: `schemas/proof.json`. The bundle
-itself is unsigned: every part is.
+itself is unsigned: every part is. Under [`terms`](terms.md), a subject's entry may also carry
+`terms`: the `pg.terms.v1` whose message id its request carries, so the bundle can be checked
+without the registry.
 
 The report names the output by its SHA-256 (`output_hash`) and may add `bindings`:
 `[{alg, value}]`, fingerprints that survive re-encoding (C2PA *soft bindings*; `alg` is a
@@ -50,3 +52,19 @@ A revoked registry's bundles fail, including old ones (`PRE-GEN-SPEC.md` V-14). 
 shows what was permitted and by whom; it does not decide whether a use is lawful.
 
 The libraries implement the check as `checkProof` / `check_proof`.
+
+## The terms
+
+For each subject a platform also reports `terms`, which never changes whether the bundle is
+accepted:
+
+| `terms` | When |
+|---|---|
+| `absent` | the request carries no `terms`. Neither a pass nor a failure: a bundle made without terms keeps its meaning |
+| `unverified` | the request carries `terms`, and the entry has no `pg.terms.v1` with that message id, or the record does not follow `schemas/terms.json`, is about another code, has `amends` wrong for its `version`, or is not signed by its one registry signer with a key the directory lists for the code's prefix |
+| `outside` | the record checks out, and the request's `use` fails the profile's floor (with the record's `minor`), names an intimate category (terms never cover one, whatever the basis), names a category outside the profile's closed vocabulary or categories that are not a list of words, or, where the answer's `basis` is a policy, falls outside the record's `rules` (a grant decides its own scope) |
+| `ok` | the record checks out, and the use keeps to it |
+
+Beside it, `terms_assent` is the record's `assent`, which is always `registry`: the registry's
+word, never the subject's own key. The bundle shows **what was signed**, not that the terms
+still stand: a later version is the registry's live state (`lookup`'s `status_url`).

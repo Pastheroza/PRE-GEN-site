@@ -3,8 +3,8 @@
 The reference PRE-GEN registry. **Ask before you generate; get a signed answer anyone can
 check.** It implements [`PRE-GEN-CORE.md`](https://www.pregen.org/spec/PRE-GEN-CORE.md), the profile `likeness/1` and these extensions:
 `reports`, `provider-keys`, `limits`, `jobs`, `grants`, `licensee`, `observe`, `lookup`, `identity`,
-`proof`, `catalog`, `provider-identity` (with `--open-providers`, and always in a sandbox) and, in sandbox
-mode, `sandbox`.
+`proof`, `catalog`, `provider-identity` (with `--open-providers`, and always in a sandbox), `terms` (with
+`provider-identity`) and, in sandbox mode, `sandbox`.
 
 It is a registry, not a marketplace: it has no prices, payments or dashboards. Those belong to
 each registry's own business.
@@ -18,11 +18,17 @@ pregen-registry serve --dir ./data
 curl -X POST http://127.0.0.1:8000/v2/sandbox/access      # a provider id and token, no account
 ```
 
-The sandbox answers the eight standard test codes `PG-TEST-000001N` `PG-TEST-000002Z`
+The sandbox answers the standard test codes `PG-TEST-000001N` `PG-TEST-000002Z`
 `PG-TEST-0000034` `PG-TEST-000004E` `PG-TEST-000005R` `PG-TEST-000006$` `PG-TEST-0000077`
-`PG-TEST-000008H` (code 8 is deliberately not registered). The last character is a check
+`PG-TEST-000008H` `PG-TEST-000009V` `PG-TEST-000010M` `PG-TEST-000011Y` (code 8 is deliberately
+not registered). Codes 1 to 8 test refusals; 9 a test purchase (`POST /v2/sandbox/purchases`: one use,
+a race, a give-back), 10 a person's terms, 11 a minor. The last character is a check
 character; with another prefix the codes differ, and `init` prints them. Each one answers as
 [`extensions/sandbox.md`](https://www.pregen.org/spec/extensions/sandbox.md) says.
+
+A sandbox made by 0.3 holds codes 1 to 7 only; it gains 9 to 11 when it next starts on 0.4. If 0.3 gave
+one of your own test people serial 9, 10 or 11, it refuses to start and names that code: make a fresh
+sandbox with `init --sandbox` and add them again (they now get serials from 12).
 
 ## Run a real registry
 
@@ -72,12 +78,15 @@ never signs again. Move its private key file offline.
 | `POST /v2/reports` | report → `{"ack": <signed pg.report_ack.v1>}` |
 | `POST /v2/keys`, `GET /v2/keys/{provider_id}` | provider keysets (a provider known by its domain publishes them in its party document instead) |
 | `GET /v2/grants/{id}` | a signed grant (credential, or `PG-Access`) |
-| `GET /v2/codes/{code}` | public lookup |
+| `GET /v2/codes/{code}` | public lookup; with the subject's current terms, if they have any |
+| `GET /v2/codes/{code}/terms` | the `status_url` of a published subject with terms: the current version and every earlier one |
+| `GET /v2/terms/{id}` | every version of a subject's terms ever published (extension `terms`) |
 | `GET /v2/anchors` | signed `pg.anchors.v1` list of anchored subjects (extension `identity`) |
 | `GET /v2/catalog` | subjects who chose to be listed (extension `catalog`) |
 | `GET /v2/statement` | a provider's statement of the allows it received (extension `catalog`; credential or `PG-Access`) |
 | `GET /v2/proofs/{16 hex}` | this registry's part of a `pg.proof.v1` bundle (extension `proof`) |
 | `POST /v2/sandbox/access` | sandbox credentials (sandbox mode only) |
+| `POST /v2/sandbox/purchases` | a test purchase, no money: one use of a catalog subject for this provider (sandbox mode only) |
 | `POST /v2/sandbox/party` | a provider's party document by post (sandbox mode only) |
 
 ## Limits of this version
@@ -88,6 +97,9 @@ never signs again. Move its private key file offline.
   holding real people.
 - **Provider key recovery** (a keyset co-signed by the registry) is not implemented yet.
 - **`bind`** (a person connecting licences to an app) is specified ([`extensions/bind.md`](https://www.pregen.org/spec/extensions/bind.md)), not implemented.
+- **Terms** ([`extensions/terms.md`](https://www.pregen.org/spec/extensions/terms.md)) are published from Python only,
+  `Registry.publish_terms(code, purposes=…, excluded_categories=…, template=…, legal=…, factor=…)`, on the subject's
+  own instruction; you check the second factor yourself. There is no CLI command.
 - **Party documents** are fetched after a one-shot address check; a resolver that pins the checked address closes
   the rebinding gap before holding real people. The registrable-domain rule (Public Suffix List) is not enforced.
 
@@ -99,5 +111,7 @@ pip install -e ".[test]" && pytest
 
 The tests cover:
 - every rule of the core and of the extensions above;
+- that the vendored schemas are byte-for-byte the spec's (`tests/test_schema_parity.py`);
 - twenty concurrent jobs racing for a grant's last use;
-- the byte vectors in [`messages.json`](https://www.pregen.org/spec/test-vectors/messages.json).
+- the byte vectors in [`messages.json`](https://www.pregen.org/spec/test-vectors/messages.json), and the request
+  shapes in [`terms.json`](https://www.pregen.org/spec/test-vectors/terms.json).

@@ -259,8 +259,8 @@ your policy changes, the profile names stay), `extensions`, `policy`, `complaint
 returns `{"current_key_id": "pg-ed25519:…", "keys": [{"key_id", "public_key_hex",
 "activated_at", "deactivated_at", "status", …}], "signature": "…"}`. The third returns your signed
 anchor list (`{"type": "pg.anchors.v1", …}`), never a 404, through your proxy too: a provider
-that cannot read it stops generating your people, and every public person at any registry,
-until it reads it again.
+that cannot read it for a day stops generating your people (everyone who confirmed a claim at
+your registry) until it reads it again.
 
 ## 6. People, anchors, grants and providers
 
@@ -296,22 +296,29 @@ person has one:** clients today confirm only `wikidata:` anchors, so a person an
 `PG_IDENTITY_UNCONFIRMED`), grant or not, until confirmed. An anchor that cannot be confirmed
 means nobody can generate that person.
 
-Add the page where the person posted the line `PRE-GEN: PG-ABCD-000001K`. It must be an
-`https://` page, readable without a login, at or under a channel their Wikidata item lists:
-the official website (use it: social posts are mostly scripts a plain fetch cannot read),
-`https://x.com/<handle>/…`, `https://www.instagram.com/<handle>/…`,
-`https://www.youtube.com/channel/<id>/…` or `https://www.tiktok.com/@<handle>/…`, on exactly the
-host Wikidata lists (`www.` counts). The command records what you give it and fetches nothing,
-so check first; this must print `True`. The page's HTML source (view-source) must contain
-`PRE-GEN: <code>` exactly (one plain space, no tags or entities inside it, the whole code), and a
-handle in the URL must match Wikidata's spelling, case included; a path with a `.` or `..`
-segment (or `%2e`, or an encoded slash) confirms nothing, and neither does a URL with a `?`
-query or a `#` fragment, nor one that answers with a redirect. Use a page on the official
-website that scripts can read: a proof page that later answers 403, 429 or 5xx blocks the
-person at every provider. The check (it follows no redirect):
+Add the place where the person posted the line `PRE-GEN: PG-ABCD-000001K`. Only two places
+count (`spec/extensions/identity.md`), on a channel that a **current** statement of their
+Wikidata item lists (not deprecated, not ended):
+- **their official website** (use it: social posts are mostly scripts a plain fetch cannot read):
+  exactly `https://<host>/.well-known/pregen`, on the host Wikidata lists, in lower case (`www.`
+  counts), as plain text with a line `PRE-GEN: <code>`;
+- **their own X, Instagram, YouTube or TikTok account**: a post or the profile at or under the
+  account's URL, which the platform itself records as written by that account.
+
+Any other page on the site (a search page, a comment, another account's post) confirms
+nothing. A handle must match Wikidata's spelling, case included; a URL over 512 characters,
+with any `%` escape, an empty, `.` or `..` segment, a port, a `?` query or a `#` fragment, or
+one that answers with a redirect, confirms nothing.
+A channel newly added to Wikidata can refuse at once but permits only after it has stood for
+7 days. The command records what you give it and fetches nothing, so check first. The check
+below reads only the website place (`/.well-known/pregen`), where it must print `True`; for an
+account it always prints `False`, because a page's text cannot say who wrote it. For an account,
+`page` must return `{"author": …, "text": …}` from the platform's own API (as provider.md's
+`account_post`), or check the post by other means. A place that cannot be read is unconfirmed for a provider that never saw it
+confirmed, and blocks the person for one that did. The check (it follows no redirect):
 
 ```bash
-CODE='PG-ABCD-000001K' URL='https://mayacole.example/pregen' ANCHOR='wikidata:Q42' python3 -c "
+CODE='PG-ABCD-000001K' URL='https://mayacole.example/.well-known/pregen' ANCHOR='wikidata:Q42' python3 -c "
 import os, pregen, urllib.request as u
 ua = {'User-Agent': 'Example Registry (https://registry.example/contact)'}
 class Stay(u.HTTPRedirectHandler):
@@ -326,7 +333,7 @@ the line is gone, anchor again without `--proof-url`.
 
 ```bash
 pregen-registry subject anchor --dir ./data --code 'PG-ABCD-000001K' \
-  --anchor wikidata:Q42 --proof-url https://mayacole.example/pregen
+  --anchor wikidata:Q42 --proof-url https://mayacole.example/.well-known/pregen
 ```
 
 ```
@@ -335,7 +342,10 @@ PG-ABCD-000001K anchored to wikidata:Q42; GET /v2/anchors lists it
 
 When several registries claim the same person, a client counts only a record whose anchor
 the person confirmed on their own channel (the libraries' `decide_identity`). A matching
-name is never evidence.
+name is never evidence. A complaint about one of your codes follows the procedure in
+`spec/extensions/identity.md` ("Complaints"): decide within 7 days. While you examine it, the
+code is `disputed` and refused with `PG_SUBJECT_DISPUTED` at your registry only; it does not
+refuse the person anywhere else.
 
 **Grant a use** the person agreed to. It prints the grant id (64 hex):
 
@@ -443,17 +453,21 @@ pregen-registry init --dir ./sandbox --prefix ABCE --name "Example Registry sand
   --complaints mailto:complaints@registry.example --sandbox
 ```
 
-After the key and policy lines it prints the eight test codes:
+After the key and policy lines it prints the standard test codes:
 
 ```
 Sandbox test subjects (copy them; the last character is a check character):
   PG-ABCE-000001…  Test subject 1 (allow)
   …
   PG-ABCE-000007…  Test subject 7 (not blocked)
+  PG-ABCE-000009…  Test subject 9 (buy first)
+  PG-ABCE-000010…  Test subject 10 (the person's terms)
+  PG-ABCE-000011…  Test subject 11 (a minor)
   PG-ABCE-000008…  Test subject 8 (not registered: PG_UNKNOWN_SUBJECT)
 ```
 
-Save this output: code 8 is never stored, so `subject list` shows only 1–7 and your own.
+Save this output: code 8 is never stored, so `subject list` shows only 1–7, 9–11 and your own.
+What each code tests, buying a use of code 9 included: `docs/provider.md`, step 9.
 
 Serve it (step 5). A provider introduces itself by posting its party document (a laptop has
 no domain to serve it on), then asks with signed requests, exactly as it will in production:
@@ -512,15 +526,15 @@ pregen-registry check --api https://sandbox.registry.example \
 The extra line reads `PASS POST /v2/requests for PG-ABCE-000001…, purpose commercial: HTTP
 200, allow`; with test code 2 it reads `… deny PG_NO_LICENSE`. To try a grant of your own
 (purposes, a licensee), add a test person and that grant to the sandbox (`subject add
---dir ./sandbox --level verified --publish --name "Test subject 9 (allow, licensee test:t1, commercial)"`, named by what it
-answers, which numbers added people from 9 on, and `grant add --dir ./sandbox …`)
+--dir ./sandbox --level verified --publish --name "Test subject 12 (allow, licensee test:t1, commercial)"`, named by what it
+answers, which numbers added people from 12 on, and `grant add --dir ./sandbox …`)
 and ask for it the same way (give sandbox test grants no `--max-uses`: every provider shares
 them, and each allow, a `check` included, uses one for good); for a licensee-only grant, give
 it `--licensee test:t1` and add `--licensee test:t1` to `check`. If you added your own test
 people, also change the template's sentence in `./sandbox/policy.md`, "it holds no real people,
-only the standard test subjects (codes 1-7; code 8 is deliberately unregistered)", for example
-to "It holds no real people: the standard test subjects (codes 1-7) and test people of our own
-(codes 9 and up)."
+only the standard test subjects (codes 1-7 and 9-11; code 8 is deliberately unregistered)", for
+example to "It holds no real people: the standard test subjects (codes 1-7 and 9-11) and test
+people of our own (codes 12 and up)."
 
 **If you wrote your own registry,** also run conformance Level 1 against your signing
 library (`spec/conformance/README.md`; `spec/` is in `git clone https://github.com/Pastheroza/PRE-GEN-site`).
@@ -581,8 +595,8 @@ PASS listed with the current key
 
 For a test directory, add `--steward <its steward public key hex>`. A provider known by its
 domain needs nothing more from you than the listing: it finds your `api` in the directory and
-asks. Publish for providers: how you vet them (step 6), your sandbox `api`, the sandbox's eight
-test codes (and any test people you added, with what each is for), and the test directory's URL
+asks. Publish for providers: how you vet them (step 6), your sandbox `api`, the sandbox's standard
+test codes (1 to 11) (and any test people you added, with what each is for), and the test directory's URL
 and steward key. If you issue credentials, send each provider its credential privately, in the
 shape it stores (`{"ABCD": {"provider_id": "frame-ai", "token": "<secret>"}}`), with the codes
 it may ask about and the exact licensee id of each customer you connected for it.

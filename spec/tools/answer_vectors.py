@@ -27,7 +27,7 @@ def seed(name):
     return hashlib.sha256(f"pregen-answer-vector-{name}".encode()).hexdigest()
 
 
-KEYS = {n: seed(n) for n in ("steward", "registry", "registry_revoked", "registry_retired", "other_registry")}
+KEYS = {n: seed(n) for n in ("steward", "registry", "registry_revoked", "registry_retired", "other_registry", "provider")}
 PUB = {n: pregen.public_key_hex(k) for n, k in KEYS.items()}
 KID = {n: pregen.fingerprint(p) for n, p in PUB.items()}
 KID["small_order"] = pregen.fingerprint(SMALL_ORDER)
@@ -62,6 +62,27 @@ KEY_SETS = {
 REQUEST = {"type": "pg.request.v1", "signatures": [], "body": {
     "subject_ref": "PG-TEST-000001N", "provider_id": "frame-ai", "profile": "likeness/1",
     "use": {"purpose": "commercial"}, "job_id": "job-8841", "job_hash": "a" * 64}}
+
+
+def terms(key="registry", **change):
+    """A pg.terms.v1 for PG-TEST-000001N (extensions/terms.md), signed by `key`; a change to None drops the member.
+    spec/tools/terms_vectors.py builds on it."""
+    body = {"signers": [{"role": "registry", "key_id": KID[key]}], "subject_ref": "PG-TEST-000001N",
+            "profile": "likeness/1", "version": 1, "template": {"id": "example-likeness", "version": 1, "jurisdiction": "US"},
+            "legal": {"sha256": "b" * 64, "url": API + "/terms-template-1.txt"},
+            "rules": {"purposes": ["editorial", "personal"], "excluded_categories": ["gambling", "political"]},
+            "minor": False, "assent": "registry", "instruction": "c" * 64, "factor": "authenticator", "issued_at": NOW - 100}
+    body.update(change)
+    return pregen.sign_envelope("pg.terms.v1", {k: v for k, v in body.items() if v is not None}, KEYS[key])
+
+
+def accepting(record, **change):
+    """A request signed by a provider known by its domain that accepts `record` (terms T-5)."""
+    body = {"signers": [{"role": "provider", "key_id": KID["provider"]}], "subject_ref": "PG-TEST-000001N",
+            "provider_id": "https://frame.example", "profile": "likeness/1",
+            "use": {"purpose": "personal", "categories": ["fashion"]}, "job_id": "job-8842", "job_hash": "a" * 64,
+            "terms": pregen.message_id("pg.terms.v1", record["body"]), **change}
+    return pregen.sign_envelope("pg.request.v1", body, KEYS["provider"])
 
 
 def answer(request=REQUEST, key="registry", sign=True, **change):
@@ -113,6 +134,8 @@ def cases():
         request=other_request(subject_ref="pg-test-000001n")), False, False
     yield "a code with a trailing space (H5)", other_request(subject_ref="PG-TEST-000001N "), answer(
         request=other_request(subject_ref="PG-TEST-000001N ")), False, False
+    signed = accepting(terms())                     # terms T-6: the same answer, its request_id covers `terms`
+    yield "allow for a request that accepts a person's terms", signed, answer(request=signed), True, False
 
 
 def main():
