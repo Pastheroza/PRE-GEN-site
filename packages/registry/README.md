@@ -20,15 +20,22 @@ curl -X POST http://127.0.0.1:8000/v2/sandbox/access      # a provider id and to
 
 The sandbox answers the standard test codes `PG-TEST-000001N` `PG-TEST-000002Z`
 `PG-TEST-0000034` `PG-TEST-000004E` `PG-TEST-000005R` `PG-TEST-000006$` `PG-TEST-0000077`
-`PG-TEST-000008H` `PG-TEST-000009V` `PG-TEST-000010M` `PG-TEST-000011Y` (code 8 is deliberately
+`PG-TEST-000008H` `PG-TEST-000009V` `PG-TEST-000010M` `PG-TEST-000011Y` `PG-TEST-0000123` (code 8 is deliberately
 not registered). Codes 1 to 8 test refusals; 9 a test purchase (`POST /v2/sandbox/purchases`: one use,
-a race, a give-back), 10 a person's terms, 11 a minor. The last character is a check
+a race, a give-back), 10 a person's terms, 11 a minor, 12 a creator's licence reached only through `bind`.
+The last character is a check
 character; with another prefix the codes differ, and `init` prints them. Each one answers as
 [`extensions/sandbox.md`](https://www.pregen.org/spec/extensions/sandbox.md) says.
 
-A sandbox made by 0.3 holds codes 1 to 7 only; it gains 9 to 11 when it next starts on 0.4. If 0.3 gave
-one of your own test people serial 9, 10 or 11, it refuses to start and names that code: make a fresh
-sandbox with `init --sandbox` and add them again (they now get serials from 12).
+A sandbox made by 0.3 holds codes 1 to 7 only; it gains 9 to 12 when it next starts on 0.4. If an earlier
+version gave one of your own test people serial 9, 10, 11 or 12, it refuses to start and names that code: make a
+fresh sandbox with `init --sandbox` and add them again (they now get serials from 13).
+
+A sandbox also offers `bind` ([`extensions/bind.md`](https://www.pregen.org/spec/extensions/bind.md)): an app sends
+the person to `/v2/bind/authorize`, where the sandbox's test creator, signed in with no password, approves; the
+app exchanges the code at `/v2/bind/token` for a binding and reads the licence at `GET /v2/grants?licensee_id=…`.
+Each consent gives the test creator a new licence on code 12 (research, three uses), so apps never share one.
+`pregen-registry bindings --dir DATA` lists the bindings, with their allows, and `--revoke LICENSEE_ID` ends one.
 
 ## Run a real registry
 
@@ -96,7 +103,9 @@ never signs again. Move its private key file offline.
 - **Managed subject keys are stored in the database.** Encrypt them, or use a KMS, before
   holding real people.
 - **Provider key recovery** (a keyset co-signed by the registry) is not implemented yet.
-- **`bind`** (a person connecting licences to an app) is specified ([`extensions/bind.md`](https://www.pregen.org/spec/extensions/bind.md)), not implemented.
+- **`bind`** (a person connecting licences to an app) works in a sandbox only, with its one test creator. A
+  production registry needs people's own accounts and sign-in, which this reference does not have, so it does not
+  list `bind`.
 - **Terms** ([`extensions/terms.md`](https://www.pregen.org/spec/extensions/terms.md)) are published from Python only,
   `Registry.publish_terms(code, purposes=…, excluded_categories=…, template=…, legal=…, factor=…)`, on the subject's
   own instruction; you check the second factor yourself. There is no CLI command.

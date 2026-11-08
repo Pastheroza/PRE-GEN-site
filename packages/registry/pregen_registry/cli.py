@@ -10,6 +10,7 @@
   pregen-registry provider remove --dir DATA --id frame-ai    (its token stops working)
   pregen-registry provider accept --dir DATA --id https://frame.example   (a provider known by its domain, vetted: ordinary answers)
   pregen-registry connect --dir DATA --provider frame-ai --licensee frame-ai:user-1
+  pregen-registry bindings --dir DATA [--revoke LICENSEE_ID]   (bind, in a sandbox: each binding and its allows)
   pregen-registry info --dir DATA
   pregen-registry key next --dir DATA      (makes the next operator key and lists it in /keys as `next`)
   pregen-registry key rotate --dir DATA    (once the directory lists it: the next key signs, the old one is retired)
@@ -77,7 +78,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(prog="pregen-registry", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for name in ("init", "serve", "subject", "grant", "provider", "connect", "info", "key"):
+    for name in ("init", "serve", "subject", "grant", "provider", "connect", "bindings", "info", "key"):
         p = sub.add_parser(name)
         p.add_argument("--dir", required=True)
         if name == "init":
@@ -118,6 +119,8 @@ def main(argv=None):
         elif name == "connect":
             p.add_argument("--provider", required=True)
             p.add_argument("--licensee", required=True)
+        elif name == "bindings":
+            p.add_argument("--revoke", metavar="LICENSEE_ID", help="end this binding now (bind B-2)")
         elif name == "key":
             p.add_argument("action", choices=["next", "rotate"])
     p = sub.add_parser("check", help="the live self-test: document, key set, errors, listing, and one answer")
@@ -163,7 +166,7 @@ def main(argv=None):
                 {"verify": "<who may register a person, and how we check they are that person or may act for them>",
                  "anchors": "<the anchor we record: a Wikidata item (clients confirm only these today); and how the "
                             "person confirms on their own channel>"}), sandbox=(
-                "\nThis is a sandbox: it holds no real people, only the standard test subjects (codes 1-7 and 9-11; code "
+                "\nThis is a sandbox: it holds no real people, only the standard test subjects (codes 1-7 and 9-12; code "
                 "8 is deliberately unregistered), and its "
                 "answers are marked as sandbox answers.\n" if a.sandbox else "")))
         print(f"Registry created in {a.dir}.\n  prefix: {a.prefix}\n  operator key id: {key.id}\n"
@@ -254,6 +257,16 @@ def main(argv=None):
             sys.exit(f"a licensee id is <provider id>:<customer id>, for example {a.provider}:{a.licensee}")
         load(a.dir).connect(a.provider, a.licensee)
         print("connected")
+    elif a.cmd == "bindings":
+        reg = load(a.dir)
+        if a.revoke:
+            try:
+                reg.revoke_binding(a.revoke)
+            except ValueError as e:
+                sys.exit(str(e))
+            print("revoked: requests naming this licensee_id get PG_NOT_BOUND from now on")
+        else:
+            print(json.dumps(reg.bindings(), indent=2))
     elif a.cmd == "key":
         _, key_path, _ = _paths(a.dir)
         next_path = key_path.with_name("operator.next.key")

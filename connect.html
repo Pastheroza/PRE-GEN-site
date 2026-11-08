@@ -46,7 +46,7 @@ Then work with me, step by step:
 1. Look through my code and find every place where we generate images, video or voice. Tell me which of them can show a real person, a character or a brand.
 2. Before you change any code, explain your plan in plain words: where the check goes, which library you will use (pregen for Python, @pregen/verify for JavaScript), and where the private key will be kept.
 3. Follow docs/provider.md, fitting its complete example into our own code: make our key (keep it as a secret, never in code or logs), build the party document for our domain, ask before every generation, check the answer, generate only on a valid allow, report the output, keep the proof with it.
-4. Test on the public test network first, until each of the eleven test codes gives exactly the answers the guide's table lists, buying a test use of code 9 included.
+4. Test on the public test network first, until each of the twelve test codes gives exactly the answers the guide's table lists, buying a test use of code 9 included.
 5. Ask me before you accept any terms, store any secret, or deploy anything.
 
 As you go, explain each step to me in plain words, as if I am not a programmer. If anything is unclear, or does not fit our code, stop, tell me what is unclear and what my options are, and wait for my answer. Never send our prompts or outputs to a registry, and never present an output as permitted without a valid allow.</code></pre>
@@ -57,7 +57,7 @@ As you go, explain each step to me in plain words, as if I am not a programmer. 
 npm install @pregen/verify@^0.12.0</code></pre></div></li>
 <li><span class="n">2</span><div><h2>Put one file on your website</h2><p>Your website's address is your name in PRE-GEN. Make a key, and the library builds a small file that says who you are. Publish it on your site.</p></div></li>
 <li><span class="n">3</span><div><h2>Ask before you generate</h2><p>Each person has a code. Send it to their registry, check the signed answer, and generate only if it says allow. A registry may answer “not accepted” until it has checked your app: that is not an error.</p></div></li>
-<li><span class="n">4</span><div><h2>Test it first</h2><p>The public test network has eleven test people, each answering differently: refusals, a test purchase, a person's terms, a minor. When your app handles all eleven, switch it on for real.</p></div></li>
+<li><span class="n">4</span><div><h2>Test it first</h2><p>The public test network has twelve test people, each answering differently: refusals, a test purchase, a person's terms, a minor, a creator's own licence. When your app handles all twelve, switch it on for real.</p></div></li>
 </ol>
 <p class="then">Already have PRE-GEN? Nothing to add here. Buying and selling are each registry's own, optional layer. At PRAMPTA, people buy licences and connect them to your app. <a href="/docs/two-layers">Two layers</a></p>
 <section class="dev" aria-labelledby="dev">

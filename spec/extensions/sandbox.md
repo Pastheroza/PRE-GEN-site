@@ -21,6 +21,7 @@ prefix, with fixed serials:
 | 9 | `deny`, `PG_NO_LICENSE` until a test purchase, then `allow` — buy first (below) |
 | 10 | `deny`, `PG_NO_LICENSE` — the person's terms (below) |
 | 11 | `allow` — a minor (below) |
+| 12 | `deny`, `PG_NO_LICENSE` without a binding; `allow` through one — a creator's licence ([`bind`](bind.md), below) |
 
 Serials 9–11 let a provider test payment, the person's terms and the floor:
 
@@ -43,12 +44,20 @@ Serials 9–11 let a provider test payment, the person's terms and the floor:
 | 11 | `["violence"]` | `deny`, `PG_PROHIBITED_USE` |
 | 11 | a word outside the closed vocabulary, without `terms` | `deny`, `PG_PROHIBITED_USE` |
 | 11 | `["sexual"]` or `["adult"]` | `deny`, `PG_PROHIBITED_USE`: the minor's protection comes first, though the grant names them |
+| 12 | no `licensee_id` | `deny`, `PG_NO_LICENSE` |
+| 12 | the `licensee_id` of this provider's binding, `purpose: "research"` | `allow`, with `ext.bind` naming the binding (B-3c) |
+| 12 | the same, `purpose: "commercial"` | `deny`, `PG_SCOPE_VIOLATION`: outside the licence |
+| 12 | the same, a fourth time | `deny`, `PG_USAGE_LIMIT` |
+| 12 | a `licensee_id` with no active binding to this provider: another app's, replaced, revoked or made up | HTTP 403 `PG_NOT_BOUND` (B-5) |
 
 - **9** is in the catalog ([`catalog`](catalog.md)) with a test price and no grant.
 - **10** has published terms ([`terms`](terms.md)): purposes `editorial` and `research`, `advertising`
   excluded, `minor: false`; a sandbox declares `terms`. Its lookup names the current id.
 - **11** is a minor holding their own key, with a grant signed by it for every purpose and every category
   ([`likeness/1`](../profiles/likeness-1.md), the floor).
+- **12** has no grant of its own. A sandbox declares `bind` and has one test creator, who signs in on its consent page
+  with no password. Each consent gives that creator a new licence on 12, `purpose` `research` and `max_uses` 3, and
+  the binding reaches only it, so no two apps share its uses.
 
 A request already answered gets the same answer while it is open ([`jobs`](jobs.md)): after a purchase or a
 give-back, ask under a new `job_id`.
@@ -78,4 +87,5 @@ alone. A subject not in the catalog: 404 `PG_NOT_FOUND`.
 ## Example
 
 The **PRE-GEN Test Registry** (prefix `TEST`): serial 1 is `PG-TEST-000001` plus its check
-character. Serials 9, 10 and 11 are `PG-TEST-000009V`, `PG-TEST-000010M` and `PG-TEST-000011Y`.
+character. Serials 9, 10 and 11 are `PG-TEST-000009V`, `PG-TEST-000010M` and `PG-TEST-000011Y`. Serial 12 is
+`PG-TEST-0000123`.

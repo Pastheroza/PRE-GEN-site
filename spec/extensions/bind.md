@@ -108,5 +108,5 @@ inform the app's interface. Only an `allow` permits.
 ## Status
 
 A registry that offers it lists `bind` in its document, with its endpoints. PRAMPTA implements
-it (its registry document lists `bind`). The open reference
-registry (`packages/registry`) does not implement `bind` yet and lists it under its limits.
+it (its registry document lists `bind`). The open reference registry (`packages/registry`) implements it as a
+sandbox, with one test creator ([`sandbox`](sandbox.md), serial 12).

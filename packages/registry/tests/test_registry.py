@@ -284,7 +284,7 @@ def test_a_level_can_be_raised_and_provider_ids_hold_no_colon(tmp_path):
 
 def test_a_person_added_to_a_sandbox_never_takes_a_standard_test_code():
     reg, c, _ = make()
-    assert reg.add_subject("Extra test person") == code(12)
+    assert reg.add_subject("Extra test person") == code(13)
     p = Provider(reg, c)
     assert p.answer(p.body(code(8), job="j8"))["body"]["reason"] == "PG_UNKNOWN_SUBJECT"
 

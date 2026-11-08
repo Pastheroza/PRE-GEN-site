@@ -48,7 +48,7 @@ await checkAnswer(answer, request, { directory });              // throws with t
 <pre><code>import pregen
 directory = pregen.load_directory(previous=saved)
 pregen.check_answer(answer, request, directory)                 # raises with the reason, or you may generate</code></pre>
-<p>Generate only when every person in the job has a valid <code>allow</code>, and keep the answers with the output. The prompt and the output never leave your servers. Test on the public test network first: the sandbox at <code>sandbox.pregen.org</code> takes your party document by post and answers the eleven standard test subjects, <code>PG-TEST-000001N</code> to <code>PG-TEST-000011Y</code>: every refusal, a test purchase (9), a person's terms (10) and a minor (11). What each tests: <a href="/docs/provider.md">provider guide</a>, step 9.</p>
+<p>Generate only when every person in the job has a valid <code>allow</code>, and keep the answers with the output. The prompt and the output never leave your servers. Test on the public test network first: the sandbox at <code>sandbox.pregen.org</code> takes your party document by post and answers the twelve standard test subjects, <code>PG-TEST-000001N</code> to <code>PG-TEST-0000123</code>: every refusal, a test purchase (9), a person's terms (10), a minor (11) and a creator's licence reached only through bind (12). What each tests: <a href="/docs/provider.md">provider guide</a>, step 9.</p>
 <p>Install: <code>npm install @pregen/verify</code> (0.13.0) · <code>pip install "pregen>=0.13.0"</code>. Step by step, with complete tested examples: <a href="/docs/provider.md">the provider guide</a>; to run a registry, <a href="/docs/registry.md">the registry guide</a>.</p>
 
 <h2 id="legacy">Earlier interface (legacy)</h2>

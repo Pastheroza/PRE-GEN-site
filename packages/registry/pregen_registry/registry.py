@@ -1,5 +1,6 @@
 """The registry: state in SQLite, the core rules, profile likeness/1 and the extensions
-reports, provider-keys, limits, jobs, grants, licensee, observe, sandbox, lookup, provider-identity and terms.
+reports, provider-keys, limits, jobs, grants, licensee, observe, sandbox, lookup, provider-identity, terms and, in a
+sandbox, bind.
 
 ponytail: one process-wide lock around one SQLite connection serializes every write. That is the
 spec's three locks (provider+job, ask, grant counter) collapsed into one: correct, simple, and enough
@@ -42,6 +43,9 @@ FLOOR = {"PG_SUBJECT_OPTED_OUT", "PG_SUBJECT_UNAVAILABLE", "PG_PROHIBITED_USE", 
 PARTY_REFRESH = 86400           # provider-identity P-3: the party document is read again at least daily
 PARTY_MIN_INTERVAL = 60         # P-7: and at most once a minute per provider
 PARTY_MAX_BYTES = 65536
+BIND_CODE_TTL = 60              # bind.md step 4: a code lives 60 seconds and is single-use
+BINDING_TTL = 365 * 86400       # pg.binding.v1: at most one year, then the person consents again
+SANDBOX_HOLDER = "account:holder"   # sandbox.md serial 12: the test creator; an account's grants are reached only by bind
 # extensions/sandbox.md, serial 10: a test template; its text governs nothing
 SANDBOX_TEMPLATE = {"id": "pregen-sandbox", "version": 1, "jurisdiction": "US"}
 SANDBOX_LEGAL = {"sha256": hashlib.sha256(b"PRE-GEN sandbox template 1: a test record for test subjects. It governs "
@@ -78,6 +82,11 @@ CREATE TABLE IF NOT EXISTS terms (id TEXT PRIMARY KEY, subject_code TEXT NOT NUL
 CREATE TABLE IF NOT EXISTS answers (id TEXT PRIMARY KEY, ask_id TEXT NOT NULL, envelope TEXT NOT NULL,
   status TEXT NOT NULL, issued_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, grant_id TEXT, use TEXT,
   report_id TEXT);
+CREATE TABLE IF NOT EXISTS bind_codes (code_hash TEXT PRIMARY KEY, provider_id TEXT NOT NULL, redirect_uri TEXT NOT NULL,
+  challenge TEXT NOT NULL, account TEXT NOT NULL, grants TEXT NOT NULL, expires_at INTEGER NOT NULL,
+  used INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS bindings (licensee_id TEXT PRIMARY KEY, id TEXT NOT NULL, provider_id TEXT NOT NULL,
+  account TEXT NOT NULL, grants TEXT NOT NULL, expires_at INTEGER NOT NULL, ended_at INTEGER, envelope TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS reports (id TEXT PRIMARY KEY, provider_id TEXT NOT NULL, ask_id TEXT NOT NULL,
   envelope TEXT NOT NULL, ack TEXT NOT NULL);
 """
@@ -210,8 +219,8 @@ class Registry:
         with self.tx() as db:
             if serial is None:
                 serial = (db.execute("SELECT COALESCE(MAX(serial), 0) FROM subjects").fetchone()[0] or 0) + 1
-                if self.config.sandbox:                     # 1-11 are the standard test codes; 8 stays unregistered
-                    serial = max(serial, 12)
+                if self.config.sandbox:                     # 1-12 are the standard test codes; 8 stays unregistered
+                    serial = max(serial, 13)
             code = mint_code(self.config.prefix, serial)
             key = None if holder_public else Key()
             flags["immutable_denials"] = json.dumps(flags.get("immutable_denials", []))
@@ -353,21 +362,22 @@ class Registry:
     SANDBOX_NAMES = {1: "Test subject 1 (allow)", 2: "Test subject 2 (no licence)", 3: "Test subject 3 (opted out)",
                      4: "Test subject 4 (usage limit)", 5: "Test subject 5 (prohibited)", 6: "Test subject 6 (review)",
                      7: "Test subject 7 (not blocked)", 9: "Test subject 9 (buy first)",
-                     10: "Test subject 10 (the person's terms)", 11: "Test subject 11 (a minor)"}
+                     10: "Test subject 10 (the person's terms)", 11: "Test subject 11 (a minor)",
+                     12: "Test subject 12 (a creator's licence, through bind)"}
 
     def _check_sandbox_serials(self) -> dict:
-        have = {r["serial"]: r["name"] for r in self._q("SELECT serial, name FROM subjects WHERE serial <= 11")}
+        have = {r["serial"]: r["name"] for r in self._q("SELECT serial, name FROM subjects WHERE serial <= 12")}
         taken = [f"{mint_code(self.config.prefix, n)} ({have[n]!r})" for n, name in self.SANDBOX_NAMES.items()
                  if have.get(n, name) != name]
         if taken:
-            raise ValueError(f"this sandbox's {', '.join(taken)} must be the standard test subjects 1-7 and 9-11 "
+            raise ValueError(f"this sandbox's {', '.join(taken)} must be the standard test subjects 1-7 and 9-12 "
                              "(extensions/sandbox.md). Make a fresh sandbox with `pregen-registry init --sandbox` and "
-                             "add your own test people there again; they get serials from 12.")
+                             "add your own test people there again; they get serials from 13.")
         return have
 
     def seed_sandbox(self):
-        """The standard sandbox subjects (extensions/sandbox.md), serials 1–7 and 9–11; serial 8 stays unregistered.
-        A sandbox runs this on every start and adds only those missing, so one made by 0.3 (1–7) gains 9–11. A serial
+        """The standard sandbox subjects (extensions/sandbox.md), serials 1–7 and 9–12; serial 8 stays unregistered.
+        A sandbox runs this on every start and adds only those missing, so one made by 0.3 (1–7) gains 9–12. A serial
         held by another subject (0.3 numbered the operator's own from 9) is refused: that code would answer wrongly."""
         have = self._check_sandbox_serials()
         name, new = self.SANDBOX_NAMES, lambda n: n not in have
@@ -397,6 +407,8 @@ class Registry:
             own = Key()                # the person's own key, so the grant names intimate categories too; then dropped
             eleven = self.add_subject(name[11], serial=11, level="verified", minor=1, holder_public=own.public_hex)
             self.add_grant(eleven, purposes=PURPOSES, days=36500, categories=CATEGORIES, holder_key=own)
+        if new(12):                    # the holder's licence is made at each consent (bind_approve): no app shares one
+            self.add_subject(name[12], serial=12, level="verified")
 
     def purchase(self, provider_id: str, authorization: str | None, env) -> dict:
         """extensions/sandbox.md: a test purchase, no money. The request, authenticated as for /v2/requests, names a
@@ -466,10 +478,31 @@ class Registry:
             raise ProtocolError("PG_PROFILE_UNSUPPORTED", f"this registry answers under {self.config.profiles}")
         self._check_use(body["use"])
         licensee = body.get("licensee_id", "")
-        if licensee and not self.config.sandbox and not self._row(
-                "SELECT 1 FROM connections WHERE provider_id = ? AND licensee_id = ?", (provider_id, licensee)):
+        if licensee and not self._licensee_ok(provider_id, licensee):
+            if self.is_open(provider_id):        # bind B-5: "connect your licence", never a refusal
+                raise ProtocolError("PG_NOT_BOUND", "this licensee_id has no active binding to this app: ask the person "
+                                    "to connect their licence (extensions/bind.md)", status=403)
             raise ProtocolError("PG_NOT_AUTHENTICATED", "this licensee is not connected to this provider", status=401)
         return body
+
+    def _licensee_ok(self, provider_id: str, licensee: str) -> bool:
+        """licensee.md: connected by the operator, or bound by the person (bind). A sandbox connects any licensee for a
+        registered credential, which has no bind; for a provider known by its domain it lets through only another
+        provider's id, so that sandbox.md serial 9's "naming the buyer" row still answers PG_NO_LICENSE."""
+        with self.lock:
+            if self.db.execute("SELECT 1 FROM connections WHERE provider_id = ? AND licensee_id = ?",
+                               (provider_id, licensee)).fetchone() or self._binding(self.db, provider_id, licensee):
+                return True
+            if not self.config.sandbox or licensee.startswith("account:"):
+                return False
+            return not self.is_open(provider_id) or self.is_open(licensee) or bool(
+                self.db.execute("SELECT 1 FROM providers WHERE provider_id = ?", (licensee,)).fetchone())
+
+    def _binding(self, db, provider_id: str, licensee: str):
+        """The active binding of `licensee` to this provider (bind B-1, B-2), or None. ponytail: the operator key is
+        never revoked in this registry, so B-3b (a binding dies with its key) has nothing to check yet."""
+        return db.execute("SELECT * FROM bindings WHERE licensee_id = ? AND provider_id = ? AND ended_at IS NULL "
+                          "AND expires_at > ?", (licensee, provider_id, self.clock())).fetchone() if licensee else None
 
     @staticmethod
     def _check_use(use):
@@ -544,13 +577,16 @@ class Registry:
         if s["review"]:
             return "review", "PG_REVIEW_REQUIRED", None, level
         licensee, provider = req.get("licensee_id", ""), req["provider_id"]
+        binding = self._binding(db, provider, licensee)
+        bound = set(json.loads(binding["grants"])) if binding else set()   # bind B-3a: only what the person chose
         grants = [g for g in db.execute(
             "SELECT * FROM grants WHERE subject_code = ? AND not_before <= ? AND expires_at > ? ORDER BY not_before",
             (s["code"], now, now)).fetchall()
             # catalog.md: an open grant, a grant to this licensee, or the provider's own grant — which covers
             # its users only with the resale right. A sandbox purchase is its buyer's alone (sandbox.md): a sandbox
             # connects any licensee, so another provider could otherwise name the buyer as its licensee.
-            if g["licensee_id"] == "" or (g["licensee_id"] == licensee and not self._bought_by_another(g, provider))
+            if g["licensee_id"] == "" or g["id"] in bound
+            or (g["licensee_id"] == licensee and not licensee.startswith("account:") and not self._bought_by_another(g, provider))
             or (g["licensee_id"] == provider and (not licensee or g["resale"]))]
         fitting = [g for g in grants if use["purpose"] in json.loads(g["purposes"])
                    and intimate <= set(json.loads(g["categories"]))]
@@ -605,6 +641,9 @@ class Registry:
             body["reason"] = reason
         if self.config.sandbox:
             body["ext"] = {"sandbox": True}
+        binding = self._binding(db, req["provider_id"], req.get("licensee_id", "")) if status == "allow" else None
+        if binding is not None:                   # bind B-3c: the answer names the binding; basis stays {kind, grant}
+            body["ext"] = {**body.get("ext", {}), "bind": {"binding": binding["id"]}}
         env = seal("pg.answer.v1", body, [("registry", self.key)])
         use = "reserved" if status == "allow" else None   # catalog.md: every allow is billed unless given back
         if ask_id is None:
@@ -663,6 +702,7 @@ class Registry:
                     raise ProtocolError("PG_NOT_AUTHENTICATED", "the party document does not extend the pinned chain "
                                         "(P-2); whoever takes over a domain does not get its keys", status=401) from None
             db.execute("INSERT OR REPLACE INTO meta VALUES (?, ?)", ("party:" + pid, "posted" if posted else str(self.clock())))
+            db.execute("INSERT OR REPLACE INTO meta VALUES (?, ?)", ("partydoc:" + pid, json.dumps(doc)))
         return pid
 
     def _open_chain(self, provider_id: str, key_id: str) -> list[dict]:
@@ -786,6 +826,132 @@ class Registry:
     def get_keysets(self, provider_id: str) -> dict:
         with self.lock:
             return {"provider_id": provider_id, "keysets": self._chain(self.db, provider_id)}
+
+    # ── extension bind: a person connects their licences to an app ───────
+    # ponytail: bind runs only in a sandbox, whose one test creator signs in with no password (sandbox.md serial 12).
+    # A production registry needs people's own accounts and sign-in, which this reference registry does not have.
+    def bind_client(self, client_id: str, redirect_uri: str) -> dict:
+        """bind.md step 1: the app is its party document, and redirect_uri is exactly one of the document's. A bad
+        client or redirect URI is answered here and never redirected to."""
+        if not self.config.sandbox:
+            raise ProtocolError("PG_NOT_FOUND", "this registry offers bind only as a sandbox", status=404)
+        if not self.is_open(client_id):
+            raise ProtocolError("PG_MALFORMED", "client_id is the app's provider URL", status=400)
+        with self.lock:
+            doc = self._meta("partydoc:" + client_id)
+        if doc is None:
+            try:
+                self._open_chain(client_id, "")              # reads the party document from the app's domain
+            except ProtocolError:
+                pass
+            with self.lock:
+                doc = self._meta("partydoc:" + client_id)
+        doc = json.loads(doc) if doc else None
+        if doc is None or redirect_uri not in doc.get("redirect_uris", []):
+            raise ProtocolError("PG_MALFORMED", "unknown app, or redirect_uri is not one of its party document's "
+                                "redirect_uris", status=400)
+        return doc
+
+    def bind_offer(self) -> list[dict]:
+        """What the sandbox's test creator connects: a new licence on serial 12 for each consent, so no two apps share
+        its three uses (sandbox.md)."""
+        return [{"subject_ref": mint_code(self.config.prefix, 12), "purposes": ["research"], "max_uses": 3}]
+
+    def bind_approve(self, client_id: str, redirect_uri: str, code_challenge: str) -> str:
+        """bind.md steps 2-3: the person approved; a code for the app, single-use, 60 seconds, bound to the client,
+        the redirect URI and the PKCE challenge."""
+        self.bind_client(client_id, redirect_uri)
+        if not re.fullmatch(r"[A-Za-z0-9_-]{43}", code_challenge or ""):
+            raise ProtocolError("PG_MALFORMED", "code_challenge is a base64url SHA-256 (S256)", status=400)
+        with self.lock:                # the consent number keeps two consents in one second two grants
+            n = self._row("SELECT COUNT(*) FROM grants WHERE licensee_id = ?", (SANDBOX_HOLDER,))[0] + 1
+            grants = [self.add_grant(o["subject_ref"], licensee_id=SANDBOX_HOLDER, purposes=o["purposes"],
+                                     max_uses=o["max_uses"], ext={"sandbox": True, "consent": n})
+                      for o in self.bind_offer()]
+        code = secrets.token_urlsafe(32)
+        with self.tx() as db:
+            db.execute("INSERT INTO bind_codes VALUES (?, ?, ?, ?, ?, ?, ?, 0)", (
+                _hash_token(code), client_id, redirect_uri, code_challenge, SANDBOX_HOLDER, json.dumps(grants),
+                self.clock() + BIND_CODE_TTL))
+        return code
+
+    def bind_exchange(self, provider_id: str, authorization: str | None, env) -> dict:
+        """bind.md steps 4-5: the app's signed pg.bind_exchange.v1 for a pg.binding.v1 with a new random licensee_id.
+        A new binding replaces the person's earlier one with this app (B-1)."""
+        if not self.config.sandbox:
+            raise ProtocolError("PG_NOT_FOUND", "this registry offers bind only as a sandbox", status=404)
+        if not self.is_open(provider_id):
+            raise ProtocolError("PG_NOT_AUTHENTICATED", "bind is for a provider known by its domain", status=401)
+        self._check_open(provider_id, authorization)
+        body = self._signed_by_provider(env, "pg.bind_exchange.v1", provider_id)
+        fields = {"signers", "provider_id", "code", "code_verifier", "redirect_uri", "issued_at"}
+        if set(body) != fields or not all(isinstance(body[k], str) for k in fields - {"signers", "issued_at"}) \
+                or type(body["issued_at"]) is not int:
+            raise ProtocolError("PG_MALFORMED", "pg.bind_exchange.v1 is {signers, provider_id, code, code_verifier, "
+                                "redirect_uri, issued_at}")
+        now = self.clock()
+        if body["provider_id"] != provider_id or abs(now - body["issued_at"]) > 60:
+            raise ProtocolError("PG_NOT_AUTHENTICATED", "provider_id differs from X-Provider-ID, or issued_at is more "
+                                "than 60 seconds off", status=401)
+        challenge = base64.urlsafe_b64encode(hashlib.sha256(body["code_verifier"].encode()).digest()).rstrip(b"=").decode()
+        binding = None
+        with self.tx() as db:
+            row = db.execute("SELECT * FROM bind_codes WHERE code_hash = ?", (_hash_token(body["code"]),)).fetchone()
+            if row is not None:                               # single-use: a failed try spends the code too
+                db.execute("UPDATE bind_codes SET used = 1 WHERE code_hash = ?", (row["code_hash"],))
+            if row is not None and not row["used"] and row["expires_at"] > now and row["provider_id"] == provider_id \
+                    and row["redirect_uri"] == body["redirect_uri"] \
+                    and re.fullmatch(r"[A-Za-z0-9._~-]{43,128}", body["code_verifier"]) \
+                    and secrets.compare_digest(row["challenge"], challenge):
+                db.execute("UPDATE bindings SET ended_at = ? WHERE provider_id = ? AND account = ? AND ended_at IS NULL",
+                           (now, provider_id, row["account"]))
+                licensee = secrets.token_urlsafe(24)                         # random, new, means nothing elsewhere
+                binding = seal("pg.binding.v1", {"authority": self.config.prefix, "provider_id": provider_id,
+                                                 "licensee_id": licensee, "grants": json.loads(row["grants"]),
+                                                 "issued_at": now, "expires_at": now + BINDING_TTL}, [("registry", self.key)])
+                check_body("binding", binding["body"])
+                db.execute("INSERT INTO bindings VALUES (?, ?, ?, ?, ?, ?, NULL, ?)", (
+                    licensee, message_id(binding["type"], binding["body"]), provider_id, row["account"], row["grants"],
+                    now + BINDING_TTL, json.dumps(binding)))
+        if binding is None:
+            raise ProtocolError("PG_BIND_CODE", "the code is unknown, used or expired, or not for this client, redirect "
+                                "URI or verifier", status=400)
+        return {"binding": binding}
+
+    def bound_grants(self, provider_id: str, authorization: str | None, pg_access: str | None, licensee: str,
+                     path: str) -> dict:
+        """bind.md "What the person holds": only the provider bound to this licensee, and only the binding's grants.
+        status and remaining are unsigned and inform the app; only an allow permits."""
+        pid = self.authenticate_read(provider_id, authorization, pg_access, "GET", path)
+        now = self.clock()
+        with self.lock:
+            b = self._binding(self.db, pid, licensee)
+            if b is None:
+                raise ProtocolError("PG_NOT_BOUND", "this licensee_id has no active binding to this app", status=403)
+            out = []
+            for gid in json.loads(b["grants"]):
+                g = self.db.execute("SELECT * FROM grants WHERE id = ?", (gid,)).fetchone()
+                used = self.db.execute("SELECT COUNT(*) FROM answers WHERE grant_id = ? AND use IN ('reserved', "
+                                       "'consumed')", (gid,)).fetchone()[0] + g["uses_offset"]
+                out.append({"id": gid, "status": "active" if g["expires_at"] > now else "expired",
+                            "remaining": None if g["max_uses"] is None else max(g["max_uses"] - used, 0),
+                            "grant": json.loads(g["envelope"])})
+        return {"grants": out}
+
+    def bindings(self) -> list[dict]:
+        """B-2: each binding, with the number of allows issued through it."""
+        rows = self._q("SELECT b.*, (SELECT COUNT(*) FROM answers a JOIN asks k ON k.id = a.ask_id WHERE a.status = "
+                       "'allow' AND k.provider_id = b.provider_id AND json_extract(k.request, '$.licensee_id') = "
+                       "b.licensee_id) AS allows FROM bindings b ORDER BY rowid")
+        return [{"licensee_id": r["licensee_id"], "provider_id": r["provider_id"], "account": r["account"],
+                 "allows": r["allows"], "active": r["ended_at"] is None and r["expires_at"] > self.clock()} for r in rows]
+
+    def revoke_binding(self, licensee_id: str):
+        """B-2: the person revokes a binding; it takes effect at once."""
+        with self.tx() as db:
+            if not db.execute("UPDATE bindings SET ended_at = ? WHERE licensee_id = ? AND ended_at IS NULL",
+                              (self.clock(), licensee_id)).rowcount:
+                raise ValueError(f"no active binding {licensee_id}")
 
     # ── extension reports (+ limits, observe) ────────────────────────────
     def report(self, provider_id: str, authorization: str | None, env) -> dict:
@@ -964,10 +1130,12 @@ class Registry:
     def document(self) -> dict:
         api = self.config.api.rstrip("/")
         return {"prefix": self.config.prefix, "name": self.config.name, "api": api, "keys": api + "/keys",
-                "profiles": self.config.profiles, "extensions": EXTENSIONS + (["sandbox"] if self.config.sandbox else [])
+                "profiles": self.config.profiles, "extensions": EXTENSIONS + (["sandbox", "bind"] if self.config.sandbox else [])
                 + (["provider-identity"] if self.config.providers == "open" else []) + (["terms"] if self.config.terms else []),
                 "policy": self.config.policy, "complaints": self.config.complaints, "sandbox": self.config.sandbox,
-                "providers": self.config.providers, "spec": "PRE-GEN v5", **({"terms": "optional"} if self.config.terms else {})}
+                "providers": self.config.providers, "spec": "PRE-GEN v5", **({"terms": "optional"} if self.config.terms else {}),
+                **({"bind": {"authorize": api + "/v2/bind/authorize", "token": api + "/v2/bind/token"}}
+                   if self.config.sandbox else {})}
 
     def key_set(self) -> dict:
         """PRE-GEN-SPEC.md §2.3: every key ever signed with, current and retired, and the announced next key; self-signed,

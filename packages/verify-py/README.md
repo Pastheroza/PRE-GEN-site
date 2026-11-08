@@ -105,7 +105,7 @@ registry answered, not that the output was lawful.
 Load the test directory with
 `pregen.load_directory("https://www.pregen.org/test/registries.json", steward_public_key_hex="78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0")`,
 ask the PRE-GEN Test Registry at `https://sandbox.pregen.org` (codes `PG-TEST-000001N` …
-`PG-TEST-000011Y`, where 9 tests a purchase, 10 a person's terms and 11 a minor; introduce yourself with `POST /v2/sandbox/party`), and pass `testing=True`
+`PG-TEST-0000123`, where 9 tests a purchase, 10 a person's terms, 11 a minor and 12 a creator's licence through bind; introduce yourself with `POST /v2/sandbox/party`), and pass `testing=True`
 to `check_answer` / `check_proof`. With the real directory, `check_answer` refuses `testing=True`.
 Walk-through: https://www.pregen.org/docs/provider.md, step 9.
 

@@ -463,10 +463,11 @@ Sandbox test subjects (copy them; the last character is a check character):
   PG-ABCE-000009…  Test subject 9 (buy first)
   PG-ABCE-000010…  Test subject 10 (the person's terms)
   PG-ABCE-000011…  Test subject 11 (a minor)
+  PG-ABCE-000012…  Test subject 12 (a creator's licence, through bind)
   PG-ABCE-000008…  Test subject 8 (not registered: PG_UNKNOWN_SUBJECT)
 ```
 
-Save this output: code 8 is never stored, so `subject list` shows only 1–7, 9–11 and your own.
+Save this output: code 8 is never stored, so `subject list` shows only 1–7, 9–12 and your own.
 What each code tests, buying a use of code 9 included: `docs/provider.md`, step 9.
 
 Serve it (step 5). A provider introduces itself by posting its party document (a laptop has
@@ -527,14 +528,14 @@ The extra line reads `PASS POST /v2/requests for PG-ABCE-000001…, purpose comm
 200, allow`; with test code 2 it reads `… deny PG_NO_LICENSE`. To try a grant of your own
 (purposes, a licensee), add a test person and that grant to the sandbox (`subject add
 --dir ./sandbox --level verified --publish --name "Test subject 12 (allow, licensee test:t1, commercial)"`, named by what it
-answers, which numbers added people from 12 on, and `grant add --dir ./sandbox …`)
+answers, which numbers added people from 13 on, and `grant add --dir ./sandbox …`)
 and ask for it the same way (give sandbox test grants no `--max-uses`: every provider shares
 them, and each allow, a `check` included, uses one for good); for a licensee-only grant, give
 it `--licensee test:t1` and add `--licensee test:t1` to `check`. If you added your own test
 people, also change the template's sentence in `./sandbox/policy.md`, "it holds no real people,
-only the standard test subjects (codes 1-7 and 9-11; code 8 is deliberately unregistered)", for
-example to "It holds no real people: the standard test subjects (codes 1-7 and 9-11) and test
-people of our own (codes 12 and up)."
+only the standard test subjects (codes 1-7 and 9-12; code 8 is deliberately unregistered)", for
+example to "It holds no real people: the standard test subjects (codes 1-7 and 9-12) and test
+people of our own (codes 13 and up)."
 
 **If you wrote your own registry,** also run conformance Level 1 against your signing
 library (`spec/conformance/README.md`; `spec/` is in `git clone https://github.com/Pastheroza/PRE-GEN-site`).

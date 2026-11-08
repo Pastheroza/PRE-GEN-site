@@ -1,0 +1,11 @@
+{
+  "name": "pregen-reference-provider",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "start": "node app.mjs --sandbox",
+    "selfcheck": "node selfcheck.mjs ./adapter.mjs --sandbox",
+    "test": "node --test --test-timeout=300000 test/e2e.test.mjs"
+  }
+}

@@ -66,7 +66,19 @@ keep working.
   **Upgrading a 0.3 sandbox:** 0.4.0 adds the missing standard subjects each time a sandbox starts, so an existing
   one gains 9–11 by restarting on 0.4.0. 0.3 numbered the operator's own test people from 9; a sandbox whose 9, 10
   or 11 is such a subject refuses to start and says so: make a fresh one (`init --sandbox`) and add those people
-  again (from 0.4.0 they are numbered from 12).
+  again (from 0.4.0 they are numbered from 13).
+- **`sandbox` serial 12** (1–11 unchanged): a creator's licence reached only through `bind`. Without a binding
+  `PG_NO_LICENSE`; through one, `research` is `allow` with `ext.bind`, `commercial` is `PG_SCOPE_VIOLATION`, a fourth
+  use `PG_USAGE_LIMIT`; a `licensee_id` with no active binding to the asking provider is HTTP 403 `PG_NOT_BOUND`.
+  Each consent gives the sandbox's test creator a new licence (research, three uses), so apps never share one.
+- **Reference registry 0.4.0 implements `bind` in a sandbox** (`/v2/bind/authorize`, `/v2/bind/token`,
+  `GET /v2/grants?licensee_id=…`, `pregen-registry bindings`). A production registry built from it does not list
+  `bind`: it has no accounts or sign-in for people. A sandbox now checks a `licensee_id` from a provider known by its
+  domain: only a binding, an operator connection or another provider's own id passes (the serial 9 row above);
+  anything else is 403 `PG_NOT_BOUND`. A registered credential in a sandbox is unchanged.
+- **Reference provider** (`examples/reference-provider`): an app that signs creators in, connects their licence
+  through `bind`, journals each job before asking, renders only what it asked about, reports and attaches the proof,
+  and recovers after a crash; with a self-check over sandbox codes 1–12.
 
 ## pregen 0.12.0, @pregen/verify 0.12.0, pregen-registry 0.3.0 (2026-11-06)
 

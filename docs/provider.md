@@ -648,10 +648,10 @@ The test network is a sandbox registry and a test directory, open to everyone:
 - **Test directory:** `https://www.pregen.org/test/registries.json`, signed by the test steward
   key `78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0` (step 3). It lists
   sandboxes only. Never in production.
-- **The PRE-GEN Test Registry:** prefix `TEST`, `api` `https://sandbox.pregen.org`, codes 1 to 11:
+- **The PRE-GEN Test Registry:** prefix `TEST`, `api` `https://sandbox.pregen.org`, codes 1 to 12:
   `PG-TEST-000001N` `PG-TEST-000002Z` `PG-TEST-0000034` `PG-TEST-000004E` `PG-TEST-000005R`
   `PG-TEST-000006$` `PG-TEST-0000077` `PG-TEST-000008H` `PG-TEST-000009V` `PG-TEST-000010M`
-  `PG-TEST-000011Y` (copy them; the last character is a check character). Any registry's own sandbox works the same way: a separate registry with its
+  `PG-TEST-000011Y` `PG-TEST-0000123` (copy them; the last character is a check character). Any registry's own sandbox works the same way: a separate registry with its
   own prefix (`ABCE` beside `ABCD`), listed in the test directory, whose document says
   `"sandbox": true`.
 
@@ -700,6 +700,10 @@ for code 10, and add `categories` there for the code 11 rows.
 | `10` | an excluded use | `purpose: "commercial"`, or `categories: ["advertising"]` | `deny` `PG_TERMS_EXCLUDED` |
 | `11` | a minor: the floor | no `categories`, or `["fashion"]` | `allow` |
 | `11` | a minor: the floor | `["violence"]`, `["sexual"]`, `["adult"]`, or a word outside the vocabulary such as `["nsfw-art"]` | `deny` `PG_PROHIBITED_USE` |
+| `12` | a creator's licence, through `bind` | connect (`bind`), then ask with the binding's `licensee_id` | `allow`; `ext.bind` names the binding |
+| `12` | outside the licence | the same, `purpose: "commercial"` | `deny` `PG_SCOPE_VIOLATION` |
+| `12` | not connected | no `licensee_id` | `deny` `PG_NO_LICENSE` |
+| `12` | a `licensee_id` not bound to you | another app's, a replaced or revoked one, or a made-up one | HTTP 403 `PG_NOT_BOUND`: show "connect your licence", not a refusal |
 
 To buy (code 9), sign the same `pg.request.v1` envelope `ask` builds, with any `job_id`, and
 `POST {sandbox api}/v2/sandbox/purchases` with `X-Provider-ID`. In the complete example:
@@ -710,6 +714,13 @@ credential path" item 4, then shows that grant `billed` 1, `given_back` 1. Code 
 and category, signed by the person, yet still refuses: a minor's protection comes first. The
 code 10 terms are at `GET {sandbox api}/v2/codes/PG-TEST-000010M` (section "Accepting a
 person's terms").
+
+Code 12 is a creator's licence that only the creator's own connection reaches. List a callback in
+your party document (`redirect_uris`), then connect as in "Selling" below: the sandbox's consent page
+signs in its test creator, with no password, and each consent gives that creator a new licence on
+code 12 (research, three uses), so no two apps share it. A working app that does all of this, and a
+self-check that runs your own integration through codes 1 to 12, is the reference provider:
+https://github.com/Pastheroza/PRE-GEN-site/tree/main/examples/reference-provider. It runs against a local reference registry with one command.
 
 `testing` is only ever used with a test directory (`TEST_STEWARD` set): there it is true for a
 code whose registry's document says `"sandbox": true`, and for `check_proof` (offline included)

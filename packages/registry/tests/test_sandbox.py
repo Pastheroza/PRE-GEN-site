@@ -168,12 +168,12 @@ def old_sandbox(path, *own):
     return reg.key
 
 
-def test_an_older_sandbox_gains_serials_9_to_11_when_opened(tmp_path):
+def test_an_older_sandbox_gains_serials_9_to_12_when_opened(tmp_path):
     key = old_sandbox(tmp_path / "registry.db")
     cfg = Config(prefix="TEST", name="Test", api="https://test.example", sandbox=True)
     for _ in range(2):                                                     # opening it again changes nothing
         reg = Registry(cfg, key, str(tmp_path / "registry.db"))
-        assert [r["serial"] for r in reg._q("SELECT serial FROM subjects ORDER BY serial")] == [*range(1, 8), 9, 10, 11]
+        assert [r["serial"] for r in reg._q("SELECT serial FROM subjects ORDER BY serial")] == [*range(1, 8), 9, 10, 11, 12]
     c = TestClient(create_app(reg))
     assert [o["subject_ref"] for o in c.get("/v2/catalog").json()["offers"]] == [code(9)]
     assert "terms" in c.get(f"/v2/codes/{code(10)}").json()

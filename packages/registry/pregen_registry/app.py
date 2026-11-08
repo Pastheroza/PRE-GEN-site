@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import time
+from html import escape
+from urllib.parse import parse_qs, urlencode
 
 from fastapi import Body, FastAPI, Header, Request
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 
 from . import __version__
 from .protocol import ProtocolError
@@ -15,6 +17,17 @@ SANDBOX_ACCESS_PER_HOUR = 10
 
 def _path(request: Request) -> str:
     return request.url.path + ("?" + request.url.query if request.url.query else "")
+
+
+def _authorize_params(registry: Registry, q: dict) -> dict:
+    """bind.md step 1: OAuth 2.0 code with PKCE S256 and state. The app and its redirect URI are checked first, so a
+    bad one is never redirected to. `hint` only pre-selects among the person's own licences: here it changes nothing."""
+    doc = registry.bind_client(q.get("client_id", ""), q.get("redirect_uri", ""))
+    if q.get("response_type") != "code" or q.get("code_challenge_method") != "S256" or not q.get("state") \
+            or not q.get("code_challenge"):
+        raise ProtocolError("PG_MALFORMED", "response_type=code, state, code_challenge and code_challenge_method=S256 "
+                            "are required", status=400)
+    return doc
 
 
 def create_app(registry: Registry, policy_file=None) -> FastAPI:
@@ -105,6 +118,48 @@ def create_app(registry: Registry, policy_file=None) -> FastAPI:
     def sandbox_purchase(env=Body(...), x_provider_id: str = Header(""), authorization: str | None = Header(None)):
         """extensions/sandbox.md: a test purchase, no money — one more use of a catalog subject for this provider."""
         return registry.purchase(x_provider_id, authorization, env)
+
+    @app.get("/v2/bind/authorize")
+    def bind_authorize(request: Request):
+        """bind.md step 2: the consent screen. The sandbox's test creator is signed in; it holds no real people."""
+        q = dict(request.query_params)
+        doc = _authorize_params(registry, q)
+        offer = "".join(f"<li>{escape(o['subject_ref'])}: {', '.join(o['purposes'])}, {o['max_uses']} uses</li>"
+                        for o in registry.bind_offer())
+        name, domain = escape(str(doc.get("name", ""))), escape(doc["party_id"])
+        fields = "".join(f'<input type="hidden" name="{escape(k)}" value="{escape(v)}">' for k, v in q.items())
+        page = (f"<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'>"
+                f"<title>Connect your licences</title><h1>Connect your licences from {escape(registry.config.name)} "
+                f"to {name}?</h1><p>App: {name} at <b>{domain}</b></p><p>Licences that become usable there:</p>"
+                f"<ul>{offer}</ul><p>{name} will learn the terms of these licences and a random id for this app. It "
+                f"will not learn your account, your email, your other licences or the other apps you use.</p>"
+                f"<p>Signed in as the sandbox's test creator, with no password: a sandbox holds no real people.</p>"
+                f"<form method=post>{fields}<button name=decision value=approve>Connect</button> "
+                f"<button name=decision value=deny>Cancel</button></form>")
+        return HTMLResponse(page, headers={"X-Frame-Options": "DENY", "Content-Security-Policy": "frame-ancestors 'none'",
+                                           "Cache-Control": "no-store"})
+
+    @app.post("/v2/bind/authorize")
+    async def bind_decide(request: Request):
+        """bind.md step 3: back to the app with a code, or with access_denied."""
+        q = {k: v[-1] for k, v in parse_qs((await request.body()).decode(), keep_blank_values=True).items()}
+        _authorize_params(registry, q)
+        sep = "&" if "?" in q["redirect_uri"] else "?"
+        if q.get("decision") == "approve":
+            back = {"code": registry.bind_approve(q["client_id"], q["redirect_uri"], q["code_challenge"])}
+        else:
+            back = {"error": "access_denied"}
+        back |= {"state": q["state"], "iss": registry.config.prefix}
+        return RedirectResponse(q["redirect_uri"] + sep + urlencode(back), status_code=303)
+
+    @app.post("/v2/bind/token")
+    def bind_token(env=Body(...), x_provider_id: str = Header(""), authorization: str | None = Header(None)):
+        return registry.bind_exchange(x_provider_id, authorization, env)
+
+    @app.get("/v2/grants")
+    def bound_grants(request: Request, licensee_id: str = "", x_provider_id: str = Header(""),
+                     authorization: str | None = Header(None), pg_access: str | None = Header(None)):
+        return registry.bound_grants(x_provider_id, authorization, pg_access, licensee_id, _path(request))
 
     @app.get("/v2/proofs/{short_id}")
     def proof(short_id: str):

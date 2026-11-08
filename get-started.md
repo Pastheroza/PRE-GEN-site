@@ -228,7 +228,7 @@ categories need the person's own signed grant).
 - **A registry's sandbox.** A registry whose document says `"sandbox": true` publishes the
   standard test subjects on its prefix (`…000001` allows; `…000002`–`…000007` refuse,
   hold or answer `not_blocked`; `…000008` is unknown; `…000009` tests payment, `…000010` a
-  person's terms, `…000011` a minor; table below). Check its answers against the test
+  person's terms, `…000011` a minor, `…000012` a creator's licence through `bind`; table below). Check its answers against the test
   directory, never the real one:
   `const testDir = await loadDirectory({ url: "https://www.pregen.org/test/registries.json", stewardPublicKeyHex: "78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0" })`
   / `pregen.load_directory("https://www.pregen.org/test/registries.json", steward_public_key_hex="78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0")`,
@@ -238,7 +238,7 @@ categories need the person's own signed grant).
   and answer shapes:
 
   ```bash
-  pip install "pregen-registry>=0.3.0"
+  pip install "pregen-registry>=0.4.0"
   pregen-registry init --dir ./data --prefix TEST --name "My sandbox" --api http://127.0.0.1:8000 --sandbox
   pregen-registry serve --dir ./data
   curl -X POST http://127.0.0.1:8000/v2/sandbox/party -H 'Content-Type: application/json' --data @pregen-party.json   # your party document, by post
@@ -248,7 +248,7 @@ categories need the person's own signed grant).
   expected. The shared test directory is online: `https://www.pregen.org/test/registries.json`,
   signed by the test steward key `78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0`. It lists PRE-GEN's own
   sandbox, the PRE-GEN Test Registry (`https://sandbox.pregen.org`, prefix `TEST`, codes
-  `PG-TEST-000001N` to `PG-TEST-000011Y`): with it, `checkAnswer(…, { directory: testDir, testing: true })`
+  `PG-TEST-000001N` to `PG-TEST-0000123`): with it, `checkAnswer(…, { directory: testDir, testing: true })`
   accepts sandbox answers end to end. Post your party document to
   `https://sandbox.pregen.org/v2/sandbox/party` first (an `https://<domain>` id: lower case, no path, query or trailing slash; a sandbox also
   takes a port, and `https://localhost:<port>`), then ask
@@ -275,10 +275,16 @@ categories need the person's own signed grant).
   | `PG-TEST-000010M` | an excluded use | `purpose: "commercial"`, or `categories: ["advertising"]` | `deny` `PG_TERMS_EXCLUDED` |
   | `PG-TEST-000011Y` | a minor: the floor | no `categories`, or `["fashion"]` | `allow` |
   | `PG-TEST-000011Y` | a minor: the floor | `["violence"]`, `["sexual"]`, `["adult"]`, or an unknown word such as `["nsfw-art"]` | `deny` `PG_PROHIBITED_USE` |
+  | `PG-TEST-0000123` | a creator's licence, through `bind` | connect (`bind`), then ask with the binding's `licensee_id` | `allow`; `ext.bind` names the binding |
+  | `PG-TEST-0000123` | outside the licence | the same, `purpose: "commercial"` | `deny` `PG_SCOPE_VIOLATION` |
+  | `PG-TEST-0000123` | not connected | no `licensee_id` | `deny` `PG_NO_LICENSE` |
+  | `PG-TEST-0000123` | a `licensee_id` not bound to you | another app's, a replaced or revoked one, or a made-up one | HTTP 403 `PG_NOT_BOUND`: show "connect your licence", not a refusal |
 
   To buy, `POST https://sandbox.pregen.org/v2/sandbox/purchases` with the same signed
   `pg.request.v1` you would ask with (any `job_id`): HTTP 200 `{"grant": …}`, one use, yours
-  only, no money. Then ask under a new `job_id`. The details: `https://www.pregen.org/docs/provider.md`, step 9.
+  only, no money. Then ask under a new `job_id`. For code 12, connect first (`bind`, OAuth code + PKCE): the
+  sandbox's test creator approves with no password. The details: `https://www.pregen.org/docs/provider.md`, step 9;
+  a working app: https://github.com/Pastheroza/PRE-GEN-site/tree/main/examples/reference-provider.
 - **Bytes.** `spec/test-vectors/messages.json` gives eight messages with their canonical
   body, signing input, message id and signatures. Reproduce every one.
 
