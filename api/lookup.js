@@ -127,6 +127,14 @@ module.exports = async (req, res) => {
     return;
   }
 
+  /* The steward's word beats the registry's: a false claim or a revoked registry is never asked (PG-CODE.md §9.1). */
+  const falseClaim = (REGISTRIES.false_claims || []).find((f) => f.code === c.code);
+  if (falseClaim) {
+    res.status(410).json({ error: "false_claim", at: falseClaim.at,
+      detail: "The steward recorded this code as a false claim." });
+    return;
+  }
+
   const cacheKey = c.kind + ":" + c.code;
   const cached = cacheGet(cacheKey);
   if (cached) {
@@ -139,6 +147,11 @@ module.exports = async (req, res) => {
   if (!registry) {
     res.status(404).json({ error: "unknown_issuer", issuer: c.issuer,
       detail: "No listed registry holds the prefix " + c.issuer + "." });
+    return;
+  }
+  if (registry.revoked) {
+    res.status(410).json({ error: "registry_revoked", at: registry.revoked.at,
+      detail: "The registry that issued this code was revoked." });
     return;
   }
   const origin = !c.issuer;
