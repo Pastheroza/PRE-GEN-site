@@ -47,7 +47,7 @@ export async function parseConfig(argv) {
     // Seconds after the first send until any answer to a request has certainly expired: the registry's answer
     // lifetime (300 at the reference registry; at most 900, PRE-GEN-CORE.md rule 4), every send with its timeout
     // (3 x 10 s plus 3 s of waits), and 60 s for clocks. Only then is a lost answer reported (answer null).
-    lostAnswerWait: Number(v["lost-answer-wait"] ?? 300 + 33 + 60),
+    lostAnswerWait: Number(v["lost-answer-wait"] ?? 900 + 33 + 60),   // limits.md: the longest answer core allows
     authority: v.authority ?? (sandbox ? "TEST" : undefined),
     directoryUrl: v.directory ?? (sandbox ? TEST_DIRECTORY : pg.DIRECTORY_URL),
     steward: v.steward ?? (sandbox ? TEST_STEWARD : pg.STEWARD_PUBLIC_KEY_HEX),

@@ -238,11 +238,13 @@ class Registry:
             db.execute("INSERT OR REPLACE INTO meta (k, v) VALUES ('next_key', ?)", (public_key_hex,))
 
     def _meta(self, k):
-        row = self.db.execute("SELECT v FROM meta WHERE k = ?", (k,)).fetchone()
+        with self.lock:                # one sqlite connection, shared by the server's threads
+            row = self.db.execute("SELECT v FROM meta WHERE k = ?", (k,)).fetchone()
         return row["v"] if row else None
 
     def _set_meta(self, k, v):
-        self.db.execute("INSERT OR REPLACE INTO meta (k, v) VALUES (?, ?)", (k, v))
+        with self.lock:
+            self.db.execute("INSERT OR REPLACE INTO meta (k, v) VALUES (?, ?)", (k, v))
         return v
 
     # ── operator actions (CLI) ───────────────────────────────────────────
@@ -683,8 +685,8 @@ class Registry:
     def _answer(self, db, ask_id, req: dict, decision, now: int) -> dict:
         """The signed answer to `decision`, kept under `ask_id`; with none (terms T-7) it is kept nowhere."""
         status, reason, grant, level = decision
-        if self._masked(db, req, status, reason, grant):
-            status, reason, grant = "deny", "PG_PROVIDER_NOT_ACCEPTED", None
+        if self._masked(db, req, status, reason, grant):    # P-5a: and the level of an unknown code, so it tells nothing
+            status, reason, grant, level = "deny", "PG_PROVIDER_NOT_ACCEPTED", None, "self"
         body = {"request_id": message_id("pg.request.v1", req), "profile": req["profile"], "status": status, "level": level,
                 "obligations": [], "issued_at": now, "expires_at": now + self.ttl}
         if status == "allow":
@@ -766,16 +768,19 @@ class Registry:
                         raise
                     raise ProtocolError("PG_NOT_AUTHENTICATED", "the party document does not extend the pinned chain "
                                         "(P-2); whoever takes over a domain does not get its keys", status=401) from None
-            db.execute("INSERT OR REPLACE INTO meta VALUES (?, ?)", ("party:" + pid, "posted" if posted else str(self.clock())))
+            if posted or (db.execute("SELECT v FROM meta WHERE k = ?", ("party:" + pid,)).fetchone() or {"v": ""})["v"] \
+                    != "posted":                   # a read from the domain never unmarks a posted document
+                db.execute("INSERT OR REPLACE INTO meta VALUES (?, ?)",
+                           ("party:" + pid, "posted" if posted else str(self.clock())))
             db.execute("INSERT OR REPLACE INTO meta VALUES (?, ?)", ("partydoc:" + pid, json.dumps(doc)))
         return pid
 
     def _open_chain(self, provider_id: str, key_id: str) -> list[dict]:
         """The pinned chain of a provider known by its domain. Its party document is read when nothing is pinned, when
         a message names a key the chain does not hold, and at least daily (P-2, P-3); at most once a minute (P-7)."""
-        with self.lock:
+        with self.lock:                # the chain and its marker read together, so a posted chain is never "stale"
             chain = self._chain(self.db, provider_id)
-        last = self._meta("party:" + provider_id) or ""
+            last = self._meta("party:" + provider_id) or ""
         stale = chain and last != "posted" and (key_id != self._current(chain[-1]["body"])["key_id"]
                                                 or self.clock() - float(last or 0) > PARTY_REFRESH)
         if (not chain or stale) and (not last.replace(".", "").isdigit() or self.clock() - float(last) >= PARTY_MIN_INTERVAL):
@@ -1076,7 +1081,10 @@ class Registry:
                 req = body["request"]
                 if message_id("pg.request.v1", req) != body["request_id"] or req["provider_id"] != provider_id:
                     raise ProtocolError("PG_MALFORMED", "request does not match request_id")
-                ask, ans = self._bind(db, req), None
+                # the ask by its id first: one that stepped aside under T-7 keeps it, and only it can be given back
+                ask = db.execute("SELECT * FROM asks WHERE id = ?", (body["request_id"],)).fetchone() \
+                    or self._bind(db, req)
+                ans = None
             else:
                 ans = db.execute("SELECT * FROM answers WHERE id = ?", (body["answer"],)).fetchone()
                 ask = db.execute("SELECT * FROM asks WHERE id = ?", (ans["ask_id"],)).fetchone() if ans else None

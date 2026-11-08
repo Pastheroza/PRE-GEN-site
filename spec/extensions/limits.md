@@ -28,8 +28,8 @@ arrived), it names the ask by `request_id` and releases every `reserved` allow o
 has expired, inside the window; those allows can never be reported again. An allow still valid
 stays reserved. The ask is then closed: no new answer is issued for it (`PG_ASK_CLOSED`). Send
 that report, never the request again, and only once any answer would have expired: no earlier
-than the time the request was sent, plus the profile's answer lifetime, plus the request's own
-timeout.
+than the time the request was sent, plus the registry's answer lifetime (at most 900 seconds,
+core), plus the request's own timeout. Without knowing the registry's lifetime, wait the 900.
 
 **An allow never reported stays reserved** — that is, counted.
 

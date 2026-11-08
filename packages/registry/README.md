@@ -52,7 +52,7 @@ For a test that watches an answer expire, a sandbox started with `PREGEN_REGISTR
    `init`, out of band. Back up `data/operator.key` offline; it is created with mode 600.
 4. **Add subjects, grants, providers and end users:**
    - `pregen-registry subject add --dir ./data --name "…" --level verified`
-   - `pregen-registry grant add --dir ./data --subject 'PG-ABCD-…' --purposes commercial --days 365 --max-uses 100`
+   - `pregen-registry grant add --dir ./data --subject 'PG-ABCD-…' --any-provider --purposes commercial --days 365 --max-uses 100`
    - `pregen-registry provider add --dir ./data --id frame-ai` — prints the credential once (providers known by
      their domain need no credential: [`extensions/provider-identity.md`](https://www.pregen.org/spec/extensions/provider-identity.md);
      `pregen-registry provider accept --dir ./data --id https://frame.example` once you have vetted one)

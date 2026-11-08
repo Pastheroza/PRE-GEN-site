@@ -4,7 +4,7 @@
                        --policy https://registry.example/policy --complaints mailto:… [--sandbox] [--open-providers]
   pregen-registry serve --dir DATA [--host 0.0.0.0 --port 8000]
   pregen-registry subject add --dir DATA --name "Maya Cole" [--level verified]
-  pregen-registry grant add --dir DATA --subject PG-… [--licensee ID] [--purposes research,commercial] [--days 365] [--max-uses N]
+  pregen-registry grant add --dir DATA --subject PG-… (--licensee ID | --any-provider) [--purposes research,commercial] [--days 365] [--max-uses N]
   pregen-registry grant revoke --dir DATA --id GRANT_ID    (the grant ends now)
   pregen-registry provider add --dir DATA [--id frame-ai]     (prints the credential once)
   pregen-registry provider remove --dir DATA --id frame-ai    (its token stops working)
@@ -113,6 +113,8 @@ def main(argv=None):
             p.add_argument("--purposes", default="research")
             p.add_argument("--days", type=int, default=365)
             p.add_argument("--max-uses", type=int)
+            p.add_argument("--any-provider", action="store_true",
+                           help="add: no licensee, so the grant covers every provider that asks for this person")
         elif name == "provider":
             p.add_argument("action", choices=["add", "remove", "accept"])
             p.add_argument("--id")
@@ -233,6 +235,8 @@ def main(argv=None):
     elif a.cmd == "grant":
         if not a.subject:
             sys.exit("grant add needs --subject")
+        if not a.licensee and not a.any_provider:   # the broadest grant there is: never by leaving a flag out
+            sys.exit("grant add needs --licensee ID, or --any-provider for a grant every provider may use")
         print(load(a.dir).add_grant(a.subject, licensee_id=a.licensee, purposes=a.purposes.split(","),
                                     days=a.days, max_uses=a.max_uses))
     elif a.cmd == "provider" and a.action == "remove":

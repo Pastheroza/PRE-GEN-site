@@ -224,8 +224,10 @@ $proxy_add_x_forwarded_for;` (Caddy does it by default). If the proxy runs on an
 start `serve` with `FORWARDED_ALLOW_IPS=<proxy address>`. Without this, your sandbox counts every
 provider as one address: 10 credentials an hour for everyone.
 
-Rate-limit requests per address at the proxy as well: the registry itself limits only sandbox
-credentials. Keep the machine's clock synced (NTP, the default on most servers): answers and
+Rate-limit requests per address at the proxy as well. The registry itself limits three things per
+client address and hour, all in a sandbox: 10 sandbox credentials, 60 consent pages and 20 approved
+consents (`bind`). Behind a proxy that does not pass the client's address, every client is one
+address and shares those limits. Keep the machine's clock synced (NTP, the default on most servers): answers and
 the 24-hour give-back window are timed by it, and `check` (step 8) shows how far off it is.
 
 To serve HTTPS directly, for example on a test machine with your own certificate:
@@ -350,14 +352,15 @@ refuse the person anywhere else.
 **Grant a use** the person agreed to. It prints the grant id (64 hex):
 
 ```bash
-pregen-registry grant add --dir ./data --subject 'PG-ABCD-000001K' \
+pregen-registry grant add --dir ./data --subject 'PG-ABCD-000001K' --any-provider \
   --purposes commercial,editorial --days 30 --max-uses 10
 ```
 
 - `--purposes` lists the `use.purpose` values it covers (`personal`, `educational`,
   `research`, `editorial`, `commercial`). A request for any other purpose is answered
   `deny`, `PG_SCOPE_VIOLATION`.
-- Without `--licensee`, the grant covers any provider that asks for this person. With
+- `--any-provider` makes the grant cover any provider that asks for this person; `grant add`
+  refuses to run with neither it nor `--licensee`, so the broadest grant is always asked for. With
   `--licensee frame-ai:user-1` (exactly the string you pass to `connect` below), it covers
   only requests that name that licensee (extension `licensee`).
 - `--max-uses` counts allows (without it, no limit); `--days` is how long the grant lasts

@@ -96,7 +96,9 @@ keep working.
   a cross-site form, not an app approving its own request in a sandbox, where the creator has no password; pages and
   valid approvals are limited per address. A sandbox drops pins of a `localhost` id not bound to its key. A code is
   spent only by its own client, and shown twice by it ends the binding it gave (RFC 6749 §4.1.2); the licence is
-  made at the exchange. A sandbox's database never starts as a production registry.
+  made at the exchange. A sandbox's database never starts as a production registry. A masked answer (P-5a) carries
+  the level of an unknown code, so the level no longer tells a private code from an unknown one. `grant add` needs
+  `--licensee` or `--any-provider`.
 - **Reference provider** (`examples/reference-provider`): an app that signs creators in, connects their licence
   through `bind`, journals each job before asking, renders only what it asked about, reports and attaches the proof,
   and recovers after a crash; with a self-check over sandbox codes 1–12.

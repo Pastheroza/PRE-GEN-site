@@ -370,3 +370,108 @@ def test_only_a_valid_approval_counts_toward_the_limit():
     for _ in range(25):                                                       # no page: refused, not counted
         assert consent(c, p, challenge, nonce="x")[1].status_code == 400
     assert consent(c, p, challenge)[1].status_code == 303
+
+
+def test_concurrent_requests_keep_a_posted_document_posted():
+    import threading
+    reg, c, clock = make()
+    p = app(reg, c)
+    out = []
+
+    def ask(n):
+        out.append(p.ask(p.body(mint_code("TEST", 1), job=f"t{n}")).status_code)
+    threads = [threading.Thread(target=ask, args=(n,)) for n in range(20)]
+    [t.start() for t in threads]
+    [t.join() for t in threads]
+    assert out == [200] * 20 and reg._meta("party:" + p.id) == "posted"
+    clock.t += 86400 * 2                                                       # past PARTY_REFRESH: still no fetch
+    assert p.ask(p.body(mint_code("TEST", 1), job="later")).status_code == 200
+
+
+def _terms_allow(reg, c, clock):
+    from pregen_registry.registry import SANDBOX_LEGAL, SANDBOX_TEMPLATE
+    p = app(reg, c)
+    s = reg.add_subject("Terms person", level="verified", published=1)
+    reg.add_grant(s, purposes=("research",))
+    terms = lambda *purposes: reg.publish_terms(s, purposes=purposes, template=SANDBOX_TEMPLATE,  # noqa: E731
+                                                legal=SANDBOX_LEGAL, factor="authenticator")
+    env = p.signed("pg.request.v1", p.body(s, job="j", terms=terms("research")))
+    assert c.post("/v2/requests", headers=p.h, json=env).json()["answer"]["body"]["status"] == "allow"
+    return p, s, env, terms
+
+
+def _null_report(c, p, env, reg):
+    report = {"request_id": message_id("pg.request.v1", env["body"]), "answer": None, "request": env["body"],
+              "job_id": "j", "outcome": "not_generated", "output_hash": "", "occurred_at": reg.clock()}
+    return c.post("/v2/reports", headers=p.h, json=p.signed("pg.report.v1", report))
+
+
+@pytest.mark.parametrize("newer_stale_too", [False, True])
+def test_a_null_report_gives_back_an_allow_whose_ask_stepped_aside(newer_stale_too):
+    reg, c, clock = make()
+    p, s, env, terms = _terms_allow(reg, c, clock)
+    clock.t += 301                                            # the first allow, never received, expires
+    env2 = p.signed("pg.request.v1", p.body(s, job="j", terms=terms("research", "editorial")))   # T-7: steps aside
+    assert c.post("/v2/requests", headers=p.h, json=env2).json()["answer"]["body"]["status"] == "allow"
+    if newer_stale_too:
+        clock.t += 301
+        terms("research", "editorial", "educational")
+    r = _null_report(c, p, env, reg)
+    assert r.status_code == 200, r.text
+    assert len(r.json()["ack"]["body"]["released"]) == 1
+
+
+def test_concurrent_consent_pages_cannot_share_a_count(monkeypatch):
+    import threading
+    from pregen_registry import app as app_module
+    monkeypatch.setattr(app_module, "BIND_PAGES_PER_HOUR", 5)
+    reg, c, _ = make()
+    p = app(reg, c)
+    _, challenge = pkce()
+    q = {"response_type": "code", "client_id": p.id, "redirect_uri": CB, "state": "s", "code_challenge": challenge,
+         "code_challenge_method": "S256"}
+    out = []
+    threads = [threading.Thread(target=lambda: out.append(c.get("/v2/bind/authorize", params=q).status_code))
+               for _ in range(20)]
+    [t.start() for t in threads]
+    [t.join() for t in threads]
+    assert sorted(out) == [200] * 5 + [429] * 15
+
+
+def test_the_redirect_pattern_refuses_a_trailing_newline_and_ports_past_65535():
+    from pregen_registry.registry import REDIRECT_URI
+    from pregen_registry.protocol import check_body
+    key = lib.new_private_key_hex()
+    for bad in ("https://frame.example/cb\n", "https://frame.example:99999/cb", "http://localhost:65536/cb"):
+        doc = lib.party_document("https://frame.example", "F", key)
+        doc["redirect_uris"] = [bad]
+        with pytest.raises(Exception):
+            check_body("party-document", doc)                 # the schema says no, as the registry does
+        assert not REDIRECT_URI.fullmatch(bad)
+
+
+def test_masked_answers_for_a_private_and_an_unknown_code_are_alike():
+    """provider-identity P-5a: the level of an unknown code, so nothing tells them apart."""
+    docs = {}
+    reg = Registry(Config(prefix="ABCD", name="R", api="https://r.example", providers="open"), Key(), clock=Clock(),
+                   fetch_party=lambda url: docs[url])
+    c = TestClient(create_app(reg))
+    private = reg.add_subject("Private Person", level="verified")
+    p = OpenProvider(reg, c)
+    docs[p.id] = p.doc
+    a = p.answer(p.body(private, job="a"))["body"]
+    b = p.answer(p.body(mint_code("ABCD", 99), job="b"))["body"]
+    same = lambda x: {k: v for k, v in x.items() if k not in ("request_id", "issued_at", "expires_at")}  # noqa: E731
+    assert a["reason"] == "PG_PROVIDER_NOT_ACCEPTED" and same(a) == same(b)
+
+
+def test_grant_add_needs_a_licensee_or_any_provider(tmp_path, capsys):
+    from pregen_registry.cli import main as cli
+    cli(["init", "--dir", str(tmp_path), "--prefix", "ABCD", "--name", "R", "--api", "https://r.example"])
+    code = mint_code("ABCD", 1)
+    cli(["subject", "add", "--dir", str(tmp_path), "--name", "Maya"])
+    with pytest.raises(SystemExit, match="any-provider"):
+        cli(["grant", "add", "--dir", str(tmp_path), "--subject", code])
+    capsys.readouterr()
+    cli(["grant", "add", "--dir", str(tmp_path), "--subject", code, "--any-provider"])
+    assert re.fullmatch(r"[0-9a-f]{64}\n", capsys.readouterr().out)

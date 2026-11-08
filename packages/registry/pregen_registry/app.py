@@ -1,7 +1,7 @@
 """HTTP interface (PRE-GEN-CORE.md and extensions/*.md)."""
 from __future__ import annotations
 
-import time
+import threading
 from html import escape
 from urllib.parse import parse_qs, urlencode, urlsplit
 
@@ -45,13 +45,24 @@ def create_app(registry: Registry, policy_file=None) -> FastAPI:
     approvals: dict[str, list[float]] = {}         # bind consents per client address, last hour
     pages: dict[str, list[float]] = {}             # consent pages shown per client address, last hour
 
-    def within(seen: dict, request: Request, limit: int, what: str) -> tuple[str, list[float]]:
-        """ponytail: per process, in memory, like /v2/sandbox/access; a shared store if a sandbox runs several."""
-        who, now = request.client.host if request.client else "?", time.time()
-        recent = [t for t in seen.get(who, []) if now - t < 3600]
-        if len(recent) >= limit:
-            raise ProtocolError("PG_RATE_LIMITED", f"too many {what} from this address; try later", status=429)
-        return who, [*recent, now]
+    limits = threading.Lock()
+
+    def take(seen: dict, request: Request, limit: int, what: str):
+        """One slot of an hourly per-address limit, checked and taken at once (so concurrent requests cannot share a
+        count), on the registry's clock. Returns the call that gives the slot back if the request turns out invalid.
+        ponytail: per process, in memory; behind a proxy that hides client addresses, every client is one address."""
+        who, now = request.client.host if request.client else "?", registry.clock()
+        with limits:
+            recent = [t for t in seen.get(who, []) if now - t < 3600]
+            if len(recent) >= limit:
+                raise ProtocolError("PG_RATE_LIMITED", f"too many {what} from this address; try later", status=429)
+            seen[who] = [*recent, now]
+
+        def give_back():
+            with limits:
+                if now in seen.get(who, []):
+                    seen[who].remove(now)
+        return give_back
 
     @app.exception_handler(ProtocolError)
     def protocol_error(_: Request, e: ProtocolError):
@@ -140,10 +151,13 @@ def create_app(registry: Registry, policy_file=None) -> FastAPI:
     def bind_authorize(request: Request):
         """bind.md step 2: the consent screen. The sandbox's test creator is signed in; it holds no real people."""
         q = {k: v for k, v in request.query_params.items() if k != "consent"}
-        who, seen = within(pages, request, BIND_PAGES_PER_HOUR, "consent pages")
-        doc = _authorize_params(registry, q)
-        pages[who] = seen
-        q["consent"] = registry.bind_consent(q["client_id"], q["redirect_uri"], q["code_challenge"])
+        give_back = take(pages, request, BIND_PAGES_PER_HOUR, "consent pages")
+        try:
+            doc = _authorize_params(registry, q)
+            q["consent"] = registry.bind_consent(q["client_id"], q["redirect_uri"], q["code_challenge"])
+        except ProtocolError:
+            give_back()                           # an invalid request shows no page and takes no slot
+            raise
         unchecked = ("<p>Not checked: this app's party document was posted to this sandbox, not read from its domain."
                      "</p>" if doc["posted"] else "")
         offer = "".join(f"<li>{escape(o['subject_ref'])}: {', '.join(o['purposes'])}, {o['max_uses']} uses</li>"
@@ -168,16 +182,19 @@ def create_app(registry: Registry, policy_file=None) -> FastAPI:
         if origin and origin != _origin(registry.config.api):
             raise ProtocolError("PG_MALFORMED", "the consent form is answered only from this registry's own page",
                                 status=403)
-        who, seen = within(approvals, request, BIND_APPROVALS_PER_HOUR, "consents")   # counted once it is valid
+        give_back = take(approvals, request, BIND_APPROVALS_PER_HOUR, "consents")
         q = {k: v[-1] for k, v in parse_qs((await request.body()).decode(), keep_blank_values=True).items()}
-        _authorize_params(registry, q)
+        try:                                      # only an approval that passed every check keeps its slot
+            _authorize_params(registry, q)
+            code = registry.bind_approve(q["client_id"], q["redirect_uri"], q["code_challenge"],
+                                         q.get("consent", "")) if q.get("decision") == "approve" else None
+        except ProtocolError:
+            give_back()
+            raise
+        if code is None:
+            give_back()
+        back = {"code": code} if code else {"error": "access_denied"}
         sep = "&" if "?" in q["redirect_uri"] else "?"
-        if q.get("decision") == "approve":
-            back = {"code": registry.bind_approve(q["client_id"], q["redirect_uri"], q["code_challenge"],
-                                                  q.get("consent", ""))}
-            approvals[who] = seen
-        else:
-            back = {"error": "access_denied"}
         back |= {"state": q["state"], "iss": registry.config.prefix}
         return RedirectResponse(q["redirect_uri"] + sep + urlencode(back), status_code=303)
 
@@ -199,12 +216,7 @@ def create_app(registry: Registry, policy_file=None) -> FastAPI:
         """extensions/sandbox.md: credentials without an account — only in a sandbox, which holds no real people."""
         if not registry.config.sandbox:
             raise ProtocolError("PG_NOT_FOUND", "this registry is not a sandbox", status=404)
-        who, now = request.client.host if request.client else "?", time.time()
-        recent = [t for t in issued.get(who, []) if now - t < 3600]
-        if len(recent) >= SANDBOX_ACCESS_PER_HOUR:
-            raise ProtocolError("PG_RATE_LIMITED", "too many sandbox credentials from this address; try later",
-                                status=429)
-        issued[who] = [*recent, now]
+        take(issued, request, SANDBOX_ACCESS_PER_HOUR, "sandbox credentials")
         provider_id, token = registry.add_provider()
         return {"provider_id": provider_id, "token": token, "registry": registry.document()["api"],
                 "note": "Sandbox only: test subjects, no real people. Keep the token secret; it is shown once."}

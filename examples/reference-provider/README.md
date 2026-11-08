@@ -82,9 +82,9 @@ HTTP is allowed for a redirect only on a loopback host and only in a sandbox (RF
   answer to it has certainly expired, the app reports `not_generated` with `answer: null` and the full signed request
   (`reports.md`); the registry releases the ask's expired reserved allows within the give-back window and closes the
   ask (a later identical request gets 409 `PG_ASK_CLOSED`, which the app shows as closed, never as a crash).
-  "Certainly expired" is `--lost-answer-wait` seconds after the first send: by default 393, the reference registry's
-  300-second answers plus every send and its timeout plus 60 seconds for clocks. Raise it for a registry whose answers
-  live longer (at most 900 seconds). The creator sees "could not be reached".
+  "Certainly expired" is `--lost-answer-wait` seconds after the first send: by default 993, the longest answer the core
+  allows (900 seconds) plus every send and its timeout plus 60 seconds for clocks, whatever the registry. Lower it
+  only in tests. The creator sees "could not be reached".
 - After a crash, at start: every stored allow with no report and no render begun gets `not_generated`, so its use
   goes back instead of staying reserved and counted. A job never sent goes back to the queue; a job sent whose answer
   was never stored gets the `answer: null` report above. A job whose render may have begun is never restarted or given

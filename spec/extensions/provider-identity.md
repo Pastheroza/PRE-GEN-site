@@ -88,7 +88,9 @@ The libraries build it: `pregen.party_document(url, name, key)` /
   subject for which the request's `licensee_id`, connected to that provider, holds a grant. Every
   other request gets **`deny` with reason `PG_PROVIDER_NOT_ACCEPTED`**, whether the code is
   unknown, private or unlicensed for this use. It is a refusal: nobody generates on it. It hides
-  whether a private code exists; it never hides a refusal. A sandbox masks nothing.
+  whether a private code exists; it never hides a refusal. A masked answer carries the level and
+  obligations of an unknown code (`level` `self`, no obligations), so nothing in it tells the codes
+  apart. A sandbox masks nothing.
 - **P-6 Vetting** is the registry's own published procedure (a form, a company domain, a
   contract). It turns `PG_PROVIDER_NOT_ACCEPTED` into ordinary answers. It is not needed to
   honour a licence the person connected to the provider (`bind`).
