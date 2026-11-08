@@ -39,9 +39,6 @@ PURPOSES = {"personal", "educational", "research", "editorial", "commercial"}
 USE_MEMBERS = {"purpose", "rights", "territory", "channel", "categories"}
 TERMS_LEVELS = {"consented", "verified"}    # terms T-1: the person confirmed, or the registry verified
 UNAVAILABLE = {"pending", "paused", "disputed", "withdrawn"}
-# provider-identity P-5: a refusal of the person is never masked, whoever asks
-FLOOR = {"PG_SUBJECT_OPTED_OUT", "PG_SUBJECT_UNAVAILABLE", "PG_PROHIBITED_USE", "PG_IMMUTABLE_DENIAL",
-         "PG_PERSONAL_SIGNATURE_REQUIRED"}
 PARTY_REFRESH = 86400           # provider-identity P-3: the party document is read again at least daily
 PARTY_MIN_INTERVAL = 60         # P-7: and at most once a minute per provider
 PARTY_MAX_BYTES = 65536
@@ -512,7 +509,7 @@ class Registry:
                     return {"answer": json.loads(open_["envelope"]), "attachments": []}
             decision = self._decide(db, body, now)
             # T-7: signed, but binds no job, no ask; a masked answer (P-5a) is kept like any other, so nothing tells apart
-            if decision[1] == "PG_TERMS_NOT_ACCEPTED" and not self._masked(db, body, *decision[:3]):
+            if decision[1] == "PG_TERMS_NOT_ACCEPTED" and not self._masked(db, body, decision[1]):
                 return {"answer": self._answer(db, None, body, decision, now), "attachments": []}
             ask = ask or self._bind(db, body, env["signatures"])
             return {"answer": self._answer(db, ask["id"], body, decision, now), "attachments": []}
@@ -670,23 +667,31 @@ class Registry:
         return self.config.sandbox and g["licensee_id"] != provider \
             and "purchase" in json.loads(g["envelope"])["body"].get("ext", {})
 
-    def _masked(self, db, req: dict, status: str, reason, grant) -> bool:
-        """provider-identity P-5a: a provider this registry has not vetted learns a refusal of the person, a published
-        subject, and what its own bound licensee holds; everything else is deny PG_PROVIDER_NOT_ACCEPTED."""
+    def _masked(self, db, req: dict, reason) -> bool:
+        """provider-identity P-5, P-5a: a provider this registry has not vetted learns about a published subject (its
+        refusals included) and a subject its own connected licensee holds a grant on; everything else, a floor refusal
+        of a subject the registry does not publish included, is deny PG_PROVIDER_NOT_ACCEPTED."""
         pid = req["provider_id"]
-        if not self.is_open(pid) or self.config.sandbox or reason in FLOOR or reason == "PG_OTHER_REGISTRY" \
+        if not self.is_open(pid) or self.config.sandbox or reason == "PG_OTHER_REGISTRY" \
                 or db.execute("SELECT 1 FROM accepted WHERE provider_id = ?", (pid,)).fetchone():
             return False
-        s = db.execute("SELECT published, fixed_refusal FROM subjects WHERE code = ?", (req["subject_ref"],)).fetchone()
-        if s is not None and (s["published"] or (s["fixed_refusal"] and reason == s["fixed_refusal"])):
-            return False
-        licensee = req.get("licensee_id", "")
-        return not (status == "allow" and licensee and grant["licensee_id"] == licensee)
+        s = db.execute("SELECT published, offer, anchor FROM subjects WHERE code = ?", (req["subject_ref"],)).fetchone()
+        if s is not None and (s["published"] or s["offer"] is not None or s["anchor"] is not None):  # lookup, catalog
+            return False                                                         # or the anchor list names it
+        licensee, now = req.get("licensee_id", ""), self.clock()      # P-5a: a licensee connected or bound to this
+        binding = self._binding(db, pid, licensee)                      # provider that holds a live grant on the
+        bound = set(json.loads(binding["grants"])) if binding else set()  # subject learns every answer about it
+        if not (binding or licensee and db.execute("SELECT 1 FROM connections WHERE provider_id = ? AND licensee_id = ?",
+                                                   (pid, licensee)).fetchone()):
+            return True
+        return not any(g["licensee_id"] == licensee or g["id"] in bound for g in db.execute(
+            "SELECT id, licensee_id FROM grants WHERE subject_code = ? AND not_before <= ? AND expires_at > ?",
+            (req["subject_ref"], now, now)))
 
     def _answer(self, db, ask_id, req: dict, decision, now: int) -> dict:
         """The signed answer to `decision`, kept under `ask_id`; with none (terms T-7) it is kept nowhere."""
         status, reason, grant, level = decision
-        if self._masked(db, req, status, reason, grant):    # P-5a: and the level of an unknown code, so it tells nothing
+        if self._masked(db, req, reason):    # P-5a: and the level of an unknown code, so it tells nothing
             status, reason, grant, level = "deny", "PG_PROVIDER_NOT_ACCEPTED", None, "self"
         body = {"request_id": message_id("pg.request.v1", req), "profile": req["profile"], "status": status, "level": level,
                 "obligations": [], "issued_at": now, "expires_at": now + self.ttl}

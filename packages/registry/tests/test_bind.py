@@ -471,6 +471,62 @@ def test_masked_answers_for_a_private_and_an_unknown_code_are_alike():
         assert again == first                        # both repeats give the stored answer
 
 
+def test_a_floor_refusal_of_an_unpublished_subject_is_masked_like_an_unknown_code():
+    """P-5, P-5a: probing categories must not tell that a private registration exists, or that it is a minor's."""
+    docs = {}
+    clock = Clock()
+    reg = Registry(Config(prefix="ABCD", name="R", api="https://r.example", providers="open"), Key(), clock=clock,
+                   fetch_party=lambda url: docs[url])
+    c = TestClient(create_app(reg))
+    kid = reg.add_subject("Private Minor", level="verified", minor=1)
+    p = OpenProvider(reg, c)
+    docs[p.id] = p.doc
+    same = lambda x: {k: v for k, v in x.items() if k not in ("request_id", "issued_at", "expires_at")}  # noqa: E731
+    for n, categories in enumerate((["adult"], ["violence"], ["fashion"])):
+        bodies = [{**p.body(code, job=f"{n}-{i}"), "use": {"purpose": "research", "categories": categories}}
+                  for i, code in enumerate((kid, mint_code("ABCD", 99)))]
+        first = [p.answer(x) for x in bodies]
+        assert first[0]["body"]["reason"] == "PG_PROVIDER_NOT_ACCEPTED"
+        assert same(first[0]["body"]) == same(first[1]["body"])
+        assert [p.answer(x) for x in bodies] == first                  # repeats: the stored answer
+        clock.t += reg.ttl + 1
+        for _ in range(2):                                             # a null report, and the same report again
+            acks = []
+            for x in bodies:
+                signed = p.signed("pg.request.v1", x)["body"]                 # the request as sent, signers included
+                report = {"request_id": message_id("pg.request.v1", signed), "answer": None, "request": signed,
+                          "job_id": x["job_id"], "outcome": "not_generated", "output_hash": "", "occurred_at": clock.t}
+                r = c.post("/v2/reports", headers=p.h, json=p.signed("pg.report.v1", report))
+                ack = r.json().get("ack", {}).get("body", r.json())
+                acks.append((r.status_code, {k: v for k, v in same(ack).items() if k != "report"}))  # its own id
+            assert acks[0] == acks[1] and acks[0][0] == 200, acks
+    reg.accept_provider(p.id)                                          # vetted: the real refusal
+    adult = {**p.body(kid, job="v"), "use": {"purpose": "research", "categories": ["adult"]}}
+    assert p.answer(adult)["body"]["reason"] == "PG_PROHIBITED_USE"
+
+
+def test_a_licensee_with_a_grant_on_a_private_subject_sees_its_real_refusals():
+    """P-5a: a connected licensee holding a grant learns every answer about that subject, refusals included."""
+    docs = {}
+    reg = Registry(Config(prefix="ABCD", name="R", api="https://r.example", providers="open"), Key(), clock=Clock(),
+                   fetch_party=lambda url: docs[url])
+    c = TestClient(create_app(reg))
+    p = OpenProvider(reg, c)
+    docs[p.id] = p.doc
+    who = p.id + ":u1"
+    reg.connect(p.id, who)
+    out, kid, other = (reg.add_subject(n, level="verified", minor=m) for n, m in (("Out", 0), ("Kid", 1), ("Other", 0)))
+    for s in (out, kid):
+        reg.add_grant(s, licensee_id=who, purposes=("research",))
+    reg.opt_out(out)
+    reg.opt_out(other)
+    adult = {"purpose": "research", "categories": ["adult"]}
+    assert p.answer(p.body(out, job="j1", licensee_id=who))["body"]["reason"] == "PG_SUBJECT_OPTED_OUT"
+    assert p.answer({**p.body(kid, job="j2", licensee_id=who), "use": adult})["body"]["reason"] == "PG_PROHIBITED_USE"
+    assert p.answer({**p.body(kid, job="j3"), "use": adult})["body"]["reason"] == "PG_PROVIDER_NOT_ACCEPTED"  # no licensee
+    assert p.answer(p.body(other, job="j4", licensee_id=who))["body"]["reason"] == "PG_PROVIDER_NOT_ACCEPTED"  # no grant
+
+
 def test_grant_add_needs_a_licensee_or_any_provider(tmp_path, capsys):
     from pregen_registry.cli import main as cli
     cli(["init", "--dir", str(tmp_path), "--prefix", "ABCD", "--name", "R", "--api", "https://r.example"])

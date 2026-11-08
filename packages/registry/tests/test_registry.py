@@ -652,8 +652,10 @@ def test_a_production_registry_reads_the_party_document_from_the_domain_and_mask
     c = TestClient(create_app(reg))
     private = reg.add_subject("Maya Cole", level="verified")
     public = reg.add_subject("Public Person", level="verified", published=1)
-    out = reg.add_subject("Opted Out", level="verified")
+    out = reg.add_subject("Opted Out", level="verified", published=1)
     reg.opt_out(out)
+    hidden = reg.add_subject("Private Opted Out", level="verified")
+    reg.opt_out(hidden)
     reg.add_grant(private, purposes=("commercial",))
     reg.add_grant(public, purposes=("commercial",))
     reg.add_grant(private, licensee_id="https://frame.example:u1", purposes=("research",))
@@ -662,10 +664,11 @@ def test_a_production_registry_reads_the_party_document_from_the_domain_and_mask
     docs[p.id] = p.doc
     clock.t += PARTY_MIN_INTERVAL
     assert c.post("/v2/sandbox/party", json=p.doc).status_code == 404                  # by post only in a sandbox
-    # P-5a: unvetted, it learns a refusal of the person, a published subject, its own bound licensee's grant; nothing else
+    # P-5a: unvetted, it learns a published subject (its refusals too) and its own bound licensee's grant; nothing else
     assert p.answer(p.body(private, purpose="commercial"))["body"]["reason"] == "PG_PROVIDER_NOT_ACCEPTED"
     assert p.answer(p.body(mint_code("ABCD", 99), job="j2"))["body"]["reason"] == "PG_PROVIDER_NOT_ACCEPTED"
     assert p.answer(p.body(out, job="j3"))["body"]["reason"] == "PG_SUBJECT_OPTED_OUT"
+    assert p.answer(p.body(hidden, job="j3b"))["body"]["reason"] == "PG_PROVIDER_NOT_ACCEPTED"
     assert p.answer(p.body(public, job="j4", purpose="commercial"))["body"]["status"] == "allow"
     reg.connect(p.id, "https://frame.example:u1")
     a = p.answer(p.body(private, job="j5", licensee_id="https://frame.example:u1"))["body"]

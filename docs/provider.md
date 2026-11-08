@@ -246,8 +246,9 @@ X-Provider-ID: https://frame.example
 - `pregen.sign_envelope("pg.request.v1", body, KEY)` / `await signEnvelope("pg.request.v1",
   body, KEY)` makes the envelope, with `body["signers"] = [{"role": "provider", "key_id":
   key_id}]`. A registry that has not vetted you (its own published procedure) answers
-  `deny` `PG_PROVIDER_NOT_ACCEPTED` for everything except a refusal of the person, a subject
-  it publishes, and a grant your own connected customer holds: a refusal, so nothing to
+  `deny` `PG_PROVIDER_NOT_ACCEPTED` for everything except a subject it publishes (its refusals
+  included) and a grant your own connected customer holds; a refusal of a private subject is
+  masked too: a refusal, so nothing to
   generate; ask the registry how it vets providers, or use its sandbox meanwhile (step 9).
 
 The registry answers HTTP 200 `{"answer": {"type": "pg.answer.v1", "body": {…}, "signatures": […]}}`.
@@ -858,8 +859,8 @@ that sells nothing is still a complete registry. Two layers, one picture:
   `licensee`) does the same with an id the registry gives you.
 - **Buying for your product or your users.** Each registry publishes its commerce page and
   terms itself; PRE-GEN names none. The first registry: `https://prampta.com`.
-- **Being vetted.** A registry that has not vetted you answers only about refusals, published
-  subjects and your own connected customers (`PG_PROVIDER_NOT_ACCEPTED`, step 4). Vetting is
+- **Being vetted.** A registry that has not vetted you answers only about published
+  subjects (their refusals included) and your own connected customers (`PG_PROVIDER_NOT_ACCEPTED`, step 4). Vetting is
   each registry's own published procedure, and is not needed to honour a licence your customer
   connected.
 
@@ -1376,7 +1377,7 @@ message instead.
 
 Answer reasons you will meet: `PG_UNKNOWN_SUBJECT` (this registry holds no such person:
 not a prohibition, and not a permission), `PG_PROVIDER_NOT_ACCEPTED` (this registry has not vetted
-you and answers only about refusals, published subjects and your connected customers: a refusal),
+you and answers only about published subjects (their refusals included) and your connected customers: a refusal),
 `PG_OTHER_REGISTRY`, `PG_NO_LICENSE`, `PG_NOT_CONNECTED`
 (only a connected end user's grant would do: show "connect your account" if your customer could
 hold this registry's grant),

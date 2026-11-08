@@ -78,17 +78,24 @@ The libraries build it: `pregen.party_document(url, name, key)` /
   `"providers": "registered"` (or no member) means it issues its own credentials. Both kinds of
   provider may ask the same registry; a registry that declares `open` keeps answering its
   registered providers.
-- **P-5 A refusal of the person is never masked.** A floor refusal (`likeness/1`: opt-out,
-  unavailable, prohibited use, immutable denial, personal signature required) comes back with
-  its real reason to any provider. A person's "no" must hold everywhere (`identity` rule 2).
+- **P-5 A published person's refusal is never masked.** For a subject the registry publishes
+  (P-5a), a floor refusal (`likeness/1`: opt-out, unavailable, prohibited use, immutable denial,
+  personal signature required) comes back with its real reason to any provider. A person's "no"
+  must hold everywhere (`identity` rule 2), and that rule works through anchors, which only
+  published subjects have.
 - **P-5a Everything else is private until the registry vets the provider.** Subject serials
   are sequential, so without a rule anyone with a domain could enumerate codes and learn who
-  registered privately. To a provider it has not vetted, a registry answers about: a floor
-  refusal (P-5); a subject it publishes (`lookup` returns a name, or `catalog` lists it); and a
-  subject for which the request's `licensee_id`, connected to that provider, holds a grant. Every
-  other request gets **`deny` with reason `PG_PROVIDER_NOT_ACCEPTED`**, whether the code is
-  unknown, private or unlicensed for this use. It is a refusal: nobody generates on it. It hides
-  whether a private code exists; it never hides a refusal. A masked answer carries the level and
+  registered privately. To a provider it has not vetted, a registry answers about: a subject it
+  publishes (`lookup` returns a name, its anchor list names it, or it has an offer (`catalog`),
+  including while the catalog hides it because the subject is unavailable or opted out: whoever
+  chose to be offered is already public, and a later refusal must be seen), refusals included
+  (P-5); and a subject on which the request's `licensee_id`, connected or bound to that
+  provider, holds a live grant, whatever the answer, refusals included. Every other request
+  gets **`deny` with reason `PG_PROVIDER_NOT_ACCEPTED`**, whether the code is unknown, private or unlicensed for this use,
+  and a floor refusal of a subject the registry does not publish too, whatever the categories
+  (`adult`, `sexual`, `intimate`, `violence` or any other). Otherwise a provider could try
+  categories one by one and learn that a private registration exists, and that it is a minor's.
+  It is a refusal either way: nobody generates on it. A masked answer carries the level and
   obligations of an unknown code (`level` `self`, no obligations), so nothing in it tells the codes
   apart. A sandbox masks nothing.
 - **P-6 Vetting** is the registry's own published procedure (a form, a company domain, a

@@ -100,6 +100,10 @@ keep working.
   made at the exchange. A sandbox's database never starts as a production registry. A masked answer (P-5a) carries
   the level of an unknown code, so the level no longer tells a private code from an unknown one. `grant add` needs
   `--licensee` or `--any-provider`.
+- **`provider-identity` P-5, P-5a** (decided 2026-11-08): a floor refusal is unmasked only for a subject the registry
+  publishes (lookup, an offer, or its anchor list) or one the request's connected licensee holds a live grant on; for
+  any other subject an unvetted provider gets the masked answer of an unknown code, whatever the categories, so trying categories tells neither that a private registration exists nor
+  that it is a minor's. `identity` rule 2 is unchanged: it works through anchors, which only published subjects have.
 - **`terms` T-7, `provider-identity` P-5a:** a request whose answer is masked is kept and bound like any other
   answer, terms included; T-7's "keeps no ask" applies only to an answer that is not masked, so a repeat, a report or
   a conflict never tells a private code from an unknown one.

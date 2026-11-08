@@ -61,9 +61,9 @@ it at `https://<your domain>/.well-known/pregen-party.json`. Your provider id is
 `https://<your domain>`, the registrable domain itself (no `www.`, path or port); every request and report is signed with the key. A registry that says
 `"providers": "registered"` in its document still issues its own credential; a registry that
 says `"open"` answers you with no credential. Until it vets you under its published procedure, it
-answers only refusals of the person, subjects it publishes, and licences a person connected to
-your app (`bind`). Everything else is `deny` `PG_PROVIDER_NOT_ACCEPTED` (provider-identity P-5a). Today one registry is in production: PRAMPTA
-(`https://api2.prampta.com`). It accepts apps by their domain and answers them only for refusals, published subjects and licences connected with `bind`. The complete
+answers only about subjects it publishes (their refusals included) and licences a person
+connected to your app (`bind`). Everything else is `deny` `PG_PROVIDER_NOT_ACCEPTED` (provider-identity P-5a). Today one registry is in production: PRAMPTA
+(`https://api2.prampta.com`). It accepts apps by their domain and answers an app it has not vetted only about published subjects (refusals included) and about licences connected with `bind`; anything else, a floor refusal of a private subject included, gets the answer of an unknown code. The complete
 guide, with tested examples: `https://www.pregen.org/docs/provider.md`.
 
 ### A2. Install a verification library

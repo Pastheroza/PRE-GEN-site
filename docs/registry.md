@@ -388,8 +388,9 @@ and answers any provider whose `provider_id` is `https://<its domain>`: it reads
 key chain in it, checks the signature on every request and report against that chain, and reads
 the document again at least daily. A later document that does not extend the pinned chain is
 refused, so whoever takes over a domain does not get its keys. Until you vet a provider, it
-learns only refusals of the person, your published subjects, and what its own connected
-customers hold; everything else is `deny PG_PROVIDER_NOT_ACCEPTED`. This registry does not check
+learns only about your published subjects (their refusals included) and what its own connected
+customers hold; everything else, a refusal of a private subject included, is `deny
+PG_PROVIDER_NOT_ACCEPTED`. This registry does not check
 that a `provider_id` is a registrable domain (Public Suffix List): it takes
 `https://app.frame.example` as a provider of its own, so every subdomain gets its own budget and
 its own document reads (P-7). A production registry should check it, with the Public Suffix List,

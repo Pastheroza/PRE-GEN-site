@@ -55,7 +55,7 @@
 </ul>
 <p><b>Extensions:</b></p>
 <ul>
-<li><code>PG_PROVIDER_NOT_ACCEPTED</code> — the registry has not vetted this provider, known only by its domain, and answers it only about refusals of the person, published subjects and its own connected licensees (<a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/provider-identity.md">provider-identity</a>). A refusal; it hides whether a private code exists.</li>
+<li><code>PG_PROVIDER_NOT_ACCEPTED</code> — the registry has not vetted this provider, known only by its domain, and answers it only about published subjects (their refusals included) and its own connected licensees (<a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/provider-identity.md">provider-identity</a>). A refusal; it hides whether a private code exists, and a private subject's own refusals.</li>
 <li><code>PG_NOT_BOUND</code> — HTTP 403: the licensee has not connected their licences to this app; show it as “connect your licence” (<a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/bind.md">bind</a>).</li>
 </ul>
 <p><code>PG_IDENTITY_UNCONFIRMED</code> is an outcome of the client's own check of a public person (<a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/identity.md">identity</a>), not a registry answer.</p>
