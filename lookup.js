@@ -79,15 +79,15 @@
 
   function renderSubject(d) {
     var aliases = (d.aliases || []).map(esc).join(" · ");
-    var verified = d.owner_verified === true
-      ? badge("owner verified", "ok")
-      : d.owner_verified === false ? badge("owner unverified", "warn") : "";
     var html = '<article class="pg-card">'
       + '<div class="pg-card-head"><span class="pg-code">' + esc(d.pg_code || "") + "</span>"
       + badge(d.status || "unknown", d.status === "active" ? "ok" : "")
-      + (d.visibility ? badge(d.visibility) : "") + verified + "</div>"
+      + (d.visibility ? badge(d.visibility) : "") + "</div>"
       + '<dl class="pg-rows">'
       + row("Aliases", aliases)
+      /* The registry's own word about the owner: never a badge. Only a claim the person confirmed on their own
+         channel (spec/extensions/identity.md) may earn one, and this page does not check that yet. */
+      + row("Owner", d.owner_verified === true ? "the registry says it verified the owner" : d.owner_verified === false ? "the registry says it did not verify the owner" : "")
       + row("Type", esc(d.subject_type))
       + row("Lifecycle", esc(d.lifecycle_status))
       + row("Authority", esc(d.authority_status))
@@ -96,7 +96,7 @@
       + row("Rules", d.rules_text ? esc(d.rules_text) : "")
       + row("Registered", fmtDate(d.registered_at))
       + "</dl>"
-      + '<div class="pg-card-foot">Resolved live from the registry that holds the code. This is public metadata — it is not a generation permission. Providers need a signed allow from <span class="mono">POST /v2/requests</span>.</div>'
+      + '<div class="pg-card-foot">Resolved live from the registry that holds the code. Everything above is what the registry says. Identity: not confirmed on the person’s own channel by pregen.org. This is public metadata — it is not a generation permission. Providers need a signed allow from <span class="mono">POST /v2/requests</span>.</div>'
       + "</article>";
     return html;
   }
@@ -153,6 +153,10 @@
         else if (res.status === 404 && d.error === "unknown_issuer") out.innerHTML = renderError("No listed registry holds the prefix " + c.issuer + ".",
           "The code is well-formed. Its registry isn't on the registry list yet.",
           '<p><a class="pg-link" href="/registries">Registries</a></p>');
+        else if (res.status === 410 && d.error === "false_claim") out.innerHTML = renderError("False claim: the steward recorded " + c.code + " as a false claim" + (d.at ? " on " + fmtDate(d.at) : "") + ".",
+          "Whoever holds this code does not speak for the person. Nothing the registry says about it is shown.");
+        else if (res.status === 410) out.innerHTML = renderError("Revoked: the registry that issued " + c.code + " was revoked" + (d.at ? " on " + fmtDate(d.at) : "") + ".",
+          "Its codes no longer count. Nothing it says about this code is shown.");
         else if (res.status === 404) out.innerHTML = renderError("Nothing is registered under " + c.code + ".", "The code is well-formed but the registry has no record for it.");
         else if (res.status === 401 || res.status === 403) out.innerHTML = renderError("License records are restricted.",
           "Public resolution covers subjects. Full license records require registry credentials — verify the license via prampta.com or ask the rights holder for a signed decision.",
