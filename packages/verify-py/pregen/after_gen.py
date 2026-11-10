@@ -90,6 +90,8 @@ def _u(b, at, n=4):
 _MOVIE = re.compile(rb"(cmov|hoov)")
 _MPEG = re.compile(rb"(hdlr[\s\S]{4}mhlrMPEG)")
 _NUT = re.compile(rb"(NMzV\x1f_\x04\xad)")           # NUT main startcode: its probe ties with MP4, the file opens as neither
+_DATA_HANDLERS = {b"url ", b"urn ", b"alis"}
+_SAMPLE_TABLES = {b"stts", b"ctts", b"stsc", b"stsz", b"stz2", b"stco", b"co64"}  # the only boxes the table scan skips
 _PROBED_AWAY = {b"jp2 ", b"jpx ", b"jxl "}             # major brands a player's MP4 probe scores low (One reading only)
 _CARRIER_MAX = 64 << 20
 
@@ -231,12 +233,14 @@ def _value(m, mv, t, s, e, mdats, zones, hdlrs=()):
         for _, _, cs, ce in (k for k in kids if k[0] == b"dinf"):
             for _, _, rcs, rce in (k for k in _boxes(m, cs, ce) if k[0] == b"dref"):
                 for et, _, ecs, ece in _boxes(m, rcs + 8, rce):
-                    if et not in (b"url ", b"urn ") or ece - ecs < 4 or not mv[ecs + 3] & 1:
-                        raise PregenError("media/1: a data reference that is not a self-contained url or urn")
+                    ok = et in (b"url ", b"urn ") and ece - ecs >= 4 or et == b"alis" and ece - ecs == 4  # Apple: empty alis
+                    if not ok or not mv[ecs + 3] & 1:
+                        raise PregenError("media/1: a data reference that is not a self-contained url, urn or alis")
     offsets = {}
     if t == b"stbl":
-        offsets = _stbl(m, mv, kids, mdats, bool(hdlrs) and all(h == b"vide" for h in hdlrs))
-        zones += [(ks, ke) for _, ks, _, ke in kids]
+        media = [h for h in hdlrs if h not in _DATA_HANDLERS]   # a data handler (MOV's minf hdlr) sets no track type
+        offsets = _stbl(m, mv, kids, mdats, bool(media) and all(h == b"vide" for h in media))
+        zones += [(ks, ke) for k, ks, _, ke in kids if k in _SAMPLE_TABLES]   # stsd and the rest are searched too
     return b"".join(_el(k, _value(m, mv, k, cs, ce, mdats, zones, hdlrs) if _PATH.get(t) == k
                         else offsets.get(cs, mv[cs:ce])) for k, _, cs, ce in kids)
 

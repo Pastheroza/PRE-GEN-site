@@ -144,6 +144,7 @@ function u(b, at, n = 4) {
 
 const MOVIE = /(cmov|hoov)/, MPEG = /(hdlr[\s\S]{4}mhlrMPEG)/, CARRIER_MAX = 64 << 20;
 const NUT = /(NMzV\x1f_\x04\xad)/; // NUT main startcode: its probe ties with MP4, the file opens as neither
+const SAMPLE_TABLES = ["stts", "ctts", "stsc", "stsz", "stz2", "stco", "co64"]; // the only boxes the table scan skips
 const PROBED_AWAY = ["jp2 ", "jpx ", "jxl "]; // major brands a player's MP4 probe scores low (One reading only)
 
 // Any of the codes of `rx` at any byte position of `b` (One reading only).
@@ -270,17 +271,19 @@ function value(data, type, mdats, zones, at = 0, hdlrs = []) {
     for (const d of kids.filter((k) => k.type === "dinf")) {
       for (const r of boxesIn(d.data).filter((k) => k.type === "dref")) {
         for (const e of boxesIn(r.data.subarray(8))) {
-          if (!["url ", "urn "].includes(e.type) || e.data.length < 4 || !(e.data[3] & 1)) {
-            M("a data reference that is not a self-contained url or urn");
-          }
+          const ok = ["url ", "urn "].includes(e.type) && e.data.length >= 4 || e.type === "alis" && e.data.length === 4; // Apple: empty alis
+          if (!ok || !(e.data[3] & 1)) M("a data reference that is not a self-contained url, urn or alis");
         }
       }
     }
   }
   let offsets = new Map();
   if (type === "stbl") {
-    offsets = stbl(kids, mdats, hdlrs.length > 0 && hdlrs.every((h) => h === "vide"));
-    for (const k of kids) zones.push([at + k.start, at + k.start + k.size]);
+    const media = hdlrs.filter((h) => !["url ", "urn ", "alis"].includes(h)); // a data handler (MOV's minf hdlr) sets no track type
+    offsets = stbl(kids, mdats, media.length > 0 && media.every((h) => h === "vide"));
+    for (const k of kids) { // only the sample tables are skipped: stsd and the rest are searched too
+      if (SAMPLE_TABLES.includes(k.type)) zones.push([at + k.start, at + k.start + k.size]);
+    }
   }
   return concat(kids.map((k) => el(k.type, PATH[type] === k.type ? value(k.data, k.type, mdats, zones, at + k.start + k.hdr, hdlrs)
     : offsets.get(k.start) ?? k.data)));

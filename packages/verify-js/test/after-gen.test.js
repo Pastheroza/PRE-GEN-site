@@ -188,7 +188,7 @@ const REFUSED = [
   ["a top-level box past the file", bump(plain, "moov", 1), /past its parent/],
   ["a box past its parent", bump(plain, "stco", 1), /past its parent/],
   ["a uuid box under 24 bytes", mp4({ tracks: [VIDEO], moovExtra: [box("uuid", Buffer.alloc(8))] }), /shorter than its header/],
-  ["an alis data reference", mp4({ tracks: [{ ...VIDEO, extraMinf: [box("dinf", full("dref", 0, 0, u32(1), full("alis", 0, 1)))] }] }), /self-contained/],
+  ["an alis data reference with alias data", mp4({ tracks: [{ ...VIDEO, extraMinf: [box("dinf", full("dref", 0, 0, u32(1), full("alis", 0, 1, Buffer.alloc(150))))] }] }), /self-contained/],
   ["a data reference elsewhere", mp4({ tracks: [{ ...VIDEO, extraMinf: [box("dinf", full("dref", 0, 0, u32(1), full("url ", 0, 0, "https://x.example/a\0")))] }] }), /self-contained/],
   ["sound read by chunk whose stsz is not its frame size", mp4({ tracks: [{ ...PCM_TRACK, fixed: 1 }] }), /read by chunk/],
   ["sound read by chunk with an entry other than PCM", mp4({ tracks: [{ ...PCM_TRACK, entry: box("NONE", sowt.subarray(8)) }] }), /read by chunk/],

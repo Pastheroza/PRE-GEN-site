@@ -154,6 +154,14 @@
    }
   },
   {
+   "file": "apple-writer-ts-fps.mov",
+   "media": {
+    "binding": "media/1",
+    "hash": "90cfe0f0a4dd7f19a31376247eec235111823063004882a372cedd38e1ae41ed",
+    "leaves": 1
+   }
+  },
+  {
    "file": "attack-c2pa-nested.mp4",
    "media": {
     "binding": "media/1",
@@ -215,11 +223,11 @@
   },
   {
    "file": "attack-dref-alis.mp4",
-   "refused": "media/1: a data reference that is not a self-contained url or urn"
+   "refused": "media/1: a data reference that is not a self-contained url, urn or alis"
   },
   {
    "file": "attack-dref-external.mp4",
-   "refused": "media/1: a data reference that is not a self-contained url or urn"
+   "refused": "media/1: a data reference that is not a self-contained url, urn or alis"
   },
   {
    "file": "attack-elst-in-udta.mp4",
@@ -348,6 +356,10 @@
     "hash": "6c2c89a60eed79ee2248fc8eae2895ca80d4f31d780f0b340e10bb259a540f78",
     "leaves": 1
    }
+  },
+  {
+   "file": "attack-stco-in-entry.mp4",
+   "refused": "media/1: stco outside its place"
   },
   {
    "file": "attack-stray-stco.mp4",
@@ -514,6 +526,14 @@
    "media": {
     "binding": "media/1",
     "hash": "cb4618118dace544f92baea5e46b79b0b27669e79ded9cbeee8e0563f6cfcfc0",
+    "leaves": 1
+   }
+  },
+  {
+   "file": "dref-alis-empty.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "e438e1063dcb039b9e022a1151f38a7bf2da7b7c0243347ec44cbef2f2806a1d",
     "leaves": 1
    }
   },

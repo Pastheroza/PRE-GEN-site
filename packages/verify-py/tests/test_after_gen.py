@@ -244,7 +244,10 @@ def check(env, media=None, directory=D):
 #   b.mov: the same with testsrc2=size=64x48:rate=12 and sine=frequency=220; b-remux.mov, b-remux-faststart.mov alike
 #   ffmpeg -f lavfi -i testsrc=size=32x24:rate=5 -t 1 -c:v libx264 -preset ultrafast -bf 2 -pix_fmt yuv420p $B c.mp4
 FFMPEG_FILES = ("a.mp4", "a-remux.mp4", "a-remux-faststart.mp4", "b.mov", "b-remux.mov", "b-remux-faststart.mov",
-                "c.mp4")
+                "c.mp4",
+                # made outside this script: an AVAssetWriter MOV (timescale = frame rate, empty alis), and a file with a
+                # chunk offset table hidden in its sample entry, which FFmpeg reads in place of the real one
+                "apple-writer-ts-fps.mov", "attack-stco-in-entry.mp4")
 
 
 HUGE = {b"stsz": full(b"stsz", 0, 0, U(1, 2**32 - 1)), b"stts": full(b"stts", 0, 0, U(1, 2**32 - 1, 1)),
@@ -324,7 +327,8 @@ def derived():
         "attack-two-tkhd.mp4": mp4(({"tref": full(b"tkhd", 0, 3, bytes(80))},)),
         "attack-two-media-headers.mp4": mp4(({"minf": full(b"smhd", 0, 0, bytes(4))},)),
         "attack-dinf-extra.mp4": mp4(({"minf": box(b"dinf", full(b"dref", 0, 0, U(1), full(b"url ", 0, 1)), box(b"udta"))},)),
-        "attack-dref-alis.mp4": mp4(({"minf": box(b"dinf", full(b"dref", 0, 0, U(1), full(b"alis", 0, 1)))},)),
+        "attack-dref-alis.mp4": mp4(({"minf": box(b"dinf", full(b"dref", 0, 0, U(1), full(b"alis", 0, 1, bytes(150))))},)),
+        "dref-alis-empty.mp4": mp4(({"minf": box(b"dinf", full(b"dref", 0, 0, U(1), full(b"alis", 0, 1)))},)),  # Apple
         # round 4: fields players act on (track order, the file type, durations, language) are hashed like any byte
         "attack-trak-order.mp4": mp4(({"tid": 2}, {"tid": 1})),
         "attack-ftyp-qt.mp4": mp4().replace(b"ftypisom", b"ftypqt  ", 1),
@@ -558,13 +562,20 @@ REFUSALS = [
     ("attack-stsc-first2.mp4", "stsc"), ("attack-stsc-count0.mp4", "stsc"), ("attack-two-stsz.mp4", "two stsz"),
     ("attack-trak-udta-stco.mp4", "stco outside its place"), ("attack-free-tables.mp4", "stsz outside its place"),
     ("attack-iloc-meta.mp4", "iloc outside its place"), ("attack-chunkmode-none.mp4", "read by chunk"),
-    ("attack-chunkmode-stz2.mp4", "read by chunk")]
+    ("attack-chunkmode-stz2.mp4", "read by chunk"), ("attack-stco-in-entry.mp4", "stco outside its place")]
 
 
 @pytest.mark.parametrize("name,why", REFUSALS)
 def test_one_reading_only(name, why):
     msg = refused((DIR / name).read_bytes())
     assert msg.startswith("media/1: ") and why in msg
+
+
+def test_an_apple_writer_mov_hashes():
+    """AVAssetWriter's MOV: an empty self-contained alis data reference, a data handler hdlr in minf, and a video
+    timescale equal to its frame rate (every duration 1). None of it is a reason to refuse."""
+    assert media("apple-writer-ts-fps.mov")["leaves"] == 1
+    assert media("dref-alis-empty.mp4")["binding"] == "media/1"
 
 
 def test_every_byte_a_player_could_read_counts():

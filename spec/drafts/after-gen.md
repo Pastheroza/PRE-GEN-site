@@ -178,7 +178,8 @@ says why, for:
   or a carrier larger than 64 MiB;
 - a fragmented file (`mvex` in `moov`, or a `moof` at the top level); encrypted samples (an
   `encv`, `enca` or `encs` entry, or a `sinf` in any entry); a data reference that is not in the same file (a `dref` entry that is not a
-  self-contained `url ` or `urn `);
+  self-contained `url ` or `urn `, or a self-contained `alis` with nothing after its version and
+  flags, as Apple's writers make it);
 - **a second movie anywhere:** the code `cmov` or `hoov` at any byte position of the file
   outside `mdat` data, carriers included (a player decompresses or adopts such a movie wherever
   it finds one); the sixteen-byte pattern `hdlr`, any four bytes, `mhlr`, `MPEG` anywhere in the
@@ -188,9 +189,11 @@ says why, for:
 - **tables outside their place:** any of the codes `stco`, `co64`, `stsc`, `stsz`, `stz2`,
   `stts`, `ctts`, `iloc`, `saio`, `saiz`, `sidx`, `ssix`, `tfra`, `mfra`, `trun`, `tfhd` found
   at any byte position of a top-level box other than `mdat` and the carriers, except as a
-  direct child of an `stbl` on the path `moov`/`trak`/`mdia`/`minf`/`stbl` (the payloads of the
-  boxes there are not searched; a text in metadata that spells such a code makes the file
-  refused);
+  sample table (`stts`, `ctts`, `stsc`, `stsz`, `stz2`, `stco`, `co64`) that is a direct child
+  of an `stbl` on the path `moov`/`trak`/`mdia`/`minf`/`stbl`, whose payload is not searched.
+  Everything else is searched, the sample descriptions in `stsd` included, since a player reads
+  boxes appended to a sample entry; a text in metadata that spells such a code makes the file
+  refused;
 - **tables that read two ways:** an `stbl` without exactly one `stsd`, one `stts`, one `stsc`,
   one of `stsz` and `stz2` and one of `stco` and `co64`, or with more than one `ctts`; an
   `stsc` whose first entry's first chunk is not 1, whose first chunks do not strictly increase
@@ -200,7 +203,9 @@ says why, for:
 - **chunks outside `mdat`:** a chunk offset that does not fall inside the data of a top-level
   `mdat`, or a chunk whose samples run past the end of that data;
 - **sound read by chunk:** a track whose `stts` durations are all 1, unless its `trak` has at least
-  one `hdlr` (in `mdia` or in `minf`) and every one has the handler type `vide`: a player may take any
+  one `hdlr` (in `mdia` or in `minf`) other than a data handler (handler type `url `, `urn ` or
+  `alis`, which a MOV puts in `minf` and which sets no track type), and every such one has the
+  handler type `vide`: a player may take any
   other track's sample entry as audio, whatever its first handler says, and then reads its
   chunks by the sample entry, not by `stsz`. Such a track is refused unless its `stsz` gives one fixed size
   equal to the frame size players take from the entry: for a version 1 entry, its bytes per frame
