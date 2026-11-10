@@ -56,7 +56,8 @@ Signed by the registry alone. Its id is its message id (`PRE-GEN-CORE.md`, Messa
                     "project": "Spring campaign 2027", "not_after": 1830000000},
           "approval": {"assent": "registry", "instruction": "<sha-256 of the instruction's evidence>",
                        "factor": "authenticator"},
-          "issued_at": 1794200000},
+          "issued_at": 1794200000,
+          "nonce": "<32 lowercase hex>"},
  "signatures": ["<ed25519 hex>"]}
 ```
 
@@ -72,6 +73,7 @@ Signed by the registry alone. Its id is its message id (`PRE-GEN-CORE.md`, Messa
 | `scope` | what the approver approved. `purposes` and `categories` in the profile's closed vocabulary (`categories` may be empty); `territories` at most 250 ISO 3166-1 alpha-2 codes or `["*"]`; `channels` at most 64 words of `[a-z0-9-]{1,32}` or `["*"]`; `project` printable text of 1–200 characters; `not_after` an integer time later than `issued_at` and, under a licence, no later than its `expires_at`. Lists are sorted, without repeats; `purposes`, `territories` and `channels` are never empty |
 | `approval` | who approved, and on what basis (below) |
 | `issued_at` | the registry's time when it signed |
+| `nonce` | 32 lowercase hex characters (16 random bytes), chosen by the registry only so that the approval's readable code exists (see "The readable codes") |
 
 No other member is allowed, in the body or in any object of it.
 
@@ -321,7 +323,7 @@ countersignature), so each code has one prefix:
   of the `pg.grant.v1` that `basis.licence` names, with kind digit 5.
 
 A registry never signs a record whose code would not exist: when the check would be one of
-`* ~ $ = !`, or the tail would begin `ZZZZ` (kept for examples), it signs again a second later.
+`* ~ $ = !`, or the tail would begin `ZZZZ` (kept for examples), it signs again with a new nonce.
 
 **Copies, never authority.** In XMP they are `pgag:Code` and `pgag:Licence`, each at most once,
 read by the same lexical rule as `pgag:Record`. A verifier recomputes both from the signed
@@ -412,6 +414,7 @@ The libraries implement step 1 as `media_hash` / `mediaHash`, step 2 as `read_af
 | `scope` | the requester asks; the approver approves | the approver's act; the registry checks it against the licence and the floor | a holder wanting a wider scope | only within the licence; never wider than asked |
 | `scope.categories` | the requester declares | no one, until a finding | a holder hiding an intimate category | the approver sees the file; an intimate category is refused even if declared; a false declaration stays the requester's statement on record |
 | `approval` | the subject alone | the subject's key; or the registry, on the subject's own instruction, with a second factor | someone acting in the subject's name, an agency included | two named forms only, and the record says which; no mandate approves |
+| `nonce` | the registry, at random | no one: it carries no meaning | — | it only makes the approval's readable code exist; `issued_at` stays the registry's clock |
 | `issued_at` | the registry | the registry | a holder wanting the record to look earlier | the record is after the content by definition; an earlier date gains nothing it does not already state |
 | status `state` | the registry | the registry's signature, five-minute life | a holder hiding a withdrawal | a status is fetched live; an old one expires |
 

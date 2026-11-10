@@ -59,10 +59,11 @@
     "instruction": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "factor": "authenticator"
    },
-   "issued_at": 1789999901
+   "issued_at": 1789999900,
+   "nonce": "00000000000000000000000000000000"
   },
   "signatures": [
-   "5f9d0c29743aa3818e839d23a471c9e6804925187a428a1c755ea01fd389e7dbc5866f5ae9ae5bf7665311d88126e0bdd52fe7edcf146f9c9be1cbfa8a90f60b"
+   "8d425b735e6ce4001436dd9821417bb1dc55c4254e9a5a74957292d4d02832e0c90b091fecba10d4f45730649ef9879c27589fcc61827c085adeea0b52cd5605"
   ]
  },
  "files": [
@@ -690,11 +691,11 @@
  "read": [
   {
    "file": "a-c2pa-cbor.mp4",
-   "c2pa": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263",
+   "c2pa": "34e8f6ed4658da5621534a0dea4a93b0d2b721a54d9dd3b0b3b0ad2e9b69afe0",
    "xmp": null,
    "codes": {},
    "check": {
-    "c2pa": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263"
+    "c2pa": "34e8f6ed4658da5621534a0dea4a93b0d2b721a54d9dd3b0b3b0ad2e9b69afe0"
    }
   },
   {
@@ -706,19 +707,19 @@
   },
   {
    "file": "a-c2pa-json.mp4",
-   "c2pa": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263",
+   "c2pa": "34e8f6ed4658da5621534a0dea4a93b0d2b721a54d9dd3b0b3b0ad2e9b69afe0",
    "xmp": null,
    "codes": {},
    "check": {
-    "c2pa": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263"
+    "c2pa": "34e8f6ed4658da5621534a0dea4a93b0d2b721a54d9dd3b0b3b0ad2e9b69afe0"
    }
   },
   {
    "file": "a-xmp-code-ag.mp4",
    "c2pa": null,
-   "xmp": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263",
+   "xmp": "34e8f6ed4658da5621534a0dea4a93b0d2b721a54d9dd3b0b3b0ad2e9b69afe0",
    "codes": {
-    "Code": "TOG-AG-TEST-A4A7-1Q8G-36RP",
+    "Code": "TOG-AG-TEST-6KMF-DVA6-B3D7",
     "Licence": "TOG-LIC-TEST-XVQE-XVQE-XVQY"
    },
    "check": {
@@ -728,9 +729,9 @@
   {
    "file": "a-xmp-code-other.mp4",
    "c2pa": null,
-   "xmp": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263",
+   "xmp": "34e8f6ed4658da5621534a0dea4a93b0d2b721a54d9dd3b0b3b0ad2e9b69afe0",
    "codes": {
-    "Code": "TOG-AG-LIC-TEST-S3AD-T9EZ-H8BR",
+    "Code": "TOG-AG-LIC-TEST-788G-3G2C-X3XV",
     "Licence": "TOG-LIC-TEST-XVQE-XVQE-XVQY"
    },
    "check": {
@@ -740,9 +741,9 @@
   {
    "file": "a-xmp-code-symbol.mp4",
    "c2pa": null,
-   "xmp": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263",
+   "xmp": "34e8f6ed4658da5621534a0dea4a93b0d2b721a54d9dd3b0b3b0ad2e9b69afe0",
    "codes": {
-    "Code": "TOG-AG-LIC-TEST-A4A7-1Q8G-360S",
+    "Code": "TOG-AG-LIC-TEST-6KMF-DVA6-B30A",
     "Licence": "TOG-LIC-TEST-XVQE-XVQE-XVQY"
    },
    "check": {
@@ -752,13 +753,13 @@
   {
    "file": "a-xmp-foreign-pg.mp4",
    "c2pa": null,
-   "xmp": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263",
+   "xmp": "34e8f6ed4658da5621534a0dea4a93b0d2b721a54d9dd3b0b3b0ad2e9b69afe0",
    "codes": {
-    "Code": "TOG-AG-LIC-TEST-A4A7-1Q8G-36RS",
+    "Code": "TOG-AG-LIC-TEST-6KMF-DVA6-B3DA",
     "Licence": "TOG-LIC-TEST-XVQE-XVQE-XVQY"
    },
    "check": {
-    "xmp": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263"
+    "xmp": "34e8f6ed4658da5621534a0dea4a93b0d2b721a54d9dd3b0b3b0ad2e9b69afe0"
    }
   },
   {
@@ -771,10 +772,10 @@
   {
    "file": "a-xmp-licence-is-code.mp4",
    "c2pa": null,
-   "xmp": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263",
+   "xmp": "34e8f6ed4658da5621534a0dea4a93b0d2b721a54d9dd3b0b3b0ad2e9b69afe0",
    "codes": {
-    "Code": "TOG-AG-LIC-TEST-A4A7-1Q8G-36RS",
-    "Licence": "TOG-AG-LIC-TEST-A4A7-1Q8G-36RS"
+    "Code": "TOG-AG-LIC-TEST-6KMF-DVA6-B3DA",
+    "Licence": "TOG-AG-LIC-TEST-6KMF-DVA6-B3DA"
    },
    "check": {
     "xmp": "the readable code does not match the record"
@@ -783,9 +784,9 @@
   {
    "file": "a-xmp-terms-licence.mp4",
    "c2pa": null,
-   "xmp": "ecbe58212f16a22dc4ae64038dad2c880e102c5f680aa8ed8ad069f8f88d4946",
+   "xmp": "8a1e58a43939e476ac9de57071a654d1788c4156791a84ef252d52bddb0e32f2",
    "codes": {
-    "Code": "TOG-AG-TEST-XJZ5-G89F-2TH4",
+    "Code": "TOG-AG-TEST-H8F5-H91S-77JE",
     "Licence": "TOG-LIC-TEST-XVQE-XVQE-XVQY"
    },
    "check": {
@@ -795,24 +796,24 @@
   {
    "file": "a-xmp-terms.mp4",
    "c2pa": null,
-   "xmp": "ecbe58212f16a22dc4ae64038dad2c880e102c5f680aa8ed8ad069f8f88d4946",
+   "xmp": "8a1e58a43939e476ac9de57071a654d1788c4156791a84ef252d52bddb0e32f2",
    "codes": {
-    "Code": "TOG-AG-TEST-XJZ5-G89F-2TH4"
+    "Code": "TOG-AG-TEST-H8F5-H91S-77JE"
    },
    "check": {
-    "xmp": "ecbe58212f16a22dc4ae64038dad2c880e102c5f680aa8ed8ad069f8f88d4946"
+    "xmp": "8a1e58a43939e476ac9de57071a654d1788c4156791a84ef252d52bddb0e32f2"
    }
   },
   {
    "file": "a-xmp.mp4",
    "c2pa": null,
-   "xmp": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263",
+   "xmp": "34e8f6ed4658da5621534a0dea4a93b0d2b721a54d9dd3b0b3b0ad2e9b69afe0",
    "codes": {
-    "Code": "TOG-AG-LIC-TEST-A4A7-1Q8G-36RS",
+    "Code": "TOG-AG-LIC-TEST-6KMF-DVA6-B3DA",
     "Licence": "TOG-LIC-TEST-XVQE-XVQE-XVQY"
    },
    "check": {
-    "xmp": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263"
+    "xmp": "34e8f6ed4658da5621534a0dea4a93b0d2b721a54d9dd3b0b3b0ad2e9b69afe0"
    }
   },
   {
@@ -893,9 +894,9 @@
   {
    "file": "b-copied-record.mov",
    "c2pa": null,
-   "xmp": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263",
+   "xmp": "34e8f6ed4658da5621534a0dea4a93b0d2b721a54d9dd3b0b3b0ad2e9b69afe0",
    "codes": {
-    "Code": "TOG-AG-LIC-TEST-A4A7-1Q8G-36RS",
+    "Code": "TOG-AG-LIC-TEST-6KMF-DVA6-B3DA",
     "Licence": "TOG-LIC-TEST-XVQE-XVQE-XVQY"
    },
    "check": {
@@ -955,15 +956,16 @@
      "instruction": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
      "factor": "authenticator"
     },
-    "issued_at": 1789999900
+    "issued_at": 1789999900,
+    "nonce": "00000000000000000000000000000000"
    },
    "signatures": [
-    "608473bc0b97f5dd10ffe3c35671b51140a4b6d930b6ad408693712a1d1b1a308263499840cc59c1bc97a26626241a73d4334576497db3f983b17aeb52b9e30f"
+    "10ef01fc5524752e785056d37d461424ff01f76c64f19d4078c836aec3f488b669a5f145c7e2c7585dd714c55772a0448bc2bab40cc6bd5fd5d8efce4d2eef02"
    ]
   },
   "file": "a.mp4",
   "check": {
-   "id": "ecbe58212f16a22dc4ae64038dad2c880e102c5f680aa8ed8ad069f8f88d4946",
+   "id": "8a1e58a43939e476ac9de57071a654d1788c4156791a84ef252d52bddb0e32f2",
    "basis": {
     "kind": "terms",
     "terms": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"

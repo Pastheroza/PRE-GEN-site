@@ -9,6 +9,7 @@ size, a second movie (`cmov`, `hoov`, the MPEG handler pattern), a carrier first
 and XMP, or the reader's refusal, and what `check_after_gen` says against the file's own hash. The XMP files also carry the readable codes
 (`pgag:Code`, `pgag:Licence`); `vectors.json` gives the copies read and checks the XMP record with them: a copy that
 differs is refused (`a-xmp-code-*`, `a-xmp-licence-is-code`, `a-xmp-terms-licence`), and a copy written twice or as an
-attribute leaves the packet with no record (`attack-xmp-code-*`). Its directory and key sets are those of `../answers.json`.
+attribute leaves the packet with no record (`attack-xmp-code-*`). The record's `basis.licence.id` is `"e" * 64`, a fixture
+id, not a real grant's: its licence code repeats the group `XVQE` (`TOG-LIC-TEST-XVQE-XVQE-XVQY`). Its directory and key sets are those of `../answers.json`.
 `a.mp4`, `b.mov`, `c.mp4` and their `-remux` copies were made once with ffmpeg 9.0.2 (commands in
 `packages/verify-py/tests/test_after_gen.py`); every other file is derived from them by `python tests/test_after_gen.py`.

@@ -138,13 +138,13 @@ def test_the_subject_approves_with_their_own_key_and_the_record_stands():
                   "about whether the content is AI-generated."}
     assert body["approval"] == {"assent": "self", "decision": message_id(d["type"], d["body"])}
     assert (body["subject_ref"], body["holder"], body["request"]) == (w.me, w.p.id, rid)
-    assert w.clock.t <= body["issued_at"] < w.clock.t + 64      # a second later for each code that would not exist
+    assert body["issued_at"] == w.clock.t and re.fullmatch(r"[0-9a-f]{32}", body["nonce"])  # the clock; a nonce for the code
     assert body["content"] == {"binding": "media/1", "hash": MEDIA, "leaves": 1843}
     assert body["basis"] == {"kind": "licence", "licence": {"format": "pg.grant.v1", "id": w.mine},
                              "use": {"n": 1, "of": None}}                         # the reference issues the licence kind only
     assert body["scope"] == w.scope(not_after=body["scope"]["not_after"])
     assert set(body) == {"signers", "kind", "label", "notice", "not", "subject_ref", "content", "request", "holder",
-                         "basis", "scope", "approval", "issued_at"}       # no status_url: it would name itself
+                         "basis", "scope", "approval", "issued_at", "nonce"}   # no status_url: it would name itself
     assert w.c.get(f"/v2/after-gen/{rid}").status_code == 404                     # the status is by the record's id
     assert w.c.get(f"/v2/after-gen?media={MEDIA}").json() == {"records": [rec_id]}
     assert w.state(rid).json() == {"request": rid, "state": "approved", "review_until": w.clock.t - 3600 + AG_REVIEW,
@@ -532,8 +532,8 @@ def test_16_status_says_active_withdrawn_with_both_times_or_expired():
     rid = w.pending(subject=w.me, scope=w.scope(not_after=w.clock.t + 86400))
     rec = w.decide(rid).json()["record"]
     body, s = w.status(rec)
-    approved = body["issued_at"]                                # now, or a second later for each code that would not exist
-    assert w.clock.t <= approved < w.clock.t + 64
+    approved = body["issued_at"]
+    assert approved == w.clock.t                                # the registry clock, never moved to fit the code
     assert s == {"signers": s["signers"], "record": rec, "state": "active", "approved_at": approved,
                  "withdrawn_at": None, "not_after": w.clock.t + 86400, "issued_at": w.clock.t,
                  "expires_at": w.clock.t + 300}
@@ -648,29 +648,32 @@ def test_the_library_accepts_every_record_and_status_the_registry_signs():
     assert lib.check_after_gen_status(out["status"], out["record"], directory, get_json, now=w.clock.t)["state"] == "expired"
 
 
-def test_a_record_whose_code_would_not_exist_is_signed_a_second_later():
+def test_a_record_whose_code_would_not_exist_is_signed_again_with_a_new_nonce(monkeypatch):
     """The readable codes: when the check would be one of * ~ $ = ! (or the tail would begin ZZZZ), the registry signs
-    again with issued_at one second later. The body is known before signing, so the clock is set to such a second."""
+    again with a new nonce; issued_at stays the registry clock (rule 7). The nonces are fixed so the first has no code."""
     w = World()
     rid = w.pending()
     scope = json.loads(w.row(rid)["scope"])
 
-    def body_at(t):
+    def body_with(nonce):
         return {**AG_CONSTANTS, "signers": [{"role": "registry", "key_id": w.reg.key.id}], "subject_ref": w.s,
                 "content": {"binding": "media/1", "hash": MEDIA, "leaves": 1843}, "request": rid, "holder": w.p.id,
                 "basis": {"kind": "licence", "licence": {"format": "pg.grant.v1", "id": w.g}, "use": {"n": 1, "of": None}},
                 "scope": scope, "approval": {"assent": "registry", "instruction": INSTRUCTION, "factor": "email"},
-                "issued_at": t}
+                "issued_at": w.clock.t, "nonce": nonce}
 
-    def code_at(t):
-        return lib.after_gen_codes({"type": "pg.after_gen.v1", "body": body_at(t)})["Code"]
-    t = next(t for t in range(w.clock.t, w.clock.t + 3600) if code_at(t) is None)
-    w.clock.t = t
+    def code_with(nonce):
+        return lib.after_gen_codes({"type": "pg.after_gen.v1", "body": body_with(nonce)})["Code"]
+    nonces = [f"{n:032x}" for n in range(4096)]
+    first = next(n for n in nonces if code_with(n) is None)
+    second = next(n for n in nonces if code_with(n))
+    given = iter([first, second])
+    monkeypatch.setattr(secrets, "token_hex", lambda k: next(given))
     rec = w.reg.approve_after_gen(rid, instruction=INSTRUCTION, factor="email")
-    later = next(t + k for k in range(1, 64) if code_at(t + k))
     body = w.status(rec)[0]
-    assert body["issued_at"] == later and rec == message_id("pg.after_gen.v1", body_at(later))
-    assert lib.after_gen_codes({"type": "pg.after_gen.v1", "body": body})["Code"] == code_at(later)
+    assert (body["issued_at"], body["nonce"]) == (w.clock.t, second)
+    assert rec == message_id("pg.after_gen.v1", body_with(second))
+    assert lib.after_gen_codes({"type": "pg.after_gen.v1", "body": body})["Code"] == code_with(second)
 
 
 # ── a record is never an answer (vector 11), and the requester's authentication ──

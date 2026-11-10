@@ -1095,7 +1095,7 @@ def after_gen_codes(env: dict) -> dict:
 # ── the record and its status ──────────────────────────────────────────────────────────────────
 
 _MEMBERS = {"signers", "kind", "label", "notice", "not", "subject_ref", "content", "request", "holder", "basis",
-            "scope", "approval", "issued_at"}
+            "scope", "approval", "issued_at", "nonce"}
 _SCOPE = {"purposes", "categories", "territories", "channels", "project", "not_after"}
 _BASIS = {"licence": {"kind", "licence", "use"}, "terms": {"kind", "terms"}}
 _APPROVAL = {"self": {"assent", "decision"}, "registry": {"assent", "instruction", "factor"}}  # a mandate never approves
@@ -1193,6 +1193,8 @@ def check_after_gen(env: dict, directory=None, get_json=_get_json, media=None, c
             raise PregenError("use: n from 1, of the licence's max_uses or null")
     if not _hex(b["request"]) or not _count(b["issued_at"]):
         raise PregenError("request is a message id and issued_at an integer time")
+    if not (isinstance(b["nonce"], str) and re.fullmatch(r"[0-9a-f]{32}", b["nonce"])):
+        raise PregenError("nonce: 32 lowercase hex characters")
     check_provider_url(b["holder"], allow_port=True)
     _scope(b["scope"])
     if b["scope"]["not_after"] <= b["issued_at"]:

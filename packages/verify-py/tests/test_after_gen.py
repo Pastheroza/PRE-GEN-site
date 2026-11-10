@@ -228,7 +228,7 @@ def record(media, key=KEY, **change):
             "notice": pregen.AFTER_GEN_NOTICE, "not": pregen.AFTER_GEN_NOT, "subject_ref": CODE,
             "content": {k: media[k] for k in ("binding", "hash", "leaves")}, "request": "a" * 64,
             "holder": "https://studio.example", "basis": BASIS, "scope": SCOPE, "approval": APPROVAL,
-            "issued_at": NOW - 100}
+            "issued_at": NOW - 100, "nonce": "0" * 32}
     body.update(change)
     return pregen.sign_envelope("pg.after_gen.v1", {k: v for k, v in body.items() if v is not DROP}, key)
 
@@ -245,11 +245,12 @@ def check(env, media=None, directory=D, codes=None):
     return pregen.check_after_gen(env, directory, get_json, media=media, codes=codes)
 
 
-def coded(media, **change):
-    """A record as a registry signs it: issued_at a second later while its code would not exist (The readable codes)."""
-    t = change.pop("issued_at", NOW - 100)
-    while not pregen.after_gen_codes(rec := record(media, issued_at=t, **change))["Code"]:
-        t += 1
+def coded(media, exists=True, **change):
+    """A record as a registry signs it: issued_at kept, a new nonce while its code would not exist (The readable codes).
+    With exists=False, the first record whose code would not exist."""
+    n = 0
+    while bool(pregen.after_gen_codes(rec := record(media, nonce=f"{n:032x}", **change))["Code"]) != exists:
+        n += 1
     return rec
 
 
@@ -798,9 +799,9 @@ def test_read_the_vector_files():
 
 
 def test_embed_xmp_round_trip(tmp_path):
-    rec = record(media("a.mp4"))
+    rec = coded(media("a.mp4"), exists=False)                   # a record whose approval code cannot be formed
     pregen.embed_xmp(DIR / "a.mp4", tmp_path / "x.mp4", rec)
-    data = (tmp_path / "x.mp4").read_bytes()
+    data =(tmp_path / "x.mp4").read_bytes()
     assert data.startswith((DIR / "a.mp4").read_bytes()) and media("a.mp4") == pregen.media_hash(tmp_path / "x.mp4")
     assert pregen.read_after_gen(tmp_path / "x.mp4") == {"c2pa": None, "xmp": rec, "codes": {"Licence": LIC_CODE}}
     packet = data[len((DIR / "a.mp4").read_bytes()) + 24:]
@@ -1021,7 +1022,7 @@ def test_the_readable_codes():
     terms = coded(a(), basis=TERMS)
     assert pregen.after_gen_codes(terms)["Code"].startswith("TOG-AG-TEST-") and pregen.after_gen_codes(terms)["Licence"] is None
     # none where a code does not exist: a check * ~ $ = !, a tail starting ZZZZ, no prefix
-    plain = record(a())                                        # issued_at NOW - 100: its check would be a symbol
+    plain = coded(a(), exists=False)                           # a nonce under which its check would be a symbol
     pid = pregen.message_id("pg.after_gen.v1", plain["body"])
     ptail = "".join("0123456789ABCDEFGHJKMNPQRSTVWXYZ"[int(f"{int(pid, 16):0256b}"[i:i + 5], 2)] for i in range(0, 55, 5))
     assert ag._tog_check("404TEST" + ptail) in "*~$=!" and pregen.after_gen_codes(plain)["Code"] is None
@@ -1045,7 +1046,7 @@ def test_the_copies_must_be_the_codes_of_the_record():
     assert check(terms, codes={"Code": pregen.after_gen_codes(terms)["Code"]})["basis"] == TERMS
     other = pregen.after_gen_codes(coded(a(), issued_at=NOW - 50))["Code"]
     changed = code[:-2] + ("0" if code[-2] != "0" else "1") + code[-1]
-    plain = record(a())                                                                 # its code cannot be formed
+    plain = coded(a(), exists=False)                                                    # its code cannot be formed
     for env, codes, why in ((rec, {"Code": changed}, "one symbol changed"),
                             (rec, {"Code": other}, "another record's code"),
                             (rec, {"Code": relabel(code, "AG")}, "AG in place of AG-LIC"),
@@ -1166,6 +1167,11 @@ MUTATIONS = [                                                 # vectors 7, 9, 13
      "territories"),
     ("65 channels", {"scope": {**SCOPE, "channels": [f"c{j:02d}" for j in range(65)]}}, "channels"),
     ("not_after at issued_at", {"scope": {**SCOPE, "not_after": NOW - 100}}, "later than issued_at"),
+    ("missing nonce", {"nonce": DROP}, "exactly the members"),
+    ("nonce upper case", {"nonce": "A" * 32}, "nonce"),
+    ("nonce short", {"nonce": "0" * 31}, "nonce"),
+    ("nonce long", {"nonce": "0" * 33}, "nonce"),
+    ("nonce not a string", {"nonce": 0}, "nonce"),
     ("holder with an empty port", {"holder": "https://studio.example:"}, "provider URL"),
     ("holder with port 0", {"holder": "https://studio.example:0"}, "provider URL"),
 ]

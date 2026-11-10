@@ -1378,15 +1378,12 @@ class Registry:
                 "request": row["id"], "holder": row["requester"],
                 "basis": {"kind": "licence", "licence": {"format": "pg.grant.v1", "id": g["id"]},
                           "use": {"n": used + 1, "of": g["max_uses"]}}, "scope": scope, "approval": a, "issued_at": now}
-        for _ in range(64):              # The readable codes: never a record whose code would not exist; a second later
-            env = seal("pg.after_gen.v1", body, [("registry", self.key)])
+        for _ in range(64):              # The readable codes: never a record whose code would not exist; a new nonce
+            env = seal("pg.after_gen.v1", {**body, "nonce": secrets.token_hex(16)}, [("registry", self.key)])
             if after_gen_codes(env)["Code"]:
                 break
-            body["issued_at"] += 1
         else:
-            raise RuntimeError("no readable code in 64 seconds of issued_at")
-        if scope["not_after"] <= body["issued_at"]:    # the re-sign must not outrun the approved period
-            raise ProtocolError("PG_SCOPE_VIOLATION", "not_after is too close: no readable code before it", status=403)
+            raise RuntimeError("no readable code in 64 nonces")
         record = message_id(env["type"], env["body"])
         db.execute("INSERT INTO after_gen_records (id, request_id, subject_ref, media_hash, licence_id, envelope, "
                    "issued_at, not_after, decision) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -1476,8 +1473,7 @@ class Registry:
                                     "issued_at within 300 seconds}")
             how = {"assent": "self", "withdrawal": message_id(env["type"], body)}
         with self.tx() as db:
-            # never before the record's own issued_at, which a code re-sign may have put a few seconds ahead
-            db.execute("UPDATE after_gen_records SET withdrawn_at = MAX(?, issued_at), withdrawal = ? "
+            db.execute("UPDATE after_gen_records SET withdrawn_at = ?, withdrawal = ? "
                        "WHERE id = ? AND withdrawn_at IS NULL", (self.clock(), json.dumps(how), record_id))
             at = db.execute("SELECT withdrawn_at FROM after_gen_records WHERE id = ?", (record_id,)).fetchone()[0]
         return {"record": record_id, "state": "withdrawn", "withdrawn_at": at}

@@ -318,7 +318,7 @@ async function baseBody(key = KEY) {
     basis: { kind: "licence", licence: { format: "pg.grant.v1", id: "b".repeat(64) }, use: { n: 3, of: 10 } }, scope: { purposes: ["commercial"], categories: ["advertising"], territories: ["ES", "IT"],
       channels: ["online-video", "social"], project: "Spring campaign 2027", not_after: 1830000000 },
     approval: { assent: "registry", instruction: "c".repeat(64), factor: "authenticator" },
-    issued_at: 1794200000 };
+    issued_at: 1794200000, nonce: "0".repeat(32) };
 }
 async function record(changes = {}, key = KEY) {
   let body = await baseBody(key);
@@ -329,10 +329,10 @@ const RECORD = await record();
 const TERMS = { kind: "terms", terms: "f".repeat(64) };
 // The readable codes embedXmp writes: those that can be formed (RECORD is signed by a fresh key: its code may not exist).
 const written = async (env) => Object.fromEntries(Object.entries(await afterGenCodes(env)).filter(([, v]) => v));
-// A record as a registry signs it: issued_at a second later while its code would not exist.
+// A record as a registry signs it: issued_at kept, a new nonce while its code would not exist.
 async function coded(changes = {}) {
-  for (let t = 1794200000; ; t++) {
-    const env = await record({ ...changes, issued_at: t });
+  for (let n = 0; ; n++) {
+    const env = await record({ ...changes, nonce: n.toString(16).padStart(32, "0") });
     if ((await afterGenCodes(env)).Code) return env;
   }
 }
@@ -532,7 +532,7 @@ test("afterGenCodes: the first 55 bits of the message id and the check over the 
   let none = 0;
   for (let t = 0; t < 200; t++) {
     for (const basis of [undefined, TERMS]) {
-      const env = { type: "pg.after_gen.v1", body: { ...(await baseBody()), issued_at: 1794200000 + t, ...(basis ? { basis } : {}) } };
+      const env = { type: "pg.after_gen.v1", body: { ...(await baseBody()), nonce: t.toString(16).padStart(32, "0"), ...(basis ? { basis } : {}) } };
       const tail = tailOf(await messageId(env.type, env.body)), check = togCheck(`40${basis ? 3 : 4}TEST${tail}`);
       const want = tail.startsWith("ZZZZ") || !CROCKFORD.includes(check) ? null : spell(basis ? "AG" : "AG-LIC", "TEST", tail + check);
       const lic = tailOf("b".repeat(64)) + togCheck("405TEST" + tailOf("b".repeat(64)));
@@ -692,6 +692,11 @@ const MUTATIONS = [ // vectors 9 and 13, the shape, and the approval forms
   ["251 territories", { "scope.territories": Array.from({ length: 251 }, (_, i) => String.fromCharCode(65 + Math.floor(i / 26), 65 + (i % 26))) }],
   ["65 channels", { "scope.channels": Array.from({ length: 65 }, (_, i) => `c${String(i).padStart(2, "0")}`) }],
   ["not_after at issued_at", { "scope.not_after": 1794200000 }],
+  ["no nonce", { nonce: DROP }],
+  ["an upper-case nonce", { nonce: "A".repeat(32) }],
+  ["a nonce of 31 characters", { nonce: "0".repeat(31) }],
+  ["a nonce of 33 characters", { nonce: "0".repeat(33) }],
+  ["a nonce that is not a string", { nonce: 0 }],
   ["a holder with an empty port", { holder: "https://studio.example:" }],
   ["a holder with port 0", { holder: "https://studio.example:0" }],
 ];

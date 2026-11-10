@@ -60,6 +60,9 @@ async function findByHash(directory, hash) {
   return found;
 }
 
+// The PG- spelling is no longer issued: never shown, also not inside a library's error message.
+const noPg = (m) => String(m).replace(/\bPG-[0-9A-Z*~$=!-]+/g, "the person's code");
+
 // One block per record that checks out: a file may show several people. `codes` are computed from the record.
 function show(summary, status, error, codes) {
   const s = summary.scope;
@@ -67,16 +70,18 @@ function show(summary, status, error, codes) {
     : status.state === "withdrawn" ? `Withdrawn by the person on ${when(status.withdrawn_at)}`
     : status.state === "expired" ? `Expired on ${when(status.not_after)}`
     : "Not confirmed by the registry today";
+  // Nothing is shown in the PG- spelling, which is no longer issued: the person is named by the approval's ToG code
+  // until the PG to TOG folding rule lands.
+  const who = codes.Code || `a person at registry ${summary.prefix}`;
   const block = el("section", undefined, "cf-record");
-  block.append(el("p", status.state === "active" ? `Approved after generation: ${summary.subject_ref}`
-    : status.state === "unknown" ? `A record for ${summary.subject_ref} was found, but whether it stands today could not be confirmed`
-    : `Approved after generation, no longer in force: ${summary.subject_ref}`, "cf-verdict"));
+  block.append(el("p", status.state === "active" ? `Approved after generation: ${who}`
+    : status.state === "unknown" ? `A record for ${who} was found, but whether it stands today could not be confirmed`
+    : `Approved after generation, no longer in force: ${who}`, "cf-verdict"));
   block.append(el("p", error
     ? `The registry did not answer for its status (${error}). The person may have withdrawn it. Treat it as not confirmed until the registry answers.`
     : `${summary.approvedBy} The registry signed this record on ${when(summary.issued_at)}.`, "cf-why"));
   const rows = [
     ["Status today", state],
-    ["Person", summary.subject_ref],
     ...(codes.Code ? [["Approval code", codes.Code]] : []),
     ["Registry", summary.prefix],
     ["Who may publish it", summary.holder],
@@ -159,7 +164,7 @@ async function check(file) {
   }
   if (!good.size) {
     step("s-sign", "fail");
-    const msg = lastError?.message || "";
+    const msg = noPg(lastError?.message || "");
     if (/not for this file/.test(msg)) {
       return say("The record in this file belongs to another file",
         "The record names a different video. A record copied into another file approves nothing.");
@@ -178,7 +183,7 @@ async function check(file) {
     return result.append(el("p", msg, "meta"));
   }
   step("s-sign", "ok", good.size === 1 ? "1 record" : `${good.size} records`);
-  if (lastError) result.append(el("p", `Some records found for this file do not check out and are not shown (${lastError.message}).`, "meta"));
+  if (lastError) result.append(el("p", `Some records found for this file do not check out and are not shown (${noPg(lastError.message)}).`, "meta"));
 
   step("s-status", "busy");
   let confirmed = 0;
@@ -190,7 +195,7 @@ async function check(file) {
       show(summary, await checkAfterGenStatus(status, env, { directory }), undefined, codes);
       confirmed++;
     } catch (e) {
-      show(summary, { state: "unknown", not_after: summary.scope.not_after }, e.message, codes);
+      show(summary, { state: "unknown", not_after: summary.scope.not_after }, noPg(e.message), codes);
     }
   }
   step("s-status", confirmed === good.size ? "ok" : "fail", `${confirmed} of ${good.size} confirmed`);

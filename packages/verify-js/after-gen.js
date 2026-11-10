@@ -888,7 +888,7 @@ const sortedUnique = (v) => Array.isArray(v) && v.every((x) => typeof x === "str
 const wordsOrAll = (v, re, most) => sortedUnique(v) && v.length > 0
   && (canonicalJson(v) === '["*"]' || (v.length <= most && v.every((x) => re.test(x))));
 const BODY = ["signers", "kind", "label", "notice", "not", "subject_ref", "content", "request", "holder", "basis",
-  "scope", "approval", "issued_at"]; // no status_url: the id hashes the body, so a verifier builds {api}/v2/after-gen/{id}
+  "scope", "approval", "issued_at", "nonce"]; // no status_url: the id hashes the body, so a verifier builds {api}/v2/after-gen/{id}
 const BASIS = { licence: ["kind", "licence", "use"], terms: ["kind", "terms"] };
 const APPROVAL = { self: ["assent", "decision"], registry: ["assent", "instruction", "factor"] }; // a mandate never approves
 
@@ -948,6 +948,7 @@ function recordShape(b) {
     A("approval registry names the instruction and its second factor: authenticator or email");
   }
   if (!time(b.issued_at)) A("issued_at is an integer time");
+  if (typeof b.nonce !== "string" || !/^[0-9a-f]{32}$/.test(b.nonce)) A("nonce is 32 lowercase hex characters");
   if (s.not_after <= b.issued_at) A("scope.not_after is later than issued_at");
 }
 
