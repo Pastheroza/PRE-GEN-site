@@ -18,7 +18,7 @@ it without asking permission.
 | `PRE-GEN-SPEC.md` | Foundations the core builds on (canonical bytes, keys, refusal codes) and the earlier interface (`/v1/verify`, receipts), still valid |
 | `PRE-GEN-EXTENSIONS.md` | What a registry adds; the first registry's (PRAMPTA) extensions |
 | `TOG-CODE.md` | **ToG code** (formerly PG code): every code written from 0.14.0 on, prefixes, directory v3 (draft, unreleased) |
-| `PG-CODE.md` | PG identifier format, check character, issuer prefixes (§9); frozen, read as legacy input |
+| `PG-CODE.md` | PG identifier format: retired, not supported; kept as history (a `PG-` string is not a code) |
 | `REFUSAL-CODES.md` | The first registry's reason codes, core codes marked |
 | `VERSIONS.md` | Every version, numbered as on Zenodo, and what changed |
 | `PRE-GEN-v5.pdf` | Version 5 as a paper (source: `paper/`) |

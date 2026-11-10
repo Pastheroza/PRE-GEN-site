@@ -332,7 +332,7 @@ def cmd_revoke_registry(args) -> None:
 
 
 def _key(code: str) -> str:
-    """The one TOG spelling to write into the signed directory (TOG-CODE §7.3): a PG- string is input only."""
+    """The code to write into the signed directory (TOG-CODE §7.3): a ToG code; a PG- string is not a code."""
     try:
         return pregen.code_key(code)
     except pregen.PregenError as e:

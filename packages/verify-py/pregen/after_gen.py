@@ -1055,8 +1055,8 @@ def c2pa_assertion(envelope: dict) -> dict:
 # ── the readable codes ───────────────────────────────────────────────────────────────────────────
 
 def person_key(code) -> str:
-    """A person's code in its one spelling, TOG (TOG-CODE.md §7.3): code_key, and a person's, never an act's. A record
-    writes only this spelling; a request may still name the person as PG-, which folds. Raises PregenError."""
+    """A person's code (TOG-CODE.md §7.3): code_key, and a person's, never an act's. A PG- string is not a code.
+    Raises PregenError."""
     key = code_key(code)
     if kind_of(key) != "subject":
         raise PregenError(f"{code!r} is not a person's code (TOG-CODE.md §7.3)")
@@ -1160,12 +1160,12 @@ def check_after_gen(env: dict, directory=None, get_json=_get_json, media=None, c
     directory = directory or load_directory(get_json=get_json)
     body = env.get("body") if isinstance(env, dict) else None
     code = body.get("subject_ref") if isinstance(body, dict) else None
-    if isinstance(code, str) and directory.is_false_claim(code):              # by code_key: either spelling
+    if isinstance(code, str) and directory.is_false_claim(code):              # by code_key
         raise PregenError(f"{code} is a false claim the steward recorded")
     b = _registry_signed(env, _TYPE, code, directory, get_json)
     _obj(b, _MEMBERS, _TYPE)
     if person_key(code) != code:
-        raise PregenError("subject_ref: the person's code in its one spelling, TOG (a record never writes PG-)")
+        raise PregenError("subject_ref: not a person's code")
     if not _printable(b) or set(b["signers"][0]) != {"role", "key_id"}:
         raise PregenError(f"{_TYPE}: a control or format character, or a signer that is not {{role, key_id}}")
     if b["kind"] != "ratification":

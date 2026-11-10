@@ -21,8 +21,9 @@ as its own Zenodo version; everything it added is part of v5.
 
 **Collected for the next version: the ToG code (libraries 0.14.0, unreleased).** A core
 change: every code is written `TOG-` ([`TOG-CODE.md`](TOG-CODE.md)), and the directory moves to
-v3 at a new URL while v2 stays frozen. No issued code changes meaning (rule 2): every PG string
-keeps resolving to the same person or licence, read as legacy input. It gets a version number
+v3 at a new URL while v2 stays frozen. PG codes are retired and not compatible: a `PG-` string is
+not a code. Each registry migrates its own people and licences once, so a person or licence keeps its
+meaning under its TOG code; the old `PG-` strings themselves stop working. It gets a version number
 when it is published (rule 1). What changed: `CHANGELOG.md`, "pregen 0.14.0".
 
 ## Rules

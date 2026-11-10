@@ -38,7 +38,7 @@ def sealed(t, body, roles):
 
 
 def build():
-    req = {"subject_ref": "PG-TEST-000001N", "provider_id": "frame-ai", "profile": "likeness/1",
+    req = {"subject_ref": "TOG-TEST-000001N", "provider_id": "frame-ai", "profile": "likeness/1",
            "use": {"purpose": "commercial"}, "job_id": "job-8841", "job_hash": "a" * 64}
     v_req = sealed("pg.request.v1", req, [])
     grant = sealed("pg.grant.v1", {"subject_ref": req["subject_ref"], "licensee_id": "", "profile": "likeness/1",

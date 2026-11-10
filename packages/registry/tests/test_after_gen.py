@@ -328,21 +328,22 @@ def test_mandate_signed_by_the_subjects_own_key():
         w.reg.add_mandate_envelope(sign(w.own, "subject", "pg.mandate.v1", {**body, "subject_ref": w.s}))
 
 
-def test_either_spelling_names_the_person_and_what_the_registry_writes_is_tog():     # TOG-CODE.md §7.3
+def test_a_pg_string_names_no_one_and_what_the_registry_writes_is_tog():     # TOG-CODE.md §1, §7.3
     w = World()
-    tog, pg = w.me, "PG-" + w.me[4:]             # the registry mints TOG; an old client may still write PG-
-    assert tog.startswith("TOG-") and lib.code_key(pg) == tog
+    tog, pg = w.me, "PG-" + w.me[4:]             # the registry mints TOG; a PG string is not a code
+    assert tog.startswith("TOG-")
+    with pytest.raises(lib.PregenError):
+        lib.code_key(pg)
     body = {"subject_ref": pg, "agent": AGENCY, "powers": ["after_gen"], "limits": {"purposes": ["commercial"]},
             "not_after": w.clock.t + 86400, "assent": "self", "issued_at": w.clock.t}
-    w.reg.add_mandate_envelope(sign(w.own, "subject", "pg.mandate.v1", body))
-    rid = w.pending(subject=pg, licence=w.mine)
-    assert w.row(rid)["subject_ref"] == w.me      # one person, one key
-    assert w.decide(rid, role="agent", agent=AGENCY, outcome="refuse").json()["state"] == "agent_refused"
+    with pytest.raises((ValueError, ProtocolError)):
+        w.reg.add_mandate_envelope(sign(w.own, "subject", "pg.mandate.v1", body))
+    refused(w.ask(subject=pg, licence=w.mine), "PG_MALFORMED")
+    rid = w.pending(subject=tog, licence=w.mine)
+    assert w.row(rid)["subject_ref"] == w.me
     r = w.decide(rid)
     assert r.status_code == 200, r.text
     assert w.status(r.json()["record"])[0]["subject_ref"] == tog
-    mandate = w.reg._row("SELECT envelope FROM mandates WHERE id = ?", (w.mandate(),))["envelope"]
-    assert json.loads(mandate)["body"]["subject_ref"] == w.s
     refused(w.ask(subject=tog[:-1] + ("0" if tog[-1] != "0" else "1"), licence=w.mine), "PG_MALFORMED")
     refused(w.ask(subject="TOG-AG-PRAM-ZZZZ-T8JE-WDJX", licence=w.mine), "PG_MALFORMED")   # an act's code, no person
 

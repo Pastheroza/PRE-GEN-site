@@ -10,9 +10,10 @@ output generated under a yes, a file approved after it was made). It is complete
 scratch. The text is normative; the vectors are its conformance test, and a disagreement between them is an
 erratum (`PRE-GEN-SPEC.md` §0.3).
 
-[`PG-CODE.md`](PG-CODE.md) stays frozen. Its check algorithm, its alphabet, its grammar, its v2 directory and
-its reserved floor do not change. Its grammar is now read only to understand old input (§7.3). Where any other
-document says "PG code", read "ToG code", written in its TOG spelling.
+[`PG-CODE.md`](PG-CODE.md) is **retired, not supported**. It stays as a historical document. Its check algorithm,
+alphabet and reserved floor live on here unchanged; its grammar is no longer read at all. **PG code is not
+compatible with ToG code: a `PG-` string is not a code.** Where any other document says "PG code", read "ToG
+code".
 
 ---
 
@@ -20,11 +21,17 @@ document says "PG code", read "ToG code", written in its TOG spelling.
 
 1. **"ToG code" is the family's name. `TOG-` is the only written marker.** Every protocol message, record,
    directory, lookup answer, proof, card and screen writes `TOG-`. No registry writes a `PG-` code again.
-2. **Every code has one spelling, its TOG spelling.** A `PG-` string is legacy input only: an old signed
-   record, a printed card, a QR, a typed string. It folds to its one TOG spelling (`code_key`, §7.3) and is
-   never written.
-3. **Nothing issued changes meaning.** Every old string still resolves to the same person or licence. Only the
-   written spelling changed. A person keeps its number and its check character.
+2. **A `PG-` string is not a code anywhere.** Not as input, not folded, not converted, not suggested. Parsers,
+   `code_key`, anchor lists, lookups, registries, a request's `subject_ref`, URLs and forms refuse it like any
+   other non-code (`invalid_format`, `PG_MALFORMED`, "Not a code."). Where a person typed it, one neutral
+   message: **"PG codes are retired. Use the ToG code your registry shows you."** No TOG spelling is suggested
+   (§7.4).
+3. **Each registry migrates its own data, once, internally** (§5, §6.2). A person or release work
+   `PG-<P>-<serial><check>` becomes `TOG-<P>-<serial><check>`, same serial and check; a licence gets the
+   `TOG-LIC` code of its signed object. The migrated code is the same person or licence. An internal column may
+   keep an old id only to rebuild an old signature: never accepted from outside, never shown. **The old `PG-`
+   strings themselves stop working** (§17): printed cards, links and old signed objects that hold one resolve
+   to nothing.
 4. **A code is a handle, never proof.** The proof is a signed record that fits the file. A code that does not
    equal the code computed from its record is refused (§6).
 5. **The person is never in an act code. The provider is never in any code.** New person numbers are random.
@@ -60,8 +67,8 @@ word is what `lookup` answers (`extensions/lookup.md`).
 | `old_person` | `TOG-<4 PG letters>-<6 or 7 digits><old check>` | a PG-born person, respelled; closed |
 | `old_bare_person` | `TOG-<6 or more digits><old check>` | a bare PG-born person, respelled; closed |
 | `old_no_check` | `TOG-STD-<digits>`, `TOG-SUB-<digits>` | the two oldest shapes, respelled; closed |
-| `pg_person`, `bare_person`, `no_check` | PG-CODE.md §2 | legacy input only; folds by its marker |
-| `pg_licence`, `bare_licence` | PG-CODE.md §2, §6 | legacy input only; folds through its record |
+
+**No PG shape.** A `PG-` string matches no shape, so it is not a code.
 
 **Closed** means no new code is ever minted in that shape. Its codes stay valid forever.
 
@@ -138,11 +145,15 @@ TOG-<PREFIX>-<serial><check>
   serials below 900 000 000. A gap means nothing; there is no registration order to read. A dropped or doubled
   digit gives 8 or 10 digits: not a code.
 - **The check is a letter or digit.** A registry skips any serial whose check would be a symbol (about 1 in 7).
-- **A PG-born person is respelled by its marker only.** `PG-<P>-<serial><check>` is written
-  `TOG-<P>-<serial><check>`; `PG-<serial><check>` is written `TOG-<serial><check>`; `PG-STD-…` and `PG-SUB-…`
-  are written `TOG-STD-…` and `TOG-SUB-…`. Same serial, same length, same check. A prefixed PG person has 6 or
-  7 digits; the bare namespace has 6 or more. These shapes are closed.
-- One person never has two codes. A respelling is the same person.
+- **A PG-born person or release work is migrated by its registry, by the marker only** (`registry_migrate` in
+  the reference model). `PG-<P>-<serial><check>` becomes `TOG-<P>-<serial><check>`; `PG-<serial><check>`
+  becomes `TOG-<serial><check>`; `PG-STD-…` and `PG-SUB-…` become `TOG-STD-…` and `TOG-SUB-…`. Same serial,
+  same length, same check. A prefixed old person has 6 or 7 digits; the bare namespace has 6 or more. These
+  shapes are closed. A string never issued in one of them (9 digits under a PG prefix, a symbol check with 9
+  digits, a leading zero, a class other than `STD` and `SUB`) is not migrated.
+- **The migration is the registry's own, once, over its own rows.** It is never applied to anything from
+  outside: from outside, the `PG-` string is not a code.
+- One person never has two codes.
 
 ---
 
@@ -167,10 +178,12 @@ TOG-<KIND>-<ISSUER>[-<HOME>]-XXXX-XXXX-XXXX
 
 A code is computed from its record and compared, never read. `code_for(act)`:
 
-1. **Kind from the act type:** `pg.grant.v1` and `pg.license.v2` give `LIC`; `pg.answer.v1` (an `allow`) gives
-   `PG`; `pg.after_gen.v1` (the AFTER-GEN record) gives `AG`.
+1. **Kind from the act type:** `pg.grant.v1` gives `LIC`; `pg.answer.v1` (an `allow`) gives `PG`;
+   `pg.after_gen.v1` (the AFTER-GEN record) gives `AG`. **An object whose signed bytes hold a PG id gives no
+   code** (a `pg.license.v2`, or any act whose `subject_ref` is a `PG-` string): it is not accepted, never
+   folded (§17).
 2. **`-LIC` from the basis.** An allow or AFTER-GEN record that names a licence (an answer's `basis` of kind
-   `grant`, a `pg.grant.v1` or an old `pg.license.v2`) gets `-LIC`. One made under the person's standing terms
+   `grant`, a `pg.grant.v1`) gets `-LIC`. One made under the person's standing terms
    does not. A licence has no basis: a licence act that names one gives no code. When the licence is at hand it
    must be signed by the act's own signer; otherwise there is no code.
 3. **Issuer:** the prefix of the act's signer.
@@ -204,12 +217,14 @@ Vectors: `code_for`.
 A licence has exactly one code, its `TOG-LIC` code.
 
 - **Every new licence is a `pg.grant.v1`** (`extensions/grants.md`). No registry issues a new `pg.license.v2`.
-- **An old `pg.license.v2` is a licence act too.** Its message id is grants.md's "Older licences" id: SHA-256
-  over body, subject signature and its PG id. With no countersignature it is the flat model: issuer = its
-  signer, tail = that id. If that gives a symbol check or a `ZZZZ` tail (about 1 in 7), the home countersigns
-  it once and the code comes from the countersignature. The licence itself is never signed again.
-- **The PG licence id stays inside the old signed bytes.** It is read only as legacy input, through the
-  registry's record (§7.3).
+- **Each registry migrates its own old licences, once.** An old `pg.license.v2` gets the `TOG-LIC` code of its
+  signed object: its message id is grants.md's "Older licences" id, SHA-256 over body, subject signature and its
+  PG id. With no countersignature it is the flat model: issuer = its signer, tail = that id. If that gives a
+  symbol check or a `ZZZZ` tail (about 1 in 7), the home countersigns it once and the code comes from the
+  countersignature. The licence itself is never signed again.
+- **The PG licence id stays inside the old signed bytes**, and, where needed, in an internal column to rebuild
+  that signature: never accepted from outside, never shown. No verifier accepts the old `pg.license.v2` itself
+  (§6.1); the licence answers by its `TOG-LIC` code at its registry's lookup.
 
 ---
 
@@ -220,8 +235,7 @@ A licence has exactly one code, its `TOG-LIC` code.
 ASCII, upper case, the whole string, nothing before or after it.
 
 ```
-code    = tog / pg
-tog     = "TOG-" prefix "-" serial check                     ; person: no kind
+code    = "TOG-" prefix "-" serial check                     ; person: no kind
         / "TOG-" kind "-" issuer [ "-" home ] "-" tail       ; event
         / "TOG-" oldpfx "-" 6*7DIGIT oldchk                  ; a PG-born person, respelled (closed)
         / "TOG-" 6*DIGIT oldchk                              ; a bare PG-born person, respelled (closed)
@@ -235,7 +249,6 @@ serial  = NZDIGIT 8DIGIT         ; exactly 9 digits
 check   = ALPHA                  ; a new shape never ends in * ~ $ = !
 oldpfx  = 4 letters of the PG prefix alphabet (PG-CODE §9)
 oldchk  = ALPHA / "*" / "~" / "$" / "=" / "!"
-pg      = PG-CODE §7, frozen; legacy input only
 ALPHA   = a character of 0123456789ABCDEFGHJKMNPQRSTVWXYZ;  NZDIGIT = "1"-"9"
 ```
 
@@ -255,9 +268,8 @@ The same as regular expressions (the reference model's `SHAPES`; `C` = `0-9A-HJK
 - **`LIC-PG`, `LIC-AG`, `PG-AG`, a doubled kind and a doubled marker are malformed.** So are two equal
   prefixes and a third prefix (a provider has no slot).
 - **New shapes exist only under `TOG-`.** `TOG-` dropped never leaves a code: `AG-…` and `LIC-…` have no
-  marker, and a `PG-…` event has five or more groups. The only PG shape with five (a v5 licence) has three
-  class letters third, where an event has four symbols. Old and new parsers refuse all of them, and typed
-  input does not fold them.
+  marker, and a `PG-…` string is not a code at all. Old and new parsers refuse all of them, and typed input
+  does not fold them.
 
 ### 7.2 In a message
 
@@ -265,32 +277,22 @@ The same as regular expressions (the reference model's `SHAPES`; `C` = `0-9A-HJK
   folding. A string that does not match is not a code.
 - **A registry answers a request whose `subject_ref` is not a code with `PG_MALFORMED`** (HTTP 422), never with
   a signed answer.
-- **A PG person string in a message is legacy input, not a repair.** It has exactly one TOG spelling, and the
-  registry answers for that code (§7.3).
+- **A `PG-` string in a message is not a code:** `PG_MALFORMED`, with no hint and no mapping, like any other.
 - A code whose check does not verify is reported as *mistyped*, distinctly from *not found* and from *not a
   code* (*malformed*).
 
-### 7.3 PG input and `code_key`
+### 7.3 `code_key`
 
-`code_key(code)` gives the one TOG spelling. **Every comparison, hash key, pointer-log key, anchor-list entry
-and refusal check uses it**, so one person never has two chains and a refusal cannot be bypassed by spelling.
+`code_key(code)` is the key. **Every comparison, hash key, pointer-log key, anchor-list entry and refusal check
+uses it.** It is the code itself, once it parses: **no folding of any kind.**
 
-- **A TOG code** is its own key.
-- **A PG person** (`pg_person`, `bare_person`, `no_check`) folds by its marker: `PG-` becomes `TOG-`, nothing
-  else changes. Its check must verify with the PG table, and its TOG spelling must be a valid code.
-- **A PG person string with no valid TOG spelling was never issued in any spelling: not a code.** That covers 8
-  or more digits under a prefix, a 9-digit one with a symbol check or a leading zero, and a no-check class
-  other than `STD` and `SUB`. (This replaces the "PG twin" rule of the design: `PG-PRAM-900000037K` is legacy
-  input for `TOG-PRAM-900000037K`.)
-- **An old PG licence id** folds through its registry's record: its key is `code_for` of the signed
-  `pg.license.v2` whose `license_id` is that id (§6.2). With no record at hand the answer is "ask its
-  registry".
+- **A `PG-` string has no key:** `code_key` refuses it, so it never matches and never stands for anyone. A
+  refusal is listed and compared under its TOG code only, and a request naming a `PG-` string fails closed
+  (`PG_MALFORMED`), so a refusal cannot be bypassed by spelling.
 - **`code_key` never returns a `PG-` string.**
-- **Only prefixes in the frozen v2 directory ever issued PG codes.** A `PG-` code of any other prefix folds
-  like any other and goes to that prefix's registry, which has no such person: not found. A client does not
-  check the v2 directory for this; directory v3 does not say which prefixes are PG-era.
+- `PG-PRAM-900000037K` is not a code, and `TOG-PRAM-900000037K` is unrelated to it by any rule here.
 
-Vectors: `code_key`, `code_key_with_record`.
+Vectors: `code_key`.
 
 ### 7.4 Where a person types
 
@@ -301,17 +303,20 @@ it, and then show the result as "Did you mean …?". In order:
    backslash; fold Cyrillic and Greek look-alikes (a non-exhaustive table, as PG-CODE §13); trim spaces.
 2. A pasted resolver URL: keep the last path segment, drop the fragment.
 3. Drop trailing punctuation (`.,;:)]"'`); raise to upper case.
-4. Split on dashes and remove spaces inside groups. The display form `PG 000 042 *` folds to `TOG-000042*`
-   (a special case for PG-CODE §13's erratum).
-5. **By slot:** `O`/`0` and `I`/`L`/`1`. Digits in serials and tails; letters in the marker, kinds and
+4. **A `PG-` string stops here.** If what remains starts with `PG` and a dash or a space (`PG-…`, `pg-…`,
+   `PG 000 042 *`, a Cyrillic `Р`, en dashes, a pasted `/v1/pg/` URL), the input is refused with the one
+   message "PG codes are retired. Use the ToG code your registry shows you." **No TOG spelling is suggested.**
+5. Split on dashes and remove spaces inside groups. The display form `TOG 000 042 *` folds to `TOG-000042*`
+   (a special case for PG-CODE §13's erratum, §18).
+6. **By slot:** `O`/`0` and `I`/`L`/`1`. Digits in serials and tails; letters in the marker, kinds and
    prefixes, each `1` and `0` per character (`T11U` reaches `TILU`). The marker typed `L1C`, `LlC` or `1IC`
    reads as `LIC`. In a TOG event the three tail groups get the digit reading only.
-6. Keep the readings that are valid codes, then fold each by `code_key`. **Exactly one must remain.** Two
+7. Keep the readings that are valid codes. **Exactly one must remain.** Two
    readings that pass (`TOG-111A-…` is both `IILA` and `LLIA`) are refused with both as hints. None is refused.
-7. **More than 4 096 readings are refused at once**, not searched.
+8. **More than 4 096 readings are refused at once**, not searched.
 
 A licence is never respelled by its marker: `tog-abcd-prm-1234567-a1b2c3a` is not a code. Typed input is never
-folded inside a message. Vectors: `typed`.
+folded inside a message. Vectors: `typed` (a typed `PG-` string carries `message`, the retired message).
 
 ---
 
@@ -336,7 +341,8 @@ cannot tell that the act happened, or name any party as a fact.
 - **One prefix per legal entity.** Entities with common owners share a `group` id.
 - **GOV both ways.** A government's prefix contains `GOV`; no other prefix does.
 - **A prefix is never reassigned**, even when its registry closes or is revoked.
-- **No new PG codes:** only prefixes of the frozen v2 directory ever issued them (§7.3).
+- **No PG codes:** `PG-` is retired; only prefixes of the frozen v2 directory ever issued PG codes, and their
+  registries migrate them (§5).
 
 ### 9.1 Admission
 
@@ -412,12 +418,14 @@ An implementation conforms if it reproduces every case of [`test-vectors/tog-cod
 | `alphabet` | the tables, limits, kind digits, reserved floor and tail, fixture prefixes |
 | `examples` | every example code of this document, by chain mix |
 | `check_char` | bodies with their check under the TOG table and the PG table (null: outside the table, never verifies) |
-| `parse` | the one reading of each string: shape, kind, basis, issuer, home, example flag, key |
+| `parse` | the one reading of each string: shape, kind, basis, issuer, home, example flag; every published `PG-` string `malformed` |
 | `describe` | what a string claims, for support tools (never beside a video, §15) |
 | `must_reject` | strings that fail, each `malformed` or `mistyped` (§16) |
 | `refused_by_0_13` | strings the 0.13 grammar must refuse: every TOG code, every TOG event code with `TOG-` dropped |
-| `code_key`, `code_key_with_record` | the TOG spelling of every published string; old licences through their record |
-| `typed` | typed input and its one code, or its refusal (with hints when two readings pass) |
+| `code_key` | the code itself; every published `PG-` string `malformed` |
+| `migrate` | a registry's own migration of its own rows: persons by the marker, licences from their signed object |
+| `proxy` | the lookup proxy's transition shim (§12) |
+| `typed` | typed input and its one code, or its refusal (with hints when two readings pass; with the retired message for `PG-`) |
 | `code_for` | acts and their codes, or `no_code` |
 | `metadata` | readable copies against their record (§14) |
 | `lookup` | a registry's answer by number (`extensions/lookup.md`) |
@@ -451,9 +459,16 @@ edge code, every dash between issuer and home over the five kinds, and every rel
 ## 12. Resolver
 
 - **`GET {api}/v2/codes/{code}`** at the registry named by the first prefix (`extensions/lookup.md`).
-- **`GET /v1/pg/{code}`** (PG-CODE §12) is frozen. It keeps resolving every printed PG string forever, and its
-  answers name the TOG spelling.
-- **`/.well-known/pg-policy`** keeps its template and adds the `/v2/codes` one.
+- **A `PG-` string asked is not a code:** `400 invalid_format`, like any other, with no hint.
+- **`GET /v1/pg/{code}`** (PG-CODE §12) is retired at a registry's switch. The PG QRs and links already printed
+  stop resolving.
+- **`/.well-known/pg-policy` announces TOG at the switch:** its `resolver_url_template` becomes the
+  `/v2/codes/{code}` route.
+- **Transition shim, the pregen.org lookup proxy only.** A registry not yet migrated (whose policy does not
+  announce TOG; today prampta.com, which reads only `PG-` at `/v1/pg/{code}`) is asked for a person of an old
+  shape in the PG spelling, internally, and the answer is shown under the TOG code. Users never type or see
+  `PG-`. Any other code at such a registry is "not found" without asking. The shim is removed when that
+  registry's `pg-policy` announces TOG. Vectors: `proxy`.
 
 ---
 
@@ -470,10 +485,9 @@ edge code, every dash between issuer and home over the five kinds, and every rel
 - **Wherever the protocol controls display, a word sits next to the code** ("AI-made with permission ·
   TOG-…"), with a copy button and a QR.
 - **Free text** (captions, pages, transcripts): candidates match
-  `(?<![A-Za-z0-9-])(?:TOG|PG)-[A-Z0-9]+(?:-[A-Z0-9]+)*[*~$=!]?(?![A-Za-z0-9])`. A candidate that does not
-  parse is tried once more without a trailing symbol (it may be markup). A marker inside a word
-  (`TOG-SHOPG-900…`) is not a code. A `PG-` string found is legacy input: fold it by `code_key` before comparing
-  or showing it.
+  `(?<![A-Za-z0-9-])TOG-[A-Z0-9]+(?:-[A-Z0-9]+)*[*~$=!]?(?![A-Za-z0-9])`. A candidate that does not parse is
+  tried once more without a trailing symbol (it may be markup). A marker inside a word (`XTOG-…`) is not a code.
+  A `PG-` string is never found.
 
 ---
 
@@ -512,8 +526,8 @@ from the record type and the licence it names, never from the letters or the cap
 | an edit citing the record's file as its C2PA ingredient | "An editor states this was made from an approved file. Only the editor says so." No names, no coverage line |
 | code and record differ | "The code does not match its record." |
 | mistyped | "Mistyped code." |
-| not a code (a PG person string with no TOG spelling included) | "Not a code." |
-| a `PG-` string | read as its TOG spelling; only that is shown |
+| not a code (a `PG-` string included) | "Not a code." |
+| a record whose signed bytes hold a `PG-` id | "The code does not match its record." |
 
 **A verifier never prints a person's code from a bundle** unless the live lookup says the person is published.
 Offline it never prints it. Party names are the directory's full names, never a bare prefix.
@@ -525,12 +539,14 @@ signatures and the chain, then show the outcome with its parties".
 
 ## 16. Must-reject list
 
-Each fails with the class shown (vectors: `must_reject`, 62 strings).
+Each fails with the class shown (vectors: `must_reject`, 69 strings).
 
 **Malformed:** one registry written twice; the old licence shape under `TOG-`; a bare person of 5 digits; a
 no-check class other than `STD` and `SUB`, under `TOG-` or `PG-`, and one under a kind; event codes with `TOG-`
 dropped; 8 digits under a PG-born prefix; 6 or 7 digits under a 5-letter prefix or one outside the PG alphabet;
-PG input with no TOG spelling (over-padded to 8 digits, 9 digits with a symbol check, 10 with a leading zero);
+every `PG-` string: the five published examples, the PG twin `PG-PRAM-900000037K` of an example person, an event
+under the `PG-` marker, a PG licence shape with a TOG check, over-padded to 8 digits, 9 digits with a symbol check,
+10 with a leading zero;
 serials of 8, 10, 12 and 13 digits and with a leading zero; 3- and 9-letter prefixes; a digit in a prefix; an
 unknown kind; a one-letter kind; the kind after the prefixes; `LIC-PG`, `LIC-AG`, `PG-AG`, `PG-PG`,
 `PG-LIC-LIC`, `LIC-LIC`; the marker's dash moved or dropped; a prefix beginning or ending with `LIC`; a letter
@@ -539,7 +555,7 @@ marker glued to the kind; the kind glued to the issuer; a third prefix; a tail r
 4-8, or with an extra group; a last group of 3 or 5; `L` in a tail; a symbol check under `TOG-`; lower case, a
 leading space, U+200B, `L1C`, a Cyrillic `А` in a message; a QR fragment; a bare secret.
 
-**Mistyped:** a wrong check; `PG` turned into `AG` and back; `PG-OWN-…` under the TOG table.
+**Mistyped:** a wrong check; `PG` turned into `AG` and back.
 
 ---
 
@@ -549,13 +565,21 @@ leading space, U+200B, `L1C`, a Cyrillic `А` in a message; a QR fragment; a bar
   generate (fail closed). Vectors: `refused_by_0_13`.
 - **One path failed open:** 0.13.0's `verify_anchors` dropped lines of a shape it did not know, so a refusal
   listed as `TOG-` was lost. The 0.13.1 patch refuses the whole list instead (`extensions/identity.md`). It
-  ships before any registry writes `TOG-`. 0.14 reads `TOG-` lines and folds `PG-` lines by `code_key`.
+  ships before any registry writes `TOG-`. 0.14 reads `TOG-` lines only; a `PG-` line is an entry of unknown
+  shape and fails the whole list.
 - **Order.** 1. The 0.13.1 patch. 2. Libraries learn this document and directory v3 (0.14.0). 3. The steward
   signs v2 (old URL, frozen entries) and v3 (new URL) together; v3 states `min_library`. 4. After a notice
   period, the switch in one release: registries write `TOG-` everywhere (persons respelled, licences by their
-  `TOG-LIC` codes, anchor lists in TOG), accept `PG-` as legacy input, mint new persons with 9 digits and new
-  licences as `pg.grant.v1`. 5. `PG` and `AG` codes by computation from records. No step breaks an issued
-  code, a printed card or a stored reference.
+  `TOG-LIC` codes, anchor lists in TOG), refuse `PG-` everywhere, mint new persons with 9 digits and new
+  licences as `pg.grant.v1`, and announce TOG in `pg-policy`. 5. `PG` and `AG` codes by computation from
+  records. Before the switch nothing breaks; at a registry's switch its `PG-` strings stop working.
+- **What stops working** (intended; there is no legacy verifier mode). Printed cards, QRs and links that carry
+  a `PG-` string, `/v1/pg/{code}` links included: they resolve to nothing; the person needs the TOG code from the
+  registry. Every signed object whose bytes hold a PG id cannot be verified any more: every `pg.license.v2`,
+  revocations naming a PG id, and allows, requests, reports, proofs and anchor lists whose `subject_ref` is
+  `PG-…`. An old licence still answers by its `TOG-LIC` code at its registry's lookup; it cannot be checked
+  offline. The 0.13 libraries keep reading `PG-` and refuse every TOG code: they work with no registry after its
+  switch.
 - **Protocol strings keep their names:** `PG_MALFORMED`, `PG_MOVED`, `PG_ALIAS`, `PG-Access`. They are not
   codes.
 
@@ -568,5 +592,5 @@ PG-CODE.md is frozen; these are recorded here.
 - **§4.2:** at body length 36 the last body character swapped with the check always passes. No issued code is
   near (longest body 19). New shapes stop at 35 (§4.2 here).
 - **§13:** the display grouping `PG 000 042 *` removes the dash, so "strip the spaces" gives `PG000042*`, which
-  is not a code. Grouping must never remove a dash. Typed input folds that display form as a special case
-  (§7.4).
+  is not a code. Grouping must never remove a dash. Typed input folds the TOG display form `TOG 000 042 *` as a
+  special case; the PG one gets the retired message (§7.4).

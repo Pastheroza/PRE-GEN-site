@@ -287,7 +287,7 @@
     "operator_signature_hex": "0f17df0682c41368a6edbb0727032056101de158d153aa2488aeeac1dd15e8641bde7d4918456b98ba3fdb27d2c7a6e447d0aaeccbb681a92e5bcf595da6b908"
   },
   "namespace": {
-    "comment": "Directory signed by the test steward; check_namespace assumes the directory was accepted.",
+    "comment": "Directory signed by the test steward; check_namespace assumes the directory was accepted. Codes are TOG codes (TOG-CODE.md): a PG- string is not a code, so the cases that named one now name a TOG code of the same namespace; the code is not signed, the directories are unchanged.",
     "steward_public_key_hex": "f64cf5814ec7126951909fe7999ed35919badbecba1679a051919ccc1cbe64d1",
     "directory": {
       "schema": "pregen.registries.v2",
@@ -497,43 +497,43 @@
     "namespace_cases": [
       {
         "name": "bare_by_origin",
-        "code": "PG-PRM-000042-K7M2QXV",
+        "code": "TOG-000042*",
         "signer_key_id": "pg-ed25519:225bee029538a6e5bc89f03d83cd45b1",
         "result": "valid"
       },
       {
         "name": "bare_by_other_registry",
-        "code": "PG-PRM-000042-K7M2QXV",
+        "code": "TOG-000042*",
         "signer_key_id": "pg-ed25519:77183061652862e2a4a41269711125f2",
         "result": "issuer_mismatch"
       },
       {
         "name": "legacy_bare_by_other_registry",
-        "code": "PG-STD-000123",
+        "code": "TOG-STD-000123",
         "signer_key_id": "pg-ed25519:77183061652862e2a4a41269711125f2",
         "result": "issuer_mismatch"
       },
       {
-        "name": "retired_class_bare_by_origin",
-        "code": "PG-EDT-000012",
+        "name": "no_check_class_bare_by_origin",
+        "code": "TOG-SUB-000123",
         "signer_key_id": "pg-ed25519:225bee029538a6e5bc89f03d83cd45b1",
         "result": "valid"
       },
       {
         "name": "prefixed_by_owner",
-        "code": "PG-NWRD-RND-000042-ZZZZZZJ",
+        "code": "TOG-NWRD-000042=",
         "signer_key_id": "pg-ed25519:77183061652862e2a4a41269711125f2",
         "result": "valid"
       },
       {
         "name": "prefixed_by_origin",
-        "code": "PG-NWRD-RND-000042-ZZZZZZJ",
+        "code": "TOG-NWRD-000042=",
         "signer_key_id": "pg-ed25519:225bee029538a6e5bc89f03d83cd45b1",
         "result": "issuer_mismatch"
       },
       {
         "name": "unlisted_prefix",
-        "code": "PG-ZZZZ-000042~",
+        "code": "TOG-ZZZZ-000042~",
         "signer_key_id": "pg-ed25519:77183061652862e2a4a41269711125f2",
         "result": "unknown_issuer"
       }
@@ -541,7 +541,7 @@
     "revocation_cases": [
       {
         "name": "revoked_registry",
-        "code": "PG-NWRD-RND-000042-ZZZZZZJ",
+        "code": "TOG-NWRD-000042=",
         "signer_key_id": "pg-ed25519:77183061652862e2a4a41269711125f2",
         "result": "revoked",
         "directory": {
@@ -579,7 +579,7 @@
       },
       {
         "name": "other_registry_unaffected",
-        "code": "PG-PRM-000042-K7M2QXV",
+        "code": "TOG-000042*",
         "signer_key_id": "pg-ed25519:225bee029538a6e5bc89f03d83cd45b1",
         "result": "valid",
         "directory": {
@@ -617,7 +617,7 @@
       },
       {
         "name": "revoked_key",
-        "code": "PG-PRM-000042-K7M2QXV",
+        "code": "TOG-000042*",
         "signer_key_id": "pg-ed25519:225bee029538a6e5bc89f03d83cd45b1",
         "result": "revoked",
         "directory": {

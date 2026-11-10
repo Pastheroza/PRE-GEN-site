@@ -28,7 +28,7 @@ __all__ = [
     "AFTER_GEN_LABEL", "AFTER_GEN_NOTICE", "AFTER_GEN_NOT", "media_hash", "read_after_gen", "embed_xmp",
     "c2pa_assertion", "check_after_gen", "check_after_gen_status", "after_gen_request", "after_gen_decision",
     "after_gen_codes",
-    "NotACode", "Mistyped", "AskRegistry", "CROCKFORD", "TOG_VALUES", "BARE_ISSUER", "FIXTURE_PREFIXES", "check_char",
+    "NotACode", "Mistyped", "RETIRED", "CROCKFORD", "TOG_VALUES", "BARE_ISSUER", "FIXTURE_PREFIXES", "check_char",
     "parse_code", "kind_of", "describe", "code_key", "normalize_typed", "find_codes", "code_for", "metadata_ok", "code_verdict",
     "check_parties", "admission_refusal", "DIRECTORY_V2_URL", "CodeError",
 ]
@@ -164,9 +164,10 @@ def verify_license(body: dict, license_id: str, subject_public_key_hex: str, sub
 
 
 # ── ToG code (spec/TOG-CODE.md) ──────────────────────────────────────────────────
-# One family, one written spelling: TOG-. A PG- string is legacy input only; code_key() folds it to its one TOG
-# spelling, and nothing here returns a PG- string. A code is a handle, never proof: an act's code is recomputed from
-# its record (code_for) and compared. Shared vectors: spec/test-vectors/tog-code.json, also run by verify-js.
+# One family, one spelling: TOG-. PG code is incompatible: a PG- string is not a code anywhere (not read, not folded,
+# not converted, not suggested), and nothing here returns one. A code is a handle, never proof: an act's code is
+# recomputed from its record (code_for) and compared. Shared vectors: spec/test-vectors/tog-code.json, also run by
+# verify-js.
 
 CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"   # PG-CODE §3, frozen: serials, tails, PG bodies
 TOG_VALUES = CROCKFORD + "ILOU"                  # TOG bodies: I L O U take 32-35 (TOG-CODE §3)
@@ -175,9 +176,11 @@ _MAX_BODY = 36
 _TAIL = 11                                       # 55 bits of a message id
 _KINDS = {"LIC": "license", "PG": "generated", "AG": "approved_after"}
 _FIVE = ("PG", "PG-LIC", "AG", "AG-LIC", "LIC")  # the kind digit is the 1-based index
-_KIND_OF_TYPE = {"pg.grant.v1": "LIC", "pg.license.v2": "LIC", "pg.answer.v1": "PG", "pg.after_gen.v1": "AG"}
+# No pg.license.v2: its signed bytes hold a PG id, so it gives no code (its registry migrates it, TOG-CODE §6.2).
+_KIND_OF_TYPE = {"pg.grant.v1": "LIC", "pg.answer.v1": "PG", "pg.after_gen.v1": "AG"}
 _RESERVED_SERIAL, _RESERVED_TAIL = 900_000_000, "ZZZZ"
-BARE_ISSUER = "PRAM"       # the bare PG- namespace belongs to the first registry, which also holds PRAM
+BARE_ISSUER = "PRAM"       # the bare namespace (TOG-000042*) belongs to the first registry, which also holds PRAM
+RETIRED = "PG codes are retired. Use the ToG code your registry shows you."   # the one message for a typed PG-
 FIXTURE_PREFIXES = ("NWRD", "HLWD", "USAD", "VELR", "SKAN", "KAST", "TGOV", "HYBR", "OMNI", "KINO",
                     "KOBEMK", "LYONMK", "RIOMKT", "PUNEMK", "OSLOMK", "ZYXW", "ABCD", "TEST")   # reserved forever
 
@@ -192,18 +195,13 @@ _SHAPES = (  # (shape, marker, kind, regex): exactly one matches any valid code 
     ("old_person", "TOG", "subject", re.compile(rf"TOG-({_OLDP})-([0-9]{{6,7}})({_K})")),
     ("old_bare_person", "TOG", "subject", re.compile(rf"TOG-()([0-9]{{6,}})({_K})")),
     ("old_no_check", "TOG", "subject", re.compile(r"TOG-(STD|SUB)-([0-9]{6,})")),
-    ("pg_person", "PG", "subject", re.compile(rf"PG-({_OLDP})-([0-9]{{6,}})({_K})")),
-    ("pg_licence", "PG", "license", re.compile(rf"PG-({_OLDP})-([A-Z]{{3}})-([0-9]{{6,}})-([{_C}]{{6}})({_K})")),
-    ("bare_person", "PG", "subject", re.compile(rf"PG-()([0-9]{{6,}})({_K})")),
-    ("bare_licence", "PG", "license", re.compile(rf"PG-()([A-Z]{{3}})-([0-9]{{6,}})-([{_C}]{{6}})({_K})")),
-    ("no_check", "PG", "subject", re.compile(r"PG-([A-Z]{3})-([0-9]{6,})")),
-)
-_FIND = re.compile(r"(?<![A-Za-z0-9-])(?:TOG|PG)-[A-Z0-9]+(?:-[A-Z0-9]+)*[*~$=!]?(?![A-Za-z0-9])")
+)   # no PG shape: a PG- string matches nothing, so it is not a code
+_FIND = re.compile(r"(?<![A-Za-z0-9-])TOG-[A-Z0-9]+(?:-[A-Z0-9]+)*[*~$=!]?(?![A-Za-z0-9])")
 
 
 class CodeError(PregenError):
-    """A string that is not a code, or a record that gives none. `reason`: "malformed", "mistyped", "ask_registry" or
-    "no_code" (as the vectors write it); catch the subclasses, or this and read `reason`."""
+    """A string that is not a code, or a record that gives none. `reason`: "malformed", "mistyped" or "no_code" (as
+    the vectors write it); catch the subclasses, or this and read `reason`."""
     reason = "no_code"
 
 
@@ -221,14 +219,9 @@ class Mistyped(CodeError):
     reason = "mistyped"
 
 
-class AskRegistry(CodeError):
-    """An old PG licence id with no record at hand: only its registry knows its TOG-LIC code."""
-    reason = "ask_registry"
-
-
 def check_char(body: str, values: str = TOG_VALUES) -> str:
-    """PG-CODE §4.1: the sum of each value times its 1-based position, mod 37. `values` is TOG_VALUES for a TOG body,
-    CROCKFORD for a PG body. Raises NotACode for a body over 36 characters or outside the table."""
+    """PG-CODE §4.1 (the frozen algorithm): the sum of each value times its 1-based position, mod 37. `values` is
+    TOG_VALUES for a TOG body; CROCKFORD gives the frozen table, equal on every Crockford body. Raises NotACode for a body over 36 characters or outside the table."""
     if not isinstance(body, str) or len(body) > _MAX_BODY or any(c not in values for c in body):
         raise NotACode("body too long or outside the alphabet")
     return _CHECKS[sum(values.index(c) * (i + 1) for i, c in enumerate(body)) % 37]
@@ -248,9 +241,8 @@ def _event_body(kind, issuer, home, tail) -> str:
 def parse_code(code: str, check: bool = True) -> dict:
     """The one reading of a code exactly as it stands (TOG-CODE §7): no trimming, case change or folding. Offline:
     shape, kind ("subject", "license", "generated", "approved_after"), basis of an event ("terms", "licence" or None),
-    issuer (the registry to ask; "" for the bare namespace), home, example, and `key`, the TOG spelling (None for an
-    old PG licence id: see code_key). check=False reads the shape only, for routing; it never says a code is real.
-    Raises NotACode or Mistyped."""
+    issuer (the registry to ask; "" for the bare namespace), home and example. A PG- string is not a code. check=False
+    reads the shape only, for routing; it never says a code is real. Raises NotACode or Mistyped."""
     if not isinstance(code, str) or not code.isascii():
         raise NotACode("not an ASCII string")
     hits = [(s, mk, k, m) for s, mk, k, rx in _SHAPES if (m := rx.fullmatch(code))]
@@ -258,15 +250,8 @@ def parse_code(code: str, check: bool = True) -> dict:
         raise NotACode(f"not a code: {code!r}")
     shape, marker, kind, m = hits[0]
     g = m.groups()
-    out = {"shape": shape, "marker": marker, "kind": kind, "home": None, "key": code if marker == "TOG" else None}
-    if marker == "PG" and kind == "subject":
-        # Legacy input: its one spelling is TOG- + the rest. With no valid TOG spelling it was never issued.
-        if check and shape != "no_check" and not _verifies(g[0] + g[1], g[2], CROCKFORD):
-            raise Mistyped(f"mistyped code: {code}")
-        if check and not _valid("TOG" + code[2:]):
-            raise NotACode(f"never issued in any spelling: {code}")
-        out["key"] = "TOG" + code[2:]
-    if shape in ("no_check", "old_no_check"):
+    out = {"shape": shape, "marker": marker, "kind": kind, "home": None}
+    if shape == "old_no_check":
         return dict(out, issuer="", cls=g[0], serial=g[1], example=False)
     if shape == "event":
         kind, issuer, home, tail, chk = g
@@ -278,10 +263,9 @@ def parse_code(code: str, check: bool = True) -> dict:
         basis = None if kind == "LIC" else "licence" if kind.endswith("-LIC") else "terms"
         return dict(out, kind=_KINDS[kind[:3].rstrip("-")], basis=basis, issuer=issuer, home=home,
                     example=tail.startswith(_RESERVED_TAIL))
-    prefix, *rest, chk = g
-    if check and not _verifies(prefix + "".join(rest), chk, TOG_VALUES if marker == "TOG" else CROCKFORD):
+    prefix, serial, chk = g
+    if check and not _verifies(prefix + serial, chk, TOG_VALUES):
         raise Mistyped(f"mistyped code: {code}")
-    serial = rest[-1] if kind == "subject" else rest[1]
     return dict(out, issuer=prefix, cls="", serial=serial, example=int(serial) >= _RESERVED_SERIAL)
 
 
@@ -305,43 +289,26 @@ def describe(code: str) -> str:
     home = f" · home {p['home']}" if p["home"] else ""
     basis = {"licence": " under a licence", "terms": " under the person's terms"}.get(p.get("basis"), "")
     ex = " · EXAMPLE, never issued" if p["example"] else ""
-    if p["marker"] == "PG":
-        ex += f" · old spelling of {p['key']}" if p["key"] else " · old licence number: its registry gives its TOG code"
-    return f"claims {p['kind']}{basis} · issued by {p['issuer'] or 'the bare legacy namespace'}{home} · not checked{ex}"
+    return f"claims {p['kind']}{basis} · issued by {p['issuer'] or 'the bare namespace'}{home} · not checked{ex}"
 
 
-def code_key(code: str, licences: dict = None) -> str:
-    """The one TOG spelling (TOG-CODE §7.3). Compare, hash and look up codes only by it. A TOG code is its own key; a PG
-    person folds by its marker; an old PG licence id folds through its record: `licences` maps that id to the signed
-    pg.license.v2 as {type, id (its message id), signer (prefix), subject_ref, license_id}. Without it: AskRegistry.
-    Never returns a PG- string."""
-    p = parse_code(code)
-    if p["key"]:
-        return p["key"]
-    rec = (licences or {}).get(code)
-    if not isinstance(rec, dict) or rec.get("license_id") != code:
-        raise AskRegistry(f"ask its registry for the code of {code}")
-    return code_for(rec)
-
-
-def _k(code):
-    """code_key where there is one, else the string as it stands: a comparison never splits one code in two."""
-    try:
-        return code_key(code)
-    except PregenError:
-        return code
+def code_key(code: str) -> str:
+    """The key every comparison, hash, lookup, anchor list and refusal check uses (TOG-CODE §7.3): the code itself,
+    once it parses. No folding of any kind: a PG- string raises NotACode, so it never matches and never stands for
+    anyone."""
+    parse_code(code)
+    return code
 
 
 def issuer_of(code: str) -> str:
     """The registry to ask about a code: its first prefix, or "" for the bare namespace. The shape only, like 0.13
-    (TOG-CODE §8); TOG and PG spellings alike. Anything else is refused, never repaired: lower case, spaces,
+    (TOG-CODE §8). A PG- string is not a code. Anything else is refused, never repaired: lower case, spaces,
     invisible or non-ASCII characters (PG-CODE §7). Pass what a person typed through normalize_typed first."""
     return parse_code(code, check=False)["issuer"]
 
 
 def find_codes(text: str) -> list:
-    """Every well-formed code in free text, as it stands there (TOG-CODE §13). A PG- string found is legacy input:
-    pass it through code_key before comparing or showing it."""
+    """Every well-formed code in free text, as it stands there (TOG-CODE §13). A PG- string is never found."""
     found = (c if _valid(c) else c[:-1] for c in _FIND.findall(text))
     return [c for c in found if _valid(c)]
 
@@ -362,22 +329,23 @@ def _readings(g, letters=True) -> set:
     return out
 
 
-def normalize_typed(typed: str, licences: dict = None) -> str:
+def normalize_typed(typed: str) -> str:
     """Only where a person types, pastes or scans a code (TOG-CODE §7.4), never on a code from a message: the one code
-    meant, in its TOG spelling, to show as "Did you mean ...?". Folds width, dashes, invisibles, Cyrillic and Greek
-    look-alikes, case, a resolver URL, trailing punctuation, then O/0 and I/L/1 by slot, then the PG spelling.
-    Raises NotACode when no reading is a code, or more than one is (their codes in `hints`), or the readings exceed
-    4096; Mistyped when the string as typed has the shape but not the check; AskRegistry for an old licence id whose
-    record (`licences`, as for code_key) is not at hand, with the folded old id as `folded`."""
+    meant, to show as "Did you mean ...?". Folds width, dashes, invisibles, Cyrillic and Greek look-alikes, case, a
+    resolver URL, trailing punctuation, then O/0 and I/L/1 by slot. Raises NotACode when no reading is a code, or more
+    than one is (their codes in `hints`), or the readings exceed 4096; NotACode(RETIRED) for a PG- string, with no
+    TOG suggestion; Mistyped when the string as typed has the shape but not the check."""
     if not isinstance(typed, str):
         raise NotACode("a code is a string")
     s = unicodedata.normalize("NFKC", typed).translate(_DASHES).translate(_DROP).translate(_LOOKALIKE).strip()
     if "/" in s:
         s = s.split("#")[0].rstrip("/").rsplit("/", 1)[-1]
     s = s.rstrip(".,;:)]\"'").upper()
+    if re.match(r"PG[-\s]", s):
+        raise NotACode(RETIRED)          # PG code is incompatible: one neutral message, no mapping to TOG
     if "-" in s:
         groups = ["".join(x.split()) for x in s.split("-")]
-    elif s.split() and s.split()[0] in ("PG", "TOG"):          # the display form 'PG 000 042 *' (PG-CODE §13)
+    elif s.split() and s.split()[0] == "TOG":                  # the display form 'TOG 000 042 *' (TOG-CODE §13)
         groups = s.split()
         groups = [groups[0], "".join(groups[1:])] if len(groups) > 2 and not groups[1].isalpha() else groups
     else:
@@ -389,21 +357,13 @@ def normalize_typed(typed: str, licences: dict = None) -> str:
     found = set()
     for combo in itertools.product(*readings):
         if _valid(c := "-".join(combo)):
-            try:
-                found.add(code_key(c, licences))
-            except AskRegistry:
-                found.add(c)
+            found.add(c)
     if len(found) > 1:
         raise NotACode("more than one code fits: ask which", sorted(found))
     if not found:
         parse_code("-".join(groups))     # the honest error for the string as typed
         raise NotACode(f"not a code: {typed!r}")
-    c = found.pop()
-    if c.startswith("PG-"):
-        e = AskRegistry(f"ask its registry for the code of {c}")
-        e.folded = c                     # the old id as folded here, for asking its registry (never for showing)
-        raise e
-    return c
+    return found.pop()
 
 
 def _tail_of(message_id_hex) -> str:
@@ -417,9 +377,12 @@ def code_for(act: dict) -> str:
     """The code of an act, computed from its record, never read off a string (TOG-CODE §6.1). act = {type, id (its
     message id), signer (the signer's prefix), subject_ref, grant?: {id, signer} of the licence it was made under,
     cosign?: {id, home, home_in_code} of the home's countersignature}. Without a cosign (the flat model) the signer
-    must be the registry the person's code was born at. Raises PregenError when the record gives no code."""
+    must be the registry the person's code was born at. An object whose bytes hold a PG id (a pg.license.v2, a PG
+    subject_ref) gives no code. Raises PregenError when the record gives no code."""
     try:
         kind = _KIND_OF_TYPE[act["type"]]
+        if not _valid(act["subject_ref"]) or parse_code(act["subject_ref"])["kind"] != "subject":
+            raise CodeError("subject_ref is not a person code")       # a PG id included: no code
         grant = act.get("grant")
         if grant:
             if kind == "LIC" or grant["signer"] != act["signer"]:
@@ -617,10 +580,10 @@ def normalize_code(typed: str) -> str:
     """Deprecated: use normalize_typed, which folds look-alikes and gives the TOG spelling. Surrounding ASCII spaces
     trimmed and lower case raised, nothing else; the spelling is kept as typed (PG-CODE.md §7)."""
     if not isinstance(typed, str):
-        raise PregenError("PG code must be a string")
+        raise PregenError("a code must be a string")
     s = typed.strip(" \t\r\n")
     if not s.isascii():
-        raise PregenError("a PG code is ASCII: retype it")
+        raise PregenError("a code is ASCII: retype it")
     issuer_of(s.upper())
     return s.upper()
 
@@ -785,11 +748,11 @@ class Directory:
         """The steward found `code` a false claim under `anchor` and has not reversed it (identity.md): drop that
         claim. For one anchor and code the latest entry of false_claims and false_claim_reversals by `at` decides; a
         tie stays false. Without `anchor`, under any anchor: a code asked as a private person is then never generated.
-        Codes compare by code_key: a ruling on one spelling holds for the other (identity.md)."""
-        latest, key = {}, _k(code)
+        Codes compare by code_key; a PG- string matches nothing (identity.md)."""
+        latest = {}
         for is_false, field in ((True, "false_claims"), (False, "false_claim_reversals")):
             for f in self._d.get(field) or []:
-                if _k(f["code"]) == key and anchor in (None, f["anchor"]):
+                if _same(f["code"], code) and anchor in (None, f["anchor"]):
                     latest[f["anchor"]] = max(latest.get(f["anchor"], (float("-inf"), False)), (_when(f["at"]), is_false))
         return any(is_false for _, is_false in latest.values())
 
@@ -1300,12 +1263,11 @@ FLOOR_REASONS = frozenset({"PG_SUBJECT_OPTED_OUT", "PG_SUBJECT_UNAVAILABLE", "PG
 
 def verify_anchors(envelope: dict, prefix: str, directory: Directory, get_json=_get_json, now=None) -> list:
     """A registry's signed anchor list (pg.anchors.v1), checked through the directory and at most a day old, so
-    an old copy cannot hide a new opt-out. Returns its entries, each code in its TOG spelling (a PG- line of an older
-    list folds by code_key), without those the steward found false under their own anchor (a false claim under
+    an old copy cannot hide a new opt-out. Returns its entries, without those the steward found false under their own anchor (a false claim under
     another anchor silences no one). An entry naming another registry's code is dropped, not the whole list: one
-    foreign line must not make the list fail. An entry that is not a person code (unknown shape, mistyped, a licence
-    or an event) fails the whole list: dropping it could lose a refusal. A list naming one of its codes twice, in
-    either spelling, is refused: its anchor would depend on which line a client read last."""
+    foreign line must not make the list fail. An entry that is not a person code (unknown shape, a PG- line, mistyped,
+    a licence or an event) fails the whole list: dropping it could lose a refusal. A list naming one of its codes
+    twice is refused: its anchor would depend on which line a client read last."""
     import time
     now = int(time.time()) if now is None else now
     # The code only names the prefix, so the directory finds the registry's keys (any prefix length).
@@ -1323,7 +1285,7 @@ def verify_anchors(envelope: dict, prefix: str, directory: Directory, get_json=_
         parsed = None
     if parsed is None or any(p["kind"] != "subject" for p in parsed):
         raise PregenError("an anchor list entry of unknown shape fails the whole list: not a person code")
-    own = [dict(e, code=p["key"]) for e, p in zip(entries, parsed) if p["issuer"] == prefix]
+    own = [e for e, p in zip(entries, parsed) if p["issuer"] == prefix]
     if len({e["code"] for e in own}) != len(own):
         raise PregenError("an anchor list names each code once")
     return [e for e in own if not directory.is_false_claim(e["code"], e.get("anchor"))]
@@ -1390,7 +1352,7 @@ def check_channel_proof(code: str, proof_url: str, official_urls: list, get_text
       `get_text` returns {"author": <handle or channel id>, "text": <what the account itself wrote there>} from the
       platform's own record of who wrote it. The author must be the account (letter case aside); a string, a comment
       or another account's post confirms nothing.
-    The text must have a line "PRE-GEN: <code>", the whole code in either spelling (code_key), alone or followed by a space and more words; a
+    The text must have a line "PRE-GEN: <code>", the whole code as written (a PG- string matches nothing), alone or followed by a space and more words; a
     line "PRE-GEN: <code> withdraw <party>" confirms nothing. `proof_url` is taken exactly as written: https, a
     lower-case host, no credentials, port, query, fragment, percent-escape or dot segment, at most 512 characters;
     `get_text` must not follow redirects (treat a 3xx like a 404: return ""). If `get_text` raises (the
@@ -1422,7 +1384,7 @@ def check_channel_proof(code: str, proof_url: str, official_urls: list, get_text
         got = got.get("text")
     for line in (got if isinstance(got, str) else "").split("\n"):
         words = re.split(r"[ \t]+", line.strip(" \t\r"))
-        if words[0] == "PRE-GEN:" and len(words) > 1 and _k(words[1]) == _k(code) and words[2:3] != ["withdraw"]:
+        if words[0] == "PRE-GEN:" and len(words) > 1 and _same(words[1], code) and words[2:3] != ["withdraw"]:
             return True
     return False
 
@@ -1585,7 +1547,7 @@ def check_terms(env: dict, code: str, directory: Directory = None, get_json=_get
     body. Its message id, message_id("pg.terms.v1", body), is what a request accepts in `terms`."""
     directory = directory or load_directory(get_json=get_json)
     b = _registry_signed(env, "pg.terms.v1", code, directory, get_json)
-    if _k(b.get("subject_ref")) != _k(code):   # one person, either spelling (TOG-CODE §7.3)
+    if not _same(b.get("subject_ref"), code):   # one person, one spelling; a PG- string matches nothing
         raise PregenError("these terms are another person's")
     if not _TERMS_MEMBERS - {"amends", "factor"} <= set(b) <= _TERMS_MEMBERS or not _printable(b) \
             or set(b["signers"][0]) != {"role", "key_id"}:

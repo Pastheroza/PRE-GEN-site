@@ -112,8 +112,8 @@ RESERVED_SERIAL = 900_000_000       # TOG-CODE §11: the floor of PG-CODE §11, 
 
 
 def mint_code(prefix: str, serial: int) -> str:
-    """A person's code, written TOG-. A serial under 10^8 is a PG-born person respelled by its marker (the sandbox's
-    fixed test subjects, PG-CODE §5): same digits, same check. A new person has 9 digits (mint_serial). Raises
+    """A person's code, written TOG-. A serial under 10^8 has the old person shape (the sandbox's fixed test subjects,
+    TOG-CODE §5): same digits, same check as before the switch. A new person has 9 digits (mint_serial). Raises
     PregenError for a code no shape holds: a symbol check on 9 digits, or a prefix the old shapes cannot carry."""
     digits = f"{serial:06d}"
     code = f"TOG-{prefix + '-' if prefix else ''}{digits}{check_char(prefix + digits)}"

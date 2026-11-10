@@ -3,21 +3,22 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { CROCKFORD, TOG_VALUES, FIXTURE_PREFIXES, CodeError, PregenError, checkChar, parseCode, codeKey, normalizeTyped, codeFor,
+import { CROCKFORD, TOG_VALUES, FIXTURE_PREFIXES, RETIRED, CodeError, PregenError, checkChar, parseCode, codeKey, normalizeTyped, codeFor,
   metadataOk, codeVerdict, checkParties, admissionRefusal, findCodes, issuerOf, kindOf, describe } from "../index.js";
 
 const V = JSON.parse(readFileSync(new URL("../../../spec/test-vectors/tog-code.json", import.meta.url)));
 
-// {result} or {error[, hints]}, as the generator writes them.
+// {result} or {error[, hints][, message]}, as the generator writes them; `message` only for the retired message.
 function run(fn) {
   try {
     return { result: fn() };
   } catch (e) {
     if (!(e instanceof CodeError)) throw e;
-    return e.hints ? { error: e.reason, hints: e.hints } : { error: e.reason };
+    return { error: e.reason, ...(e.hints && { hints: e.hints }), ...(e.message === RETIRED && { message: RETIRED }) };
   }
 }
-const expected = ({ result, error, hints }) => (error ? (hints ? { error, hints } : { error }) : { result });
+const expected = ({ result, error, hints, message }) =>
+  (error ? { error, ...(hints && { hints }), ...(message && { message }) } : { result });
 
 test("alphabet: tables, limits, fixtures", () => {
   const a = V.alphabet;
@@ -58,7 +59,7 @@ test("describe: what a string claims", () => {
 });
 
 test("must_reject: each string fails with its class", () => {
-  assert.equal(V.must_reject.length, 62);
+  assert.equal(V.must_reject.length, 69);
   for (const { string, error, why } of V.must_reject) assert.deepEqual(run(() => parseCode(string)), { error }, why);
 });
 
@@ -69,16 +70,27 @@ test("refused_by_0_13: the 0.13 grammar refuses every TOG code; 0.14 still route
   for (const c of V.refused_by_0_13.filter((x) => x.startsWith("TOG-"))) assert.equal(issuerOf(c), parseCode(c).issuer, c);
 });
 
-test("code_key: the one TOG spelling", () => {
+test("code_key: the code itself, no folding; a PG string is not a code", () => {
   for (const c of V.code_key) assert.deepEqual(run(() => codeKey(c.code)), expected(c), c.code);
-  for (const c of V.code_key_with_record) {
-    assert.deepEqual(run(() => codeKey(c.code, { [c.code]: c.record })), expected(c), c.code);
+  for (const c of V.code_key) {
+    if (c.result) assert.equal(c.result, c.code);
+    if (c.code.startsWith("PG-")) assert.equal(c.error, "malformed", c.code);
   }
-  for (const c of V.code_key) if (c.result) assert.ok(c.result.startsWith("TOG-"));
 });
 
-test("typed: folded where a person types, one reading or none", () => {
+test("typed: folded where a person types, one reading or none; a typed PG string gets only the retired message", () => {
   for (const c of V.typed) assert.deepEqual(run(() => normalizeTyped(c.input)), expected(c), JSON.stringify(c.input));
+  for (const t of ["PG–STD–000001–K7M2QX9", "РG-STD-000001-K7M2QX9", "pg 000 042 *", "https://api2.prampta.com/v1/pg/PG-PRAM-000037J"]) {
+    assert.deepEqual(run(() => normalizeTyped(t)), { error: "malformed", message: RETIRED }, t);
+  }
+});
+
+test("migrate: a PG id a registry migrates is, from outside, not a code anywhere", () => {
+  for (const { old } of V.migrate.filter((c) => c.old.startsWith("PG-"))) {
+    for (const fn of [parseCode, codeKey, kindOf, issuerOf, describe]) assert.throws(() => fn(old), CodeError, old);
+    assert.deepEqual(findCodes(`see ${old}.`), [], old);
+    assert.equal(codeVerdict("aa".repeat(32), null, old), "Not a code.", old);
+  }
 });
 
 test("code_for: codes computed from records", () => {
@@ -164,7 +176,7 @@ test("directory v3: 4-8 letter prefixes, dated roles, routing of TOG codes; v2 s
       provider_domains: [{ domain: "https://kobe.example", from: T0, until: null }] })],
     { resolver: "https://resolver.example", min_library: "0.14.0" }));
   assert.equal(d.registryFor("TOG-PRAM-900000037K").prefix, "PRAM");
-  assert.equal(d.registryFor("PG-PRAM-000037J").prefix, "PRAM");
+  assert.equal(d.registryFor("PG-PRAM-000037J"), null);   // not a code: no registry
   assert.equal(d.registryFor("TOG-LIC-KOBEMK-PRAM-ZZZZ-BYAV-K2AQ").prefix, "KOBEMK");
   const at = Date.parse("2027-01-01T00:00:00Z") / 1000, late = Date.parse("2029-01-01T00:00:00Z") / 1000;
   assert.deepEqual(d.parties("TOG-LIC-KOBEMK-PRAM-ZZZZ-BYAV-K2AQ", { at, provider: "https://kobe.example" }),
@@ -189,16 +201,19 @@ test("directory v3: 4-8 letter prefixes, dated roles, routing of TOG codes; v2 s
   await assert.rejects(load(v2, { previous: next }), /v3 directory was already accepted/);
 });
 
-test("one code, two spellings: false claims and channel lines compare by the TOG spelling", async () => {
+test("one code, one spelling: false claims and channel lines compare by the code; a PG string matches nothing", async () => {
   const d = await load(v3([entry("ZYXW")], {
-    false_claims: [{ anchor: "wikidata:Q1", code: "PG-ZYXW-1234567R", at: T0, reason: "test" }] }));
+    false_claims: [{ anchor: "wikidata:Q1", code: "TOG-ZYXW-1234567R", at: T0, reason: "test" },
+      { anchor: "wikidata:Q3", code: "PG-ZYXW-1234568=", at: T0, reason: "test" }] }));
   assert.equal(d.isFalseClaim("TOG-ZYXW-1234567R"), true);
-  assert.equal(d.isFalseClaim("PG-ZYXW-1234567R", "wikidata:Q1"), true);
+  assert.equal(d.isFalseClaim("TOG-ZYXW-1234567R", "wikidata:Q1"), true);
+  assert.equal(d.isFalseClaim("PG-ZYXW-1234567R", "wikidata:Q1"), false);
   assert.equal(d.isFalseClaim("TOG-ZYXW-1234567R", "wikidata:Q2"), false);
-  assert.equal(d.isFalseClaim("TOG-ZYXW-1234568Y"), false);
+  assert.equal(d.isFalseClaim("TOG-ZYXW-1234568="), false);    // a PG line names no one
   const url = "https://example.com/.well-known/pregen", line = (t) => () => `PRE-GEN: ${t}`;
-  assert.equal(await checkChannelProof("TOG-ZYXW-1234567R", url, ["https://example.com"], line("PG-ZYXW-1234567R")), true);
-  assert.equal(await checkChannelProof("PG-ZYXW-1234567R", url, ["https://example.com"], line("TOG-ZYXW-1234567R")), true);
+  assert.equal(await checkChannelProof("TOG-ZYXW-1234567R", url, ["https://example.com"], line("TOG-ZYXW-1234567R")), true);
+  assert.equal(await checkChannelProof("TOG-ZYXW-1234567R", url, ["https://example.com"], line("PG-ZYXW-1234567R")), false);
+  assert.equal(await checkChannelProof("PG-ZYXW-1234567R", url, ["https://example.com"], line("PG-ZYXW-1234567R")), false);
   assert.equal(await checkChannelProof("TOG-ZYXW-1234567R", url, ["https://example.com"], line("tog-zyxw-1234567r")), false);
 });
 
@@ -233,7 +248,7 @@ async function proof(code, { grant = true, copies = (c) => c } = {}) {
 }
 
 test("proof.md step 3: readable copies equal the codes recomputed from the signed parts", async () => {
-  const code = "PG-TEST-000001N";
+  const code = "TOG-TEST-000001N";
   assert.equal((await (await proof(code))()).subjects.length, 1);                                    // both copies
   assert.equal((await (await proof(code, { copies: () => ({}) }))()).subjects.length, 1);             // none: the record is enough
   assert.equal((await (await proof(code, { grant: false }))()).subjects.length, 1);                   // terms basis, code only

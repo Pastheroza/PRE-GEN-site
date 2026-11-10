@@ -1,12 +1,15 @@
 # PG Code — Identifier Format Specification
 
-**Part of:** PRE-GEN v5 ([`VERSIONS.md`](VERSIONS.md)) · **Status:** frozen as of 2026-08-20, issuer prefix added 2026-09-28 · **Vectors:** `spec/test-vectors/vectors.json` (`pg_code` section, vectors v2)  
+> **Retired, not supported.** PG codes are retired and not compatible with ToG codes: a `PG-` string is not a
+> code anywhere, not as input, not folded, not converted. Use the ToG code your registry shows you. This file
+> stays as a historical document only. Every code is specified by [`TOG-CODE.md`](TOG-CODE.md).
+
+**Part of:** PRE-GEN v5 ([`VERSIONS.md`](VERSIONS.md)) · **Status:** retired, not supported (historical; frozen as of 2026-08-20, issuer prefix added 2026-09-28) · **Vectors:** `spec/test-vectors/vectors.json` (`pg_code` section, vectors v2)  
 **License:** Apache License 2.0 — see [`spec/LICENSE`](LICENSE).
 
-> **Superseded for every code written from the switch on by [`TOG-CODE.md`](TOG-CODE.md)** (ToG code,
-> formerly PG code; libraries 0.14.0, unreleased). The rules below stay frozen and unchanged. Their grammar is
-> read only as legacy input, folded to its one TOG spelling (`TOG-CODE.md` §7.3). Errata found since:
-> `TOG-CODE.md` §18.
+> **Replaced by [`TOG-CODE.md`](TOG-CODE.md)** (ToG code; libraries 0.14.0, unreleased). The rules below are
+> kept unchanged as history. Their check algorithm, alphabet and reserved floor live on in `TOG-CODE.md`; their
+> grammar is no longer read. Errata found since: `TOG-CODE.md` §18.
 
 This document specifies the PRE-GEN identifier format completely enough to
 implement from scratch, without reading any PRAMPTA source code. The text is

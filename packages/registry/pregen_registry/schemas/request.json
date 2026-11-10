@@ -19,7 +19,7 @@
     },
     "subject_ref": {
       "type": "string",
-      "pattern": "^(PG|TOG)-[0-9A-Z*~$=!-]{3,48}$"
+      "pattern": "^TOG-[0-9A-Z*~$=!-]{3,48}$"
     },
     "provider_id": {
       "type": "string",

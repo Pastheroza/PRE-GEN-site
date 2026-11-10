@@ -51,31 +51,39 @@ test("a tampered, foreign-signed, older or malformed directory is refused", asyn
 
 test("namespaces are symmetric: each key signs only in its own namespace", async () => {
   const dir = await load(directory());
-  assert.equal(dir.checkSigner("PG-000042*", origin.id), "valid");
-  assert.equal(dir.checkSigner("PG-000042*", other.id), "issuer_mismatch");
-  assert.equal(dir.checkSigner("PG-NWRD-000042=", other.id), "valid");
-  assert.equal(dir.checkSigner("PG-NWRD-000042=", origin.id), "issuer_mismatch");
-  assert.equal(dir.checkSigner("PG-ABCD-000042W", origin.id), "unknown_issuer");
+  assert.equal(dir.checkSigner("TOG-000042*", origin.id), "valid");
+  assert.equal(dir.checkSigner("TOG-000042*", other.id), "issuer_mismatch");
+  assert.equal(dir.checkSigner("TOG-NWRD-000042=", other.id), "valid");
+  assert.equal(dir.checkSigner("TOG-NWRD-000042=", origin.id), "issuer_mismatch");
+  assert.equal(dir.checkSigner("TOG-ABCD-000042W", origin.id), "unknown_issuer");
   assert.equal(dir.registryFor("pg-nwrd-000042="), null);                 // one form only (stress test H5)
-  assert.equal(dir.registryFor(normalizeCode(" pg-nwrd-000042= ")).name, "Other");
-  assert.equal(issuerOf("PG-RND-000042-ZZZZZZ1"), "");
+  assert.equal(dir.registryFor(normalizeCode(" tog-nwrd-000042= ")).name, "Other");
+  assert.throws(() => issuerOf("PG-RND-000042-ZZZZZZ1"), PregenError);    // a PG string is not a code
+  assert.equal(dir.registryFor("PG-NWRD-000042="), null);
 });
+
+const LIC = "TOG-LIC-NWRD-ZZZZ-134C-2NDD";   // a licence code of NWRD (TOG-CODE.md example)
 
 test("a decision is genuine only when signed by a key of the namespace owner", async () => {
   const dir = await load(directory());
-  const decision = await origin.sign({ decision_id: "d1", allowed: true, license_id: "PG-RND-000042-ZZZZZZ1",
-    operator_key_id: origin.id }, "operator_signature");
+  const decision = await other.sign({ decision_id: "d1", allowed: true, license_id: LIC,
+    operator_key_id: other.id }, "operator_signature");
   const opts = { directory: dir, fetch: keysFetch(keySets) };
   assert.equal(await verifyDecision(decision, decision.license_id, opts), true);
   assert.equal(await verifyDecision({ ...decision, allowed: false }, decision.license_id, opts), false);
 
-  // A listed registry signing a bare code (someone else's namespace) is refused.
-  const forged = await other.sign({ decision_id: "d2", allowed: true, operator_key_id: other.id }, "operator_signature");
-  await assert.rejects(verifyDecision(forged, "PG-000042*", opts), /issuer_mismatch/);
+  // A listed registry signing in someone else's namespace is refused.
+  const forged = await origin.sign({ decision_id: "d2", allowed: true, operator_key_id: origin.id }, "operator_signature");
+  await assert.rejects(verifyDecision(forged, "TOG-NWRD-000042=", opts), /issuer_mismatch/);
 
   // A key set that serves a different key under the listed id is refused.
-  const swapped = keysFetch({ "https://origin.test/keys": [{ key_id: origin.id, public_key_hex: other.pub }] });
+  const swapped = keysFetch({ "https://other.test/keys": [{ key_id: other.id, public_key_hex: origin.pub }] });
   await assert.rejects(verifyDecision(decision, decision.license_id, { directory: dir, fetch: swapped }), /no key/);
+
+  // A decision naming a PG licence id: not a code, no namespace (TOG-CODE.md §1).
+  const old = await origin.sign({ decision_id: "d3", allowed: true, license_id: "PG-RND-000042-ZZZZZZ1",
+    operator_key_id: origin.id }, "operator_signature");
+  await assert.rejects(verifyDecision(old, old.license_id, opts), /unknown_issuer/);
 });
 
 test("canonical JSON refuses what cannot be signed portably", () => {
@@ -92,8 +100,8 @@ test("a stolen steward key cannot add its own key to a pinned namespace", async 
   const d = await directory(3, [
     { name: "Origin", prefix: "", api: "https://origin.test", keys: "https://origin.test/keys", key_fingerprints: [origin.id, thief.id] }]);
   const pinned = await verifyDirectory(d, { stewardPublicKeyHex: steward.pub, pinnedKeys: { "": [origin.id] } });
-  assert.equal(pinned.checkSigner("PG-000042*", thief.id), "issuer_mismatch");
-  assert.equal(pinned.checkSigner("PG-000042*", origin.id), "valid");
+  assert.equal(pinned.checkSigner("TOG-000042*", thief.id), "issuer_mismatch");
+  assert.equal(pinned.checkSigner("TOG-000042*", origin.id), "valid");
 });
 
 test("a newer directory may add but never remove or fork", async () => {
@@ -113,13 +121,13 @@ test("checkDecision: everything a provider must check before generating", async 
   const now = 1_800_000_000;
   const request = { subject_id: "sub_1", provider_id: "acme", licensee_id: "lic-1", prompt_hash: "a".repeat(64),
     model: "m", modality: "image", intended_use: { use_case: "commercial", categories: ["ads"] }, provider_user_id: "u1" };
-  const base = { schema_version: "pg.decision.v1", decision_id: "d1", allowed: true, disposition: "allow", license_id: "PG-RND-000042-ZZZZZZ1",
+  const base = { schema_version: "pg.decision.v1", decision_id: "d1", allowed: true, disposition: "allow", license_id: LIC,
     subject_id: "sub_1", provider_id: "acme", licensee_id: "lic-1", prompt_hash: "a".repeat(64), model: "m", modality: "image",
     intended_use: { use_case: "commercial", categories: ["ads"], channel: "", territory: "" },
     provider_user_binding: "verified", provider_identity_link_id: "link-1",
-    issued_at: now - 10, expires_at: now + 60, operator_key_id: origin.id };
+    issued_at: now - 10, expires_at: now + 60, operator_key_id: other.id };
   const opts = { directory: dir, fetch: keysFetch(keySets), now };
-  const signed = (patch) => origin.sign({ ...base, ...patch }, "operator_signature");
+  const signed = (patch) => other.sign({ ...base, ...patch }, "operator_signature");
 
   assert.equal((await checkDecision(await signed({}), request, opts)).decision_id, "d1");
   const refuse = async (patch, re, req = request) => assert.rejects(checkDecision(await signed(patch), req, opts), re);
@@ -146,16 +154,16 @@ test("a revoked registry or key signs nothing valid, and a revocation cannot be 
   const prev = await directory(2);
   const revokedReg = await directory(3, [prev.registries[0], { ...prev.registries[1], revoked: { at: "2026-10-04T00:00:00Z", reason: "fake rights holders" } }]);
   const dir = await verifyDirectory(revokedReg, { stewardPublicKeyHex: steward.pub, previous: prev });
-  assert.equal(dir.checkSigner("PG-NWRD-000042=", other.id), "revoked");
-  assert.equal(dir.checkSigner("PG-000042*", origin.id), "valid");
+  assert.equal(dir.checkSigner("TOG-NWRD-000042=", other.id), "revoked");
+  assert.equal(dir.checkSigner("TOG-000042*", origin.id), "valid");
   const decision = await other.sign({ decision_id: "d9", operator_key_id: other.id }, "operator_signature");
-  await assert.rejects(verifyDecision(decision, "PG-NWRD-000042=", { directory: dir, fetch: keysFetch(keySets) }), /revoked/);
+  await assert.rejects(verifyDecision(decision, "TOG-NWRD-000042=", { directory: dir, fetch: keysFetch(keySets) }), /revoked/);
   const unrevoked = await directory(4, prev.registries);
   await assert.rejects(verifyDirectory(unrevoked, { stewardPublicKeyHex: steward.pub, previous: revokedReg }), /undone/);
 
   const stolen = steward.sign({ ...(await directory(3)), signature: undefined, revoked_keys: [{ key_id: origin.id, at: "2026-10-04T00:00:00Z" }] }, "signature");
   const withKey = await verifyDirectory(await stolen, { stewardPublicKeyHex: steward.pub, previous: prev });
-  assert.equal(withKey.checkSigner("PG-000042*", origin.id), "revoked");
+  assert.equal(withKey.checkSigner("TOG-000042*", origin.id), "revoked");
   await assert.rejects(verifyDirectory(await directory(4), { stewardPublicKeyHex: steward.pub, previous: await stolen }), /undone/);
   await assert.rejects(load(steward.sign({ ...(await directory(3)), signature: undefined, revoked_keys: [{ key_id: "x" }] }, "signature")), /revoked_keys/);
 });
@@ -164,10 +172,10 @@ test("checkDecision refuses critical members it does not understand, and unverif
   const dir = await load(directory());
   const now = 1_800_000_000;
   const request = { subject_id: "s", provider_id: "p", licensee_id: "l", prompt_hash: "h", model: "m", modality: "image" };
-  const base = { ...request, schema_version: "pg.decision.v1", decision_id: "d1", allowed: true, disposition: "allow", license_id: "PG-RND-000042-ZZZZZZ1",
-    subject_authority: "self", issued_at: now - 1, expires_at: now + 60, operator_key_id: origin.id };
+  const base = { ...request, schema_version: "pg.decision.v1", decision_id: "d1", allowed: true, disposition: "allow", license_id: LIC,
+    subject_authority: "self", issued_at: now - 1, expires_at: now + 60, operator_key_id: other.id };
   const opts = { directory: dir, fetch: keysFetch(keySets), now };
-  const signed = (patch) => origin.sign({ ...base, ...patch }, "operator_signature");
+  const signed = (patch) => other.sign({ ...base, ...patch }, "operator_signature");
   assert.ok(await checkDecision(await signed({ critical: ["obligations"] }), request, opts));
   await assert.rejects(checkDecision(await signed({ critical: ["x_nwrd_geofence"] }), request, opts), /critical/);
   await assert.rejects(checkDecision(await signed({}), request, { ...opts, requireVerifiedAuthority: true }), /not verified/);
@@ -194,7 +202,7 @@ test("a successor steward key takes over from a stolen one, whatever the thief's
   const dropsRevocation = await successor.sign({ ...handover, sequence: 1 }, "signature");
   await assert.rejects(verifyDirectory(dropsRevocation, { ...opts, previous: revoked }), /undone/);
   const keeps = await successor.sign({ ...handover, sequence: 1, revoked_keys: revoked.revoked_keys }, "signature");
-  assert.equal((await verifyDirectory(keeps, { ...opts, previous: revoked })).checkSigner("PG-NWRD-000042=", other.id), "revoked");
+  assert.equal((await verifyDirectory(keeps, { ...opts, previous: revoked })).checkSigner("TOG-NWRD-000042=", other.id), "revoked");
 
   // A thief's revocation, signed after the declared compromise, can be annulled; an earlier one cannot.
   const thief = await steward.sign({ ...(await directory(6)), signature: undefined,
@@ -202,7 +210,7 @@ test("a successor steward key takes over from a stolen one, whatever the thief's
   const annul = (since) => successor.sign({ ...handover, sequence: 1, steward_compromised_since: since,
     annulled: [{ key_id: other.id, reason: "signed with the stolen steward key" }] }, "signature");
   const ok = await verifyDirectory(await annul("2026-10-09T00:00:00Z"), { ...opts, previous: thief });
-  assert.equal(ok.checkSigner("PG-NWRD-000042=", other.id), "valid");
+  assert.equal(ok.checkSigner("TOG-NWRD-000042=", other.id), "valid");
   await assert.rejects(verifyDirectory(await annul("2026-10-11T00:00:00Z"), { ...opts, previous: thief }), /undone/);
 });
 
@@ -277,13 +285,13 @@ test("checkAnswer trusts an answer only through the directory (PRE-GEN-CORE.md r
     return { type: "pg.answer.v1", body, signatures: [await key.sign("PREGEN-V5\0pg.answer.v1\0" + canonicalJson(body))] };
   };
   const check = (a, r, o = {}) => checkAnswer(a, r, { directory: dir, fetch, now: 1010, ...o });
-  const req = ask("PG-TEST-000001N");
+  const req = ask("TOG-TEST-000001N");
 
   assert.equal((await check(await answer(real, req), req)).status, "allow");
-  const fakeReq = ask("PG-AFRK-000001X"); // a registry the steward never listed
+  const fakeReq = ask("TOG-AFRK-000001D"); // a registry the steward never listed
   await assert.rejects(check(await answer(fake, fakeReq), fakeReq), /unknown_issuer/);
   await assert.rejects(check(await answer(fake, req), req), /issuer_mismatch/); // a copy with its own key
-  await assert.rejects(check(await answer(real, req), ask("PG-TEST-000001N", "job-2")), /another request/);
+  await assert.rejects(check(await answer(real, req), ask("TOG-TEST-000001N", "job-2")), /another request/);
   await assert.rejects(check(await answer(real, req), req, { now: 1300 }), /expired/);
   const sandbox = await answer(real, req, { ext: { sandbox: true } });
   await assert.rejects(check(sandbox, req), /sandbox/);
@@ -324,12 +332,12 @@ test("no registry is pinned by default, and any prefix can be pinned", async () 
   const d = await directory(3, [
     { name: "Origin", prefix: "", api: "https://origin.test", keys: "https://origin.test/keys", key_fingerprints: [origin.id] },
     { name: "Other", prefix: "NWRD", api: "https://other.test", keys: "https://other.test/keys", key_fingerprints: [other.id, thief.id] }]);
-  assert.equal((await verifyDirectory(d, { stewardPublicKeyHex: steward.pub })).checkSigner("PG-NWRD-000042=", thief.id), "valid");
+  assert.equal((await verifyDirectory(d, { stewardPublicKeyHex: steward.pub })).checkSigner("TOG-NWRD-000042=", thief.id), "valid");
   const pinned = await verifyDirectory(d, { stewardPublicKeyHex: steward.pub, pinnedKeys: { NWRD: [other.id] } });
-  assert.equal(pinned.checkSigner("PG-NWRD-000042=", thief.id), "issuer_mismatch");
-  assert.equal(pinned.checkSigner("PG-NWRD-000042=", other.id), "valid");
+  assert.equal(pinned.checkSigner("TOG-NWRD-000042=", thief.id), "issuer_mismatch");
+  assert.equal(pinned.checkSigner("TOG-NWRD-000042=", other.id), "valid");
   const legacy = await verifyDirectory(d, { stewardPublicKeyHex: steward.pub, originKeyFingerprints: [other.id] }); // deprecated alias
-  assert.equal(legacy.checkSigner("PG-000042*", origin.id), "issuer_mismatch");
+  assert.equal(legacy.checkSigner("TOG-000042*", origin.id), "issuer_mismatch");
 });
 
 test("stress test C1: a key no one can be held to is refused, and nothing verifies under it", async () => {
@@ -346,16 +354,18 @@ test("stress test C1: a key no one can be held to is refused, and nothing verifi
 });
 
 test("stress test H5: one code, one string; only what a person typed is normalised", () => {
-  const canonical = { "PG-000042*": "", "PG-STD-000123": "", "PG-EDT-000012": "", "PG-STD-000001-K7M2QX9": "",
-    "PG-TEST-000001N": "TEST", "PG-NWRD-000042=": "NWRD", "PG-NWRD-RND-000042-ZZZZZZJ": "NWRD" };
+  const canonical = { "TOG-000042*": "", "TOG-STD-000123": "", "TOG-SUB-000123": "", "TOG-TEST-000001N": "TEST",
+    "TOG-NWRD-000042=": "NWRD", "TOG-LIC-NWRD-ZZZZ-134C-2NDD": "NWRD" };
   for (const [code, issuer] of Object.entries(canonical)) assert.equal(issuerOf(code), issuer);
-  for (const spelling of ["PG-TEST-000001N\u200d", "PG-TEST-000001N\x00", "PG-TEST-000001N\n", " PG-TEST-000001N",
-    "\ufeffPG-TEST-000001N", "PG-TEST-000001N\u0085", "\x1cPG-TEST-000001N", "pg-test-000001n", "PG-TEST-", "PG-TEST",
-    "PG-\ufb06D-000123", "PG-\u017fTD-000123", "PG-TEST-000001N-", "PG-NWRD-000042-K"]) {
+  for (const spelling of ["TOG-TEST-000001N\u200d", "TOG-TEST-000001N\x00", "TOG-TEST-000001N\n", " TOG-TEST-000001N",
+    "\ufeffTOG-TEST-000001N", "TOG-TEST-000001N\u0085", "\x1cTOG-TEST-000001N", "tog-test-000001n", "TOG-TEST-", "TOG-TEST",
+    "TOG-\ufb06D-000123", "TOG-\u017fTD-000123", "TOG-TEST-000001N-", "TOG-NWRD-000042-K",
+    // what the frozen PG-CODE called a code: retired, not a code
+    "PG-000042*", "PG-STD-000123", "PG-EDT-000012", "PG-STD-000001-K7M2QX9", "PG-TEST-000001N", "PG-NWRD-RND-000042-ZZZZZZJ"]) {
     assert.throws(() => issuerOf(spelling), PregenError, JSON.stringify(spelling));
   }
-  assert.equal(normalizeCode("  pg-test-000001n \n"), "PG-TEST-000001N");
-  for (const typed of ["PG-\ufb06D-000123", "PG-TEST-000001N\u200d", "\ufeffPG-TEST-000001N", "pg-test-"]) {
+  assert.equal(normalizeCode("  tog-test-000001n \n"), "TOG-TEST-000001N");
+  for (const typed of ["TOG-\ufb06D-000123", "TOG-TEST-000001N\u200d", "\ufeffTOG-TEST-000001N", "tog-test-", "pg-test-000001n"]) {
     assert.throws(() => normalizeCode(typed), PregenError, JSON.stringify(typed));
   }
 });

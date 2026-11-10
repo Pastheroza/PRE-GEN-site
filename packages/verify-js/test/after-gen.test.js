@@ -290,7 +290,7 @@ async function makeDirectory({ revoked = false, falseClaim = false } = {}) {
     { name: "Test", prefix: "TEST", api: API, keys: API + "/keys", key_fingerprints: [await kid(KEY)],
       ...(revoked ? { revoked: { at: "2026-10-04T00:00:00Z", reason: "test" } } : {}) },
     { name: "Other", prefix: "NWRD", api: OTHER_API, keys: OTHER_API + "/keys", key_fingerprints: [await kid(OTHER)] }],
-  ...(falseClaim ? { false_claims: [{ anchor: "wikidata:Q42", code: "PG-TEST-000001N", at: "2026-10-02T00:00:00Z", reason: "test" }] } : {}) };
+  ...(falseClaim ? { false_claims: [{ anchor: "wikidata:Q42", code: "TOG-TEST-000001N", at: "2026-10-02T00:00:00Z", reason: "test" }] } : {}) };
   const sig = await crypto.subtle.sign({ name: "Ed25519" }, steward.privateKey, new TextEncoder().encode(canonicalJson(d)));
   return verifyDirectory({ ...d, signature: Buffer.from(sig).toString("hex") }, { stewardPublicKeyHex: stewardPub, now: NOW });
 }
@@ -620,7 +620,7 @@ test("vector 6: a record checked against another file is not for this file", asy
 });
 
 const MUTATIONS = [ // vectors 9 and 13, the shape, and the approval forms
-  ["subject_ref in the PG spelling", { subject_ref: "PG-TEST-000001N" }], // TOG-CODE.md §7.3: a record writes TOG only
+  ["subject_ref a PG string", { subject_ref: "PG-TEST-000001N" }], // TOG-CODE.md §1: a PG string is not a code
   ["subject_ref mistyped", { subject_ref: "TOG-TEST-000001M" }],
   ["subject_ref an event code", { subject_ref: "TOG-AG-TEST-T8JE-WDJX-0000" }],
   ["label in another case", { label: "Approved after generation" }],
@@ -631,7 +631,7 @@ const MUTATIONS = [ // vectors 9 and 13, the shape, and the approval forms
   ["an unknown body member", { origin: "ai" }],
   ["a missing member", { request: DROP }],
   ["an unknown member in content", { "content.extra": 1 }],
-  ["an unknown member in licence", { "basis.licence.license_id": "PG-TEST-000001N" }],
+  ["an unknown member in licence", { "basis.licence.license_id": "TOG-TEST-000001N" }],
   ["an unknown member in use", { "basis.use.left": 7 }],
   ["an unknown basis kind", { basis: { ...TERMS, kind: "grant" } }],
   ["basis kind as a list", { basis: { ...TERMS, kind: ["terms"] } }],

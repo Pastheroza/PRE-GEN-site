@@ -9,7 +9,7 @@ import { CATEGORIES, PROHIBITED_FOR_MINORS, INTIMATE, floor, forbids, termsOpens
 
 const V = JSON.parse(readFileSync(new URL("../../../spec/test-vectors/answers.json", import.meta.url)));
 const T = JSON.parse(readFileSync(new URL("../../../spec/test-vectors/terms.json", import.meta.url)));
-const NOW = V.now, CODE = "PG-TEST-000001N", OTHER_CODE = "PG-TEST-000003X", DROP = Symbol("drop");
+const NOW = V.now, CODE = "TOG-TEST-000001N", OTHER_CODE = "TOG-TEST-0000034", DROP = Symbol("drop");
 const fetch = async (url) => (url in V.key_sets ? { ok: true, status: 200, json: async () => V.key_sets[url] }
   : { ok: false, status: 404, json: async () => ({}) });
 const directory = await verifyDirectory(V.directory, { stewardPublicKeyHex: V.steward_public_key_hex, now: V.now });
@@ -138,7 +138,7 @@ async function finding({ use = USE, record, cite, carry = true, basis = POLICY, 
 }
 
 test("a proof for a false claim is refused", async () => {   // identity round B4e: checkProof skipped the steward's ruling
-  await assert.rejects(finding({ code: "PG-TEST-000002Z", cite: DROP, carry: false }), /false claim/);
+  await assert.rejects(finding({ code: "TOG-TEST-000002Z", cite: DROP, carry: false }), /false claim/);
 });
 
 for (const v of T.proofs) {

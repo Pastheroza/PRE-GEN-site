@@ -134,8 +134,13 @@ def _reply(answer: dict, code: str | None) -> dict:
 
 
 def _tog(subject) -> str:
-    """A subject row's code in its one written spelling (TOG-CODE §7.3): a row born PG- keeps its stored spelling."""
+    """A subject row's code (TOG-CODE §7.3). Every row is written TOG- (_migrate_pg)."""
     return code_key(subject["code"])
+
+
+# The columns that name one of this registry's own persons: respelled once, at the switch (TOG-CODE §6.2).
+PERSON_COLUMNS = (("subjects", "code"), ("grants", "subject_code"), ("asks", "subject_ref"), ("terms", "subject_code"),
+                  ("after_gen_requests", "subject_ref"), ("after_gen_records", "subject_ref"), ("mandates", "subject_ref"))
 
 
 @dataclass
@@ -158,8 +163,8 @@ class Config:
             raise ValueError("a registry's prefix is 4 to 8 letters A-Z that never begin or end with LIC, and no 4-letter "
                              "prefix is LIC with one letter added (TOG-CODE.md §9; new codes are never bare)") from None
         if self.sandbox and not re.fullmatch(r"[ABCDEFGHJKMNPQRSTVWXYZ]{4}", self.prefix):
-            raise ValueError("a sandbox's prefix is four letters of the PG alphabet: its fixed test subjects are PG-born "
-                             "codes, respelled TOG- (extensions/sandbox.md)")
+            raise ValueError("a sandbox's prefix is four letters of the Crockford alphabet: its fixed test subjects have "
+                             "the old person shape, TOG-<prefix>-<6 digits><check> (extensions/sandbox.md)")
         if self.providers not in ("open", "registered"):
             raise ValueError("providers is open or registered")
         if self.sandbox:
@@ -244,6 +249,7 @@ class Registry:
         if config.sandbox:
             self._check_sandbox_serials()   # before anything is written: a refused start changes nothing
         self._record_key()
+        self._migrate_pg()
         self._backfill_codes()
         if config.sandbox:
             self.seed_sandbox()
@@ -301,12 +307,24 @@ class Registry:
             self.db.execute("INSERT OR REPLACE INTO meta (k, v) VALUES (?, ?)", (k, v))
         return v
 
-    # ── ToG codes (TOG-CODE.md): one spelling, TOG-; a PG- string is legacy input only ─
+    # ── ToG codes (TOG-CODE.md): one spelling, TOG-. PG code is incompatible: a PG- string is not a code here ─
+    def _migrate_pg(self):
+        """Once, at the switch (TOG-CODE §6.2-6.3): this registry's OWN rows that name a person are respelled by the
+        marker, PG-<P>-<serial><check> -> TOG-<P>-<serial><check>, same serial and check. Signed envelopes keep their
+        bytes (a re-signature would be a new act); a licence's or allow's code is computed from its message id under
+        the person's TOG code (_backfill_codes). Nothing from outside is ever read in the PG spelling again."""
+        with self.tx() as db:
+            for table, col in PERSON_COLUMNS:
+                for r in db.execute(f"SELECT rowid, {col} AS c FROM {table} WHERE {col} GLOB 'PG-*'").fetchall():
+                    new = "TOG" + r["c"][2:]
+                    if parse_code(new)["kind"] != "subject" or not parse_code(new)["shape"].startswith("old_"):
+                        raise ValueError(f"{table}.{col}: {r['c']} was never issued in a person's shape")
+                    db.execute(f"UPDATE {table} SET {col} = ? WHERE rowid = ?", (new, r["rowid"]))
+
     def _subject(self, db, ref: str):
         """The row of the person `ref` names here, or None (another registry's code, or none of ours). Found by number
-        (lookup.md, Spellings), so a PG- string is legacy input for the same person and a row keeps the spelling it was
-        born with; a record or list writes its TOG spelling (_tog). An over-padded number is PG_MALFORMED with the TOG
-        spelling as a hint, never an answer; a string that is not a person's code is PG_MALFORMED."""
+        (lookup.md, Spellings). An over-padded number is PG_MALFORMED with the code as a hint, never an answer; a
+        string that is not a person's code, a PG- string included, is PG_MALFORMED."""
         try:
             p, key = parse_code(ref), code_key(ref)
         except Mistyped:
@@ -343,14 +361,15 @@ class Registry:
             return None
 
     def _backfill_codes(self):
-        """Licences and allows signed before 0.5 get their ToG code by computation, exactly like new ones (TOG-CODE
-        §6.2, hard switch): an index beside the record, never a rewritten record. One that gives no code waits for
-        its home's countersignature (the home model, not published yet) and stays without one."""
+        """Licences and allows signed before 0.5 get their ToG code by computation from their signed object's message
+        id, exactly like new ones (TOG-CODE §6.3): an index beside the record, never a rewritten record. The person is
+        read from the migrated column (TOG), never from the old signed bytes. One that gives no code waits for its
+        home's countersignature (the home model, not published yet) and stays without one."""
         with self.tx() as db:
-            for r in db.execute("SELECT id, envelope FROM grants WHERE code IS NULL").fetchall():
-                env = json.loads(r["envelope"])
-                db.execute("UPDATE grants SET code = ? WHERE id = ?", (self._code(env, env["body"]["subject_ref"]), r["id"]))
-            for r in db.execute("SELECT a.id, a.envelope, a.grant_id, json_extract(k.request, '$.subject_ref') AS ref "
+            for r in db.execute("SELECT id, envelope, subject_code FROM grants WHERE code IS NULL").fetchall():
+                db.execute("UPDATE grants SET code = ? WHERE id = ?",
+                           (self._code(json.loads(r["envelope"]), r["subject_code"]), r["id"]))
+            for r in db.execute("SELECT a.id, a.envelope, a.grant_id, k.subject_ref AS ref "
                                 "FROM answers a JOIN asks k ON k.id = a.ask_id WHERE a.status = 'allow' "
                                 "AND a.code IS NULL").fetchall():
                 db.execute("UPDATE answers SET code = ? WHERE id = ?",
@@ -583,7 +602,7 @@ class Registry:
         if not self.config.sandbox:
             raise ProtocolError("PG_NOT_FOUND", "this registry is not a sandbox", status=404)
         body = self._checked_request(provider_id, authorization, env)
-        key = code_key(body["subject_ref"])          # either spelling buys the one person
+        key = code_key(body["subject_ref"])
         offer = next((o for o in self.catalog()["offers"] if o["subject_ref"] == key), None)
         if offer is None:
             raise ProtocolError("PG_NOT_FOUND", "this subject is not in the catalog", status=404)
@@ -688,12 +707,12 @@ class Registry:
             db.execute("INSERT INTO jobs VALUES (?, ?, ?)", (body["provider_id"], body["job_id"], body["job_hash"]))
         elif row["job_hash"] != body["job_hash"]:
             raise ProtocolError("PG_JOB_CONFLICT", "this job_id is bound to another job", status=409)
-        try:                     # one person, one ask, in either spelling (a 0.4 row keeps the spelling it was asked in)
+        try:                     # one person, one ask
             rid, key = message_id("pg.request.v1", body), code_key(body["subject_ref"])
         except PregenError:      # a report's request with no answer reaches here unchecked
             raise ProtocolError("PG_MALFORMED", "subject_ref is not a person's ToG code (TOG-CODE.md §7)") from None
-        ask = db.execute("SELECT * FROM asks WHERE provider_id = ? AND job_id = ? AND subject_ref IN (?, ?)",
-                         (body["provider_id"], body["job_id"], key, "PG" + key[3:])).fetchone()
+        ask = db.execute("SELECT * FROM asks WHERE provider_id = ? AND job_id = ? AND subject_ref = ?",
+                         (body["provider_id"], body["job_id"], key)).fetchone()
         if ask is None:
             db.execute("INSERT INTO asks (id, provider_id, job_id, subject_ref, request, signatures) VALUES (?, ?, ?, ?, ?, ?)",
                        (rid, body["provider_id"], body["job_id"], key, json.dumps(body), json.dumps(list(signatures))))
@@ -1300,8 +1319,8 @@ class Registry:
         return body
 
     def _ag_code(self, code) -> str | None:
-        """The subject's code as this registry stores it, for a code in either spelling (_subject: one person, one
-        key). Its TOG key when no subject of ours holds it; None for a string that is no person's code."""
+        """The subject's code as this registry stores it (_subject: one person, one key). The code itself when no
+        subject of ours holds it; None for a string that is no person's code (a PG- string included)."""
         try:
             with self.lock:
                 s = self._subject(self.db, code)
@@ -1476,7 +1495,7 @@ class Registry:
                                                 (row["subject_ref"],)).fetchone()["custody"] != "self":
             raise ProtocolError("PG_PERSONAL_SIGNATURE_REQUIRED", "self is the subject's own key", status=403)
         g, used = self._ag_checks(db, row["requester"], row["subject_ref"], row["licence_id"], row["media_hash"], scope, now)
-        body = {**AG_CONSTANTS, "subject_ref": code_key(row["subject_ref"]),           # written only in TOG (_tog)
+        body = {**AG_CONSTANTS, "subject_ref": code_key(row["subject_ref"]),
                 "content": {"binding": "media/1", "hash": row["media_hash"], "leaves": row["leaves"]},
                 "request": row["id"], "holder": row["requester"],
                 "basis": {"kind": "licence", "licence": {"format": "pg.grant.v1", "id": g["id"]},
@@ -1759,7 +1778,8 @@ class Registry:
         return {"grant": json.loads(row["envelope"])}
 
     def lookup(self, code: str, media: str | None = None) -> dict:
-        """lookup.md: any code, either spelling, answered for its TOG spelling by the registry of its first prefix.
+        """lookup.md: any ToG code, answered by the registry of its first prefix. A PG- string is not a code: 400
+        invalid_format, like any other non-code, with no hint and no mapping.
         Nothing is returned that the rights holder did not choose to publish: an unpublished person answers as a code
         never issued, unless they refused (opted out: Do Not Generate). An act answers its record's facts, never
         the person; `media`, the report's output_hash, adds its pg.proof.v1 entry."""
@@ -1769,8 +1789,7 @@ class Registry:
             raise ProtocolError("mistyped", "its check character does not match: a mistyped code", status=400) from None
         except PregenError:
             raise ProtocolError("invalid_format", "not a ToG code (TOG-CODE.md §7)", status=400) from None
-        # an old PG licence id has no TOG spelling without its record; this registry never issued one
-        head = {**({"code": p["key"]} if p["key"] else {}), "kind": p["kind"]}
+        head = {"code": code, "kind": p["kind"]}
         if p["issuer"] != self.config.prefix:
             return {**head, "registry": p["issuer"], "status": "other_registry", "directory": DIRECTORY_URL}
         head["registry"] = self.config.prefix
@@ -1786,16 +1805,16 @@ class Registry:
                 if terms:
                     api = self.config.api.rstrip("/")
                     out |= {"terms": {"id": terms[0], "url": f"{api}/v2/terms/{terms[0]}"},
-                            "status_url": f"{api}/v2/codes/{p['key']}/terms"}
+                            "status_url": f"{api}/v2/codes/{code}/terms"}
                 return out
-            if p["kind"] == "license" and p["key"]:
-                g = self.db.execute("SELECT expires_at FROM grants WHERE code = ?", (p["key"],)).fetchone()
+            if p["kind"] == "license":
+                g = self.db.execute("SELECT expires_at FROM grants WHERE code = ?", (code,)).fetchone()
                 if g is not None:
                     return {**head, "status": "active" if g["expires_at"] > self.clock() else "expired",
                             "issuer": self.config.prefix}
             if p["kind"] == "generated":
                 a = self.db.execute("SELECT a.issued_at, a.use, a.report_id, k.request FROM answers a JOIN asks k ON "
-                                    "k.id = a.ask_id WHERE a.code = ?", (p["key"],)).fetchone()
+                                    "k.id = a.ask_id WHERE a.code = ?", (code,)).fetchone()
                 if a is not None:            # an act code has no "withdrawn": the deal stays a contract (rule 3)
                     req = json.loads(a["request"])
                     out = {**head, "status": "valid", "issued_at": a["issued_at"], "purpose": req["use"]["purpose"],

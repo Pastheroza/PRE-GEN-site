@@ -21,24 +21,27 @@ Text only: no message format, required schema member or vector changes.
 ## pregen-registry 0.5.0 (unreleased): the registry writes ToG codes
 
 Needs `pregen` 0.14.
-- **Persons:** a new person is born `TOG-<prefix>-<9 random digits><check>`. A PG-born person is written `TOG-`
-  with the same number and check; stored rows are not rewritten, and the `PG-` spelling is read as legacy input
-  for the same person in requests, lookups and commands. An over-padded number gets `PG_MALFORMED` with the TOG
-  spelling as a hint.
+- **Persons:** a new person is born `TOG-<prefix>-<9 random digits><check>`. PG code is incompatible: a `PG-`
+  string is not a code in requests, lookups, commands or schemas (`PG_MALFORMED`, `400 invalid_format`, no
+  hint). At start the registry migrates its own rows once: every column naming one of its persons is rewritten
+  `TOG-` with the same number and check; signed envelopes keep their bytes. An over-padded number gets
+  `PG_MALFORMED` with the code as a hint.
 - **Licences and allows:** every licence has a `TOG-LIC` code and every allow a `TOG-PG-LIC` code, computed from
   the signed record (flat model) and issued once; one that would give no code, or a code issued already, is signed
-  again a second shorter. Records signed before 0.5 get their codes by the same computation at start. One whose
+  again a second shorter. Records signed before 0.5 get their codes by the same computation at start, under the
+  person's migrated TOG code (never from the old signed bytes). One whose
   code would end in a symbol or start `ZZZZ` (about 1 in 7) is not signed again: it has no code and no
   `/v2/codes` answer until the home model exists.
 - **`POST /v2/requests`** returns an allow's code beside the answer (`extensions/proof.md`); proof entries carry
   `code`, `licence` and `grant`.
-- **Lookup** answers any code in its TOG spelling with its kind (`extensions/lookup.md`).
+- **Lookup** answers any ToG code with its kind (`extensions/lookup.md`); a `PG-` string is `400 invalid_format`.
 - **Anchor lists, catalog, terms and grants** write `TOG-`. Prefixes are 4 to 8 letters; a sandbox keeps 4 PG
-  letters.
+  letters (old-shape test codes).
 
 ## pregen 0.14.0, @pregen/verify 0.14.0 (unreleased): the ToG code
 
-A core change (ToG code design, all decisions approved; decision 4 replaced by the hard switch).
+A core change (ToG code design, all decisions approved; decision 4 replaced by the hard switch, then PG code made
+incompatible).
 Both libraries implement it: `parse_code`, `kind_of`, `describe`, `issuer_of`, `code_key`, `normalize_typed`,
 `find_codes`, `code_for`, `metadata_ok`, `code_verdict`, `check_parties`, `admission_refusal`, directory v3
 (`parseCode`, `kindOf`, `describe`, `codeKey`, … in `@pregen/verify`).
@@ -49,32 +52,42 @@ Both libraries implement it: `parse_code`, `kind_of`, `describe`, `issuer_of`, `
   check covers two prefix-length digits and a kind digit; I, L, O, U take 32–35 in a TOG-only
   value table. Prefixes are 4–8 letters A–Z, never with `LIC` at either end, admitted under
   §9.1. Readable copies of a file's codes are recomputed and refused on any mismatch (§14).
-- **The hard switch:** PG-born persons are respelled by the marker only (same number, same
-  check); old licences get their `TOG-LIC` code from the signed licence's id. A `PG-` string is
-  legacy input only: `code_key` folds it to its one TOG spelling, used by every comparison, and
-  nothing writes `PG-`. A PG person string with no valid TOG spelling is not a code.
+- **PG code is incompatible:** a `PG-` string is not a code anywhere: not as input, not folded,
+  not converted, not suggested. `parse_code`, `code_key` (no folding: the code itself),
+  `issuer_of`, `describe`, `find_codes`, anchor lists, false claims, channel lines and a request's
+  `subject_ref` refuse it like any other non-code. Typed, it gets one message, `RETIRED`: "PG codes
+  are retired. Use the ToG code your registry shows you.", with no TOG suggestion. Each registry
+  migrates its own rows once (persons and release works by the marker, same number and check; old
+  licences get the `TOG-LIC` code of their signed object). An object whose signed bytes hold a PG id
+  (a `pg.license.v2`, an act with a PG `subject_ref`) gives no code and is not accepted; there is no
+  legacy verifier mode. `AskRegistry` / `ask_registry` and the `licences` arguments are gone.
 - **Directory v3** at `https://www.pregen.org/registries.v3.json`: entity, group, dated roles,
   government, provider domains, `void_from`, `closed`, `resolver`, `min_library`. v2 stays
   frozen at its URL for 0.10–0.13 clients.
-- **`PRE-GEN-CORE.md`** rules 1 and 2; **`identity`:** codes in their TOG spelling, compared by
-  `code_key`; `verify_anchors` / `verifyAnchors` keep `TOG-` lines, fold `PG-` lines and return the TOG
-  spelling; an entry that is not a person code (not a code, mistyped, a licence or event code) fails the
-  whole list; **`lookup`:** `kind`, `moved`, `alias`, answers in TOG, an over-padded number gets
-  `PG_MALFORMED` with a hint; **`grants`:** a licence's `TOG-LIC` code, old licences included;
+- **`PRE-GEN-CORE.md`** rules 1 and 2; **`identity`:** ToG codes only, compared by `code_key`;
+  `verify_anchors` / `verifyAnchors` keep `TOG-` lines; an entry that is not a person code (a `PG-`
+  line, not a code, mistyped, a licence or event code) fails the whole list; **`lookup`:** `kind`, `moved`, `alias`, a `PG-` string `400 invalid_format`, an over-padded number
+  gets `PG_MALFORMED` with a hint, `/v1/pg` retired at a registry's switch, the pregen.org proxy's
+  transition shim; **`grants`:** a licence's `TOG-LIC` code, old licences by their registry's migration;
   **`proof`:** each subject's `PG` or `PG-LIC` code, readable copies `code`, `licence` and the
   `grant` they are recomputed from.
-- **Schemas:** `subject_ref` accepts `TOG-` (request, grant, terms); prefixes 4–8 letters
+- **Schemas:** `subject_ref` accepts `TOG-` only (request, grant, terms); prefixes 4–8 letters
   (anchors, registry document, key set); `proof.json` entries may carry `code`, `licence`,
   `grant`. The registry's vendored copies follow.
-- **`PG-CODE.md`** frozen, with a pointer to `TOG-CODE.md`; its errata are in `TOG-CODE.md` §18.
-- **Vectors:** `test-vectors/tog-code.json` (with `describe`), generated from the reference model
-  `tools/tog_code.py` by `tools/tog_vectors.py`; `test-vectors/anchors.json` revised for TOG lines.
+- **`PG-CODE.md`** marked "Retired, not supported", kept as history, with a pointer to `TOG-CODE.md`; its errata
+  are in `TOG-CODE.md` §18.
+- **Vectors:** `test-vectors/tog-code.json` (with `describe`, `migrate` and `proxy`; every published `PG-` string
+  `malformed`; typed `PG-` input with the retired `message`), generated from the reference model
+  `tools/tog_code.py` by `tools/tog_vectors.py`; `test-vectors/anchors.json` revised (a `PG-` line fails the
+  list); `answers.json`, `messages.json` and `terms.json` regenerated with `TOG-TEST-…` subjects, and
+  `answers.json` gains a request naming a `PG-` string (refused); `vectors.json`'s namespace cases name ToG codes
+  of the same namespaces (codes are not signed; the directories are unchanged).
 - **Simulator:** an allow names the example licence `TOG-LIC-TEST-ZZZZ-0000-001K` (a reserved `ZZZZ` tail, never
   issued), and the simulator's throwaway directory lists it under the `TEST` prefix instead of the bare namespace.
-- **Steward tool:** `false-claim` and `reverse-false-claim` write the code's TOG spelling into the signed directory;
-  a mistyped code, or an old licence id (only its registry knows its `TOG-LIC` code), is refused.
+- **Steward tool:** `false-claim` and `reverse-false-claim` write ToG codes into the signed directory; a mistyped
+  code or a `PG-` string is refused.
 - **Old clients:** 0.13 refuses every TOG code (fails closed); 0.13.1 refuses an anchor list
-  with a TOG line instead of dropping it. 0.14 reads it.
+  with a TOG line instead of dropping it. 0.14 reads it, and refuses a list with a `PG-` line the same way.
 
 ## pregen 0.13.1, @pregen/verify 0.13.1 (unreleased)
 

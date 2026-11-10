@@ -110,8 +110,8 @@ def entry(code, anchor="wikidata:Q11571"):
 
 @pytest.mark.parametrize("case", ANCHOR_LISTS["cases"], ids=lambda c: c["name"])
 def test_anchor_list_vectors(case):
-    """spec/test-vectors/anchors.json: TOG lines kept, PG lines folded, foreign codes dropped; an entry that is not a
-    person code fails the whole list."""
+    """spec/test-vectors/anchors.json: TOG lines kept, foreign codes dropped; an entry that is not a person code (a PG
+    line included) fails the whole list."""
     a = case.get("anchor", "wikidata:Q11571")
     if "error" in case:
         with pytest.raises(pregen.PregenError, match=case["error"]):
@@ -122,23 +122,23 @@ def test_anchor_list_vectors(case):
 
 def test_an_anchor_list_naming_a_code_twice_is_refused():
     with pytest.raises(pregen.PregenError, match="each code once"):
-        anchors([entry("PG-TEST-000001N"), entry("PG-TEST-000001N", "wikidata:Q1")])
+        anchors([entry("TOG-TEST-000001N"), entry("TOG-TEST-000001N", "wikidata:Q1")])
 
 
-@pytest.mark.parametrize("bad", ["PG-TEST-000001N", {"code": 1}])
+@pytest.mark.parametrize("bad", ["TOG-TEST-000001N", {"code": 1}])
 def test_an_anchor_list_with_a_malformed_entry_is_refused(bad):
     with pytest.raises(pregen.PregenError, match="entry is"):
-        anchors([entry("PG-TEST-000003X"), bad])
+        anchors([entry("TOG-TEST-0000034"), bad])
 
 
 def test_an_old_anchor_list_is_refused():
     with pytest.raises(pregen.PregenError, match="24 hours"):
-        anchors([entry("PG-TEST-000001N")], issued_at=NOW - pregen.DIRECTORY_MAX_AGE - 1)
+        anchors([entry("TOG-TEST-000001N")], issued_at=NOW - pregen.DIRECTORY_MAX_AGE - 1)
 
 
 def test_an_anchor_list_drops_a_false_claim_only_under_its_own_anchor():
-    false = "PG-TEST-000002Z"               # the vector directory: a false claim under wikidata:Q42
-    assert anchors([entry(false, "wikidata:Q42"), entry("PG-TEST-000001N")]) == [entry("TOG-TEST-000001N")]
+    false = "TOG-TEST-000002Z"               # the vector directory: a false claim under wikidata:Q42
+    assert anchors([entry(false, "wikidata:Q42"), entry("TOG-TEST-000001N")]) == [entry("TOG-TEST-000001N")]
     assert anchors([entry(false)]) == [entry("TOG-TEST-000002Z")]
 
 
@@ -176,31 +176,31 @@ def channels(now_sites, then_sites):
 
 def test_a_channel_added_today_refuses_but_does_not_permit():
     now_urls, then_urls = channels([SITE, NEW], [SITE])
-    pages = {NEW + "/.well-known/pregen": "PRE-GEN: PG-XXXX-000001V"}
-    c = claim("PG-XXXX-000001V", NEW + "/.well-known/pregen", now_urls, then_urls, pages, {"status": "allow"})
+    pages = {NEW + "/.well-known/pregen": "PRE-GEN: TOG-XXXX-0000014"}
+    c = claim("TOG-XXXX-0000014", NEW + "/.well-known/pregen", now_urls, then_urls, pages, {"status": "allow"})
     assert (c["confirmed"], c["settled"]) == (True, False)
     assert pregen.decide_identity([c]) == {"status": "not_blocked", "reason": "PG_IDENTITY_UNCONFIRMED", "code": None}
     out = {"status": "deny", "reason": "PG_SUBJECT_OPTED_OUT"}
-    c = claim("PG-XXXX-000001V", NEW + "/.well-known/pregen", now_urls, then_urls, pages, out)
+    c = claim("TOG-XXXX-0000014", NEW + "/.well-known/pregen", now_urls, then_urls, pages, out)
     assert pregen.decide_identity([c])["status"] == "deny"
 
 
 def test_a_recent_refusal_survives_replacing_the_channel():
     now_urls, then_urls = channels([NEW], [SITE])
-    pages = {SITE + "/.well-known/pregen": "PRE-GEN: PG-AAAA-000001N", NEW + "/.well-known/pregen": "PRE-GEN: PG-XXXX-000001V"}
-    ron = claim("PG-AAAA-000001N", SITE + "/.well-known/pregen", now_urls, then_urls, pages,
+    pages = {SITE + "/.well-known/pregen": "PRE-GEN: TOG-AAAA-0000029", NEW + "/.well-known/pregen": "PRE-GEN: TOG-XXXX-0000014"}
+    ron = claim("TOG-AAAA-0000029", SITE + "/.well-known/pregen", now_urls, then_urls, pages,
                 {"status": "deny", "reason": "PG_SUBJECT_OPTED_OUT"})
-    thief = claim("PG-XXXX-000001V", NEW + "/.well-known/pregen", now_urls, then_urls, pages, {"status": "allow"})
+    thief = claim("TOG-XXXX-0000014", NEW + "/.well-known/pregen", now_urls, then_urls, pages, {"status": "allow"})
     assert (ron["confirmed"], ron["refusal_only"]) == (False, True)
     assert pregen.decide_identity([ron, thief]) == {"status": "deny", "reason": "PG_SUBJECT_OPTED_OUT",
-                                                    "code": "PG-AAAA-000001N"}
+                                                    "code": "TOG-AAAA-0000029"}
 
 
 def test_a_refusal_seen_this_week_survives_its_line_being_deleted():
     now_urls, then_urls = channels([SITE], [SITE])
-    ron = claim("PG-AAAA-000001N", SITE + "/.well-known/pregen", now_urls, then_urls, {},
+    ron = claim("TOG-AAAA-0000029", SITE + "/.well-known/pregen", now_urls, then_urls, {},
                 {"status": "deny", "reason": "PG_SUBJECT_OPTED_OUT"}, seen=True)
     assert (ron["confirmed"], ron["refusal_only"]) == (False, True)
     assert pregen.decide_identity([ron])["reason"] == "PG_SUBJECT_OPTED_OUT"
-    never = claim("PG-AAAA-000001N", SITE + "/.well-known/pregen", now_urls, then_urls, {}, {"status": "allow"})
+    never = claim("TOG-AAAA-0000029", SITE + "/.well-known/pregen", now_urls, then_urls, {}, {"status": "allow"})
     assert (never["confirmed"], never["refusal_only"]) == (False, False)

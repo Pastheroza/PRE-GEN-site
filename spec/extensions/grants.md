@@ -55,9 +55,11 @@ A licence issued under the earlier interface is referenced, never re-wrapped:
 **Its code is a `TOG-LIC` code, computed from that `id`** exactly like a grant's, in the flat
 model: issuer = its signer, tail = that id. If that gives a symbol check or a `ZZZZ` tail, the home
 countersigns it once and the code comes from the countersignature; the licence is never signed
-again. Its PG `license_id` stays inside its signed bytes and is read only as legacy input,
-through the registry's record (`TOG-CODE.md` §6.2, §7.3). From the switch, every new licence is
-a `pg.grant.v1`; no registry issues a new `pg.license.v2`.
+again. Only its own registry computes that code, once, when it migrates (`TOG-CODE.md` §6.2). Its PG
+`license_id` stays inside its signed bytes, and where needed in an internal column to rebuild that
+signature: never accepted from outside, never shown. No verifier accepts the old `pg.license.v2`
+itself: its bytes hold a PG id (`TOG-CODE.md` §17). From the switch, every new licence is a
+`pg.grant.v1`; no registry issues a new `pg.license.v2`.
 
 **A verifier that does not support a grant format treats the basis as unverifiable, not as
 valid.**

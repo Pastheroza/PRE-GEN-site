@@ -1,4 +1,4 @@
-"""TOG-CODE.md in the protocol paths: one code in either spelling (code_key), readable copies in a proof (§14,
+"""TOG-CODE.md in the protocol paths: a PG- string is not a code anywhere (§1), readable copies in a proof (§14,
 proof.md step 3) and the directory v3 (§9.2) beside v2. The code layer itself runs on the shared vectors in
 test_tog_code.py."""
 import hashlib
@@ -20,26 +20,38 @@ KEY = hashlib.sha256(b"pregen-answer-vector-registry").hexdigest()
 SIGNERS = [{"role": "registry", "key_id": pregen.fingerprint(pregen.public_key_hex(KEY))}]
 
 
-def test_a_tog_code_routes_to_its_first_prefix():
-    assert pregen.issuer_of("TOG-TEST-000001N") == pregen.issuer_of("PG-TEST-000001N") == "TEST"
+def test_a_tog_code_routes_to_its_first_prefix_and_a_pg_string_nowhere():
+    assert pregen.issuer_of("TOG-TEST-000001N") == "TEST"
     assert pregen.issuer_of("TOG-PG-LIC-NWRD-PRAM-ZZZZ-VGDY-WCWV") == "NWRD"
     assert D.registry_for("TOG-TEST-000001N")["prefix"] == "TEST"
+    with pytest.raises(pregen.NotACode):
+        pregen.issuer_of("PG-TEST-000001N")
+    assert D.registry_for("PG-TEST-000001N") is None
 
 
-def test_a_false_claim_holds_under_either_spelling():
-    assert D.is_false_claim("PG-TEST-000002Z") and D.is_false_claim("TOG-TEST-000002Z")
+def test_a_false_claim_is_compared_by_its_code_and_a_pg_string_matches_nothing():
+    assert D.is_false_claim("TOG-TEST-000002Z") and not D.is_false_claim("PG-TEST-000002Z")
     assert not D.is_false_claim("TOG-TEST-000001N")
 
 
-def test_a_channel_confirms_a_code_in_either_spelling():
-    page = lambda url: "PRE-GEN: PG-TEST-000001N\n"   # noqa: E731
-    assert pregen.check_channel_proof("TOG-TEST-000001N", "https://example.com/.well-known/pregen",
-                                      ["https://example.com"], page)
+def test_a_channel_line_with_a_pg_string_confirms_nothing():
+    for line, ok in (("PRE-GEN: TOG-TEST-000001N", True), ("PRE-GEN: PG-TEST-000001N", False)):
+        page = lambda url, line=line: line + "\n"   # noqa: E731
+        assert pregen.check_channel_proof("TOG-TEST-000001N", "https://example.com/.well-known/pregen",
+                                          ["https://example.com"], page) is ok
+
+
+def test_a_request_naming_a_pg_string_fails_closed():
+    ok = next(c for c in V["cases"] if c["ok"] and not c["testing"])
+    pregen.check_answer(ok["answer"], ok["request"], D, get_json, now=NOW)
+    pg = next(c for c in V["cases"] if c["request"]["body"]["subject_ref"].startswith("PG-"))
+    with pytest.raises(pregen.PregenError, match="unknown_issuer"):
+        pregen.check_answer(pg["answer"], pg["request"], D, get_json, now=NOW)
 
 
 # ── readable copies in a proof ──
 
-def entry(code="PG-TEST-000001N", grant_body=None, n=0, **copies):
+def entry(code="TOG-TEST-000001N", grant_body=None, n=0, **copies):
     """A signed allow, its acknowledged report, and the act code_for reads from them. The basis is the grant when
     one is given, else a policy rule."""
     basis = {"kind": "grant", "grant": {"format": "pg.grant.v1", "id": pregen.message_id("pg.grant.v1", grant_body)}} \
@@ -84,7 +96,7 @@ GRANT = {"subject_ref": "TOG-TEST-000001N", "licensee_id": "", "profile": "liken
 
 def test_a_proof_needs_no_copy():
     item = coded()[0]
-    assert proof(item)["code"] == "PG-TEST-000001N"     # the code as the request asked it
+    assert proof(item)["code"] == "TOG-TEST-000001N"     # the code as the request asked it
 
 
 def test_a_code_copy_must_equal_the_recomputed_code():

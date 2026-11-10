@@ -109,7 +109,7 @@ def main(argv=None):
         elif name == "subject":
             p.add_argument("action", choices=["add", "anchor", "list", "opt-out", "level", "publish"])
             p.add_argument("--name", help="add: the subject's name")
-            p.add_argument("--code", help="anchor, opt-out, level, publish: the subject's ToG code (a PG- spelling is read as its TOG one)")
+            p.add_argument("--code", help="anchor, opt-out, level, publish: the subject's ToG code (a PG- string is not a code)")
             p.add_argument("--anchor", help="anchor: wikidata:Q…, isni:…, or a domain (identity.md)")
             p.add_argument("--proof-url", help="anchor: where the person posted \"PRE-GEN: <code>\" on an official channel")
             p.add_argument("--level", default="self", choices=["self", "asserted", "consented", "verified"])
@@ -226,7 +226,7 @@ def main(argv=None):
         print(f"{a.code}: name and level " + ("hidden" if a.off else "public") + " at /v2/codes")
     elif a.cmd == "subject" and a.action == "list":
         for s in load(a.dir)._q("SELECT code, name, level FROM subjects ORDER BY serial"):
-            print(f"{code_key(s['code'])}  {s['level']}  {s['name']}")       # a row born PG- is written TOG-
+            print(f"{code_key(s['code'])}  {s['level']}  {s['name']}")
     elif a.cmd == "subject" and a.action == "level":
         if not a.code:
             sys.exit("subject level needs --code and --level")

@@ -58,7 +58,7 @@ export function verifyLicense(license: {
   subjectPublicKeyHex: string; subjectSignatureHex: string;
   operatorPublicKeyHex: string; operatorSignatureHex: string;
 }): Promise<{ subjectValid: boolean; operatorValid: boolean }>;
-/** The registry to ask: a code's first prefix, "" for the bare legacy namespace. Shape only (TOG-CODE.md §8). */
+/** The registry to ask: a code's first prefix, "" for the bare namespace. Shape only (TOG-CODE.md §8); a PG- string is not a code. */
 export function issuerOf(code: string): string;
 /** @deprecated Use normalizeTyped. Trims ASCII spaces and raises lower case, nothing else; keeps the spelling typed. */
 export function normalizeCode(typed: string): string;
@@ -71,49 +71,45 @@ export const TOG_VALUES: string;
 export const FIXTURE_PREFIXES: readonly string[];
 /** Not a code, or a record that gives none. `hints`: both readings of ambiguous typed input. */
 export class CodeError extends PregenError {
-  reason: "malformed" | "mistyped" | "ask_registry" | "no_code";
+  reason: "malformed" | "mistyped" | "no_code";
   hints?: string[];
-  /** ask_registry from normalizeTyped: the old licence id as folded, for asking its registry (never for showing). */
-  folded?: string;
 }
+/** The one message for a typed PG- string: "PG codes are retired. Use the ToG code your registry shows you." */
+export const RETIRED: string;
 export interface ParsedCode {
-  shape: "person" | "event" | "old_person" | "old_bare_person" | "old_no_check" | "pg_person" | "pg_licence"
-    | "bare_person" | "bare_licence" | "no_check";
-  marker: "TOG" | "PG";
+  shape: "person" | "event" | "old_person" | "old_bare_person" | "old_no_check";
+  marker: "TOG";
   kind: "subject" | "license" | "generated" | "approved_after";
   /** Events only: "terms", "licence", or null for a licence. */
   basis?: "terms" | "licence" | null;
   issuer: string;
   home: string | null;
-  /** The TOG spelling; null for an old PG licence id (ask its registry). */
-  key: string | null;
   cls?: string;
   serial?: string;
   example: boolean;
 }
 /** An act record: the fields codeFor reads. */
 export interface CodeAct {
-  type: "pg.grant.v1" | "pg.license.v2" | "pg.answer.v1" | "pg.after_gen.v1";
+  type: "pg.grant.v1" | "pg.answer.v1" | "pg.after_gen.v1";
   id: string;
   signer: string;
   subject_ref: string;
   grant?: { id: string; signer: string } | null;
   cosign?: { id: string; home: string; home_in_code: boolean } | null;
-  license_id?: string;
   media_hash?: string;
 }
-/** The check character of a body, under the TOG table (default) or CROCKFORD for a PG body. */
+/** The check character of a body, under the TOG table (default) or CROCKFORD (the frozen table). */
 export function checkChar(body: string, values?: string): string;
 /** The one reading of a code exactly as it stands in a message, never repaired. Throws CodeError. */
 export function parseCode(code: string, options?: { check?: boolean }): ParsedCode;
-/** The one TOG spelling, used by every comparison. Old PG licence ids need their pg.license.v2 record. */
-export function codeKey(code: string, licences?: Record<string, CodeAct>): string;
+/** The key every comparison uses: the code itself, once it parses. No folding: a PG- string throws. */
+export function codeKey(code: string): string;
 /** "subject", "license", "generated" or "approved_after", from the string alone (no network). */
 export function kindOf(code: string): string;
 /** What the string claims, for support tools; never shown beside a video. */
 export function describe(code: string): string;
-/** Where a person types: the one code meant, in its TOG spelling, for "Did you mean …?". Throws CodeError. */
-export function normalizeTyped(typed: string, licences?: Record<string, CodeAct>): string;
+/** Where a person types: the one code meant, for "Did you mean …?". Throws CodeError; a PG- string gets RETIRED. */
+export function normalizeTyped(typed: string): string;
 /** The code of an act, computed from its record. Throws CodeError ("no_code" when the record gives none). */
 export function codeFor(act: CodeAct): string;
 /** Readable copies {Code?, Licence?} against the record: true when every copy present equals its recomputed code. */

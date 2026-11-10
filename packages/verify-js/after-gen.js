@@ -845,8 +845,8 @@ export async function embedXmp(bytes, envelope, { directory } = {}) {
 
 // ── the readable codes ──
 
-// A person's code in its one spelling, TOG (TOG-CODE.md §7.3): codeKey, and a person's, never an act's. A record writes
-// only this spelling. Throws PregenError.
+// A person's code (TOG-CODE.md §7.3): codeKey, and a person's, never an act's. A PG- string is not a code. Throws
+// PregenError.
 function personKey(code) {
   let key;
   try { key = codeKey(code); } catch (e) { return A(`${JSON.stringify(code)} is not a person's code: ${e.message}`); }
@@ -905,7 +905,7 @@ function recordShape(b) {
   if (b.label !== AFTER_GEN_LABEL || b.notice !== AFTER_GEN_NOTICE || canonicalJson(b.not) !== canonicalJson(AFTER_GEN_NOT)) {
     A("label, notice and not must be the exact constants");
   }
-  if (personKey(b.subject_ref) !== b.subject_ref) A("subject_ref: the person's code in its one spelling, TOG (a record never writes PG-)");
+  if (personKey(b.subject_ref) !== b.subject_ref) A("subject_ref: not a person's code");
   const c = b.content;
   if (!members(c, ["binding", "hash", "leaves"]) || c.binding !== "media/1" || !hex64(c.hash) || !Number.isSafeInteger(c.leaves)
       || c.leaves < 1) A("content names one file by its media/1 hash and its leaves");

@@ -11,25 +11,37 @@ import ast
 import hashlib
 import json
 import random
+import re
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import tog_code as t  # noqa: E402
 
-ERR = {t.NotACode: "malformed", t.Mistyped: "mistyped", t.AskRegistry: "ask_registry"}
+ERR = {t.NotACode: "malformed", t.Mistyped: "mistyped"}
 
 
 def run(fn, *a):
-    """{"result": …} or {"error": "malformed" | "mistyped" | "ask_registry" | "no_code"}."""
+    """{"result": …} or {"error": "malformed" | "mistyped" | "no_code"}; "message" when a typed PG string gets the
+    one retired message."""
     try:
         return {"result": fn(*a)}
-    except (t.NotACode, t.Mistyped, t.AskRegistry) as e:
+    except (t.NotACode, t.Mistyped) as e:
         out = {"error": ERR[type(e)]}
         if str(e).startswith("ambiguous: "):
             out["hints"] = ast.literal_eval(str(e)[len("ambiguous: "):])
+        if str(e) == t.RETIRED:
+            out["message"] = t.RETIRED
         return out
     except ValueError:
+        return {"error": "no_code"}
+
+
+def run_record(fn, *a):
+    """A record gives a code or none: every refusal of a record is no_code (a PG id in it included)."""
+    try:
+        return {"result": fn(*a)}
+    except (KeyError, ValueError):
         return {"error": "no_code"}
 
 
@@ -58,16 +70,17 @@ def published():
     return list(dict.fromkeys(out))
 
 
-def legacy_licence_record(c):
-    """A stand-in for the signed pg.license.v2 behind an old licence id (grants.md "Older licences"): its message
-    id here is a hash of the id; a real one is SHA-256 over body, subject signature and the id. Flat model."""
-    p = t.parse(c)
+def old_licence_record(c):
+    """A stand-in for the signed pg.license.v2 behind an old licence id, as its own registry holds it (grants.md
+    "Older licences"): its message id here is a hash of the id; a real one is SHA-256 over body, subject signature and
+    the id. Flat model. Only the registry's own migration reads it; no verifier accepts it."""
+    iss = c.split("-")[1] if len(c.split("-")[1]) == 4 else ""
     n = ""
     while True:
-        rec = {"type": "pg.license.v2", "id": msgid(c + n), "signer": p["issuer"] or t.BARE_ISSUER,
-               "subject_ref": f"PG-{p['issuer'] + '-' if p['issuer'] else ''}000042"
-                              + t.check_char(p["issuer"] + "000042", t.CROCKFORD), "license_id": c}
-        if "result" in run(t.code_for, rec):
+        rec = {"type": "pg.license.v2", "id": msgid(c + n), "signer": iss or t.BARE_ISSUER,
+               "subject_ref": f"PG-{iss + '-' if iss else ''}000042" + t.check_char(iss + "000042", t.CROCKFORD),
+               "license_id": c}
+        if "result" in run_record(t.registry_migrate, c, rec):
             return rec
         n += "'"
 
@@ -97,23 +110,20 @@ def acts():
     cid = hidden["cosign"]["id"]
     c2 = dict(hidden, cosign=dict(hidden["cosign"], home="SKAN",
                                   id=cid[:14] + format(int(cid[14], 16) ^ 1, "x") + cid[15:]))
-    old = legacy_licence_record("PG-NWRD-RND-000042-ZZZZZZJ")
+    old = old_licence_record("PG-NWRD-RND-000042-ZZZZZZJ")
     sym = next(h for h in (msgid(str(i)) for i in range(999))
                if t.check_char(t.event_body("LIC", "NWRD", None, t.tail_of(h))) not in t.CROCKFORD)
     cs = next(h for h in (msgid("cs" + str(i)) for i in range(999))
               if t.check_char(t.event_body("LIC", "NWRD", None, t.tail_of(h))) in t.CROCKFORD)
     old_allow = {"type": "pg.answer.v1", "id": msgid("old allow"), "signer": "NWRD", "subject_ref": "PG-NWRD-000042=",
                  "grant": {"id": old["id"], "signer": "NWRD"}}
-    while "error" in run(t.code_for, old_allow):
-        old_allow["id"] = msgid(old_allow["id"])
     return {
         "allow under a licence, home shown": allow,
         "allow under a licence, home hidden": hidden,
         "the home signs its own sale: issuer, shown whatever home_in_code says": own,
         "allow under the person's terms": terms,
         "flat model: the person's own registry signs alone": flat,
-        "flat model, bare legacy person: the bare namespace is PRAM's": dict(flat, signer="PRAM",
-                                                                             subject_ref="PG-000042*"),
+        "flat model, a PG subject_ref: no code": dict(flat, signer="PRAM", subject_ref="PG-000042*"),
         "flat model, bare person respelled": dict(flat, signer="PRAM", subject_ref="TOG-000042*"),
         "flat model, bare person, another signer": dict(flat, subject_ref="TOG-000042*"),
         "licence (pg.grant.v1) countersigned by the home": lic,
@@ -123,11 +133,10 @@ def acts():
         "after-gen record under a licence": dict(allow, type="pg.after_gen.v1"),
         "two homes' countersignatures meet under one issuer (1)": c1,
         "two homes' countersignatures meet under one issuer (2): the issuer refuses the second": c2,
-        "old pg.license.v2, flat": old,
-        "old pg.license.v2 whose message id gives a symbol check": dict(old, id=sym),
-        "the same, countersigned once by its home": dict(old, id=sym, cosign={"id": cs, "home": "NWRD",
-                                                                                "home_in_code": True}),
-        "an allow naming an old licence carries the marker LIC": old_allow,
+        "old pg.license.v2: its bytes hold a PG id, no code": old,
+        "old pg.license.v2, countersigned by its home: still no code": dict(old, id=sym, cosign={
+            "id": cs, "home": "NWRD", "home_in_code": True}),
+        "an old allow naming a PG person and an old licence: no code": old_allow,
     }, allow, terms, lic, person
 
 
@@ -157,8 +166,10 @@ def main():
     out = {
         "description": "TOG-CODE.md: the ToG code family. Generated by spec/tools/tog_vectors.py from the reference "
                        "model spec/tools/tog_code.py; do not edit by hand. Errors: malformed (not a code), mistyped "
-                       "(the check fails), ask_registry (an old licence id with no record at hand), no_code (a "
-                       "record that gives no code). Times in `parties` are plain ordered numbers.",
+                       "(the check fails), no_code (a record that gives no code). A PG- string is not a code "
+                       "anywhere; typed, it gets `message`, the one retired message, and no TOG suggestion. "
+                       "`migrate` is a registry's own migration of its own rows; `proxy` is pregen.org's lookup "
+                       "proxy shim. Times in `parties` are plain ordered numbers.",
         "alphabet": {"crockford": t.CROCKFORD, "tog_values": t.VALUES, "check": t.CHECK,
                      "max_body": t.MAX_BODY, "max_new_body": t.MAX_NEW_BODY, "tail_symbols": t.TAIL,
                      "kind_digit": {k: i + 1 for i, k in enumerate(t.FIVE)},
@@ -192,17 +203,26 @@ def main():
     out["refused_by_0_13"] = [c for c in pinned + edge] + [c[4:] for c in new if t.parse(c)["shape"] == "event"]
     assert not any(t.PUBLISHED_RE.fullmatch(c) for c in out["refused_by_0_13"])
 
-    # code_key: the one TOG spelling. Old licence ids need their record.
-    licences = {c: legacy_licence_record(c) for c in pub if t.parse(c)["kind"] == "license"}
+    # code_key: the code itself, no folding; a PG string is not a code.
     out["code_key"] = [dict({"code": c}, **run(t.code_key, c)) for c in pub + pinned + edge]
-    out["code_key_with_record"] = [{"code": c, "record": r, **run(t.code_key, c, {c: r})} for c, r in licences.items()]
-    out["code_key_with_record"].append({"code": "PG-NWRD-RND-000042-ZZZZZZJ",
-                                        "record": dict(licences["PG-NWRD-RND-000042-ZZZZZZJ"],
-                                                       license_id="PG-NWRD-RND-000042-ZZZZZZJX"),
-                                        **run(t.code_key, "PG-NWRD-RND-000042-ZZZZZZJ",
-                                              {"PG-NWRD-RND-000042-ZZZZZZJ": dict(
-                                                  licences["PG-NWRD-RND-000042-ZZZZZZJ"],
-                                                  license_id="PG-NWRD-RND-000042-ZZZZZZJX")})})
+
+    # A registry's own migration of its own rows (internal, once): persons and release works by the marker, licences
+    # from their signed object. Never called on anything from outside.
+    licences = {c: old_licence_record(c) for c in pub if re.fullmatch(r"PG-(?:[A-Z]{4}-)?[A-Z]{3}-[0-9]+-\w{7}", c)}
+    tp = t._ex_person("PRAM", 900000037)
+    mig = [{"old": c, "record": None, **run_record(t.registry_migrate, c)}
+           for c in pub + ["PG" + tp[3:], "PG-PRAM-412345691!", "PG-ABC-000123", tp] if c not in licences]
+    mig += [{"old": c, "record": r, **run_record(t.registry_migrate, c, r)} for c, r in licences.items()]
+    bad = next(iter(licences))
+    mig.append({"old": bad, "record": dict(licences[bad], license_id=bad + "X"),
+                **run_record(t.registry_migrate, bad, dict(licences[bad], license_id=bad + "X"))})
+    out["migrate"] = mig
+
+    # pregen.org's lookup proxy: the path it asks at the first prefix's registry. The PG path is the transition shim
+    # for a registry not yet migrated (removed when its .well-known/pg-policy announces TOG).
+    out["proxy"] = [{"code": c, "registry_speaks_tog": tog, **run(t.proxy_path, c, tog)}
+                    for c in ["TOG-ZYXW-1234567R", "TOG-000042*", "TOG-STD-000123", tp, ex["home only"][1],
+                              "PG-ZYXW-1234567R", "PG" + tp[3:]] for tog in (False, True)]
 
     # Typed input (never inside a message).
     tilu = t._ex_person("TILU", 142000000)
@@ -216,7 +236,8 @@ def main():
              "https://resolver.example/v2/codes/TOG-ZYXW-1234567R#x", "PG-ZYXW-1234567R.", "ТОG-ZYХW-1234567R",
              "pg-zyxw-1234567r", "https://api2.prampta.com/v1/pg/PG-ZYXW-1234567R", "PG 000 042 *", "tog-000042*",
              "PG-PRAM-412345691!", "PG-PRAM-0123456789", "tog-pram-412345691!",
-             "PG-ZYXW-01234567" + t.check_char("ZYXW01234567"), "tog-abcd-prm-1234567-a1b2c3a",
+             "PG-ZYXW-01234567" + t.check_char("ZYXW01234567"), "tog-abcd-prm-1234567-a1b2c3a", "РG-ZYXW-1234567R",
+             "pg–zyxw–1234567r", "PG-STD-000001-K7M2QX9", "https://www.pregen.org/lookup/PG-ZYXW-1234567R",
              "tog-std-000001-k7m2qx9", "pg-std-000001-k7m2qx9", tilu.replace("TILU", "T11U").lower(),
              tilu_h.replace("TILU", "T1LU").replace("UOLI", "U01I"), ones.lower(),
              ones2.replace("TOG", "T0G", 1).lower(), amb.replace("IILA", "111A"),
@@ -227,7 +248,7 @@ def main():
 
     # Codes from records.
     named, allow, terms, lic, person = acts()
-    out["code_for"] = [{"name": n, "act": a, **run(t.code_for, a)} for n, a in named.items()]
+    out["code_for"] = [{"name": n, "act": a, **run_record(t.code_for, a)} for n, a in named.items()]
     g, lic_code, terms_code = t.code_for(allow), t.code_for(lic), t.code_for(terms)
     out["metadata"] = [
         {"name": n, "meta": m, "act": a, "licence": li, "ok": t.metadata_ok(m, a, li)} for n, m, a, li in (

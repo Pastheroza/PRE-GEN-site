@@ -88,7 +88,7 @@ async function anchors(entries, issuedAt = NOW - 10) {
 }
 const entry = (code, anchor = "wikidata:Q11571") => ({ anchor, code, level: "verified", proof_url: "", status: "active" });
 
-// spec/test-vectors/anchors.json: TOG lines kept, PG lines folded, foreign codes dropped; an entry that is not a person
+// spec/test-vectors/anchors.json: TOG lines kept, foreign codes dropped; an entry that is not a person (a PG line included)
 // code fails the whole list.
 for (const c of ANCHOR_LISTS.cases) {
   test(`anchor list vector: ${c.name}`, async () => {
@@ -99,20 +99,20 @@ for (const c of ANCHOR_LISTS.cases) {
 }
 
 test("verifyAnchors refuses a list naming a code twice", async () => {
-  await assert.rejects(anchors([entry("PG-TEST-000001N"), entry("PG-TEST-000001N", "wikidata:Q1")]), /each code once/);
+  await assert.rejects(anchors([entry("TOG-TEST-000001N"), entry("TOG-TEST-000001N", "wikidata:Q1")]), /each code once/);
 });
 
 test("verifyAnchors refuses a malformed entry", async () => {
-  for (const bad of ["PG-TEST-000001N", { code: 1 }]) await assert.rejects(anchors([entry("PG-TEST-000003X"), bad]), /entry is/);
+  for (const bad of ["TOG-TEST-000001N", { code: 1 }]) await assert.rejects(anchors([entry("TOG-TEST-0000034"), bad]), /entry is/);
 });
 
 test("verifyAnchors refuses an old list", async () => {
-  await assert.rejects(anchors([entry("PG-TEST-000001N")], NOW - DIRECTORY_MAX_AGE - 1), /24 hours/);
+  await assert.rejects(anchors([entry("TOG-TEST-000001N")], NOW - DIRECTORY_MAX_AGE - 1), /24 hours/);
 });
 
 test("verifyAnchors drops a false claim only under its own anchor", async () => {
-  const fc = "PG-TEST-000002Z"; // the vector directory: a false claim under wikidata:Q42
-  assert.deepEqual(await anchors([entry(fc, "wikidata:Q42"), entry("PG-TEST-000001N")]), [entry("TOG-TEST-000001N")]);
+  const fc = "TOG-TEST-000002Z"; // the vector directory: a false claim under wikidata:Q42
+  assert.deepEqual(await anchors([entry(fc, "wikidata:Q42"), entry("TOG-TEST-000001N")]), [entry("TOG-TEST-000001N")]);
   assert.deepEqual(await anchors([entry(fc)]), [entry("TOG-TEST-000002Z")]);
 });
 
@@ -144,28 +144,28 @@ const OUT = { status: "deny", reason: "PG_SUBJECT_OPTED_OUT" };
 
 test("a channel added today refuses but does not permit", async () => {
   const [nowUrls, thenUrls] = await channels([SITE, NEW], [SITE]);
-  const pages = { [NEW + "/.well-known/pregen"]: "PRE-GEN: PG-XXXX-000001V" };
-  const c = await claim("PG-XXXX-000001V", NEW + "/.well-known/pregen", nowUrls, thenUrls, pages, { status: "allow" });
+  const pages = { [NEW + "/.well-known/pregen"]: "PRE-GEN: TOG-XXXX-0000014" };
+  const c = await claim("TOG-XXXX-0000014", NEW + "/.well-known/pregen", nowUrls, thenUrls, pages, { status: "allow" });
   assert.deepEqual([c.confirmed, c.settled], [true, false]);
   assert.deepEqual(decideIdentity([c]), { status: "not_blocked", reason: "PG_IDENTITY_UNCONFIRMED", code: null });
-  const d = await claim("PG-XXXX-000001V", NEW + "/.well-known/pregen", nowUrls, thenUrls, pages, OUT);
+  const d = await claim("TOG-XXXX-0000014", NEW + "/.well-known/pregen", nowUrls, thenUrls, pages, OUT);
   assert.equal(decideIdentity([d]).status, "deny");
 });
 
 test("a recent refusal survives replacing the channel", async () => {
   const [nowUrls, thenUrls] = await channels([NEW], [SITE]);
-  const pages = { [SITE + "/.well-known/pregen"]: "PRE-GEN: PG-AAAA-000001N", [NEW + "/.well-known/pregen"]: "PRE-GEN: PG-XXXX-000001V" };
-  const ron = await claim("PG-AAAA-000001N", SITE + "/.well-known/pregen", nowUrls, thenUrls, pages, OUT);
-  const thief = await claim("PG-XXXX-000001V", NEW + "/.well-known/pregen", nowUrls, thenUrls, pages, { status: "allow" });
+  const pages = { [SITE + "/.well-known/pregen"]: "PRE-GEN: TOG-AAAA-0000029", [NEW + "/.well-known/pregen"]: "PRE-GEN: TOG-XXXX-0000014" };
+  const ron = await claim("TOG-AAAA-0000029", SITE + "/.well-known/pregen", nowUrls, thenUrls, pages, OUT);
+  const thief = await claim("TOG-XXXX-0000014", NEW + "/.well-known/pregen", nowUrls, thenUrls, pages, { status: "allow" });
   assert.deepEqual([ron.confirmed, ron.refusal_only], [false, true]);
-  assert.deepEqual(decideIdentity([ron, thief]), { status: "deny", reason: "PG_SUBJECT_OPTED_OUT", code: "PG-AAAA-000001N" });
+  assert.deepEqual(decideIdentity([ron, thief]), { status: "deny", reason: "PG_SUBJECT_OPTED_OUT", code: "TOG-AAAA-0000029" });
 });
 
 test("a refusal seen this week survives its line being deleted", async () => {
   const [nowUrls, thenUrls] = await channels([SITE], [SITE]);
-  const ron = await claim("PG-AAAA-000001N", SITE + "/.well-known/pregen", nowUrls, thenUrls, {}, OUT, true);
+  const ron = await claim("TOG-AAAA-0000029", SITE + "/.well-known/pregen", nowUrls, thenUrls, {}, OUT, true);
   assert.deepEqual([ron.confirmed, ron.refusal_only], [false, true]);
   assert.equal(decideIdentity([ron]).reason, "PG_SUBJECT_OPTED_OUT");
-  const never = await claim("PG-AAAA-000001N", SITE + "/.well-known/pregen", nowUrls, thenUrls, {}, { status: "allow" });
+  const never = await claim("TOG-AAAA-0000029", SITE + "/.well-known/pregen", nowUrls, thenUrls, {}, { status: "allow" });
   assert.deepEqual([never.confirmed, never.refusal_only], [false, false]);
 });

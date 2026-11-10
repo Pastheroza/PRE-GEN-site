@@ -1,5 +1,6 @@
-"""The ToG code at the registry (spec/TOG-CODE.md, hard switch): every code written TOG-, a PG- string only legacy
-input for the same person, new persons at random, and act and licence codes computed from the signed records."""
+"""The ToG code at the registry (spec/TOG-CODE.md): every code written TOG-; PG code is incompatible, so a PG- string
+is not a code (refused like any other non-code) and the registry migrates its own rows once; new persons at random;
+act and licence codes computed from the signed records."""
 import hashlib
 import json
 from pathlib import Path
@@ -26,8 +27,8 @@ def mistyped(c):
 
 
 def test_lookup_vectors():
-    """test-vectors/tog-code.json `lookup`: a person found by number, in either spelling, answered in TOG; an
-    over-padded number PG_MALFORMED with the TOG spelling as a hint; a string that is not a code 400."""
+    """test-vectors/tog-code.json `lookup`: a person found by number; an over-padded number PG_MALFORMED with the code
+    as a hint; a string that is not a code, a PG- string included, 400 with no hint."""
     regs = {}
     for c in VECTORS["lookup"]["issued"]:
         p = parse_code(c)
@@ -38,46 +39,64 @@ def test_lookup_vectors():
         regs[p["issuer"]] = TestClient(create_app(reg))
     tried = 0
     for case in VECTORS["lookup"]["cases"]:
+        if case.get("error"):                          # not a code: every registry refuses it alike
+            for http in regs.values():
+                r = http.get(f"/v2/codes/{case['asked']}")
+                assert (r.status_code, r.json()["error"], "hint" in r.json()) == (400, "invalid_format", False), case
+            tried += 1
+            continue
         issuer = parse_code(case["asked"], check=False)["issuer"]
         if issuer not in regs:
             continue
         tried += 1
         r = regs[issuer].get(f"/v2/codes/{case['asked']}")
-        if case.get("error"):
-            assert (r.status_code, r.json()["error"]) == (400, "invalid_format"), case
-        elif case["status"] == "found":
+        if case["status"] == "found":
             assert (r.status_code, r.json()["code"], r.json()["status"]) == (200, case["code"], "active"), case
         elif case["status"] == "PG_MALFORMED":
             assert (r.status_code, r.json()["error"], r.json()["hint"]) == (422, "PG_MALFORMED", case["hint"]), case
         else:
             assert (r.status_code, r.json()["status"]) == (200, "unknown"), case
-    assert tried == 6
+    assert tried == 8
 
 
-def test_a_pg_born_person_is_written_tog_and_both_spellings_are_one_person():
-    """A database made by 0.4 keeps its PG- rows (records are never rewritten); everything written now says TOG-."""
-    reg, c, _ = make(sandbox=False)
+def test_a_0_4_database_is_migrated_once_and_a_pg_string_is_refused_everywhere(tmp_path):
+    """A database made by 0.4 holds PG- rows. At open the registry respells its own rows by the marker (same serial
+    and check); signed envelopes keep their bytes. From outside, a PG- string is not a code anywhere."""
+    db = str(tmp_path / "r.db")
+    reg = Registry(Config(prefix="TEST", name="T", api="https://t.example"), Key(), db)
     tog = reg.add_subject("Maya", level="verified", published=1, serial=42)
-    reg.db.execute("UPDATE subjects SET code = ? WHERE code = ?", (pg(tog), tog))          # as 0.4 stored it
-    reg.set_identity(pg(tog), anchor="wikidata:Q1", proof_url="https://maya.example/p")
+    reg.set_identity(tog, anchor="wikidata:Q1", proof_url="https://maya.example/p")
     gid = reg.add_grant(tog, purposes=["research"])
-    assert reg.grant(gid)["grant"]["body"]["subject_ref"] == tog
-    for asked in (tog, pg(tog)):
-        assert c.get(f"/v2/codes/{asked}").json()["code"] == tog
+    lic = reg._row("SELECT code FROM grants WHERE id = ?", (gid,))["code"]
+    for table, col in (("subjects", "code"), ("grants", "subject_code")):              # as 0.4 stored them
+        reg.db.execute(f"UPDATE {table} SET {col} = ? WHERE {col} = ?", (pg(tog), tog))
+    reg.db.execute("UPDATE grants SET code = NULL")
+    again = Registry(Config(prefix="TEST", name="T", api="https://t.example"), reg.key, db)
+    assert [r[0] for r in again.db.execute("SELECT code FROM subjects")] == [tog]
+    assert [tuple(r) for r in again.db.execute("SELECT subject_code, code FROM grants")] == [(tog, lic)]
+    c = TestClient(create_app(again))
+    assert c.get(f"/v2/codes/{tog}").json()["code"] == tog
+    assert c.get(f"/v2/codes/{lic}").json()["status"] == "active"
+    r = c.get(f"/v2/codes/{pg(tog)}")
+    assert (r.status_code, r.json()["error"], "hint" in r.json()) == (400, "invalid_format", False)
     assert c.get("/v2/anchors").json()["body"]["anchors"][0]["code"] == tog
-    p = Provider(reg, c)
-    assert p.answer(p.body(pg(tog), job="j1"))["body"]["status"] == "allow"            # legacy input, answered
-    r = p.ask(p.body(tog, job="j1"))                     # the other spelling in the same job: the same ask
-    assert (r.status_code, r.json()["error"]) == (409, "PG_ASK_CONFLICT")
-    reg.opt_out(tog)                                     # a refusal cannot be bypassed by spelling
-    for n, asked in enumerate((tog, pg(tog))):
-        assert p.answer(p.body(asked, job=f"o{n}"))["body"]["reason"] == "PG_SUBJECT_OPTED_OUT"
+    p = Provider(again, c)
+    assert p.answer(p.body(tog, job="j1"))["body"]["status"] == "allow"
+    r = p.ask(p.body(pg(tog), job="j2"))                # a PG string: not a code, no answer
+    assert (r.status_code, r.json()["error"]) == (422, "PG_MALFORMED")
+    again.opt_out(tog)
+    assert p.answer(p.body(tog, job="o1"))["body"]["reason"] == "PG_SUBJECT_OPTED_OUT"
+    r = p.ask(p.body(pg(tog), job="o2"))                # fails closed: a refusal is never bypassed by spelling
+    assert (r.status_code, r.json()["error"]) == (422, "PG_MALFORMED")
+    with pytest.raises(ValueError):
+        again.opt_out(pg(tog))                           # an operator action takes the code only
 
 
 def test_never_a_signed_answer_to_an_over_padded_number_or_a_string_that_is_not_a_persons_code():
     reg, c, _ = make()
     p = Provider(reg, c)
-    for asked, error in ((mistyped(pg(code(1))), "mistyped"), ("PG-TEST-00000001N", "PG person, 8 digits"),
+    for asked, error in ((mistyped(code(1)), "mistyped"), (pg(code(1)), "a PG string"),
+                         ("PG-TEST-00000001N", "PG person, 8 digits"),
                          ("TOG-LIC-TEST-ABCD-ABCD-ABC" + "0", "an event code")):
         r = p.ask(p.body(asked, job=asked))
         assert (r.status_code, r.json()["error"]) == (422, "PG_MALFORMED"), error

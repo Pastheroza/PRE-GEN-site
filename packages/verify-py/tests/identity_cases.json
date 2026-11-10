@@ -3,7 +3,7 @@
  "channel": [
   {
    "name": "the website's /.well-known/pregen",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
    "official": [
     "https://cristianoronaldo.com",
@@ -11,13 +11,13 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "other line\nPRE-GEN: PG-XXXX-000001V\n",
+   "page": "other line\nPRE-GEN: TOG-XXXX-0000014\n",
    "seen_confirmed": false,
    "expect": true
   },
   {
    "name": "a whole line: spaces and CRLF around it",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
    "official": [
     "https://cristianoronaldo.com",
@@ -25,13 +25,13 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "  PRE-GEN: PG-XXXX-000001V \r\n",
+   "page": "  PRE-GEN: TOG-XXXX-0000014 \r\n",
    "seen_confirmed": false,
    "expect": true
   },
   {
    "name": "a line naming the person's key",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
    "official": [
     "https://cristianoronaldo.com",
@@ -39,24 +39,24 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: PG-XXXX-000001V pg-ed25519:ab self",
+   "page": "PRE-GEN: TOG-XXXX-0000014 pg-ed25519:ab self",
    "seen_confirmed": false,
    "expect": true
   },
   {
    "name": "an official URL with a trailing slash is the same site",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
    "official": [
     "https://cristianoronaldo.com/"
    ],
-   "page": "PRE-GEN: PG-XXXX-000001V",
+   "page": "PRE-GEN: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": true
   },
   {
    "name": "any other page on the host (B-2)",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://cristianoronaldo.com/pregen",
    "official": [
     "https://cristianoronaldo.com",
@@ -64,27 +64,27 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: PG-XXXX-000001V",
+   "page": "PRE-GEN: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "a search page echoing its path (B-2)",
-   "code": "PG-XXXX-000001V",
-   "proof_url": "https://cristianoronaldo.com/search/PRE-GEN-PG-XXXX-000001V/",
+   "code": "TOG-XXXX-0000014",
+   "proof_url": "https://cristianoronaldo.com/search/PRE-GEN-TOG-XXXX-0000014/",
    "official": [
     "https://cristianoronaldo.com",
     "https://www.instagram.com/cristiano",
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: PG-XXXX-000001V",
+   "page": "PRE-GEN: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "the fixed place with a trailing slash",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://cristianoronaldo.com/.well-known/pregen/",
    "official": [
     "https://cristianoronaldo.com",
@@ -92,13 +92,13 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: PG-XXXX-000001V",
+   "page": "PRE-GEN: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "the fixed place under a path",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://cristianoronaldo.com/blog/.well-known/pregen",
    "official": [
     "https://cristianoronaldo.com",
@@ -106,13 +106,13 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: PG-XXXX-000001V",
+   "page": "PRE-GEN: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "the line inside HTML is not a line",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
    "official": [
     "https://cristianoronaldo.com",
@@ -120,13 +120,13 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "<p>PRE-GEN: PG-XXXX-000001V</p>",
+   "page": "<p>PRE-GEN: TOG-XXXX-0000014</p>",
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "the line in the middle of a sentence",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
    "official": [
     "https://cristianoronaldo.com",
@@ -134,13 +134,13 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "see PRE-GEN: PG-XXXX-000001V",
+   "page": "see PRE-GEN: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "a withdrawal line (rule 1)",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
    "official": [
     "https://cristianoronaldo.com",
@@ -148,13 +148,13 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: PG-XXXX-000001V withdraw *",
+   "page": "PRE-GEN: TOG-XXXX-0000014 withdraw *",
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "a longer code that starts the same way",
-   "code": "PG-ABC-000042",
+   "code": "TOG-STD-000042",
    "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
    "official": [
     "https://cristianoronaldo.com",
@@ -162,13 +162,13 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: PG-ABC-0000421",
+   "page": "PRE-GEN: TOG-STD-0000421",
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "another code",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
    "official": [
     "https://cristianoronaldo.com",
@@ -176,13 +176,13 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: PG-XXXX-000002T",
+   "page": "PRE-GEN: TOG-XXXX-000002E",
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "www. is another host",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://www.cristianoronaldo.com/.well-known/pregen",
    "official": [
     "https://cristianoronaldo.com",
@@ -190,13 +190,13 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: PG-XXXX-000001V",
+   "page": "PRE-GEN: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "an upper-case host is not as written",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://CristianoRonaldo.com/.well-known/pregen",
    "official": [
     "https://cristianoronaldo.com",
@@ -204,13 +204,13 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: PG-XXXX-000001V",
+   "page": "PRE-GEN: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "a port (B-15)",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://cristianoronaldo.com:8443/.well-known/pregen",
    "official": [
     "https://cristianoronaldo.com",
@@ -218,13 +218,13 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: PG-XXXX-000001V",
+   "page": "PRE-GEN: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "a backslash and userinfo (B-9)",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://cr7-media.example\\@cristianoronaldo.com/.well-known/pregen",
    "official": [
     "https://cristianoronaldo.com",
@@ -232,13 +232,13 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: PG-XXXX-000001V",
+   "page": "PRE-GEN: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "userinfo (B-10)",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://cristianoronaldo.com@cr7-media.example/.well-known/pregen",
    "official": [
     "https://cristianoronaldo.com",
@@ -246,13 +246,13 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: PG-XXXX-000001V",
+   "page": "PRE-GEN: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "http",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "http://cristianoronaldo.com/.well-known/pregen",
    "official": [
     "https://cristianoronaldo.com",
@@ -260,13 +260,13 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: PG-XXXX-000001V",
+   "page": "PRE-GEN: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "a query",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://cristianoronaldo.com/.well-known/pregen?x=1",
    "official": [
     "https://cristianoronaldo.com",
@@ -274,13 +274,13 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: PG-XXXX-000001V",
+   "page": "PRE-GEN: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "a fragment",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://cristianoronaldo.com/.well-known/pregen#x",
    "official": [
     "https://cristianoronaldo.com",
@@ -288,46 +288,46 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: PG-XXXX-000001V",
+   "page": "PRE-GEN: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "a non-ASCII host (B-10)",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://cristianoronaldо.com/.well-known/pregen",
    "official": [
     "https://cristianoronaldо.com"
    ],
-   "page": "PRE-GEN: PG-XXXX-000001V",
+   "page": "PRE-GEN: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "an official URL with userinfo counts for nothing (B-10)",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://cr7-media.example/.well-known/pregen",
    "official": [
     "https://cristianoronaldo.com@cr7-media.example"
    ],
-   "page": "PRE-GEN: PG-XXXX-000001V",
+   "page": "PRE-GEN: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "an official URL with a port counts for nothing (B-15)",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
    "official": [
     "https://cristianoronaldo.com:443"
    ],
-   "page": "PRE-GEN: PG-XXXX-000001V",
+   "page": "PRE-GEN: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "a string page that would raise is never fetched off the channels",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://cr7-media.example/.well-known/pregen",
    "official": [
     "https://cristianoronaldo.com",
@@ -341,7 +341,7 @@
   },
   {
    "name": "a post whose author is the account",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://www.instagram.com/cristiano/p/1",
    "official": [
     "https://cristianoronaldo.com",
@@ -351,14 +351,14 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: PG-XXXX-000001V"
+    "text": "PRE-GEN: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": true
   },
   {
    "name": "the author's letter case aside",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://x.com/Cristiano/status/1",
    "official": [
     "https://cristianoronaldo.com",
@@ -368,14 +368,14 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: PG-XXXX-000001V"
+    "text": "PRE-GEN: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": true
   },
   {
    "name": "the profile page itself (bio)",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://www.instagram.com/cristiano",
    "official": [
     "https://cristianoronaldo.com",
@@ -385,14 +385,14 @@
    ],
    "page": {
     "author": "Cristiano",
-    "text": "PRE-GEN: PG-XXXX-000001V"
+    "text": "PRE-GEN: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": true
   },
   {
    "name": "a TikTok handle with @",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://www.tiktok.com/@cristiano/video/1",
    "official": [
     "https://cristianoronaldo.com",
@@ -402,14 +402,14 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: PG-XXXX-000001V"
+    "text": "PRE-GEN: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": true
   },
   {
    "name": "another account's post or a comment (B-2)",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://www.instagram.com/cristiano/p/1",
    "official": [
     "https://cristianoronaldo.com",
@@ -419,14 +419,14 @@
    ],
    "page": {
     "author": "cr7_fan",
-    "text": "PRE-GEN: PG-XXXX-000001V"
+    "text": "PRE-GEN: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "a look-alike author",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://www.instagram.com/cristiano/p/1",
    "official": [
     "https://cristianoronaldo.com",
@@ -436,14 +436,14 @@
    ],
    "page": {
     "author": "crіstiano",
-    "text": "PRE-GEN: PG-XXXX-000001V"
+    "text": "PRE-GEN: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "no author: a page string is not a post",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://www.instagram.com/cristiano/p/1",
    "official": [
     "https://cristianoronaldo.com",
@@ -451,13 +451,13 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: PG-XXXX-000001V",
+   "page": "PRE-GEN: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "an author that is not a string",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://www.instagram.com/cristiano/p/1",
    "official": [
     "https://cristianoronaldo.com",
@@ -467,14 +467,14 @@
    ],
    "page": {
     "author": null,
-    "text": "PRE-GEN: PG-XXXX-000001V"
+    "text": "PRE-GEN: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "the account's own post without the line",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://www.instagram.com/cristiano/p/1",
    "official": [
     "https://cristianoronaldo.com",
@@ -491,7 +491,7 @@
   },
   {
    "name": "the account's post with a withdrawal line",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://www.instagram.com/cristiano/p/1",
    "official": [
     "https://cristianoronaldo.com",
@@ -501,14 +501,14 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: PG-XXXX-000001V withdraw PG-XXXX-000002T"
+    "text": "PRE-GEN: TOG-XXXX-0000014 withdraw TOG-XXXX-000002E"
    },
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "a handle that starts the same way",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://www.instagram.com/cristiano_fan/p/1",
    "official": [
     "https://cristianoronaldo.com",
@@ -518,14 +518,14 @@
    ],
    "page": {
     "author": "cristiano_fan",
-    "text": "PRE-GEN: PG-XXXX-000001V"
+    "text": "PRE-GEN: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "the handle's letter case in the URL",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://x.com/cristiano/status/1",
    "official": [
     "https://cristianoronaldo.com",
@@ -535,14 +535,14 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: PG-XXXX-000001V"
+    "text": "PRE-GEN: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "a dot segment",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://www.instagram.com/cristiano/../attacker/p/1",
    "official": [
     "https://cristianoronaldo.com",
@@ -552,14 +552,14 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: PG-XXXX-000001V"
+    "text": "PRE-GEN: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "a single dot segment",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://www.instagram.com/cristiano/./p/1",
    "official": [
     "https://cristianoronaldo.com",
@@ -569,14 +569,14 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: PG-XXXX-000001V"
+    "text": "PRE-GEN: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "an encoded dot segment",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://www.instagram.com/cristiano/%2e%2e/attacker",
    "official": [
     "https://cristianoronaldo.com",
@@ -586,14 +586,14 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: PG-XXXX-000001V"
+    "text": "PRE-GEN: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "an encoded slash",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://www.instagram.com/cristiano%2f..%2fattacker",
    "official": [
     "https://cristianoronaldo.com",
@@ -603,14 +603,14 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: PG-XXXX-000001V"
+    "text": "PRE-GEN: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "an empty segment",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://www.instagram.com/cristiano//p/1",
    "official": [
     "https://cristianoronaldo.com",
@@ -620,14 +620,14 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: PG-XXXX-000001V"
+    "text": "PRE-GEN: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "a percent-escape of a control character (D-1)",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://www.instagram.com/cristiano/p/%00",
    "official": [
     "https://cristianoronaldo.com",
@@ -637,14 +637,14 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: PG-XXXX-000001V"
+    "text": "PRE-GEN: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "a path over 512 characters (D-1)",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://www.instagram.com/cristiano/p/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
    "official": [
     "https://cristianoronaldo.com",
@@ -654,15 +654,15 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: PG-XXXX-000001V"
+    "text": "PRE-GEN: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "a query echo",
-   "code": "PG-XXXX-000001V",
-   "proof_url": "https://www.instagram.com/cristiano/?s=PRE-GEN:+PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
+   "proof_url": "https://www.instagram.com/cristiano/?s=PRE-GEN:+TOG-XXXX-0000014",
    "official": [
     "https://cristianoronaldo.com",
     "https://www.instagram.com/cristiano",
@@ -671,14 +671,14 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: PG-XXXX-000001V"
+    "text": "PRE-GEN: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "unreadable, never seen confirmed: unconfirmed",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
    "official": [
     "https://cristianoronaldo.com",
@@ -692,7 +692,7 @@
   },
   {
    "name": "unreadable, seen confirmed: no decision",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
    "official": [
     "https://cristianoronaldo.com",
@@ -706,7 +706,7 @@
   },
   {
    "name": "unreadable post, seen confirmed: no decision",
-   "code": "PG-XXXX-000001V",
+   "code": "TOG-XXXX-0000014",
    "proof_url": "https://www.instagram.com/cristiano/p/1",
    "official": [
     "https://cristianoronaldo.com",
@@ -2325,7 +2325,7 @@
     "false_claims": [
      {
       "anchor": "wikidata:Q999",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-06T00:00:00Z",
       "reason": "not the person"
      }
@@ -2333,22 +2333,22 @@
    },
    "false_claim": [
     [
-     "PG-TEST-000001N",
+     "TOG-TEST-000001N",
      "wikidata:Q999",
      true
     ],
     [
-     "PG-TEST-000001N",
+     "TOG-TEST-000001N",
      "wikidata:Q11571",
      false
     ],
     [
-     "PG-TEST-000001N",
+     "TOG-TEST-000001N",
      null,
      true
     ],
     [
-     "PG-TEST-000003X",
+     "TOG-TEST-0000034",
      null,
      false
     ]
@@ -2359,7 +2359,7 @@
    "add": {
     "false_claims": [
      {
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-06T00:00:00Z",
       "reason": "not the person"
      }
@@ -2373,7 +2373,7 @@
     "false_claims": [
      {
       "anchor": "wikidata:Q999",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-06T00:00:00Z"
      }
     ]
@@ -2386,7 +2386,7 @@
     "false_claims": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-06T00:00:00Z",
       "reason": "not the person"
      }
@@ -2394,7 +2394,7 @@
     "false_claim_reversals": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-07T00:00:00Z",
       "reason": "the steward was wrong"
      }
@@ -2402,12 +2402,12 @@
    },
    "false_claim": [
     [
-     "PG-TEST-000001N",
+     "TOG-TEST-000001N",
      "wikidata:Q11571",
      false
     ],
     [
-     "PG-TEST-000001N",
+     "TOG-TEST-000001N",
      null,
      false
     ]
@@ -2419,7 +2419,7 @@
     "false_claims": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-06T00:00:00Z",
       "reason": "not the person"
      }
@@ -2427,7 +2427,7 @@
     "false_claim_reversals": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-05T00:00:00Z",
       "reason": "the steward was wrong"
      }
@@ -2435,7 +2435,7 @@
    },
    "false_claim": [
     [
-     "PG-TEST-000001N",
+     "TOG-TEST-000001N",
      "wikidata:Q11571",
      true
     ]
@@ -2447,7 +2447,7 @@
     "false_claims": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-06T00:00:00Z",
       "reason": "not the person"
      }
@@ -2455,7 +2455,7 @@
     "false_claim_reversals": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-06T00:00:00Z",
       "reason": "the steward was wrong"
      }
@@ -2463,7 +2463,7 @@
    },
    "false_claim": [
     [
-     "PG-TEST-000001N",
+     "TOG-TEST-000001N",
      "wikidata:Q11571",
      true
     ]
@@ -2475,7 +2475,7 @@
     "false_claims": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-06T00:00:00Z",
       "reason": "not the person"
      }
@@ -2483,7 +2483,7 @@
     "false_claim_reversals": [
      {
       "anchor": "wikidata:Q999",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-07T00:00:00Z",
       "reason": "the steward was wrong"
      }
@@ -2491,12 +2491,12 @@
    },
    "false_claim": [
     [
-     "PG-TEST-000001N",
+     "TOG-TEST-000001N",
      "wikidata:Q11571",
      true
     ],
     [
-     "PG-TEST-000001N",
+     "TOG-TEST-000001N",
      null,
      true
     ]
@@ -2508,13 +2508,13 @@
     "false_claims": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-06T00:00:00Z",
       "reason": "not the person"
      },
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-08T00:00:00Z",
       "reason": "not the person"
      }
@@ -2522,7 +2522,7 @@
     "false_claim_reversals": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-07T00:00:00Z",
       "reason": "the steward was wrong"
      }
@@ -2530,7 +2530,7 @@
    },
    "false_claim": [
     [
-     "PG-TEST-000001N",
+     "TOG-TEST-000001N",
      "wikidata:Q11571",
      true
     ]
@@ -2542,7 +2542,7 @@
     "false_claims": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-06T00:00:00.500Z",
       "reason": "not the person"
      }
@@ -2550,7 +2550,7 @@
     "false_claim_reversals": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-06T02:00:00.500+02:00",
       "reason": "the steward was wrong"
      }
@@ -2558,12 +2558,12 @@
    },
    "false_claim": [
     [
-     "PG-TEST-000001N",
+     "TOG-TEST-000001N",
      "wikidata:Q11571",
      true
     ],
     [
-     "PG-TEST-000001N",
+     "TOG-TEST-000001N",
      null,
      true
     ]
@@ -2575,7 +2575,7 @@
     "false_claims": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-06T00:00:00.500Z",
       "reason": "not the person"
      }
@@ -2583,7 +2583,7 @@
     "false_claim_reversals": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-06T00:00:00.501Z",
       "reason": "the steward was wrong"
      }
@@ -2591,12 +2591,12 @@
    },
    "false_claim": [
     [
-     "PG-TEST-000001N",
+     "TOG-TEST-000001N",
      "wikidata:Q11571",
      false
     ],
     [
-     "PG-TEST-000001N",
+     "TOG-TEST-000001N",
      null,
      false
     ]
@@ -2608,13 +2608,13 @@
     "false_claims": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-06T00:00:00Z",
       "reason": "not the person"
      },
      {
       "anchor": "wikidata:Q999",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-06T00:00:00Z",
       "reason": "not the person"
      }
@@ -2622,7 +2622,7 @@
     "false_claim_reversals": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-07T00:00:00Z",
       "reason": "the steward was wrong"
      }
@@ -2630,22 +2630,22 @@
    },
    "false_claim": [
     [
-     "PG-TEST-000001N",
+     "TOG-TEST-000001N",
      "wikidata:Q11571",
      false
     ],
     [
-     "PG-TEST-000001N",
+     "TOG-TEST-000001N",
      "wikidata:Q999",
      true
     ],
     [
-     "PG-TEST-000001N",
+     "TOG-TEST-000001N",
      null,
      true
     ],
     [
-     "PG-TEST-000002Z",
+     "TOG-TEST-000002Z",
      null,
      false
     ]
@@ -2657,7 +2657,7 @@
     "false_claim_reversals": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-07T00:00:00Z",
       "reason": "the steward was wrong"
      }
@@ -2665,12 +2665,12 @@
    },
    "false_claim": [
     [
-     "PG-TEST-000001N",
+     "TOG-TEST-000001N",
      "wikidata:Q11571",
      false
     ],
     [
-     "PG-TEST-000001N",
+     "TOG-TEST-000001N",
      null,
      false
     ]
@@ -2682,7 +2682,7 @@
     "false_claim_reversals": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-06T00:00:00Z"
      }
     ]
@@ -2731,7 +2731,7 @@
     "false_claims": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-06T00:00:00Z",
       "reason": "not the person"
      }
@@ -2739,7 +2739,7 @@
     "false_claim_reversals": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-07T00:00:00Z",
       "reason": "the steward was wrong"
      }
@@ -2749,7 +2749,7 @@
     "false_claims": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-06T00:00:00Z",
       "reason": "not the person"
      }
@@ -2763,14 +2763,14 @@
     "false_claims": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-11-06T00:00:00Z",
       "reason": "not the person"
      }
     ]
    },
    "add": {},
-   "raises": "false claim PG-TEST-000001N was removed"
+   "raises": "false claim TOG-TEST-000001N was removed"
   },
   {
    "name": "a reversal on February 30 is refused, not rolled into March",
@@ -2778,7 +2778,7 @@
     "false_claims": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-02-01T00:00:00Z",
       "reason": "not the person"
      }
@@ -2786,7 +2786,7 @@
     "false_claim_reversals": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-02-30T00:00:00Z",
       "reason": "the steward was wrong"
      }
@@ -2800,7 +2800,7 @@
     "false_claims": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-02-01T00:00:00Z",
       "reason": "not the person"
      }
@@ -2808,7 +2808,7 @@
     "false_claim_reversals": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-02-01T24:00:00Z",
       "reason": "the steward was wrong"
      }
@@ -2822,7 +2822,7 @@
     "false_claims": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-02-01T23:59:60Z",
       "reason": "not the person"
      }
@@ -2836,7 +2836,7 @@
     "false_claims": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2026-02-01T00:00:00+00:60",
       "reason": "not the person"
      }
@@ -2850,7 +2850,7 @@
     "false_claims": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "0000-01-01T00:00:00Z",
       "reason": "not the person"
      }
@@ -2892,7 +2892,7 @@
     "false_claims": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2028-02-28T00:00:00Z",
       "reason": "not the person"
      }
@@ -2900,7 +2900,7 @@
     "false_claim_reversals": [
      {
       "anchor": "wikidata:Q11571",
-      "code": "PG-TEST-000001N",
+      "code": "TOG-TEST-000001N",
       "at": "2028-02-29T00:00:00Z",
       "reason": "the steward was wrong"
      }
@@ -2908,7 +2908,7 @@
    },
    "false_claim": [
     [
-     "PG-TEST-000001N",
+     "TOG-TEST-000001N",
      "wikidata:Q11571",
      false
     ]

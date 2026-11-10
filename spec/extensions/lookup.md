@@ -30,12 +30,12 @@
 
 ## Spellings
 
-- **The TOG spelling and its `PG-` legacy input are one code.** `PG-ZYXW-1234567R` asked is
-  answered as `TOG-ZYXW-1234567R`. An old PG licence id is answered through the registry's
-  record, as its `TOG-LIC` code.
+- **A `PG-` string is not a code.** `PG-ZYXW-1234567R` asked is answered `400 invalid_format`,
+  like any other non-code, with no hint, and never as `TOG-ZYXW-1234567R`. An old licence answers
+  only by its `TOG-LIC` code. `GET /v1/pg/{code}` is retired at a registry's switch.
 - **A registry finds a person by number:** prefix, legacy class (`STD`, `SUB`) and the serial's
-  value. An over-padded number (`PG-STD-0000123` for `TOG-STD-000123`) is answered
-  `PG_MALFORMED` (422) with the TOG spelling as a hint, never with a signed answer or a record.
+  value. An over-padded number (`TOG-STD-0000123` for `TOG-STD-000123`) is answered
+  `PG_MALFORMED` (422) with the code as a hint, never with a signed answer or a record.
 - A string that is not a code is answered `400 invalid_format`, one whose check fails
   `400 mistyped`, both apart from `unknown`.
 

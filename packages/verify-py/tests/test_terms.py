@@ -12,7 +12,7 @@ import pregen
 ROOT = Path(__file__).resolve().parents[3]
 V = json.loads((ROOT / "spec/test-vectors/answers.json").read_text())
 T = json.loads((ROOT / "spec/test-vectors/terms.json").read_text())
-NOW, CODE, OTHER_CODE = V["now"], "PG-TEST-000001N", "PG-TEST-000003X"
+NOW, CODE, OTHER_CODE = V["now"], "TOG-TEST-000001N", "TOG-TEST-0000034"
 D = pregen.verify_directory(V["directory"], V["steward_public_key_hex"], now=NOW)
 get_json = V["key_sets"].__getitem__
 DROP = object()
@@ -176,7 +176,7 @@ def finding(use=USE, record=None, cite=None, carry=True, basis=POLICY, code=CODE
 
 def test_a_proof_for_a_false_claim_is_refused():   # identity round B4e: check_proof skipped the steward's ruling
     with pytest.raises(pregen.PregenError, match="false claim"):
-        finding(code="PG-TEST-000002Z", cite=DROP, carry=False)
+        finding(code="TOG-TEST-000002Z", cite=DROP, carry=False)
 
 
 @pytest.mark.parametrize("v", T["proofs"], ids=lambda v: v["name"])

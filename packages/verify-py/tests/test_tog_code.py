@@ -17,13 +17,15 @@ def run(fn, *a):
     try:
         return {"result": fn(*a)}
     except pregen.NotACode as e:
-        return {"error": "malformed", **({"hints": e.hints} if e.hints else {})}
+        return {"error": "malformed", **({"hints": e.hints} if e.hints else {}),
+                **({"message": str(e)} if str(e) == pregen.RETIRED else {})}
     except pregen.CodeError as e:
         return {"error": e.reason}
 
 
 def without_name(case):
-    return {k: v for k, v in case.items() if k not in ("name", "act", "record", "code", "input")}
+    return {k: v for k, v in case.items() if k not in ("name", "act", "record", "code", "input", "old",
+                                                       "registry_speaks_tog")}
 
 
 def test_alphabet():
@@ -36,9 +38,8 @@ def test_alphabet():
 
 
 @pytest.mark.parametrize("code", [c for cs in V["examples"].values() for c in cs])
-def test_every_example_is_a_code_in_its_tog_spelling(code):
-    p = pregen.parse_code(code)
-    assert p["key"] == code and p["marker"] == "TOG"
+def test_every_example_is_a_tog_code_and_its_own_key(code):
+    assert pregen.parse_code(code)["marker"] == "TOG" and pregen.code_key(code) == code
 
 
 @pytest.mark.parametrize("case", V["check_char"], ids=lambda c: c["body"])
@@ -78,11 +79,6 @@ def test_the_0_13_grammar_refuses_every_tog_code(code):
 @pytest.mark.parametrize("case", V["code_key"], ids=lambda c: c["code"])
 def test_code_key(case):
     assert run(pregen.code_key, case["code"]) == without_name(case)
-
-
-@pytest.mark.parametrize("case", V["code_key_with_record"], ids=lambda c: c["code"])
-def test_code_key_with_record(case):
-    assert run(pregen.code_key, case["code"], {case["code"]: case["record"]}) == without_name(case)
 
 
 @pytest.mark.parametrize("case", V["typed"], ids=lambda c: repr(c["input"]))
@@ -137,8 +133,21 @@ def test_find_codes(case):
 
 
 @pytest.mark.parametrize("typed", ["PG–STD–000001–K7M2QX9", "PG-STD-000001-K7M2QX9.", "РG-STD-000001-K7M2QX9",
-                                   "https://www.pregen.org/lookup/PG-STD-000001-K7M2QX9", "PG-STD-OOOOO1-K7M2QX9"])
-def test_ask_registry_carries_the_folded_old_id(typed):
-    with pytest.raises(pregen.AskRegistry) as e:
+                                   "https://www.pregen.org/lookup/PG-STD-000001-K7M2QX9", "pg 000 042 *",
+                                   "https://api2.prampta.com/v1/pg/PG-PRAM-000037J"])
+def test_a_typed_pg_string_gets_the_retired_message_and_no_tog_suggestion(typed):
+    with pytest.raises(pregen.NotACode) as e:
         pregen.normalize_typed(typed)
-    assert e.value.folded == "PG-STD-000001-K7M2QX9"
+    assert str(e.value) == pregen.RETIRED and not e.value.hints and "TOG" not in str(e.value).upper().replace("TOG CODE", "")
+
+
+@pytest.mark.parametrize("case", V["migrate"], ids=lambda c: c["old"])
+def test_no_pg_string_is_a_code_anywhere(case):
+    """Every old id a registry migrates is, from outside, not a code: parse, key, kind, issuer, describe, free text."""
+    c = case["old"]
+    if not c.startswith("PG-"):
+        return
+    for fn in (pregen.parse_code, pregen.code_key, pregen.kind_of, pregen.issuer_of, pregen.describe):
+        with pytest.raises(pregen.NotACode):
+            fn(c)
+    assert pregen.find_codes(f"see {c}.") == [] and pregen.code_verdict("aa" * 32, caption=c) == "Not a code."

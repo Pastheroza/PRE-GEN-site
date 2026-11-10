@@ -25,12 +25,12 @@ An **anchor** is the person's identifier in an independent public source:
 Schema: `schemas/anchors.json`. A client collects every listed registry's list, at least
 daily, and for a public person asks **every** code its anchor names.
 
-**Codes in their TOG spelling.** A list writes each `code` in its TOG spelling (`TOG-CODE.md`
-§7.3). A client that knows the ToG code reads a `PG-` line of an older list as legacy input: it
-folds it by `code_key` and keeps the TOG spelling. Every comparison here uses `code_key`: an
-entry's code against the list's registry, two entries of one list, an entry against a false
-claim, a reversal or a confirmation line. So `PG-ZYXW-1234567R` and `TOG-ZYXW-1234567R` are one
-code: listed twice, the list is refused; a false claim under one spelling drops the other.
+**ToG codes only.** A list writes each `code` as a ToG code (`TOG-CODE.md` §7.3). A `PG-` line is
+not a code: it is an entry of unknown shape and fails the whole list, like any other. Every
+comparison here uses `code_key`, the code itself: an entry's code against the list's registry, two
+entries of one list, an entry against a false claim, a reversal or a confirmation line. A code listed
+twice: the list is refused. A false claim, a reversal or a confirmation line naming a `PG-` string
+names no one.
 
 A client drops a list entry that names another registry's code (the rest of the list stands),
 and refuses a list that names one code twice. **An entry that is not a person code fails the

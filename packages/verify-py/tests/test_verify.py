@@ -57,27 +57,33 @@ def test_tampered_foreign_older_or_malformed_directory_is_refused():
 
 def test_namespaces_are_symmetric():
     dir_ = load(directory())
-    assert dir_.check_signer("PG-000042*", origin.id) == "valid"
-    assert dir_.check_signer("PG-000042*", other.id) == "issuer_mismatch"
-    assert dir_.check_signer("PG-NWRD-000042=", other.id) == "valid"
-    assert dir_.check_signer("PG-NWRD-000042=", origin.id) == "issuer_mismatch"
-    assert dir_.check_signer("PG-ABCD-000042W", origin.id) == "unknown_issuer"
+    assert dir_.check_signer("TOG-000042*", origin.id) == "valid"
+    assert dir_.check_signer("TOG-000042*", other.id) == "issuer_mismatch"
+    assert dir_.check_signer("TOG-NWRD-000042=", other.id) == "valid"
+    assert dir_.check_signer("TOG-NWRD-000042=", origin.id) == "issuer_mismatch"
+    assert dir_.check_signer("TOG-ABCD-000042W", origin.id) == "unknown_issuer"
+
+
+LIC = "TOG-LIC-NWRD-ZZZZ-134C-2NDD"     # a licence code of NWRD (TOG-CODE.md example)
 
 
 def test_decision_is_genuine_only_from_the_namespace_owner():
     dir_ = load(directory())
     get = KEY_SETS.__getitem__
-    decision = origin.sign({"decision_id": "d1", "allowed": True, "license_id": "PG-RND-000042-ZZZZZZ1",
-                            "operator_key_id": origin.id}, "operator_signature")
+    decision = other.sign({"decision_id": "d1", "allowed": True, "license_id": LIC,
+                           "operator_key_id": other.id}, "operator_signature")
     assert verify_decision(decision, decision["license_id"], dir_, get) is True
     assert verify_decision({**decision, "allowed": False}, decision["license_id"], dir_, get) is False
-    forged = other.sign({"decision_id": "d2", "allowed": True, "operator_key_id": other.id}, "operator_signature")
+    forged = origin.sign({"decision_id": "d2", "allowed": True, "operator_key_id": origin.id}, "operator_signature")
     with pytest.raises(PregenError, match="issuer_mismatch"):
-        verify_decision(forged, "PG-000042*", dir_, get)
-    swapped = {"https://origin.test/keys": {"keys": [{"key_id": origin.id, "public_key_hex": other.pub}]}}
+        verify_decision(forged, "TOG-NWRD-000042=", dir_, get)
+    swapped = {"https://other.test/keys": {"keys": [{"key_id": other.id, "public_key_hex": origin.pub}]}}
     with pytest.raises(PregenError, match="no key"):
         verify_decision(decision, decision["license_id"], dir_, swapped.__getitem__)
-
+    old = origin.sign({"decision_id": "d3", "allowed": True, "license_id": "PG-RND-000042-ZZZZZZ1",
+                       "operator_key_id": origin.id}, "operator_signature")
+    with pytest.raises(PregenError, match="unknown_issuer"):       # a PG licence id is not a code: no namespace
+        verify_decision(old, old["license_id"], dir_, get)
 
 def test_canonical_json_refuses_unportable_values():
     for bad in ({"x": 1.5}, {"x": 2**53}, {"x": "\ud800"}, {"x": object()}):
@@ -91,8 +97,8 @@ def test_stolen_steward_key_cannot_add_a_key_to_a_pinned_namespace():
     d = directory(3, [{"name": "Origin", "prefix": "", "api": "https://origin.test",
                        "keys": "https://origin.test/keys", "key_fingerprints": [origin.id, thief.id]}])
     pinned = verify_directory(d, steward.pub, pinned_keys={"": [origin.id]})
-    assert pinned.check_signer("PG-000042*", thief.id) == "issuer_mismatch"
-    assert pinned.check_signer("PG-000042*", origin.id) == "valid"
+    assert pinned.check_signer("TOG-000042*", thief.id) == "issuer_mismatch"
+    assert pinned.check_signer("TOG-000042*", origin.id) == "valid"
 
 
 def test_newer_directory_may_add_but_never_remove_or_fork():
@@ -114,11 +120,11 @@ def test_revoked_registry_or_key_signs_nothing_valid_and_cannot_be_unrevoked():
     revoked = directory(3, [prev["registries"][0],
                             {**prev["registries"][1], "revoked": {"at": "2026-10-04T00:00:00Z", "reason": "fake rights holders"}}])
     dir_ = verify_directory(revoked, steward.pub, previous=prev)
-    assert dir_.check_signer("PG-NWRD-000042=", other.id) == "revoked"
-    assert dir_.check_signer("PG-000042*", origin.id) == "valid"
+    assert dir_.check_signer("TOG-NWRD-000042=", other.id) == "revoked"
+    assert dir_.check_signer("TOG-000042*", origin.id) == "valid"
     decision = other.sign({"decision_id": "d9", "operator_key_id": other.id}, "operator_signature")
     with pytest.raises(PregenError, match="revoked"):
-        verify_decision(decision, "PG-NWRD-000042=", dir_, KEY_SETS.__getitem__)
+        verify_decision(decision, "TOG-NWRD-000042=", dir_, KEY_SETS.__getitem__)
     with pytest.raises(PregenError, match="undone"):
         verify_directory(directory(4, prev["registries"]), steward.pub, previous=revoked)
 
@@ -126,7 +132,7 @@ def test_revoked_registry_or_key_signs_nothing_valid_and_cannot_be_unrevoked():
         body = {k: v for k, v in directory(seq).items() if k != "signature"}
         return steward.sign({**body, "revoked_keys": keys}, "signature")
     stolen = with_revoked_keys(3, [{"key_id": origin.id, "at": "2026-10-04T00:00:00Z"}])
-    assert verify_directory(stolen, steward.pub, previous=prev).check_signer("PG-000042*", origin.id) == "revoked"
+    assert verify_directory(stolen, steward.pub, previous=prev).check_signer("TOG-000042*", origin.id) == "revoked"
     with pytest.raises(PregenError, match="undone"):
         verify_directory(directory(4), steward.pub, previous=stolen)
     with pytest.raises(PregenError, match="revoked_keys"):
@@ -139,9 +145,9 @@ def test_check_decision_refuses_unknown_critical_members_and_unverified_authorit
     request = {"subject_id": "s", "provider_id": "p", "licensee_id": "l", "prompt_hash": "h", "model": "m",
                "modality": "image"}
     base = {**request, "schema_version": "pg.decision.v1", "decision_id": "d1", "allowed": True, "disposition": "allow",
-            "license_id": "PG-RND-000042-ZZZZZZ1", "subject_authority": "self", "issued_at": now - 1,
-            "expires_at": now + 60, "operator_key_id": origin.id}
-    signed = lambda **patch: origin.sign({**base, **patch}, "operator_signature")  # noqa: E731
+            "license_id": LIC, "subject_authority": "self", "issued_at": now - 1,
+            "expires_at": now + 60, "operator_key_id": other.id}
+    signed = lambda **patch: other.sign({**base, **patch}, "operator_signature")  # noqa: E731
     get = KEY_SETS.__getitem__
     assert check_decision(signed(critical=["obligations"]), request, dir_, get, now)
     with pytest.raises(PregenError, match="critical"):
@@ -157,15 +163,15 @@ def test_check_decision_covers_everything_before_generating():
     request = {"subject_id": "sub_1", "provider_id": "acme", "licensee_id": "lic-1", "prompt_hash": "a" * 64,
                "model": "m", "modality": "image", "intended_use": {"use_case": "commercial", "categories": ["ads"]},
                "provider_user_id": "u1"}
-    base = {"schema_version": "pg.decision.v1", "decision_id": "d1", "allowed": True, "disposition": "allow", "license_id": "PG-RND-000042-ZZZZZZ1",
+    base = {"schema_version": "pg.decision.v1", "decision_id": "d1", "allowed": True, "disposition": "allow", "license_id": LIC,
             "subject_id": "sub_1", "provider_id": "acme", "licensee_id": "lic-1", "prompt_hash": "a" * 64,
             "model": "m", "modality": "image",
             "intended_use": {"use_case": "commercial", "categories": ["ads"], "channel": "", "territory": ""},
             "provider_user_binding": "verified", "provider_identity_link_id": "link-1",
-            "issued_at": now - 10, "expires_at": now + 60, "operator_key_id": origin.id}
+            "issued_at": now - 10, "expires_at": now + 60, "operator_key_id": other.id}
 
     def check(patch, req=request):
-        return check_decision(origin.sign({**base, **patch}, "operator_signature"), req, dir_,
+        return check_decision(other.sign({**base, **patch}, "operator_signature"), req, dir_,
                               KEY_SETS.__getitem__, now)
 
     assert check({})["decision_id"] == "d1"
@@ -181,7 +187,7 @@ def test_check_decision_covers_everything_before_generating():
                           ({"issued_at": now - 10, "expires_at": now + 3590}, "at most 900")]:
         with pytest.raises(PregenError, match=reason):
             check(patch)
-    tampered = {**origin.sign(base, "operator_signature"), "model": "other"}
+    tampered = {**other.sign(base, "operator_signature"), "model": "other"}
     with pytest.raises(PregenError, match="bad signature"):
         check_decision(tampered, {**request, "model": "other"}, dir_, KEY_SETS.__getitem__, now)
 
@@ -211,7 +217,7 @@ def test_successor_steward_takes_over_whatever_the_thiefs_sequence():
                          successor_public_key_hex=successor.pub)
     keeps = successor.sign({**body, "sequence": 1, "revoked_keys": rk}, "signature")
     assert verify_directory(keeps, steward.pub, previous=revoked, successor_public_key_hex=successor.pub) \
-        .check_signer("PG-NWRD-000042=", other.id) == "revoked"
+        .check_signer("TOG-NWRD-000042=", other.id) == "revoked"
 
     # A thief's revocation, signed after the declared compromise, can be annulled; an earlier one cannot.
     thief = steward.sign({**{k: v for k, v in directory(6).items() if k != "signature"},
@@ -221,7 +227,7 @@ def test_successor_steward_takes_over_whatever_the_thiefs_sequence():
         return successor.sign({**body, "sequence": 1, "steward_compromised_since": since,
                                "annulled": [{"key_id": other.id, "reason": "stolen steward key"}]}, "signature")
     ok = verify_directory(annul("2026-10-09T00:00:00Z"), steward.pub, previous=thief, successor_public_key_hex=successor.pub)
-    assert ok.check_signer("PG-NWRD-000042=", other.id) == "valid"
+    assert ok.check_signer("TOG-NWRD-000042=", other.id) == "valid"
     with pytest.raises(PregenError, match="undone"):
         verify_directory(annul("2026-10-11T00:00:00Z"), steward.pub, previous=thief, successor_public_key_hex=successor.pub)
 
@@ -269,7 +275,7 @@ def test_no_registry_is_pinned_by_default_and_any_prefix_can_be_pinned():
                        "key_fingerprints": [origin.id]},
                       {"name": "Other", "prefix": "NWRD", "api": "https://other.test", "keys": "https://other.test/keys",
                        "key_fingerprints": [other.id, thief.id]}])
-    assert verify_directory(d, steward.pub).check_signer("PG-NWRD-000042=", thief.id) == "valid"   # no built-in pins
+    assert verify_directory(d, steward.pub).check_signer("TOG-NWRD-000042=", thief.id) == "valid"   # no built-in pins
     pinned = verify_directory(d, steward.pub, pinned_keys={"NWRD": [other.id]})
-    assert pinned.check_signer("PG-NWRD-000042=", thief.id) == "issuer_mismatch"
-    assert pinned.check_signer("PG-NWRD-000042=", other.id) == "valid"
+    assert pinned.check_signer("TOG-NWRD-000042=", thief.id) == "issuer_mismatch"
+    assert pinned.check_signer("TOG-NWRD-000042=", other.id) == "valid"

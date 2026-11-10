@@ -42,8 +42,7 @@ Also exported: `check_provider_url`, `signing_input`, `public_key_hex`, `message
 
 - `verify_anchors(list, prefix, directory)` — a registry's signed anchor list (`extensions/identity.md`). Another
   registry's codes are dropped, and so is an entry the steward found false under its own anchor. Kept entries come back
-  in their TOG spelling (a `PG-` line folds by its code key). A list naming a code twice, in either spelling, or an
-  entry that is not a person code, is refused.
+  as listed. A list naming a code twice, or an entry that is not a person code (a `PG-` line included), is refused.
 - `wikidata_official_urls(anchor)` — the channels Wikidata lists as current: not deprecated, not ended, started, each
   value in its property's own form. A website counts by its host alone. With `at=now - pregen.SETTLED_AFTER`, the
   channels of the item as it stood 7 days earlier (its last revision then).
@@ -85,22 +84,25 @@ Also exported: `check_provider_url`, `signing_input`, `public_key_hex`, `message
 ## ToG codes (`TOG-CODE.md`)
 
 Every code is written `TOG-`: a person `TOG-PRAM-900000037K`, a licence `TOG-LIC-…`, an output made under a
-yes `TOG-PG-…` or `TOG-PG-LIC-…`, one approved after it was made `TOG-AG-…`. A `PG-` string is legacy input only.
+yes `TOG-PG-…` or `TOG-PG-LIC-…`, one approved after it was made `TOG-AG-…`. PG codes are retired and not compatible:
+a `PG-` string is not a code anywhere, never folded or converted, and an object whose signed bytes hold one gives no
+code.
 
-- `parse_code(code)` reads a code exactly as it stands: shape, kind, basis, the registry to ask (`issuer`), and
-  `key`, its TOG spelling. No network. `kind_of(code)` gives the kind alone; `describe(code)` what
+- `parse_code(code)` reads a code exactly as it stands: shape, kind, basis, the registry to ask (`issuer`), home and
+  example flag. No network. `kind_of(code)` gives the kind alone; `describe(code)` what
   the string claims, for support tools, never beside a video. Raises `NotACode` or `Mistyped`.
-- `code_key(code, licences=None)` is the one TOG spelling: compare, hash and look up codes only by it. An old PG
-  licence id needs its signed record, else `AskRegistry`.
+- `code_key(code)` is the key: compare, hash and look up codes only by it. It is the code itself, once it parses; no
+  folding.
 - `normalize_typed(typed)` only where a person types, pastes or scans: the one code meant, for "Did you mean …?".
-  Ambiguous input raises `NotACode` with both codes in `hints`.
+  Ambiguous input raises `NotACode` with both codes in `hints`. A typed `PG-` string raises `NotACode` with the one
+  message `RETIRED` ("PG codes are retired. Use the ToG code your registry shows you.") and no suggestion.
 - `code_for(act)` computes an act's code from its record; `metadata_ok(meta, act, licence)` checks readable copies
   against it, and `check_proof` refuses a bundle whose `code` or `licence` copy differs. A code is never proof.
 - `code_verdict(file_hash, act, caption, ingredient)` is what a verifier may say before signatures.
 - `find_codes(text)`, `check_char(body)`, `admission_refusal(prefix, entity, government, listed)` (the steward's
   prefix check), `check_parties(code, entries, at, provider)` and `Directory.parties(code)` (directory v3).
 
-Errors are `CodeError` subclasses with `reason`: `malformed`, `mistyped`, `ask_registry`, `no_code`.
+Errors are `CodeError` subclasses with `reason`: `malformed`, `mistyped`, `no_code`.
 
 ## The registry directory
 

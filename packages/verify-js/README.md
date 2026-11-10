@@ -43,8 +43,7 @@ Also exported: `checkProviderUrl`, `signingInput`, `publicKeyHex`, `messageId`, 
 
 - `verifyAnchors(list, prefix, { directory })` — a registry's signed anchor list (`extensions/identity.md`). Another
   registry's codes are dropped, and so is an entry the steward found false under its own anchor. Kept entries come back
-  in their TOG spelling (a `PG-` line folds by its code key). A list naming a code twice, in either spelling, or an
-  entry that is not a person code, is refused.
+  as listed. A list naming a code twice, or an entry that is not a person code (a `PG-` line included), is refused.
 - `wikidataOfficialUrls(anchor, { fetch })` — the channels Wikidata lists as current: not deprecated, not ended,
   started, each value in its property's own form. A website counts by its host alone. With
   `at: now - SETTLED_AFTER`, the channels of the item as it stood 7 days earlier (its last revision then).
@@ -86,19 +85,21 @@ Also exported: `checkProviderUrl`, `signingInput`, `publicKeyHex`, `messageId`, 
 ## Codes (`TOG-CODE.md`)
 
 Every code is written `TOG-`: persons `TOG-PRAM-900000037K`, licences and acts
-`TOG-<PG|PG-LIC|AG|AG-LIC|LIC>-<ISSUER>[-<HOME>]-XXXX-XXXX-XXXX`. A `PG-` string is legacy input
-only: it folds to its one TOG spelling and is never written.
+`TOG-<PG|PG-LIC|AG|AG-LIC|LIC>-<ISSUER>[-<HOME>]-XXXX-XXXX-XXXX`. PG codes are retired and not
+compatible: a `PG-` string is not a code anywhere, never folded or converted, and an object whose
+signed bytes hold one gives no code.
 
 - `parseCode(code)` — the one reading of a code exactly as it stands in a message: shape, kind,
-  basis, issuer, home, example flag and `key`. Never repaired. Throws `CodeError` with `reason`
+  basis, issuer, home and example flag. Never repaired. Throws `CodeError` with `reason`
   `malformed` or `mistyped`. `kindOf(code)` gives the kind alone; `describe(code)` what the string
   claims, for support tools, never beside a video.
-- `codeKey(code, licences)` — the one TOG spelling; every comparison uses it (the library compares
-  false claims and terms this way). An old PG licence id needs its `pg.license.v2` record, else
-  `ask_registry`.
+- `codeKey(code)` — the key every comparison uses: the code itself, once it parses; no folding
+  (the library compares false claims and terms this way).
 - `normalizeTyped(typed)` — only where a person types, pastes or scans: folds width, dashes,
   look-alikes, a resolver URL and O/0, I/L/1 by slot, and returns the one code meant, for a "Did you
-  mean …?" prompt. Two readings fail with both as `hints`.
+  mean …?" prompt. Two readings fail with both as `hints`. A typed `PG-` string fails with the one
+  message `RETIRED` ("PG codes are retired. Use the ToG code your registry shows you.") and no
+  suggestion.
 - `codeFor(act)`, `metadataOk(meta, act, licence)`, `codeVerdict(fileHash, act, caption, ingredient)` —
   a code is computed from its record and compared, never read; readable copies are refused on any
   mismatch (`checkProof` does this for an entry's `code` and `licence`).

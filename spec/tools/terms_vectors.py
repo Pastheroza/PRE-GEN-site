@@ -22,7 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from answer_vectors import KEYS, KID, NOW, accepting, answer, pregen, terms  # noqa: E402
 
-CODE, OTHER_CODE = "PG-TEST-000001N", "PG-TEST-000003X"
+CODE, OTHER_CODE = "TOG-TEST-000001N", "TOG-TEST-0000034"
 RULES = {"purposes": ["editorial", "personal"], "excluded_categories": ["gambling", "political"]}
 # TC1: what a reader takes for a code but a machine does not; never normalised, never passed
 SPELLINGS = [("a capital", ["Gambling"]), ("all capitals", ["GAMBLING"]), ("a zero-width joiner", ["gam‍bling"]),

@@ -34,9 +34,11 @@ fresh sandbox with `init --sandbox` and add them again (they now get new random 
 ## ToG codes (0.5)
 
 Every code this registry writes is a ToG code ([`TOG-CODE.md`](https://www.pregen.org/spec/TOG-CODE.md)), spelled
-`TOG-`. A new person is born `TOG-<prefix>-<9 random digits><check>`. A person born `PG-` under 0.4 is written
-`TOG-` with the same number and check (`PG-TEST-000001N` is `TOG-TEST-000001N`); the database keeps the row as it
-was, and the old spelling is still read, as legacy input for the same person, in requests, lookups and commands.
+`TOG-`. A new person is born `TOG-<prefix>-<9 random digits><check>`. PG codes are retired and not compatible: a
+`PG-` string is not a code here, in requests, lookups or commands, and is refused like any other non-code. When
+0.5 first opens a 0.4 database it migrates its own rows once: a person born `PG-` is rewritten `TOG-` with the same
+number and check (`PG-TEST-000001N` becomes `TOG-TEST-000001N`). Signed envelopes keep their bytes; one whose bytes
+name a `PG-` person no longer verifies in 0.14 clients.
 Every licence has a `TOG-LIC-…` code and every allow a `TOG-PG-LIC-…` code, computed from the signed record; an
 allow or licence whose code would end in a symbol, or that was issued already, is signed again a second shorter.
 Records signed before 0.5 get their codes by the same computation when the registry starts; about 1 in 7 would end
@@ -98,7 +100,7 @@ never signs again. Move its private key file offline.
 | `POST /v2/reports` | report → `{"ack": <signed pg.report_ack.v1>}` |
 | `POST /v2/keys`, `GET /v2/keys/{provider_id}` | provider keysets (a provider known by its domain publishes them in its party document instead) |
 | `GET /v2/grants/{id}` | a signed grant (credential, or `PG-Access`) |
-| `GET /v2/codes/{code}` | public lookup of any ToG code (or its `PG-` spelling): a person, with their current terms if any; a licence; an allow (`?media=<output hash>` adds its proof entry) |
+| `GET /v2/codes/{code}` | public lookup of any ToG code (a `PG-` string is `400 invalid_format`): a person, with their current terms if any; a licence; an allow (`?media=<output hash>` adds its proof entry) |
 | `GET /v2/codes/{code}/terms` | the `status_url` of a published subject with terms: the current version and every earlier one |
 | `GET /v2/terms/{id}` | every version of a subject's terms ever published (extension `terms`) |
 | `GET /v2/anchors` | signed `pg.anchors.v1` list of anchored subjects (extension `identity`) |

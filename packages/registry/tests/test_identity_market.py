@@ -147,13 +147,15 @@ def test_i5_unproven_claims_freeze_no_one():
 
 def test_a_proof_must_be_on_the_persons_own_channel():
     official = ["https://www.instagram.com/cristiano"]
-    fake = lambda url: {"author": "cristiano", "text": "PRE-GEN: PG-XXXX-000001V"}     # noqa: E731
-    assert check_channel_proof("PG-XXXX-000001V", "https://www.instagram.com/cristiano/p/1", official, fake)
-    assert not check_channel_proof("PG-XXXX-000001V", "https://www.instagram.com/cristiano_fan/p/1", official, fake)
-    assert not check_channel_proof("PG-XXXX-000001V", "https://xxxx.example/cristiano", official, fake)
-    assert not check_channel_proof("PG-AAAA-000001V", "https://www.instagram.com/cristiano/p/1", official, fake)
-    legacy = lambda url: {"author": "cristiano", "text": "PRE-GEN: PG-ABC-0000421"}    # noqa: E731  another legacy code
-    assert not check_channel_proof("PG-ABC-000042", "https://www.instagram.com/cristiano/p/1", official, legacy)
+    fake = lambda url: {"author": "cristiano", "text": "PRE-GEN: TOG-XXXX-0000014"}    # noqa: E731
+    assert check_channel_proof("TOG-XXXX-0000014", "https://www.instagram.com/cristiano/p/1", official, fake)
+    assert not check_channel_proof("TOG-XXXX-0000014", "https://www.instagram.com/cristiano_fan/p/1", official, fake)
+    assert not check_channel_proof("TOG-XXXX-0000014", "https://xxxx.example/cristiano", official, fake)
+    assert not check_channel_proof("TOG-AAAA-0000029", "https://www.instagram.com/cristiano/p/1", official, fake)
+    longer = lambda url: {"author": "cristiano", "text": "PRE-GEN: TOG-STD-0000421"}   # noqa: E731  a longer code
+    assert not check_channel_proof("TOG-STD-000042", "https://www.instagram.com/cristiano/p/1", official, longer)
+    old = lambda url: {"author": "cristiano", "text": "PRE-GEN: PG-XXXX-0000014"}      # noqa: E731  a PG line
+    assert not check_channel_proof("TOG-XXXX-0000014", "https://www.instagram.com/cristiano/p/1", official, old)
 
 
 def test_the_steward_marks_a_false_claim_and_every_client_drops_it():

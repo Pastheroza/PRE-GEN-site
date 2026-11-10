@@ -27,9 +27,9 @@ A subject has a ToG code (`TOG-CODE.md`): `TOG-<prefix>-<number><check>`, for ex
 `TOG-TEST-000001N`.
 - The prefix (4 to 8 letters) names the registry. Every registry has one, and every new code
   carries it.
-- **Every code is written `TOG-`.** A code issued as `PG-…` is written `TOG-…`, with the same
-  number and check (`PG-TEST-000001N` is `TOG-TEST-000001N`). A `PG-` string is legacy input
-  only: it folds to its one TOG spelling and is never written (`TOG-CODE.md` §7.3).
+- **Every code is written `TOG-`.** PG codes are retired and not compatible: a `PG-` string is
+  not a code anywhere (`TOG-CODE.md` §1). Each registry migrates its own people once, to `TOG-`
+  with the same number and check (a person issued `PG-TEST-000001N` is now `TOG-TEST-000001N`).
 - Codes without a prefix (`TOG-000042*`) were issued before v5 by the first registry. They
   keep their meaning forever; no registry issues new ones.
 - Software may read the marker, the kind and the prefixes, and nothing else, from a code.

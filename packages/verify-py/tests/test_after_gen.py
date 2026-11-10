@@ -1223,7 +1223,7 @@ def test_signatures_and_the_directory():                     # vector 10
     with pytest.raises(pregen.PregenError, match="not a pg.after_gen.v1"):
         check({**rec, "type": "pg.answer.v1"})
     with pytest.raises(pregen.PregenError, match="false claim"):
-        check(record(a(), subject_ref="TOG-TEST-000002Z"))      # the directory lists it as PG-TEST-000002Z
+        check(record(a(), subject_ref="TOG-TEST-000002Z"))      # the directory lists it
     # a revoked registry's records fail
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
     steward = seed("after-gen-steward")
@@ -1342,27 +1342,25 @@ def test_request_and_decision():
             pregen.after_gen_decision(rid, bad[0], bad[1], key, bad[2])
     with pytest.raises(pregen.PregenError):
         pregen.after_gen_request("http://studio.example", key, CODE, "e" * 64, a(), SCOPE)
-    # a request may name the person in the PG spelling: it is written in TOG
-    assert pregen.after_gen_request("https://studio.example", key, "PG-TEST-000001N", "e" * 64, a(), SCOPE)["body"][
-        "subject_ref"] == CODE
+    # a PG string is not a code: no request names a person by it
+    with pytest.raises(pregen.PregenError, match="not a code"):
+        pregen.after_gen_request("https://studio.example", key, "PG-TEST-000001N", "e" * 64, a(), SCOPE)
     with pytest.raises(pregen.PregenError, match="mistyped"):
-        pregen.after_gen_request("https://studio.example", key, "PG-TEST-000001M", "e" * 64, a(), SCOPE)
+        pregen.after_gen_request("https://studio.example", key, "TOG-TEST-000001M", "e" * 64, a(), SCOPE)
     with pytest.raises(pregen.PregenError, match="not a person's code"):                # an act's code names no person
         pregen.after_gen_request("https://studio.example", key, "TOG-AG-PRAM-ZZZZ-T8JE-WDJX", "e" * 64, a(), SCOPE)
 
 
-def test_one_spelling_for_the_person():                       # TOG-CODE.md §7.3
-    for code, key in (("TOG-TEST-000001N", "TOG-TEST-000001N"), ("PG-TEST-000001N", "TOG-TEST-000001N"),
-                      ("PG-000042*", "TOG-000042*"), ("TOG-000042*", "TOG-000042*"), ("PG-STD-000001", "TOG-STD-000001"),
-                      ("PG-PRAM-900000037K", "TOG-PRAM-900000037K"), ("TOG-PRAM-900000037K", "TOG-PRAM-900000037K")):
-        assert ag.person_key(code) == key, code
-    for bad in ("PG-TEST-000001M", "TOG-TEST-000001M", "tog-TEST-000001N", "PG-PRAM-12345678K", "PG-XYZ-000001",
-                "PG-PRAMB-900000037K",                                       # a PG prefix always had 4 letters
-                "PG-STD-000001-K7M2QX9", "TOG-AG-PRAM-ZZZZ-T8JE-WDJX", "TOG-LIC-NWRD-PRAM-ZZZZ-84RN-RT04",
-                " TOG-TEST-000001N", "TEST-000001N", None, 1):
+def test_one_spelling_for_the_person():                       # TOG-CODE.md §7.3: no folding, PG is not a code
+    for code in ("TOG-TEST-000001N", "TOG-000042*", "TOG-STD-000001", "TOG-PRAM-900000037K"):
+        assert ag.person_key(code) == code, code
+    for bad in ("PG-TEST-000001N", "PG-000042*", "PG-STD-000001", "PG-PRAM-900000037K",   # retired, never folded
+                "PG-TEST-000001M", "TOG-TEST-000001M", "tog-TEST-000001N", "PG-PRAM-12345678K", "PG-XYZ-000001",
+                "PG-PRAMB-900000037K", "PG-STD-000001-K7M2QX9", "TOG-AG-PRAM-ZZZZ-T8JE-WDJX",
+                "TOG-LIC-NWRD-PRAM-ZZZZ-84RN-RT04", " TOG-TEST-000001N", "TEST-000001N", None, 1):
         with pytest.raises(pregen.PregenError):
             ag.person_key(bad)
-    with pytest.raises(pregen.PregenError, match="one spelling, TOG"):     # a record never writes PG-
+    with pytest.raises(pregen.PregenError):                              # a record naming a PG id: refused
         check(record(a(), subject_ref="PG-TEST-000001N"))
 
 

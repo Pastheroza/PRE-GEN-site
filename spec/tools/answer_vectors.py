@@ -32,7 +32,7 @@ PUB = {n: pregen.public_key_hex(k) for n, k in KEYS.items()}
 KID = {n: pregen.fingerprint(p) for n, p in PUB.items()}
 KID["small_order"] = pregen.fingerprint(SMALL_ORDER)
 API, OTHER = "https://registry.test.example", "https://other.test.example"
-FALSE_CLAIM = "PG-TEST-000002Z"                                 # the steward recorded it as a false claim
+FALSE_CLAIM = "TOG-TEST-000002Z"                                 # the steward recorded it as a false claim
 
 
 def directory():
@@ -60,14 +60,14 @@ KEY_SETS = {
     OTHER + "/keys": {"keys": [{"key_id": KID["other_registry"], "public_key_hex": PUB["other_registry"]}]},
 }
 REQUEST = {"type": "pg.request.v1", "signatures": [], "body": {
-    "subject_ref": "PG-TEST-000001N", "provider_id": "frame-ai", "profile": "likeness/1",
+    "subject_ref": "TOG-TEST-000001N", "provider_id": "frame-ai", "profile": "likeness/1",
     "use": {"purpose": "commercial"}, "job_id": "job-8841", "job_hash": "a" * 64}}
 
 
 def terms(key="registry", **change):
-    """A pg.terms.v1 for PG-TEST-000001N (extensions/terms.md), signed by `key`; a change to None drops the member.
+    """A pg.terms.v1 for TOG-TEST-000001N (extensions/terms.md), signed by `key`; a change to None drops the member.
     spec/tools/terms_vectors.py builds on it."""
-    body = {"signers": [{"role": "registry", "key_id": KID[key]}], "subject_ref": "PG-TEST-000001N",
+    body = {"signers": [{"role": "registry", "key_id": KID[key]}], "subject_ref": "TOG-TEST-000001N",
             "profile": "likeness/1", "version": 1, "template": {"id": "example-likeness", "version": 1, "jurisdiction": "US"},
             "legal": {"sha256": "b" * 64, "url": API + "/terms-template-1.txt"},
             "rules": {"purposes": ["editorial", "personal"], "excluded_categories": ["gambling", "political"]},
@@ -78,7 +78,7 @@ def terms(key="registry", **change):
 
 def accepting(record, **change):
     """A request signed by a provider known by its domain that accepts `record` (terms T-5)."""
-    body = {"signers": [{"role": "provider", "key_id": KID["provider"]}], "subject_ref": "PG-TEST-000001N",
+    body = {"signers": [{"role": "provider", "key_id": KID["provider"]}], "subject_ref": "TOG-TEST-000001N",
             "provider_id": "https://frame.example", "profile": "likeness/1",
             "use": {"purpose": "personal", "categories": ["fashion"]}, "job_id": "job-8842", "job_hash": "a" * 64,
             "terms": pregen.message_id("pg.terms.v1", record["body"]), **change}
@@ -130,10 +130,12 @@ def cases():
     yield "no signature", REQUEST, answer(sign=False), False, False
     bad = answer()
     yield "a tampered body", REQUEST, {**bad, "body": {**bad["body"], "expires_at": NOW + 291}}, False, False
-    yield "a lower-case code (H5)", other_request(subject_ref="pg-test-000001n"), answer(
-        request=other_request(subject_ref="pg-test-000001n")), False, False
-    yield "a code with a trailing space (H5)", other_request(subject_ref="PG-TEST-000001N "), answer(
-        request=other_request(subject_ref="PG-TEST-000001N ")), False, False
+    yield "a lower-case code (H5)", other_request(subject_ref="tog-test-000001n"), answer(
+        request=other_request(subject_ref="tog-test-000001n")), False, False
+    yield "a code with a trailing space (H5)", other_request(subject_ref="TOG-TEST-000001N "), answer(
+        request=other_request(subject_ref="TOG-TEST-000001N ")), False, False
+    yield "a PG code: retired, not a code (TOG-CODE §1)", other_request(subject_ref="PG-TEST-000001N"), answer(
+        request=other_request(subject_ref="PG-TEST-000001N")), False, False
     signed = accepting(terms())                     # terms T-6: the same answer, its request_id covers `terms`
     yield "allow for a request that accepts a person's terms", signed, answer(request=signed), True, False
 

@@ -86,9 +86,11 @@ def code(n, prefix="TEST"):
 # ── ToG codes ───────────────────────────────────────────────────────────
 
 def test_codes_are_written_tog_and_new_persons_are_random_nine_digits():
-    # PG-born codes are respelled by their marker only: same digits, same check (TOG-CODE.md §5)
+    # the old person shape: same digits, same check as before the switch (TOG-CODE.md §5); a PG string is no code
     assert mint_code("", 42) == "TOG-000042*" and mint_code("", 12345678) == "TOG-12345678K"
-    assert code(1) == "TOG-TEST-000001N" == code_key("PG-TEST-000001N")
+    assert code(1) == "TOG-TEST-000001N" == code_key("TOG-TEST-000001N")
+    with pytest.raises(PregenError):
+        code_key("PG-TEST-000001N")
     serials = {mint_serial("PRAMPT") for _ in range(300)}
     assert len(serials) == 300 and all(100_000_000 <= s < 900_000_000 for s in serials)   # under the reserved floor
     for s in serials:                                     # a letter or digit check, never a symbol; the library reads it
@@ -96,7 +98,7 @@ def test_codes_are_written_tog_and_new_persons_are_random_nine_digits():
         assert (p["shape"], p["issuer"], p["serial"]) == ("person", "PRAMPT", str(s))
     with pytest.raises(ValueError, match="4 to 8 letters"):
         Config(prefix="LICA", name="x", api="https://x.example")      # LIC with one letter added
-    with pytest.raises(ValueError, match="PG alphabet"):              # a sandbox keeps its fixed PG-born test codes
+    with pytest.raises(ValueError, match="Crockford alphabet"):       # a sandbox keeps its fixed old-shape test codes
         Config(prefix="PRAMPT", name="x", api="https://x.example", sandbox=True)
 
 
@@ -147,8 +149,11 @@ def test_another_registrys_code_and_lookup():
     assert p.answer(p.body(code(9, "NWRD")))["body"]["reason"] == "PG_OTHER_REGISTRY"
     assert c.get(f"/v2/codes/{code(9, 'NWRD')}").json()["status"] == "other_registry"
     assert c.get(f"/v2/codes/{code(8)}").json()["status"] == "unknown"
-    r = c.get("/v2/codes/PG-000042X")
+    r = c.get("/v2/codes/TOG-000042X")
     assert (r.status_code, r.json()["error"]) == (400, "mistyped")
+    for retired in ("PG-000042*", "PG-TEST-000001N"):          # not a code: no hint, no mapping
+        r = c.get(f"/v2/codes/{retired}")
+        assert (r.status_code, r.json()["error"], "hint" in r.json()) == (400, "invalid_format", False)
 
 
 def test_authentication_profile_and_use():
