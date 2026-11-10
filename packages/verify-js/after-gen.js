@@ -812,12 +812,12 @@ export async function embedXmp(bytes, envelope, { directory } = {}) {
   const at = packet.search(/<rdf:RDF\b(?:[^>"']|"[^"]*"|'[^']*')*>/);
   if (at < 0) A("the existing XMP packet has no rdf:RDF");
   const open = packet.slice(at).match(/^<rdf:RDF\b(?:[^>"']|"[^"]*"|'[^']*')*>/)[0];
-  const body = envelope.body, id = await messageId(RECORD, body), api = directory?.registryFor(body.subject_ref)?.api;
+  const body = envelope.body, id = await messageId(RECORD, body), api = directory?.registryFor(pgSpelling(body.subject_ref))?.api;
   const codes = Object.fromEntries(Object.entries(await afterGenCodes(envelope)).filter(([, v]) => v)); // those formed
   const description = `\n<rdf:Description rdf:about="" xmlns:pgag="${NS}">\n`
     + `<pgag:Record>${escapeXml(canonicalJson(envelope))}</pgag:Record>\n`
     + `<pgag:Id>${id}</pgag:Id>\n`
-    + `<pgag:Registry>${escapeXml(issuerOf(body.subject_ref))}</pgag:Registry>\n`
+    + `<pgag:Registry>${escapeXml(issuerOf(pgSpelling(body.subject_ref)))}</pgag:Registry>\n`
     + Object.entries(codes).map(([k, v]) => `<pgag:${k}>${v}</pgag:${k}>\n`).join("")
     + (api ? `<pgag:Status>${escapeXml(api.replace(/\/+$/, ""))}/v2/after-gen/${id}</pgag:Status>\n` : "")
     + "</rdf:Description>";
@@ -855,18 +855,44 @@ function togCode(kind, prefix, mid) {
   const n = BigInt("0x" + mid) >> 201n;
   let tail = "";
   for (let i = 10; i >= 0; i--) tail += CROCKFORD[Number((n >> BigInt(5 * i)) & 31n)];
-  const body = `${prefix.length}0${TOG_KINDS.indexOf(kind) + 1}${prefix}${tail}`;
-  const check = (CROCKFORD + "*~$=!")[[...body].reduce((sum, c, i) => sum + TOG_VALUES.indexOf(c) * (i + 1), 0) % 37];
+  const check = togCheck(`${prefix.length}0${TOG_KINDS.indexOf(kind) + 1}${prefix}${tail}`);
   if (tail.startsWith("ZZZZ") || !CROCKFORD.includes(check)) return null;
   const t = tail + check;
   return `TOG-${kind}-${prefix}-${t.slice(0, 4)}-${t.slice(4, 8)}-${t.slice(8)}`;
 }
 
+// PG-CODE 4.1 over the TOG table: the sum of value x 1-based position, mod 37.
+const togCheck = (body) => (CROCKFORD + "*~$=!")[[...body].reduce((sum, c, i) => sum + TOG_VALUES.indexOf(c) * (i + 1), 0) % 37];
+
+// The person's code has one spelling, TOG (TOG-CODE.md §7.3): a record writes only it; a request may still name the
+// person in the PG spelling, which folds by its marker. ponytail: persons only, beside a core that still reads PG; when
+// claude/tog-code merges, its codeKey replaces this one and pg goes.
+const P = "(?!LIC|L[A-Z]IC(?![A-Z])|LI[A-Z]C(?![A-Z]))[A-Z]{4,8}(?<!LIC)";
+const PERSON = [`TOG-(${P})-([1-9][0-9]{8})([0-9A-HJKMNP-TV-Z])`, "TOG-([A-HJKMNP-TV-Z]{4})-([0-9]{6,7})([0-9A-HJKMNP-TV-Z*~$=!])",
+  "TOG-()([0-9]{6,})([0-9A-HJKMNP-TV-Z*~$=!])", "TOG-(STD|SUB)-([0-9]{6,})()"].map((p) => new RegExp(`^${p}$`));
+
+/** A person's code in its one spelling, TOG: a TOG code is its own key, a PG one folds by its marker and must then be a
+ * valid TOG code. Throws PregenError for anything else, never repairs. */
+function personKey(code) {
+  let s = code;
+  if (typeof code === "string" && code.startsWith("PG-")) {
+    try { issuerOf(code); s = "TOG-" + code.slice(3); } catch { s = null; } // the frozen PG grammar first: 4-letter prefixes
+  }
+  for (const p of PERSON) {
+    const m = typeof s === "string" ? p.exec(s) : null;
+    if (m && (m[3] === "" || togCheck(m[1] + m[2]) === m[3])) return s;
+  }
+  return A(`${JSON.stringify(code)} is not a person's code (TOG-CODE.md §7.3)`);
+}
+
+/** The PG spelling, for the core's directory and prefix functions until claude/tog-code merges. */
+const pgSpelling =(code) => (typeof code === "string" && code.startsWith("TOG-") ? "PG-" + code.slice(4) : code);
+
 /** The readable codes of a pg.after_gen.v1 record, computed from it: {Code: the approval's, Licence: the licence's under
  * a licence basis}, each null where it cannot be formed (and Licence null under a terms basis). */
 export async function afterGenCodes(env) {
   try {
-    const b = env.body, prefix = issuerOf(b.subject_ref) || "PRAM", licence = isObject(b.basis) && b.basis.kind === "licence";
+    const b = env.body, prefix = issuerOf(pgSpelling(b.subject_ref)) || "PRAM", licence = isObject(b.basis) && b.basis.kind === "licence";
     return { Code: togCode(licence ? "AG-LIC" : "AG", prefix, await messageId(RECORD, b)),
       Licence: licence ? togCode("LIC", prefix, isObject(b.basis.licence) ? b.basis.licence.id : null) : null };
   } catch { return { Code: null, Licence: null }; }
@@ -909,7 +935,7 @@ function recordShape(b) {
   if (b.label !== AFTER_GEN_LABEL || b.notice !== AFTER_GEN_NOTICE || canonicalJson(b.not) !== canonicalJson(AFTER_GEN_NOT)) {
     A("label, notice and not must be the exact constants");
   }
-  issuerOf(b.subject_ref);
+  if (personKey(b.subject_ref) !== b.subject_ref) A("subject_ref: the person's code in its one spelling, TOG (a record never writes PG-)");
   const c = b.content;
   if (!members(c, ["binding", "hash", "leaves"]) || c.binding !== "media/1" || !hex64(c.hash) || !Number.isSafeInteger(c.leaves)
       || c.leaves < 1) A("content names one file by its media/1 hash and its leaves");
@@ -966,8 +992,8 @@ export async function checkAfterGen(env, { directory, getJson, fetch: fetchFn, m
   recordShape(env.body);
   directory ??= await loadDirectory({ fetch: f });
   const code = env.body.subject_ref;
-  if (directory.isFalseClaim(code)) A(`${code} is a false claim the steward recorded`);
-  const b = await registrySigned(env, RECORD, code, directory, f);
+  if (directory.isFalseClaim(code) || directory.isFalseClaim(pgSpelling(code))) A(`${code} is a false claim the steward recorded`);
+  const b = await registrySigned(env, RECORD, pgSpelling(code), directory, f);
   let fileMatch = null;
   if (media !== undefined && media !== null) {
     const m = typeof media === "string" ? { binding: "media/1", hash: media, leaves: b.content.leaves } : media;
@@ -980,7 +1006,7 @@ export async function checkAfterGen(env, { directory, getJson, fetch: fetchFn, m
       A("the readable code does not match the record");
     }
   }
-  return { id: await messageId(RECORD, b), subject_ref: b.subject_ref, prefix: issuerOf(b.subject_ref), label: b.label,
+  return { id: await messageId(RECORD, b), subject_ref: b.subject_ref, prefix: issuerOf(pgSpelling(b.subject_ref)), label: b.label,
     notice: b.notice, not: [...b.not], holder: b.holder, basis: b.basis, scope: b.scope,
     approval: b.approval, approvedBy: approvedBy(b.approval), issued_at: b.issued_at,
     content: b.content, fileMatch };
@@ -1001,7 +1027,7 @@ export async function checkAfterGenStatus(statusEnv, recordEnv, { directory, get
       || !Array.isArray(s.signers) || s.signers.length !== 1 || !members(s.signers[0], ["role", "key_id"])) {
     A("not a pg.after_gen_status.v1 body: a member missing or unknown");
   }
-  await registrySigned(statusEnv, STATUS, record.subject_ref, directory, f);
+  await registrySigned(statusEnv, STATUS, pgSpelling(record.subject_ref), directory, f);
   if (s.record !== record.id) A("the status is for another record");
   if (![s.issued_at, s.expires_at, s.approved_at, s.not_after].every(time)) A("status times are integers");
   if (s.issued_at > now + 60) A("the status is issued in the future");

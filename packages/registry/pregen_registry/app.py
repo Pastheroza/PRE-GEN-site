@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, Red
 
 from . import __version__
 from .protocol import ProtocolError
-from .registry import Registry
+from .registry import Registry, code_key
 
 SANDBOX_ACCESS_PER_HOUR = 10
 BIND_APPROVALS_PER_HOUR = 20
@@ -260,7 +260,7 @@ def create_app(registry: Registry, policy_file=None) -> FastAPI:
             f"<h1>Approve this file for {escape(row['requester'])}?</h1>"
             + ("<p>An agency acting under your mandate refused this request. That is the agency's refusal, not "
                "yours: you may still approve or refuse it.</p>" if row["state"] == "agent_refused" else "")
-            + f"<p>Subject: {escape(row['subject_ref'])}. Licence: {escape(row['licence_id'])}.</p>"
+            + f"<p>Subject: {escape(code_key(row['subject_ref']))}. Licence: {escape(row['licence_id'])}.</p>"
             f"<p>File (media/1): {escape(row['media_hash'])}, {row['leaves']} leaves.</p>{link}"
             f"<p>Scope asked for:</p><ul>{items}</ul>"
             "<p>An approval is recorded after the content existed. It is not a PRE-GEN permission given before "

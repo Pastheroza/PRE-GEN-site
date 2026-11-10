@@ -129,7 +129,7 @@ pregen-registry after-gen show --dir ./data REQUEST_ID
 pregen-registry after-gen approve --dir ./data REQUEST_ID --instruction-sha256 HEX --factor authenticator [--purposes commercial]
 pregen-registry after-gen refuse --dir ./data REQUEST_ID
 pregen-registry after-gen withdraw --dir ./data RECORD_ID --instruction-sha256 HEX
-pregen-registry mandate add --dir ./data PG-… https://agency.example --purposes commercial --not-after 1830000000 --instruction-sha256 HEX --factor email
+pregen-registry mandate add --dir ./data TOG-… https://agency.example --purposes commercial --not-after 1830000000 --instruction-sha256 HEX --factor email
 pregen-registry mandate add --dir ./data --envelope mandate.json
 pregen-registry mandate end --dir ./data MANDATE_ID
 ```

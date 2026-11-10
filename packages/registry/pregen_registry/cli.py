@@ -39,7 +39,7 @@ import sys
 from pathlib import Path
 
 from .protocol import Key, ProtocolError
-from .registry import Config, Registry
+from .registry import Config, Registry, code_key
 
 
 POLICY_TEMPLATE = """# {name}: registry policy
@@ -333,8 +333,8 @@ def main(argv=None):
                 row = reg.after_gen_request_info(rid=a.ids[0])
                 if row is None:
                     sys.exit(f"no pending request {a.ids[0]}")
-                print(json.dumps({**row, "scope": json.loads(row["scope"]), "envelope": json.loads(row["envelope"])},
-                                 indent=2))
+                print(json.dumps({**row, "subject_ref": code_key(row["subject_ref"]), "scope": json.loads(row["scope"]),
+                                  "envelope": json.loads(row["envelope"])}, indent=2))
             elif a.cmd == "after-gen" and a.action == "approve":
                 print(reg.approve_after_gen(a.ids[0], instruction=a.instruction_sha256 or "", factor=a.factor,
                                             purposes=purposes))

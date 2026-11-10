@@ -18,7 +18,7 @@ from pregen import after_gen as ag
 ROOT = Path(__file__).resolve().parents[3]
 DIR = ROOT / "spec/test-vectors/after-gen"
 V = json.loads((ROOT / "spec/test-vectors/answers.json").read_text())
-NOW, CODE = V["now"], "PG-TEST-000001N"
+NOW, CODE = V["now"], "TOG-TEST-000001N"          # a record writes the TOG spelling only
 D = pregen.verify_directory(V["directory"], V["steward_public_key_hex"], now=NOW)
 get_json = V["key_sets"].__getitem__
 DROP = object()
@@ -1028,7 +1028,7 @@ def test_the_readable_codes():
     assert ag._tog_check("404TEST" + ptail) in "*~$=!" and pregen.after_gen_codes(plain)["Code"] is None
     assert ag._tog_code("AG", "TEST", "f" * 64) is None and ag._tog_code("LIC", "TEST", "f" * 64) is None   # ZZZZ...
     assert ag._tog_code("AG", "", rid) is None and ag._tog_code("AG", "TEST", "e" * 63) is None
-    bare = {**rec, "body": {**rec["body"], "subject_ref": "PG-000042*"}}
+    bare = {**rec, "body": {**rec["body"], "subject_ref": "TOG-000042*"}}
     codes = pregen.after_gen_codes(bare)                                       # the bare namespace is PRAMPTA's
     assert codes["Code"].startswith("TOG-AG-LIC-PRAM-") and codes["Licence"].startswith("TOG-LIC-PRAM-")
     for broken in (None, {}, {"body": []}, {"body": {"subject_ref": "x"}}, {**rec, "body": {**rec["body"], "basis": 1}}):
@@ -1221,7 +1221,7 @@ def test_signatures_and_the_directory():                     # vector 10
     with pytest.raises(pregen.PregenError, match="not a pg.after_gen.v1"):
         check({**rec, "type": "pg.answer.v1"})
     with pytest.raises(pregen.PregenError, match="false claim"):
-        check(record(a(), subject_ref="PG-TEST-000002Z"))
+        check(record(a(), subject_ref="TOG-TEST-000002Z"))      # the directory lists it as PG-TEST-000002Z
     # a revoked registry's records fail
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
     steward = seed("after-gen-steward")
@@ -1340,6 +1340,25 @@ def test_request_and_decision():
             pregen.after_gen_decision(rid, bad[0], bad[1], key, bad[2])
     with pytest.raises(pregen.PregenError):
         pregen.after_gen_request("http://studio.example", key, CODE, "e" * 64, a(), SCOPE)
+    # a request may name the person in the PG spelling: it is written in TOG
+    assert pregen.after_gen_request("https://studio.example", key, "PG-TEST-000001N", "e" * 64, a(), SCOPE)["body"][
+        "subject_ref"] == CODE
+    with pytest.raises(pregen.PregenError, match="not a person's code"):
+        pregen.after_gen_request("https://studio.example", key, "PG-TEST-000001M", "e" * 64, a(), SCOPE)
+
+
+def test_one_spelling_for_the_person():                       # TOG-CODE.md §7.3
+    for code, key in (("TOG-TEST-000001N", "TOG-TEST-000001N"), ("PG-TEST-000001N", "TOG-TEST-000001N"),
+                      ("PG-000042*", "TOG-000042*"), ("TOG-000042*", "TOG-000042*"), ("PG-STD-000001", "TOG-STD-000001"),
+                      ("PG-PRAM-900000037K", "TOG-PRAM-900000037K"), ("TOG-PRAM-900000037K", "TOG-PRAM-900000037K")):
+        assert ag.code_key(code) == key, code
+    for bad in ("PG-TEST-000001M", "TOG-TEST-000001M", "tog-TEST-000001N", "PG-PRAM-12345678K", "PG-XYZ-000001",
+                "PG-PRAMB-900000037K",                                       # a PG prefix always had 4 letters
+                "PG-STD-000001-K7M2QX9", "TOG-AG-TEST-T8JE-WDJX-0000", " TOG-TEST-000001N", "TEST-000001N", None, 1):
+        with pytest.raises(pregen.PregenError):
+            ag.code_key(bad)
+    with pytest.raises(pregen.PregenError, match="one spelling, TOG"):     # a record never writes PG-
+        check(record(a(), subject_ref="PG-TEST-000001N"))
 
 
 if __name__ == "__main__":

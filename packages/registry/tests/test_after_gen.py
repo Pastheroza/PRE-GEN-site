@@ -137,7 +137,7 @@ def test_the_subject_approves_with_their_own_key_and_the_record_stands():
         "notice": "Recorded after the content existed. Not a PRE-GEN permission given before generation. Says nothing "
                   "about whether the content is AI-generated."}
     assert body["approval"] == {"assent": "self", "decision": message_id(d["type"], d["body"])}
-    assert (body["subject_ref"], body["holder"], body["request"]) == (w.me, w.p.id, rid)
+    assert (body["subject_ref"], body["holder"], body["request"]) == ("TOG-" + w.me[3:], w.p.id, rid)   # TOG only
     assert body["issued_at"] == w.clock.t and re.fullmatch(r"[0-9a-f]{32}", body["nonce"])  # the clock; a nonce for the code
     assert body["content"] == {"binding": "media/1", "hash": MEDIA, "leaves": 1843}
     assert body["basis"] == {"kind": "licence", "licence": {"format": "pg.grant.v1", "id": w.mine},
@@ -326,6 +326,24 @@ def test_mandate_signed_by_the_subjects_own_key():
         w.reg.add_mandate_envelope(sign(lib.new_private_key_hex(), "subject", "pg.mandate.v1", body))
     with pytest.raises(ValueError, match="custody self"):                       # the registry holds Maya's key
         w.reg.add_mandate_envelope(sign(w.own, "subject", "pg.mandate.v1", {**body, "subject_ref": w.s}))
+
+
+def test_either_spelling_names_the_person_and_what_the_registry_writes_is_tog():     # TOG-CODE.md §7.3
+    w = World()
+    tog = "TOG-" + w.me[3:]
+    assert w.me.startswith("PG-")                 # this registry still mints PG codes until claude/tog-code merges
+    body = {"subject_ref": tog, "agent": AGENCY, "powers": ["after_gen"], "limits": {"purposes": ["commercial"]},
+            "not_after": w.clock.t + 86400, "assent": "self", "issued_at": w.clock.t}
+    w.reg.add_mandate_envelope(sign(w.own, "subject", "pg.mandate.v1", body))
+    rid = w.pending(subject=tog, licence=w.mine)
+    assert w.row(rid)["subject_ref"] == w.me      # one person, one key
+    assert w.decide(rid, role="agent", agent=AGENCY, outcome="refuse").json()["state"] == "agent_refused"
+    r = w.decide(rid)
+    assert r.status_code == 200, r.text
+    assert w.status(r.json()["record"])[0]["subject_ref"] == tog
+    mandate = w.reg._row("SELECT envelope FROM mandates WHERE id = ?", (w.mandate(),))["envelope"]
+    assert json.loads(mandate)["body"]["subject_ref"] == "TOG-" + w.s[3:]
+    refused(w.ask(subject=tog[:-1] + ("0" if tog[-1] != "0" else "1"), licence=w.mine), "PG_MALFORMED")
 
 
 # ── laundering (vectors 1-5) ────────────────────────────────────────────
@@ -656,7 +674,7 @@ def test_a_record_whose_code_would_not_exist_is_signed_again_with_a_new_nonce(mo
     scope = json.loads(w.row(rid)["scope"])
 
     def body_with(nonce):
-        return {**AG_CONSTANTS, "signers": [{"role": "registry", "key_id": w.reg.key.id}], "subject_ref": w.s,
+        return {**AG_CONSTANTS, "signers": [{"role": "registry", "key_id": w.reg.key.id}], "subject_ref": "TOG-" + w.s[3:],
                 "content": {"binding": "media/1", "hash": MEDIA, "leaves": 1843}, "request": rid, "holder": w.p.id,
                 "basis": {"kind": "licence", "licence": {"format": "pg.grant.v1", "id": w.g}, "use": {"n": 1, "of": None}},
                 "scope": scope, "approval": {"assent": "registry", "instruction": INSTRUCTION, "factor": "email"},

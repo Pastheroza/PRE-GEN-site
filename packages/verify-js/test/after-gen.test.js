@@ -313,7 +313,7 @@ function change(obj, path, value) { // a copy of obj with obj[path] set, or dele
 }
 async function baseBody(key = KEY) {
   return { signers: [{ role: "registry", key_id: await kid(key) }], kind: "ratification", label: AFTER_GEN_LABEL,
-    notice: AFTER_GEN_NOTICE, not: [...AFTER_GEN_NOT], subject_ref: "PG-TEST-000001N", content: { ...MEDIA },
+    notice: AFTER_GEN_NOTICE, not: [...AFTER_GEN_NOT], subject_ref: "TOG-TEST-000001N", content: { ...MEDIA },
     request: "a".repeat(64), holder: "https://studio.example",
     basis: { kind: "licence", licence: { format: "pg.grant.v1", id: "b".repeat(64) }, use: { n: 3, of: 10 } }, scope: { purposes: ["commercial"], categories: ["advertising"], territories: ["ES", "IT"],
       channels: ["online-video", "social"], project: "Spring campaign 2027", not_after: 1830000000 },
@@ -542,7 +542,7 @@ test("afterGenCodes: the first 55 bits of the message id and the check over the 
   }
   assert.ok(none > 20 && none < 100); // about 1 in 7: a check * ~ $ = !
   const rec = await coded();
-  const bare = await afterGenCodes({ ...rec, body: { ...rec.body, subject_ref: "PG-000042*" } }); // the bare namespace is PRAMPTA's
+  const bare = await afterGenCodes({ ...rec, body: { ...rec.body, subject_ref: "TOG-000042*" } }); // the bare namespace is PRAMPTA's
   // the key is random per run, so either code may fall on a symbol check and not exist; when it exists it is PRAM's
   assert.ok((bare.Code === null || bare.Code.startsWith("TOG-AG-LIC-PRAM-"))
     && (bare.Licence === null || bare.Licence.startsWith("TOG-LIC-PRAM-")));
@@ -620,6 +620,9 @@ test("vector 6: a record checked against another file is not for this file", asy
 });
 
 const MUTATIONS = [ // vectors 9 and 13, the shape, and the approval forms
+  ["subject_ref in the PG spelling", { subject_ref: "PG-TEST-000001N" }], // TOG-CODE.md §7.3: a record writes TOG only
+  ["subject_ref mistyped", { subject_ref: "TOG-TEST-000001M" }],
+  ["subject_ref an event code", { subject_ref: "TOG-AG-TEST-T8JE-WDJX-0000" }],
   ["label in another case", { label: "Approved after generation" }],
   ["notice with other spacing", { notice: AFTER_GEN_NOTICE.replace(". ", ".  ") }],
   ["not in another order", { not: ["statement_of_origin", "pre_generation_permission"] }],

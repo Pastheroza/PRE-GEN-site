@@ -39,8 +39,8 @@ async function getJson(url) {
 }
 
 // The registry's own API, from the signed directory: a record's status is asked there and nowhere else.
-function apiFor(directory, code) {
-  const r = directory.registryFor(code);
+function apiFor(directory, prefix) {
+  const r = directory.registries.find((x) => x.prefix === prefix);
   return r && /^https:\/\//.test(r.api) ? r.api.replace(/\/$/, "") : null;
 }
 
@@ -189,7 +189,7 @@ async function check(file) {
   let confirmed = 0;
   for (const { summary, env, codes } of good.values()) {
     try {
-      const api = apiFor(directory, summary.subject_ref);
+      const api = apiFor(directory, summary.prefix);
       if (!api) throw new Error("the registry has no https API in the directory");
       const { status } = await getJson(`${api}/v2/after-gen/${summary.id}`);
       show(summary, await checkAfterGenStatus(status, env, { directory }), undefined, codes);

@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 
 from pregen import (CATEGORIES, INTIMATE, PROHIBITED_FOR_MINORS, PregenError, after_gen_codes, check_provider_url,
                     check_public_key, fingerprint, forbids, issuer_of, terms_opens)
+from pregen.after_gen import code_key    # ponytail: pregen.code_key once claude/tog-code merges
 from urllib.parse import urlsplit
 
 from .protocol import Key, ProtocolError, canonical, check_body, check_envelope, message_id, mint_code, parse_code, seal
@@ -1196,16 +1197,24 @@ class Registry:
             raise ProtocolError("PG_MALFORMED", "pg.after_gen_request.v1 is {signers, requester, subject_ref, licence, "
                                 "content, scope, issued_at, nonce}; content is one file, {binding: media/1, hash: 64 "
                                 "lowercase hex, leaves >= 1}; nonce 16-128 of [A-Za-z0-9_-]")
-        try:
-            issuer_of(body["subject_ref"])
-        except PregenError:
-            raise ProtocolError("PG_MALFORMED", "subject_ref is not a canonical PG code (PG-CODE.md §7)") from None
+        if self._ag_code(body["subject_ref"]) is None:
+            raise ProtocolError("PG_MALFORMED", "subject_ref is not a person's code (TOG-CODE.md §7.3)")
         self._ag_scope(body["scope"])
         if body["requester"] != provider_id:
             raise ProtocolError("PG_NOT_AUTHENTICATED", "requester differs from X-Provider-ID", status=401)
         if abs(self.clock() - body["issued_at"]) > AG_SKEW or body["scope"]["not_after"] <= self.clock():
             raise ProtocolError("PG_MALFORMED", "issued_at is more than 300 seconds off, or scope.not_after has passed")
         return body
+
+    def _ag_code(self, code) -> str | None:
+        """The subject's code as this registry stores it, for a code in either spelling: one person, one key
+        (TOG-CODE.md §7.3). The code itself when no subject holds it; None for a string that is no person's code."""
+        try:
+            key = code_key(code)
+        except PregenError:
+            return None
+        row = self._row("SELECT code FROM subjects WHERE code IN (?, ?)", (key, "PG-" + key[4:]))
+        return row["code"] if row else key
 
     def _ag_expire(self):
         """Silence approves nothing (step 3): a request undecided within the review period expires, and its viewing
@@ -1243,17 +1252,18 @@ class Registry:
             raise ProtocolError("PG_MALFORMED", 'the body is {"request": <pg.after_gen_request.v1>, "preview_url"?: https}')
         body = self._ag_request_body(provider_id, authorization, payload["request"])
         rid, token = message_id("pg.after_gen_request.v1", body), secrets.token_urlsafe(32)
+        code = self._ag_code(body["subject_ref"])
         self._ag_expire()
         with self.tx() as db:
             now = self.clock()
             row =db.execute("SELECT * FROM after_gen_requests WHERE id = ?", (rid,)).fetchone()
             if row is not None:                                                  # the identical request again
                 return self._ag_state(row)
-            self._ag_checks(db, body["requester"], body["subject_ref"], body["licence"]["id"], body["content"]["hash"],
+            self._ag_checks(db, body["requester"], code, body["licence"]["id"], body["content"]["hash"],
                             body["scope"], now, mask=True)
             db.execute("INSERT INTO after_gen_requests (id, requester, subject_ref, licence_id, media_hash, leaves, scope, "
                        "envelope, preview_url, review_hash, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                       (rid, body["requester"], body["subject_ref"], body["licence"]["id"], body["content"]["hash"],
+                       (rid, body["requester"], code, body["licence"]["id"], body["content"]["hash"],
                         body["content"]["leaves"], json.dumps(body["scope"]), json.dumps(payload["request"]), preview,
                         _hash_token(token) if self.config.sandbox else None, now))
         out = {"request": rid, "state": "pending", "review_until": now + AG_REVIEW}
@@ -1373,7 +1383,7 @@ class Registry:
                                                 (row["subject_ref"],)).fetchone()["custody"] != "self":
             raise ProtocolError("PG_PERSONAL_SIGNATURE_REQUIRED", "self is the subject's own key", status=403)
         g, used = self._ag_checks(db, row["requester"], row["subject_ref"], row["licence_id"], row["media_hash"], scope, now)
-        body = {**AG_CONSTANTS, "subject_ref": row["subject_ref"],
+        body = {**AG_CONSTANTS, "subject_ref": code_key(row["subject_ref"]),           # written only in TOG
                 "content": {"binding": "media/1", "hash": row["media_hash"], "leaves": row["leaves"]},
                 "request": row["id"], "holder": row["requester"],
                 "basis": {"kind": "licence", "licence": {"format": "pg.grant.v1", "id": g["id"]},
@@ -1509,14 +1519,15 @@ class Registry:
         if factor not in AG_FACTORS or not _hex64(instruction):
             raise ValueError("a mandate opens: it needs --instruction-sha256 (64 hex) and --factor authenticator|email")
         return self._store_mandate(seal("pg.mandate.v1", {
-            "subject_ref": subject_ref, "agent": agent, "powers": sorted(set(powers)),
+            "subject_ref": code_key(subject_ref), "agent": agent, "powers": sorted(set(powers)),
             "limits": {"purposes": sorted(set(purposes))}, "not_after": not_after, "assent": "registry",
             "instruction": instruction, "factor": factor, "issued_at": self.clock()}, [("registry", self.key)]))
 
     def add_mandate_envelope(self, env) -> str:
         """A pg.mandate.v1 the subject signed with their own key (custody self, role subject, assent self)."""
         body = env.get("body") if isinstance(env, dict) else None
-        s = self._row("SELECT * FROM subjects WHERE code = ?", (body.get("subject_ref", ""),)) if isinstance(body, dict) else None
+        s = self._row("SELECT * FROM subjects WHERE code = ?", (self._ag_code(body.get("subject_ref")),)) \
+            if isinstance(body, dict) else None
         if s is None or s["custody"] != "self":
             raise ValueError("a signed mandate is the subject's own, for a subject who holds their key (custody self)")
         check_envelope(env, "pg.mandate.v1", ("subject",), lambda r, k: s["key_public"] if k == fingerprint(s["key_public"])
@@ -1533,8 +1544,8 @@ class Registry:
             check_provider_url(b.get("agent"), allow_port=self.config.sandbox)
         except PregenError as e:
             raise ValueError(f"agent is the representative's party id: {e}") from None
-        p, w = b.get("powers"), b.get("limits")
-        if set(b) != members or not self._row("SELECT 1 FROM subjects WHERE code = ?", (b["subject_ref"],)) \
+        p, w, code = b.get("powers"), b.get("limits"), self._ag_code(b.get("subject_ref"))
+        if set(b) != members or not self._row("SELECT 1 FROM subjects WHERE code = ?", (code,)) \
                 or not (isinstance(p, list) and p and p == sorted(set(p))
                         and all(isinstance(x, str) and re.fullmatch(r"[a-z_]{1,32}", x) for x in p)) \
                 or not (isinstance(w, dict) and set(w) == {"purposes"} and isinstance(w["purposes"], list) and w["purposes"]
@@ -1546,7 +1557,7 @@ class Registry:
         mid = message_id(env["type"], b)
         with self.tx() as db:
             db.execute("INSERT OR IGNORE INTO mandates VALUES (?, ?, ?, ?, ?, ?, NULL, ?)", (
-                mid, b["subject_ref"], b["agent"], json.dumps(p), json.dumps(w), b["not_after"], json.dumps(env)))
+                mid, code, b["agent"], json.dumps(p), json.dumps(w), b["not_after"], json.dumps(env)))
         return mid
 
     def end_mandate(self, mandate_id: str):

@@ -967,7 +967,7 @@ def _packet(old, env) -> bytes:
     body = env["body"]
     d = ET.SubElement(rdf, f"{{{_RDF}}}Description", {f"{{{_RDF}}}about": ""})
     for k, v in (("Record", canonical_json(env).decode("utf-8")), ("Id", message_id(_TYPE, body)),
-                 ("Registry", issuer_of(body.get("subject_ref"))), *_written_codes(env).items()):
+                 ("Registry", issuer_of(_pg(body.get("subject_ref")))), *_written_codes(env).items()):
         ET.SubElement(d, f"{{{_PGAG}}}{k}").text = v
     decl = "".join(f" xmlns:{p}={quoteattr(u)}" for u, p in names.items() if u != _XML_NS)
     out = ['<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>']
@@ -1077,12 +1077,44 @@ def _tog_code(kind: str, prefix, mid):
     return f"TOG-{kind}-{prefix}-{t[:4]}-{t[4:8]}-{t[8:]}"
 
 
+# The person's code has one spelling, TOG (TOG-CODE.md §7.3): a record writes only it; a request may still name the
+# person in the PG spelling, which folds by its marker. ponytail: persons only, beside a core that still reads PG;
+# when claude/tog-code merges, pregen.code_key replaces code_key and _pg goes.
+_P = r"(?!LIC|L[A-Z]IC(?![A-Z])|LI[A-Z]C(?![A-Z]))[A-Z]{4,8}(?<!LIC)"
+_PERSON = [re.compile(p) for p in (rf"TOG-({_P})-([1-9][0-9]{{8}})([0-9A-HJKMNP-TV-Z])",
+                                   r"TOG-([A-HJKMNP-TV-Z]{4})-([0-9]{6,7})([0-9A-HJKMNP-TV-Z*~$=!])",
+                                   r"TOG-()([0-9]{6,})([0-9A-HJKMNP-TV-Z*~$=!])",
+                                   r"TOG-(STD|SUB)-([0-9]{6,})()")]
+
+
+def code_key(code) -> str:
+    """A person's code in its one spelling, TOG: a TOG code is its own key, a PG one folds by its marker and must then
+    be a valid TOG code. Raises PregenError for anything else, never repairs."""
+    s = code
+    if isinstance(code, str) and code.startswith("PG-"):
+        try:
+            issuer_of(code)                                 # the frozen PG grammar first: a PG prefix has 4 letters
+            s = "TOG-" + code[3:]
+        except PregenError:
+            s = None
+    for p in _PERSON:
+        m = p.fullmatch(s) if isinstance(s, str) else None
+        if m and (m[3] == "" or _tog_check(m[1] + m[2]) == m[3]):
+            return s
+    raise PregenError(f"{code!r} is not a person's code (TOG-CODE.md §7.3)")
+
+
+def _pg(code):
+    """The PG spelling, for the core's directory and prefix functions until claude/tog-code merges."""
+    return "PG-" + code[4:] if isinstance(code, str) and code.startswith("TOG-") else code
+
+
 def after_gen_codes(env: dict) -> dict:
     """The readable codes of a pg.after_gen.v1 record, computed from it: {"Code": the approval's, "Licence": the
     licence's under a licence basis}, each None where it cannot be formed (and Licence None under a terms basis)."""
     try:
         b = env["body"]
-        prefix, basis = issuer_of(b["subject_ref"]) or "PRAM", b.get("basis")   # the bare namespace is PRAMPTA's
+        prefix, basis = issuer_of(_pg(b["subject_ref"])) or "PRAM", b.get("basis")   # the bare namespace is PRAMPTA's
         licence = isinstance(basis, dict) and basis.get("kind") == "licence"
         lic = basis.get("licence") if licence else None
         lic_id = lic.get("id") if isinstance(lic, dict) else None
@@ -1164,10 +1196,12 @@ def check_after_gen(env: dict, directory=None, get_json=_get_json, media=None, c
     directory = directory or load_directory(get_json=get_json)
     body = env.get("body") if isinstance(env, dict) else None
     code = body.get("subject_ref") if isinstance(body, dict) else None
-    if isinstance(code, str) and directory.is_false_claim(code):
+    if isinstance(code, str) and (directory.is_false_claim(code) or directory.is_false_claim(_pg(code))):
         raise PregenError(f"{code} is a false claim the steward recorded")
-    b = _registry_signed(env, _TYPE, code, directory, get_json)
+    b = _registry_signed(env, _TYPE, _pg(code), directory, get_json)
     _obj(b, _MEMBERS, _TYPE)
+    if code_key(code) != code:
+        raise PregenError("subject_ref: the person's code in its one spelling, TOG (a record never writes PG-)")
     if not _printable(b) or set(b["signers"][0]) != {"role", "key_id"}:
         raise PregenError(f"{_TYPE}: a control or format character, or a signer that is not {{role, key_id}}")
     if b["kind"] != "ratification":
@@ -1201,7 +1235,7 @@ def check_after_gen(env: dict, directory=None, get_json=_get_json, media=None, c
         raise PregenError("scope.not_after: later than issued_at")
     _approval(b["approval"])
     rid = message_id(_TYPE, b)
-    status_url = directory.registry_for(code)["api"].rstrip("/") + "/v2/after-gen/" + rid  # The status: never from the record
+    status_url = directory.registry_for(_pg(code))["api"].rstrip("/") + "/v2/after-gen/" + rid  # The status: never from the record
     match = None
     if media is not None:
         want = media.get("hash") if isinstance(media, dict) else media
@@ -1213,7 +1247,7 @@ def check_after_gen(env: dict, directory=None, get_json=_get_json, media=None, c
         want = after_gen_codes(env)
         if any(k not in want or want[k] is None or want[k] != v for k, v in codes.items()):
             raise PregenError("the readable code does not match the record")
-    return {"id": rid, "subject_ref": code, "prefix": issuer_of(code), "label": b["label"],
+    return {"id": rid, "subject_ref": code, "prefix": issuer_of(_pg(code)), "label": b["label"],
             "notice": b["notice"], "not": b["not"], "holder": b["holder"], "basis": basis,
             "scope": b["scope"], "approval": b["approval"], "approved_by": _approved_by(b["approval"]),
             "status_url": status_url, "issued_at": b["issued_at"], "content": c, "file_match": match}
@@ -1230,7 +1264,7 @@ def check_after_gen_status(status_env: dict, record_env: dict, directory=None, g
     if now - directory.loaded_at > DIRECTORY_MAX_AGE:
         raise PregenError("the directory was loaded more than 24 hours ago: load it again")
     r = check_after_gen(record_env, directory, get_json)
-    s = _registry_signed(status_env, _STATUS, r["subject_ref"], directory, get_json)
+    s = _registry_signed(status_env, _STATUS, _pg(r["subject_ref"]), directory, get_json)
     _obj(s, _STATUS_MEMBERS, _STATUS)
     if set(s["signers"][0]) != {"role", "key_id"}:
         raise PregenError(f"{_STATUS}: a signer that is not {{role, key_id}}")
@@ -1264,7 +1298,7 @@ def after_gen_request(requester: str, private_key_hex: str, subject_ref: str, li
     import time
     content = media if isinstance(media, dict) else media_hash(media)
     body = {"signers": [{"role": "requester", "key_id": fingerprint(public_key_hex(private_key_hex))}],
-            "requester": check_provider_url(requester, allow_port=True), "subject_ref": subject_ref,
+            "requester": check_provider_url(requester, allow_port=True), "subject_ref": code_key(subject_ref),
             "licence": {"format": "pg.grant.v1", "id": licence_id},
             "content": {k: content[k] for k in ("binding", "hash", "leaves")}, "scope": scope,
             "issued_at": int(time.time() if now is None else now), "nonce": nonce or os.urandom(16).hex()}

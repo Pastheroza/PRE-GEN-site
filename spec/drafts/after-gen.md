@@ -44,7 +44,7 @@ Signed by the registry alone. Its id is its message id (`PRE-GEN-CORE.md`, Messa
           "label": "approved after generation",
           "notice": "Recorded after the content existed. Not a PRE-GEN permission given before generation. Says nothing about whether the content is AI-generated.",
           "not": ["pre_generation_permission", "statement_of_origin"],
-          "subject_ref": "PG-TEST-000001N",
+          "subject_ref": "TOG-TEST-000001N",
           "content": {"binding": "media/1", "hash": "<64 hex>", "leaves": 1843},
           "request": "<message id of the pg.after_gen_request.v1>",
           "holder": "https://studio.example",
@@ -65,7 +65,7 @@ Signed by the registry alone. Its id is its message id (`PRE-GEN-CORE.md`, Messa
 |---|---|
 | `kind` | `ratification`: an output a generative system produced. Other kinds are not in `after-gen/1` |
 | `label`, `notice`, `not` | the exact constants above. Any other value, case or spacing is refused |
-| `subject_ref` | the subject's PG code |
+| `subject_ref` | the subject's ToG code in its one spelling, `TOG-` (`code_key`, TOG-CODE.md §7.3). A record in the `PG-` spelling is refused |
 | `content` | the file, by its hash under a binding (below). `after-gen/1` knows `media/1` only, with `leaves` the number of leaves of its tree. One record names one file, never a class of files or future files |
 | `request` | the message id of the request this record answers |
 | `holder` | who may publish the file: the requester's party id. Under a licence it equals the licence's `licensee_id`, unless the licence is for any licensee (`""`) |
@@ -337,7 +337,10 @@ a refusal: the record is enough. Like the record, the copies lie outside `media/
    domain (`role: requester`). The requester is a party known by its domain, because the
    record names it as the holder:
    `{signers, requester, subject_ref, licence, content, scope, issued_at, nonce}`. One file per
-   request. `scope` is what is asked for, in the record's vocabulary. A private viewing link
+   request. `subject_ref` may still name the person in the old `PG-` spelling: it is legacy
+   input and folds to its one TOG spelling, and the registry answers for that person. Every
+   code the registry writes (the record, a mandate, the approval page) is in the TOG spelling.
+   `scope` is what is asked for, in the record's vocabulary. A private viewing link
    may travel **beside** the signed body (`preview_url`, `https` only): the registry gives it
    only to the approver and deletes it when the request is decided or expires, and never
    receives the file itself. A request permits nothing.
