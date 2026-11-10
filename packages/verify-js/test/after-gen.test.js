@@ -35,8 +35,11 @@ function rfc6962(hashes) {
 }
 
 // A small MP4: ftyp, mdat (every track's samples, one chunk per track), moov at the end. Each track:
-// {id, handler, samples, durations, ctts, edits, tref, entry, extraStbl, extraMinf, extraTrak, offset, stszCount, fixed,
-// timescale}.
+// {id, handler, samples, durations, ctts, edits, tref, entry, extraStbl, extraMinf, extraTrak, dinf, mdhd, offset,
+// stszCount, fixed, timescale}.
+const DINF = box("dinf", full("dref", 0, 0, u32(1), full("url ", 0, 1))); // one self-contained data reference
+const AVC1 = box("avc1", Buffer.alloc(6), u16(1), Buffer.alloc(70)); // a visual sample entry's fields, data reference 1
+const MP4A = box("mp4a", Buffer.alloc(6), u16(1), Buffer.alloc(20)); // a sound one's, version 0
 function mp4({ tracks = [], extraTop = [], moovExtra = [] } = {}) {
   const ftyp = box("ftyp", "isom", u32(0x200), "isom");
   let at = ftyp.length + 8;
@@ -46,9 +49,9 @@ function mp4({ tracks = [], extraTop = [], moovExtra = [] } = {}) {
     ...MATRIX.map(i32), Buffer.alloc(24), u32(tracks.length + 1));
   const traks = tracks.map((t, i) => {
     const n = t.samples.length, durations = t.durations ?? t.samples.map(() => 100);
-    const entry = t.entry ?? box(t.handler === "soun" ? "mp4a" : "avc1", Buffer.alloc(6), u16(1), "entry-bytes");
+    const entry = t.entry ?? (t.handler === "soun" ? MP4A : AVC1);
     const stbl = box("stbl",
-      full("stsd", 0, 0, u32(1), entry),
+      full("stsd", 0, 0, u32(t.stsdCount ?? 1), entry),
       full("stts", 0, 0, u32(durations.length), ...durations.flatMap((d) => [u32(1), u32(d)])),
       ...(t.ctts ? [full("ctts", 1, 0, u32(n), ...t.ctts.flatMap((c) => [u32(1), i32(c)]))] : []),
       full("stsc", 0, 0, u32(n ? 1 : 0), ...(n ? (t.stsc ?? [1, n, 1]).map(u32) : [])),
@@ -62,9 +65,10 @@ function mp4({ tracks = [], extraTop = [], moovExtra = [] } = {}) {
       ...(t.extraTrak ?? []),
       ...(t.tref ? [box("tref", ...t.tref.map((r) => box(r.type, ...r.ids.map(u32))))] : []),
       ...(t.edits ? [box("edts", full("elst", 0, 0, u32(t.edits.length), ...t.edits.flatMap((e) => [u32(e[0]), i32(e[1]), i16(e[2]), i16(e[3])])))] : []),
-      box("mdia", full("mdhd", 0, 0, u32(0), u32(0), u32(t.timescale ?? 90000), u32(0), u16(0), u16(0)),
+      box("mdia", ...(t.hdlrLast ? [0, 2, 1] : [0, 1, 2]).map((j) => [
+        t.mdhd ?? full("mdhd", 0, 0, u32(0), u32(0), u32(t.timescale ?? 90000), u32(0), u16(0), u16(0)),
         full("hdlr", 0, 0, u32(0), t.handler ?? "vide", Buffer.alloc(12), "\0"),
-        box("minf", mhd, ...(t.extraMinf ?? []), stbl)));
+        box("minf", mhd, ...(t.extraMinf ?? []), t.dinf ?? DINF, stbl)][j])));
   });
   return new Uint8Array(B(ftyp, mdat, box("moov", mvhd, ...traks, ...moovExtra), ...extraTop));
 }
@@ -142,10 +146,10 @@ test("media/1: every byte a player could read counts, padding too; the carriers 
   assert.deepEqual(await mediaHash(more), want);
   for (const pad of ["free", "skip", "wide"]) assert.notEqual((await mediaHash(mp4({ tracks: [VIDEO, AUDIO], extraTop: [box(pad)] }))).hash, want.hash);
   for (const other of [mp4({ tracks: [AUDIO, VIDEO] }), mp4({ tracks: [{ ...VIDEO, handler: "meta" }, AUDIO] }),
-    mp4({ tracks: [VIDEO, { ...AUDIO, timescale: 44100 }] }), mp4({ tracks: [VIDEO, AUDIO], moovExtra: [box("udta", box("name", "a title"))] }),
+    mp4({ tracks: [VIDEO, { ...AUDIO, timescale: 44100 }] }), mp4({ tracks: [VIDEO, AUDIO], moovExtra: [box("udta", box("name", u16(7), u16(0), "a title"))] }),
     mp4({ tracks: [VIDEO, AUDIO], extraTop: [box("udta", "x")] }), mp4({ tracks: [VIDEO, AUDIO], extraTop: [box("trak", "x")] }),
-    mp4({ tracks: [{ ...VIDEO, extraStbl: [full("stss", 0, 0, u32(1), u32(1)), box("glbl", "x")] }, AUDIO] }),
-    mp4({ tracks: [{ ...VIDEO, extraMinf: [box("dinf", full("dref", 0, 0, u32(1), full("url ", 0, 1)))] }, AUDIO] })]) {
+    mp4({ tracks: [{ ...VIDEO, extraStbl: [full("stss", 0, 0, u32(1), u32(1))] }, AUDIO] }),
+    mp4({ tracks: [{ ...VIDEO, dinf: box("dinf", full("dref", 0, 0, u32(1), full("alis", 0, 1))) }, AUDIO] })]) {
     assert.notEqual((await mediaHash(other)).hash, want.hash);
   }
 });
@@ -188,18 +192,42 @@ const REFUSED = [
   ["a top-level box past the file", bump(plain, "moov", 1), /past its parent/],
   ["a box past its parent", bump(plain, "stco", 1), /past its parent/],
   ["a uuid box under 24 bytes", mp4({ tracks: [VIDEO], moovExtra: [box("uuid", Buffer.alloc(8))] }), /shorter than its header/],
-  ["an alis data reference with alias data", mp4({ tracks: [{ ...VIDEO, extraMinf: [box("dinf", full("dref", 0, 0, u32(1), full("alis", 0, 1, Buffer.alloc(150))))] }] }), /self-contained/],
-  ["a data reference elsewhere", mp4({ tracks: [{ ...VIDEO, extraMinf: [box("dinf", full("dref", 0, 0, u32(1), full("url ", 0, 0, "https://x.example/a\0")))] }] }), /self-contained/],
+  ["an alis data reference with alias data", mp4({ tracks: [{ ...VIDEO, dinf: box("dinf", full("dref", 0, 0, u32(1), full("alis", 0, 1, Buffer.alloc(150)))) }] }), /self-contained/],
+  ["a data reference elsewhere", mp4({ tracks: [{ ...VIDEO, dinf: box("dinf", full("dref", 0, 0, u32(1), full("url ", 0, 0, "https://x.example/a\0"))) }] }), /self-contained/],
   ["sound read by chunk whose stsz is not its frame size", mp4({ tracks: [{ ...PCM_TRACK, fixed: 1 }] }), /read by chunk/],
   ["sound read by chunk with an entry other than PCM", mp4({ tracks: [{ ...PCM_TRACK, entry: box("NONE", sowt.subarray(8)) }] }), /read by chunk/],
   ["sound read by chunk without one fixed size", mp4({ tracks: [{ ...PCM_TRACK, fixed: undefined }] }), /read by chunk/],
   ["an stsc starting at chunk 2", mp4({ tracks: [{ ...VIDEO, stsc: [2, 3, 1] }] }), /stsc/],
   ["an stsc entry of 0 samples", mp4({ tracks: [{ ...VIDEO, stsc: [1, 0, 1] }] }), /stsc/],
   ["two stsz in one stbl", mp4({ tracks: [{ ...VIDEO, extraStbl: [full("stsz", 0, 0, u32(1), u32(3))] }] }), /two stsz/],
-  ["a stco in trak/udta", mp4({ tracks: [{ ...VIDEO, extraTrak: [box("udta", full("stco", 0, 0, u32(1), u32(DATA)))] }] }), /stco outside its place/],
+  ["a stco in trak/udta", mp4({ tracks: [{ ...VIDEO, extraTrak: [box("udta", full("stco", 0, 0, u32(1), u32(DATA)))] }] }), /stco in udta is not a known box/],
   ["a sample table in top-level padding", mp4({ tracks: [VIDEO], extraTop: [box("free", full("stts", 0, 0, u32(0)))] }), /stts outside its place/],
   ["an iloc in a top-level meta", mp4({ tracks: [VIDEO], extraTop: [full("meta", 0, 0, full("iloc", 0, 0, Buffer.alloc(8)))] }), /iloc outside its place/],
   ["stsz counting other samples than stts", mp4({ tracks: [{ ...VIDEO, durations: [100, 200] }] }), /count different samples/],
+  // known boxes only: a player reads a box's fields past its end, a count past its entries, a hdlr anywhere in a track
+  ["an mdhd shorter than its fields", mp4({ tracks: [{ ...VIDEO, mdhd: full("mdhd", 0, 0, u32(0), u32(0)) }] }), /mdhd in mdia is not whole/],
+  ["a dref count past its entries", mp4({ tracks: [{ ...VIDEO, dinf: box("dinf", full("dref", 0, 0, u32(2), full("url ", 0, 1))) }] }), /entry count/],
+  ["a dref of no entries", mp4({ tracks: [{ ...VIDEO, dinf: box("dinf", full("dref", 0, 0, u32(0))) }] }), /entry count/],
+  ["a data reference index past the dref", mp4({ tracks: [{ ...VIDEO, entry: box("avc1", Buffer.alloc(6), u16(2), Buffer.alloc(70)) }] }), /names no entry/],
+  ["a soun hdlr in stbl", mp4({ tracks: [{ ...PCM_TRACK, handler: "vide", fixed: 1, extraStbl: [full("hdlr", 0, 0, u32(0), "soun", Buffer.alloc(12))] }] }), /read by chunk/],
+  ["a hdlr in stbl", mp4({ tracks: [{ ...VIDEO, extraStbl: [full("hdlr", 0, 0, u32(0), "vide", Buffer.alloc(12))] }] }), /hdlr in stbl is not a known box/],
+  ["an unknown box in trak", mp4({ tracks: [{ ...VIDEO, extraTrak: [box("xyz1", u32(1))] }] }), /xyz1 in trak is not a known box/],
+  ["two tkhd", mp4({ tracks: [{ ...VIDEO, extraTrak: [full("tkhd", 0, 3, Buffer.alloc(80))] }] }), /two tkhd/],
+  ["an elst count past its entries", mp4({ tracks: [{ ...VIDEO, edits: undefined, extraTrak: [box("edts", full("elst", 0, 0, u32(2), u32(20), u32(0), u32(0x10000)))] }] }), /elst in edts is not whole/],
+  ["an stss count past its entries", mp4({ tracks: [{ ...VIDEO, extraStbl: [full("stss", 0, 0, u32(2), u32(1))] }] }), /stss in stbl is not whole/],
+  ["a meta hdlr that sets a track type", mp4({ tracks: [{ ...VIDEO, extraTrak: [full("meta", 0, 0, full("hdlr", 0, 0, u32(0), "soun", Buffer.alloc(12), "\0"))] }] }), /soun hdlr in meta/],
+  ["a text atom whose length runs past it", mp4({ tracks: [VIDEO], moovExtra: [box("udta", box("\xa9nam", u16(9), u16(0), "title"))] }), /in udta is not whole/],
+  ["an ilst item of a type players parse", mp4({ tracks: [VIDEO], moovExtra: [box("udta", full("meta", 0, 0, full("hdlr", 0, 0, u32(0), "mdir", Buffer.alloc(12)), box("ilst", box("stco", box("data", u32(1), u32(0), "x")))))] }), /stco in ilst/],
+  ["chapter names that spell a table", mp4({ tracks: [VIDEO], moovExtra: [box("udta", full("chpl", 0, 0, [1], Buffer.alloc(8), [4], "stco"))] }), /stco outside its place/],
+  ["an esds whose decoder info runs past it", mp4({ tracks: [{ ...AUDIO, tref: undefined, entry: box("mp4a", Buffer.alloc(6), u16(1), Buffer.alloc(20),
+    full("esds", 0, 0, [3, 22], [0, 1, 0], [4, 17, 0x40, 0x15], Buffer.alloc(11), [5, 3], [0x12, 0x10])) }] }), /esds in mp4a is not whole/],
+  ["a sample entry players read as another kind", mp4({ tracks: [{ ...VIDEO, entry: box("tx3g", Buffer.alloc(6), u16(1), Buffer.alloc(30)) }] }), /tx3g in stsd is not whole/],
+  ["a sample entry of an unknown kind", mp4({ tracks: [{ ...VIDEO, handler: "meta", entry: box("rtp ", Buffer.alloc(6), u16(1)) }] }), /rtp {2}sample entry under a meta handler/],
+  ["entries of two formats", mp4({ tracks: [{ ...VIDEO, entry: B(AVC1, box("hvc1", Buffer.alloc(6), u16(1), Buffer.alloc(70))), stsdCount: 2 }] }), /more than one format/],
+  ["an unknown box in a sample entry", mp4({ tracks: [{ ...VIDEO, entry: box("avc1", Buffer.alloc(6), u16(1), Buffer.alloc(70), box("abcd")) }] }), /abcd in avc1 is not a known box/],
+  ["a palette read after the entry", mp4({ tracks: [{ ...VIDEO, entry: box("avc1", Buffer.alloc(6), u16(1), Buffer.alloc(66), u16(8), u16(0)) }] }), /palette/],
+  ["an mdia whose hdlr follows its minf", mp4({ tracks: [{ ...VIDEO, hdlrLast: true }] }), /hdlr comes after its minf/],
+  ["a box in moov not listed", mp4({ tracks: [VIDEO], moovExtra: [box("wide")] }), /wide in moov is not a known box/],
 ];
 
 test("media/1: sound read by chunk whose stsz is its frame size hashes; a track not of sound is read by stsz", async () => {
@@ -210,7 +238,31 @@ test("media/1: sound read by chunk whose stsz is its frame size hashes; a track 
   await mediaHash(mp4({ tracks: [{ ...PCM_TRACK, entry: in24(3), samples: [B("abc"), B("def")], fixed: 3 }] }));
   await assert.rejects(mediaHash(mp4({ tracks: [{ ...PCM_TRACK, entry: in24(2), samples: [B("ab"), B("de")], fixed: 2 }] })), /read by chunk/);
   await assert.rejects(mediaHash(mp4({ tracks: [{ ...PCM_TRACK, entry: box("lpcm", sowt.subarray(8)) }] })), /read by chunk/); // no width in v0
-  await mediaHash(mp4({ tracks: [{ ...PCM_TRACK, handler: "vide", entry: box("NONE", sowt.subarray(8)) }] }));
+  // under vide, an entry is read as a visual one whatever its four-character code, and its samples by stsz
+  await mediaHash(mp4({ tracks: [{ ...PCM_TRACK, handler: "vide", entry: box("NONE", Buffer.alloc(6), u16(1), Buffer.alloc(70)) }] }));
+  await assert.rejects(mediaHash(mp4({ tracks: [{ ...PCM_TRACK, handler: "vide", entry: box("NONE", sowt.subarray(8)) }] })), /not whole/);
+});
+
+test("media/1: known boxes only, as real writers make them: metadata text read as text, QuickTime's 0 after an entry's boxes", async () => {
+  const title = "Costco spring sale"; // spells stco
+  const udta = box("udta", box("\xa9nam", u16(title.length), u16(0x55c4), title),
+    full("meta", 0, 0, full("hdlr", 0, 0, u32(0), "mdir", "appl", Buffer.alloc(8), "\0"), box("ilst", box("\xa9nam", box("data", u32(1), u32(0), title)))));
+  const titled = mp4({ tracks: [VIDEO, AUDIO], moovExtra: [udta] });
+  assert.equal((await mediaHash(titled)).leaves, 1);
+  await assert.rejects(mediaHash(mp4({ tracks: [VIDEO], moovExtra: [box("udta", box("name", u16(title.length), u16(0), title))] })), /stco outside its place/);
+  const esds = full("esds", 0, 0, [3, 25], [0, 1, 0], [4, 17, 0x40, 0x15], Buffer.alloc(11), [5, 2, 0x12, 0x10], [6, 1, 2]);
+  const wave = box("wave", box("frma", "mp4a"), box("mp4a", u32(0)), esds, B(u32(8), u32(0)));
+  const v1 = box("mp4a", Buffer.alloc(6), u16(1), u16(1), Buffer.alloc(18), u32(1024), u32(0), u32(0), u32(2), wave, box("chan", Buffer.alloc(16)));
+  const mdta = full("meta", 0, 0, full("hdlr", 0, 0, u32(0), "mdta", Buffer.alloc(12), "\0"), full("keys", 0, 0, u32(1), u32(12), "mdta", "titl"),
+    box("ilst", box(u32(1), box("data", u32(1), u32(0), "x"))));
+  for (const file of [
+    mp4({ tracks: [VIDEO, { ...AUDIO, entry: v1 }], moovExtra: [mdta, box("iods", "x")] }),
+    mp4({ tracks: [{ ...VIDEO, entry: box("avc1", Buffer.alloc(6), u16(1), Buffer.alloc(70), box("pasp", u32(1), u32(1)), u32(0)) }] }),
+    mp4({ tracks: [{ ...VIDEO, handler: "meta", entry: box("mp4a", Buffer.alloc(6), u16(1), Buffer.alloc(20), esds) }] }),
+    mp4({ tracks: [{ ...VIDEO, handler: "text", entry: box("tx3g", Buffer.alloc(6), u16(1), Buffer.alloc(30), box("ftab", u16(1), u16(1), [0])) }] }),
+    mp4({ tracks: [{ ...VIDEO, handler: "tmcd", entry: box("tmcd", Buffer.alloc(6), u16(1), Buffer.alloc(18), u16(0)) }] }),
+  ]) assert.equal((await mediaHash(file)).leaves, 1);
+  await assert.rejects(mediaHash(mp4({ tracks: [{ ...VIDEO, entry: box("avc1", Buffer.alloc(6), u16(1), Buffer.alloc(70), box("pasp", u32(1), u32(1)), u32(1)) }] })), /past its parent/);
 });
 
 test("media/1: tracks claiming billions of samples are refused at once", async () => {

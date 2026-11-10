@@ -264,8 +264,10 @@ function stbl(kids, mdats, video) {
 function value(data, type, mdats, zones, at = 0, hdlrs = []) {
   const kids = boxesIn(data);
   if (type === "moov" && kids.some((k) => k.type === "mvex")) M("a fragmented file (mvex)");
-  if (type === "mdia" || type === "minf") { // the handler types of the track, in mdia and in minf alike
-    hdlrs = [...hdlrs, ...kids.filter((k) => k.type === "hdlr").map((k) => latin1(k.data, 8, 4))];
+  if (type === "trak") { // a player acts on a hdlr anywhere in a track: every one counts
+    const text = bytesText(data);
+    hdlrs = [];
+    for (let p = text.indexOf("hdlr"); p >= 0; p = text.indexOf("hdlr", p + 4)) hdlrs.push(latin1(data, p + 12, 4));
   }
   if (type === "minf") {
     for (const d of kids.filter((k) => k.type === "dinf")) {
@@ -279,7 +281,7 @@ function value(data, type, mdats, zones, at = 0, hdlrs = []) {
   }
   let offsets = new Map();
   if (type === "stbl") {
-    const media = hdlrs.filter((h) => !["url ", "urn ", "alis"].includes(h)); // a data handler (MOV's minf hdlr) sets no track type
+    const media = hdlrs.filter((h) => !NOT_MEDIA.includes(h)); // data and metadata handlers set no track type
     offsets = stbl(kids, mdats, media.length > 0 && media.every((h) => h === "vide"));
     for (const k of kids) { // only the sample tables are skipped: stsd and the rest are searched too
       if (SAMPLE_TABLES.includes(k.type)) zones.push([at + k.start, at + k.start + k.size]);
@@ -287,6 +289,241 @@ function value(data, type, mdats, zones, at = 0, hdlrs = []) {
   }
   return concat(kids.map((k) => el(k.type, PATH[type] === k.type ? value(k.data, k.type, mdats, zones, at + k.start + k.hdr, hdlrs)
     : offsets.get(k.start) ?? k.data)));
+}
+
+// ── Known boxes only: inside moov, only these boxes, where listed, each exactly as long as its fields make it ──
+
+const whole = (ok, t, where) => ok || M(`${t} in ${where} is not whole`);
+const ver = (b, ...sizes) => { const v = u(b, 0, 1); return v < sizes.length && b.length === sizes[v]; }; // by version
+// `n` entries from `p`, each `step(p)` bytes long, filling `b` exactly.
+function walk(b, p, n, step) {
+  for (let i = 0; i < n; i++) { p += step(p); if (p > b.length) return false; }
+  return p === b.length;
+}
+// Version 1 or 2, where each entry's length is known; a sync entry holds the byte FFmpeg reads of it.
+function sgpd(b) {
+  const v = u(b, 0, 1);
+  if (v !== 1 && v !== 2) return false;
+  let p = 16 + 4 * (v === 2);
+  const def = u(b, 8), sync = latin1(b, 4, 4) === "sync", n = u(b, p - 4);
+  for (let i = 0; i < n; i++) {
+    const size = def || u(b, p);
+    if (sync && !size) return false;
+    p += size + (def ? 0 : 4);
+    if (p > b.length) return false;
+  }
+  return p === b.length;
+}
+// The descriptors FFmpeg reads (ES, decoder config, decoder specific info), each inside the box.
+function esds(b) {
+  const descr = (p) => {
+    let n = 0, i = 0;
+    for (; i < 4; i++) { const c = u(b, p + 1 + i, 1); n = n * 128 + (c & 127); if (!(c & 128)) break; }
+    return [u(b, p, 1), p + 2 + Math.min(i, 3), n];
+  };
+  let [tag, p, n] = descr(4);
+  if (tag !== 3 || p + n !== b.length) return false;
+  const flags = u(b, p + 2, 1);
+  p += 3 + 2 * (flags >> 7);
+  if (flags & 64) p += 1 + u(b, p, 1);
+  [tag, p, n] = descr(p + 2 * ((flags >> 5) & 1));
+  if (tag !== 4 || p + n > b.length) return false;
+  const end = p + n;
+  [tag, p, n] = descr(p + 13); // FFmpeg reads the next descriptor whatever the config's length
+  return tag !== 5 || (n > 0 && p + n <= end);
+}
+const FIXED = { vmhd: 12, smhd: 8, sthd: 4, nmhd: 4, hmhd: 20, gmin: 16, text: 36, clef: 12, prof: 12, enof: 12, vpcC: 12,
+  dac3: 3, pcmC: 6, pasp: 8, clap: 32, btrt: 12, fiel: 2, gama: 4, chrm: 2, mdcv: 24, clli: 4, st3d: 5, dvcC: 24, dvvC: 24,
+  frma: 4, enda: 2, mp4a: 4, "\0\0\0\0": 0 }; // mp4a and the terminator: in wave
+const LEAST = { hdlr: 24, dOps: 11, dfLa: 42, dec3: 5, elng: 4, data: 8, mean: 4, name: 4, "xml ": 4 };
+const LEAF = {
+  mvhd: (b) => ver(b, 100, 112), tkhd: (b) => ver(b, 84, 96), mdhd: (b) => ver(b, 24, 36), cslg: (b) => ver(b, 24, 44),
+  elst: (b) => u(b, 0, 1) < 2 && b.length === 8 + (12 + 8 * b[0]) * u(b, 4),
+  stss: (b) => b.length === 8 + 4 * u(b, 4), stps: (b) => b.length === 8 + 4 * u(b, 4),
+  sbgp: (b) => u(b, 0, 1) < 2 && b.length === 12 + 4 * b[0] + 8 * u(b, 8 + 4 * b[0]),
+  subs: (b) => u(b, 0, 1) < 2 && walk(b, 8, u(b, 4), (p) => 6 + (8 + 2 * b[0]) * u(b, p + 4, 2)),
+  keys: (b) => walk(b, 8, u(b, 4), (p) => (u(b, p) >= 8 ? u(b, p) : b.length + 1)),
+  chpl: (b) => walk(b, 5 + 4 * (u(b, 0, 1) > 0), u(b, 4 + 4 * (b[0] > 0), 1), (p) => 9 + u(b, p + 8, 1)),
+  chan: (b) => b.length === 16 + 20 * u(b, 12),
+  colr: (b) => b.length === ({ nclx: 11, nclc: 10 }[latin1(b, 0, 4)] ?? -1) || latin1(b, 0, 4) === "prof",
+  sgpd, esds,
+  ...Object.fromEntries(Object.entries(FIXED).map(([t, n]) => [t, (b) => b.length === n])),
+  ...Object.fromEntries(Object.entries(LEAST).map(([t, n]) => [t, (b) => b.length >= n])),
+};
+const HEADERS = ["vmhd", "smhd", "sthd", "hmhd", "nmhd", "gmhd"];
+const NOT_MEDIA = ["url ", "urn ", "alis", "mdir", "mdta", "ID32", "mp7t", "mp7b"]; // handlers that set no track type
+const TREF = ["hint", "cdsc", "font", "hind", "vdep", "vplx", "subt", "thmb", "auxl", "sbas", "sync", "chap", "tmcd", "scpt",
+  "ssrc", "forc", "folw", "fall", "mpod", "ipir", "dpnd"];
+const ITUNES = ["aART", "akID", "apID", "atID", "catg", "cmID", "cnID", "covr", "cpil", "cprt", "desc", "disk", "egid", "geID",
+  "gnre", "hdvd", "keyw", "ldes", "ownr", "pcst", "pgap", "plID", "purd", "purl", "rtng", "sfID", "soaa", "soal", "soar",
+  "soco", "sonm", "sosn", "stik", "tmpo", "trkn", "tven", "tves", "tvnn", "tvsh", "tvsn", "xid ", "----"];
+const VISUAL = ["avc1", "avc3", "hvc1", "hev1", "av01", "vp08", "vp09", "mp4v", "jpeg", "mjpa", "mjpb", "png ", "apcn", "apch",
+  "apcs", "apco", "ap4h", "ap4x", "dvh1", "dvhe", "dvav", "dva1"];
+const SOUND = [...PCM, "mp4a", "Opus", "fLaC", "alac", "ac-3", "ec-3"];
+const OTHER = { tmcd: 26, tx3g: 38, text: 38 }; // fixed fields, the 8 bytes of every sample entry included
+const ENTRY_BOXES = ["avcC", "hvcC", "av1C", "vpcC", "esds", "dOps", "dfLa", "alac", "dac3", "dec3", "pcmC", "colr", "pasp",
+  "clap", "btrt", "fiel", "gama", "chan", "wave", "mdcv", "clli", "st3d", "sv3d", "dvcC", "dvvC", "glbl", "tcmi", "name",
+  "chrm", "uuid", "ftab"]; // widened: Apple's chroma location, the iPod uuid, a font table
+const WAVE = ["frma", "enda", "esds", "alac", "chan", "\0\0\0\0", "mp4a", "dac3"]; // widened: mp4a, dac3 (ffmpeg)
+const IPOD = "6b6840f25f244fc5ba39a51bcf0323f3";
+const has = (list) => (t) => list.includes(t);
+
+// The boxes of mv[s, e), each with its payload [s, e) in mv.
+const within = (mv, s, e) => boxesIn(mv.subarray(s, Math.max(s, e))).map((k) => ({ ...k, s: s + k.start + k.hdr, e: s + k.start + k.size }));
+// The child boxes of a container: whole, of known types, at most one of each but `multi`, `one` there.
+function kidsOf(mv, s, e, where, known, { one = [], multi = () => false, free = true } = {}) {
+  const out = [], seen = new Set();
+  for (const k of within(mv, s, e)) {
+    if (free && (k.type === "free" || k.type === "skip")) continue;
+    if (!known(k.type)) M(`${k.type} in ${where} is not a known box`);
+    if (seen.has(k.type) && !multi(k.type)) M(`two ${k.type} boxes in ${where}`);
+    seen.add(k.type);
+    out.push(k);
+  }
+  for (const t of one) if (!seen.has(t)) M(`${where} without its ${t}`);
+  return out;
+}
+// A text atom: (length, language, text) records, filling it.
+function records(b) {
+  let p = 0;
+  while (p < b.length) p += 4 + u(b, p, 2);
+  return p === b.length;
+}
+
+// Known boxes only (spec): the movie box's content `mv` holds only the boxes listed, where listed, each exactly as long as
+// its fields, version and counts make it, each container exactly filled. The payloads players read as text are added to
+// `zones`, the bytes the table scan leaves out.
+// `rule` of a box's payload; fields it would read past the box make it not whole.
+function fits(rule, b) {
+  try { return rule(b); } catch (e) { if (e instanceof PregenError) return false; throw e; }
+}
+
+function known(mv, zones) {
+  const leaves = (list, where) => {
+    for (const k of list) whole(fits(Object.hasOwn(LEAF, k.type) ? LEAF[k.type] : () => true, mv.subarray(k.s, k.e)), k.type, where);
+  };
+  const udta = (s, e) => {
+    for (const k of kidsOf(mv, s, e, "udta", (t) => t.charCodeAt(0) === 0xa9 || ["meta", "XMP_", "chpl", "name", "loci", "Xtra"].includes(t))) {
+      const text = k.type.charCodeAt(0) === 0xa9;
+      if (k.type === "meta") meta(k.s, k.e, "udta");
+      else if (text || k.type === "name") whole(fits(records, mv.subarray(k.s, k.e)), k.type, "udta");
+      else leaves([k], "udta");
+      if (text || k.type === "XMP_") zones.push([k.s, k.e]);
+    }
+  };
+  const meta = (s, e, where) => {
+    const w = (at) => latin1(mv.subarray(s, e), at, 4);
+    const at = w(4) === "hdlr" && w(0) !== "hdlr" ? s : w(0) === "\0\0\0\0" && w(8) === "hdlr" ? s + 4 : -1;
+    if (at < 0) M(`a meta in ${where} that does not begin with its hdlr`);
+    for (const k of kidsOf(mv, at, e, "meta", has(["hdlr", "keys", "ilst", "xml "]), { one: ["hdlr"] })) {
+      const h = latin1(mv, k.s + 8, 4);
+      if (k.type === "hdlr" && !["mdir", "mdta", "ID32"].includes(h)) M(`a ${h} hdlr in meta is not a known box`);
+      if (k.type === "ilst") {
+        for (const it of kidsOf(mv, k.s, k.e, "ilst", (t) => [0, 0xa9].includes(t.charCodeAt(0)) || ITUNES.includes(t), { multi: () => true })) {
+          const items = kidsOf(mv, it.s, it.e, it.type, has(["data", "mean", "name"]), { multi: () => true, free: false });
+          leaves(items, it.type);
+          for (const d of items) if (d.type === "data") zones.push([d.s, d.e]);
+        }
+      } else leaves([k], "meta");
+    }
+  };
+  const entry = (k, handler, drefs) => {
+    const t = k.type, b = mv.subarray(k.s, k.e);
+    const kind = handler === "vide" ? "vide" : handler === "soun" ? "soun" : SOUND.includes(t) ? "soun" : VISUAL.includes(t) ? "vide"
+      : Object.hasOwn(OTHER, t) ? t : null; // as FFmpeg reads it
+    if (kind === null) M(`a ${t} sample entry under a ${handler} handler is not a known box`);
+    const fixed = kind === "vide" ? 78 : kind === "soun" ? ({ 0: 28, 1: 44, 2: 64 }[u(b, 8, 2)] ?? null) : OTHER[kind];
+    whole(fixed !== null && b.length >= fixed, t, "stsd");
+    const ref = u(b, 6, 2);
+    if (ref < 1 || ref > drefs) M("a sample entry whose data reference index names no entry");
+    if (kind === "vide" && [1, 2, 4, 8].includes(u(b, 74, 2) & 31) && !(u(b, 74, 2) & 32) && !u(b, 76, 2)) {
+      M("a sample entry whose palette players read after its fields");
+    }
+    if (kind === "tmcd" && b.length === fixed + 2 && !b[fixed] && !b[fixed + 1]) return; // ffmpeg's: two zero bytes at the end
+    let end = k.e;
+    if (b.length >= fixed + 4 && b.subarray(-4).every((x) => !x)) { // QuickTime ends the boxes with a 32-bit 0, skipped
+      try { within(mv, k.s + fixed, k.e); } catch (e) { if (!(e instanceof PregenError)) throw e; end = k.e - 4; }
+    }
+    for (const c of kidsOf(mv, k.s + fixed, end, t, has(ENTRY_BOXES))) {
+      if (c.type === "wave") leaves(kidsOf(mv, c.s, c.e, "wave", has(WAVE)), "wave");
+      else if (c.type === "sv3d") { // FFmpeg reads svhd, proj, prhd and one projection in a row
+        const [hd, pj] = kidsOf(mv, c.s, c.e, "sv3d", has(["svhd", "proj"]), { one: ["svhd", "proj"], free: false });
+        const proj = kidsOf(mv, pj.s, pj.e, "proj", has(["prhd", "equi", "cbmp"]), { free: false }).map((x) => `${x.type}${x.e - x.s}`).join();
+        whole(hd.type === "svhd" && hd.e - hd.s > 4 && ["prhd16,equi20", "prhd16,cbmp12"].includes(proj), c.type, t);
+      } else if (c.type === "uuid") whole(hex(mv.subarray(c.s, c.s + 16)) === IPOD && c.e - c.s === 20, c.type, t);
+      else leaves([c], t);
+    }
+  };
+  const stblOf = (s, e, handler, drefs) => {
+    const groups = { sgpd: new Set(), sbgp: new Set() };
+    const list = kidsOf(mv, s, e, "stbl", has(["stsd", "stts", "ctts", "stsc", "stsz", "stz2", "stco", "co64", "stss", "stps",
+      "sdtp", "sgpd", "sbgp", "cslg", "subs"]), { multi: (t) => Object.hasOwn(groups, t) });
+    const z = list.find((k) => k.type === "stsz" || k.type === "stz2");
+    const samples = z ? u(mv.subarray(z.s, z.e), 8) : 0;
+    for (const k of list) {
+      const b = mv.subarray(k.s, k.e);
+      if (Object.hasOwn(groups, k.type)) {
+        if (groups[k.type].has(latin1(b, 4, 4))) M(`two ${k.type} boxes of one grouping type in stbl`);
+        groups[k.type].add(latin1(b, 4, 4));
+      }
+      if (k.type === "stsd") {
+        const entries = within(mv, k.s + 8, k.e);
+        if (u(b, 0, 1) || new Set(entries.map((x) => x.type)).size > 1) M("an stsd of another version, or with entries of more than one format");
+        for (const x of entries) entry(x, handler, drefs);
+      } else if (k.type === "sdtp") whole(b.length === 4 + samples, k.type, "stbl");
+      else leaves([k], "stbl");
+    }
+  };
+  const minf = (s, e, handler) => {
+    const list = kidsOf(mv, s, e, "minf", has([...HEADERS, "hdlr", "dinf", "stbl"]), { one: ["dinf", "stbl"] });
+    if (list.filter((k) => HEADERS.includes(k.type)).length !== 1) M("a minf without exactly one media header");
+    let drefs = 0;
+    for (const k of list) {
+      const h = latin1(mv, k.s + 8, 4);
+      if (k.type === "hdlr" && !["url ", "urn ", "alis"].includes(h)) M(`a ${h} hdlr in minf is not a known box`);
+      if (k.type === "dinf") {
+        const [r] = kidsOf(mv, k.s, k.e, "dinf", has(["dref"]), { one: ["dref"], free: false });
+        const refs = within(mv, r.s + 8, r.e);
+        drefs = u(mv.subarray(r.s, r.e), 4);
+        if (!drefs || drefs !== refs.length) M("a dref whose entry count is not the number of its entries, or 0");
+        for (const x of refs) {
+          const n = x.e - x.s, ok = (["url ", "urn "].includes(x.type) && n >= 4) || (x.type === "alis" && n === 4);
+          if (!ok || !(mv[x.s + 3] & 1)) M("a data reference that is not a self-contained url, urn or alis");
+        }
+      } else if (k.type === "gmhd") {
+        for (const g of kidsOf(mv, k.s, k.e, "gmhd", has(["gmin", "text", "tmcd"]))) {
+          leaves(g.type === "tmcd" ? kidsOf(mv, g.s, g.e, "tmcd", has(["tcmi"])) : [g], "gmhd");
+        }
+      } else if (k.type !== "stbl") leaves([k], "minf");
+    }
+    for (const k of list) if (k.type === "stbl") stblOf(k.s, k.e, handler, drefs);
+  };
+  const trak = (s, e) => {
+    for (const k of kidsOf(mv, s, e, "trak", has(["tkhd", "edts", "tref", "mdia", "udta", "meta", "tapt"]), { one: ["tkhd", "mdia"] })) {
+      if (k.type === "edts") leaves(kidsOf(mv, k.s, k.e, "edts", has(["elst"]), { one: ["elst"] }), "edts");
+      else if (k.type === "tref") for (const r of kidsOf(mv, k.s, k.e, "tref", has(TREF))) whole((r.e - r.s) % 4 === 0, r.type, "tref");
+      else if (k.type === "tapt") leaves(kidsOf(mv, k.s, k.e, "tapt", has(["clef", "prof", "enof"])), "tapt");
+      else if (k.type === "mdia") {
+        const list = kidsOf(mv, k.s, k.e, "mdia", has(["mdhd", "hdlr", "minf", "elng", "udta"]), { one: ["mdhd", "hdlr", "minf"] });
+        const names = list.map((x) => x.type);
+        if (names.indexOf("hdlr") > names.indexOf("minf")) M("an mdia whose hdlr comes after its minf"); // FFmpeg reads the entries by it
+        const hs = list[names.indexOf("hdlr")].s;
+        for (const x of list) {
+          if (x.type === "minf") minf(x.s, x.e, latin1(mv, hs + 8, 4));
+          else if (x.type === "udta") udta(x.s, x.e);
+          else leaves([x], "mdia");
+        }
+      } else if (k.type === "udta") udta(k.s, k.e);
+      else if (k.type === "meta") meta(k.s, k.e, "trak");
+      else leaves([k], "trak");
+    }
+  };
+  for (const k of kidsOf(mv, 0, mv.length, "moov", has(["mvhd", "trak", "udta", "meta", "iods"]), { one: ["mvhd"], multi: (t) => t === "trak" })) {
+    if (k.type === "trak") trak(k.s, k.e);
+    else if (k.type === "udta") udta(k.s, k.e);
+    else if (k.type === "meta") meta(k.s, k.e, "moov");
+    else leaves([k], "moov");
+  }
 }
 
 /** media/1 of an ISO base media file (MP4, MOV, M4V): {binding: "media/1", hash, leaves}, the RFC 6962 root over the 1 MiB
@@ -323,16 +560,17 @@ export async function mediaHash(source) {
   const mdats = top.filter((b) => b.type === "mdat").map((b) => [b.start + b.hdr, b.start + b.size]);
   const whole = await r.read(moovs[0].start, moovs[0].size), h = moovs[0].hdr, zones = [];
   const moov = el("moov", value(whole.subarray(h), "moov", mdats, zones));
-  let at = 0; // the table scan: the movie box but the direct children of each stbl
-  for (const [zs, ze] of zones.sort((a, b) => a[0] - b[0])) { scan(whole.subarray(at, h + zs)); at = h + ze; }
-  scan(whole.subarray(at));
-  const carrier = (b) => b.uuid === XMP_UUID || b.uuid === C2PA_UUID;
-  for (const b of top) if (b.type !== "moov" && b.type !== "mdat" && !carrier(b)) await scanFile(r, b.start, b.start + b.size);
   let from = 0; // a second movie: outside mdat data, carriers included
   for (const [s, e] of mdats) { await scanFile(r, from, s, MOVIE, (c) => `${c}: a second movie`); from = e; }
   await scanFile(r, from, r.size, MOVIE, (c) => `${c}: a second movie`);
   await scanFile(r, 0, r.size, MPEG, () => "the pattern hdlr ... mhlr MPEG, which makes players read the file as another format", 15);
   await scanFile(r, 0, r.size, NUT, () => "a NUT startcode, which makes players read the file as another format", 7);
+  known(whole.subarray(h), zones);
+  let at = 0; // the table scan: the movie box but the sample tables and metadata text
+  for (const [zs, ze] of zones.sort((a, b) => a[0] - b[0])) { scan(whole.subarray(at, h + zs)); at = h + ze; }
+  scan(whole.subarray(at));
+  const carrier = (b) => b.uuid === XMP_UUID || b.uuid === C2PA_UUID;
+  for (const b of top) if (b.type !== "moov" && b.type !== "mdat" && !carrier(b)) await scanFile(r, b.start, b.start + b.size);
 
   const stack = [], buf = new Uint8Array(PIECE); // the stream, cut into pieces of 1 MiB: a leaf each
   let fill = 0, leaves = 0;

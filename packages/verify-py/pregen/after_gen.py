@@ -91,6 +91,7 @@ _MOVIE = re.compile(rb"(cmov|hoov)")
 _MPEG = re.compile(rb"(hdlr[\s\S]{4}mhlrMPEG)")
 _NUT = re.compile(rb"(NMzV\x1f_\x04\xad)")           # NUT main startcode: its probe ties with MP4, the file opens as neither
 _DATA_HANDLERS = {b"url ", b"urn ", b"alis"}
+_NOT_MEDIA = _DATA_HANDLERS | {b"mdir", b"mdta", b"ID32", b"mp7t", b"mp7b"}  # handlers that set no track type
 _SAMPLE_TABLES = {b"stts", b"ctts", b"stsc", b"stsz", b"stz2", b"stco", b"co64"}  # the only boxes the table scan skips
 _PROBED_AWAY = {b"jp2 ", b"jpx ", b"jxl "}             # major brands a player's MP4 probe scores low (One reading only)
 _CARRIER_MAX = 64 << 20
@@ -227,8 +228,8 @@ def _value(m, mv, t, s, e, mdats, zones, hdlrs=()):
     names = [k for k, *_ in kids]
     if t == b"moov" and b"mvex" in names:
         raise PregenError("media/1: a fragmented file (mvex)")
-    if t in (b"mdia", b"minf"):                  # the handler types of the track, in mdia and in minf alike
-        hdlrs += tuple(mv[cs + 8:min(ce, cs + 12)] for k, _, cs, ce in kids if k == b"hdlr")
+    if t == b"trak":                             # a player acts on a hdlr anywhere in a track: every one counts
+        hdlrs = tuple(mv[s + x.start() + 12:min(s + x.start() + 16, e)] for x in re.finditer(b"hdlr", mv[s:e]))
     if t == b"minf":
         for _, _, cs, ce in (k for k in kids if k[0] == b"dinf"):
             for _, _, rcs, rce in (k for k in _boxes(m, cs, ce) if k[0] == b"dref"):
@@ -238,11 +239,320 @@ def _value(m, mv, t, s, e, mdats, zones, hdlrs=()):
                         raise PregenError("media/1: a data reference that is not a self-contained url, urn or alis")
     offsets = {}
     if t == b"stbl":
-        media = [h for h in hdlrs if h not in _DATA_HANDLERS]   # a data handler (MOV's minf hdlr) sets no track type
+        media = [h for h in hdlrs if h not in _NOT_MEDIA]       # data and metadata handlers set no track type
         offsets = _stbl(m, mv, kids, mdats, bool(media) and all(h == b"vide" for h in media))
         zones += [(ks, ke) for k, ks, _, ke in kids if k in _SAMPLE_TABLES]   # stsd and the rest are searched too
     return b"".join(_el(k, _value(m, mv, k, cs, ce, mdats, zones, hdlrs) if _PATH.get(t) == k
                         else offsets.get(cs, mv[cs:ce])) for k, _, cs, ce in kids)
+
+
+# ── Known boxes only: inside moov, only these boxes, where listed, each exactly as long as its fields make it ──
+
+def _n(t):
+    return t.decode("latin-1")
+
+
+def _whole(ok, t, where):
+    if not ok:
+        raise PregenError(f"media/1: {_n(t)} in {_n(where)} is not whole")
+
+
+def _ver(b, *sizes):
+    """Exactly the length its version gives."""
+    v = _u(b, 0, 1)
+    return v < len(sizes) and len(b) == sizes[v]
+
+
+def _walk(b, p, n, step):
+    """`n` entries from `p`, each `step(p)` bytes long, filling `b` exactly."""
+    for _ in range(n):
+        p += step(p)
+        if p > len(b):
+            return False
+    return p == len(b)
+
+
+def _sgpd(b):
+    """Version 1 or 2, where each entry's length is known; a sync entry holds the byte FFmpeg reads of it."""
+    v = _u(b, 0, 1)
+    if v not in (1, 2):
+        return False
+    p, default, sync = 16 + 4 * (v == 2), _u(b, 8), b[4:8] == b"sync"
+    for _ in range(_u(b, p - 4)):
+        size = default or _u(b, p)
+        if sync and not size:
+            return False
+        p += size + (0 if default else 4)
+        if p > len(b):
+            return False
+    return p == len(b)
+
+
+def _esds(b):
+    """The descriptors FFmpeg reads (ES, decoder config, decoder specific info), each inside the box."""
+    def descr(p):
+        tag, n, i = _u(b, p, 1), 0, 0
+        for i in range(4):
+            c = _u(b, p + 1 + i, 1)
+            n = n << 7 | c & 127
+            if not c & 128:
+                break
+        return tag, p + 2 + i, n
+    tag, p, n = descr(4)
+    if tag != 3 or p + n != len(b):
+        return False
+    flags = _u(b, p + 2, 1)
+    p += 3 + 2 * (flags >> 7)
+    if flags & 64:
+        p += 1 + _u(b, p, 1)
+    tag, p, n = descr(p + 2 * (flags >> 5 & 1))
+    if tag != 4 or p + n > len(b):
+        return False
+    end = p + n
+    tag, p, n = descr(p + 13)                     # FFmpeg reads the next descriptor whatever the config's length
+    return tag != 5 or 0 < n and p + n <= end
+
+
+_FIXED = {b"vmhd": 12, b"smhd": 8, b"sthd": 4, b"nmhd": 4, b"hmhd": 20, b"gmin": 16, b"text": 36, b"clef": 12,
+          b"prof": 12, b"enof": 12, b"vpcC": 12, b"dac3": 3, b"pcmC": 6, b"pasp": 8, b"clap": 32, b"btrt": 12,
+          b"fiel": 2, b"gama": 4, b"chrm": 2, b"mdcv": 24, b"clli": 4, b"st3d": 5, b"dvcC": 24, b"dvvC": 24,
+          b"frma": 4, b"enda": 2, b"mp4a": 4, b"\0\0\0\0": 0}   # mp4a and the terminator: in wave
+_LEAST = {b"hdlr": 24, b"dOps": 11, b"dfLa": 42, b"dec3": 5, b"elng": 4, b"data": 8, b"mean": 4, b"name": 4,
+          b"xml ": 4}
+_LEAF = {
+    b"mvhd": lambda b: _ver(b, 100, 112), b"tkhd": lambda b: _ver(b, 84, 96), b"mdhd": lambda b: _ver(b, 24, 36),
+    b"cslg": lambda b: _ver(b, 24, 44), b"elst": lambda b: _u(b, 0, 1) < 2 and len(b) == 8 + (12 + 8 * b[0]) * _u(b, 4),
+    b"stss": lambda b: len(b) == 8 + 4 * _u(b, 4), b"stps": lambda b: len(b) == 8 + 4 * _u(b, 4),
+    b"sbgp": lambda b: _u(b, 0, 1) < 2 and len(b) == 12 + 4 * b[0] + 8 * _u(b, 8 + 4 * b[0]),
+    b"subs": lambda b: _u(b, 0, 1) < 2 and _walk(b, 8, _u(b, 4), lambda p: 6 + (8 + 2 * b[0]) * _u(b, p + 4, 2)),
+    b"keys": lambda b: _walk(b, 8, _u(b, 4), lambda p: _u(b, p) if _u(b, p) >= 8 else len(b) + 1),
+    b"chpl": lambda b: _walk(b, 5 + 4 * (_u(b, 0, 1) > 0), _u(b, 4 + 4 * (b[0] > 0), 1), lambda p: 9 + _u(b, p + 8, 1)),
+    b"chan": lambda b: len(b) == 16 + 20 * _u(b, 12),
+    b"colr": lambda b: len(b) == {b"nclx": 11, b"nclc": 10}.get(b[:4], -1) or b[:4] == b"prof",
+    b"sgpd": _sgpd, b"esds": _esds,
+    **{t: (lambda n: lambda b: len(b) == n)(n) for t, n in _FIXED.items()},
+    **{t: (lambda n: lambda b: len(b) >= n)(n) for t, n in _LEAST.items()},
+}
+_FREE = (b"free", b"skip")
+_HEADERS = {b"vmhd", b"smhd", b"sthd", b"hmhd", b"nmhd", b"gmhd"}
+_TREF = {b"hint", b"cdsc", b"font", b"hind", b"vdep", b"vplx", b"subt", b"thmb", b"auxl", b"sbas", b"sync", b"chap",
+         b"tmcd", b"scpt", b"ssrc", b"forc", b"folw", b"fall", b"mpod", b"ipir", b"dpnd"}
+_ITUNES = {b"aART", b"akID", b"apID", b"atID", b"catg", b"cmID", b"cnID", b"covr", b"cpil", b"cprt", b"desc", b"disk",
+           b"egid", b"geID", b"gnre", b"hdvd", b"keyw", b"ldes", b"ownr", b"pcst", b"pgap", b"plID", b"purd", b"purl",
+           b"rtng", b"sfID", b"soaa", b"soal", b"soar", b"soco", b"sonm", b"sosn", b"stik", b"tmpo", b"trkn", b"tven",
+           b"tves", b"tvnn", b"tvsh", b"tvsn", b"xid ", b"----"}
+_VISUAL = {b"avc1", b"avc3", b"hvc1", b"hev1", b"av01", b"vp08", b"vp09", b"mp4v", b"jpeg", b"mjpa", b"mjpb", b"png ",
+           b"apcn", b"apch", b"apcs", b"apco", b"ap4h", b"ap4x", b"dvh1", b"dvhe", b"dvav", b"dva1"}
+_SOUND = _PCM | {b"mp4a", b"Opus", b"fLaC", b"alac", b"ac-3", b"ec-3"}
+_OTHER = {b"tmcd": 26, b"tx3g": 38, b"text": 38}          # fixed fields, the 8 bytes of every sample entry included
+_ENTRY_BOXES = {b"avcC", b"hvcC", b"av1C", b"vpcC", b"esds", b"dOps", b"dfLa", b"alac", b"dac3", b"dec3", b"pcmC",
+                b"colr", b"pasp", b"clap", b"btrt", b"fiel", b"gama", b"chan", b"wave", b"mdcv", b"clli", b"st3d",
+                b"sv3d", b"dvcC", b"dvvC", b"glbl", b"tcmi", b"name",
+                b"chrm", b"uuid", b"ftab"}               # widened: Apple's chroma location, the iPod uuid, a font table
+_WAVE = {b"frma", b"enda", b"esds", b"alac", b"chan", b"\0\0\0\0", b"mp4a", b"dac3"}   # widened: mp4a, dac3 (ffmpeg)
+_IPOD = bytes.fromhex("6b6840f25f244fc5ba39a51bcf0323f3")
+
+
+def _kids(m, s, e, where, known, one=(), multi=lambda t: False, free=True):
+    """The child boxes of a container [s, e): whole, of known types, at most one of each but `multi`, `one` there."""
+    kids, seen = [], set()
+    for k in list(_boxes(m, s, e)):
+        t = k[0]
+        if free and t in _FREE:
+            continue
+        if not known(t):
+            raise PregenError(f"media/1: {_n(t)} in {_n(where)} is not a known box")
+        if t in seen and not multi(t):
+            raise PregenError(f"media/1: two {_n(t)} boxes in {_n(where)}")
+        seen.add(t)
+        kids.append(k)
+    for t in one:
+        if t not in seen:
+            raise PregenError(f"media/1: {_n(where)} without its {_n(t)}")
+    return kids
+
+
+def _fits(rule, b):
+    """`rule` of a box's payload; fields it would read past the box make it not whole."""
+    try:
+        return rule(b)
+    except PregenError:
+        return False
+
+
+def _leaves(mv, kids, where):
+    for t, _, cs, ce in kids:
+        _whole(_fits(_LEAF.get(t, lambda b: True), mv[cs:ce]), t, where)
+
+
+def _records(b):
+    """A text atom: (length, language, text) records, filling it."""
+    p = 0
+    while p < len(b):
+        p += 4 + _u(b, p, 2)
+    return p == len(b)
+
+
+def _known(m, mv, zones):
+    """Known boxes only (spec): the movie box holds only the boxes listed, where listed, each exactly as long as its
+    fields, version and counts make it, each container exactly filled. The payloads players read as text are added to
+    `zones`, the bytes the table scan leaves out."""
+    def udta(s, e):
+        for t, _, cs, ce in _kids(m, s, e, b"udta", lambda t: t[0] == 0xA9 or t in {
+                b"meta", b"XMP_", b"chpl", b"name", b"loci", b"Xtra"}):
+            if t == b"meta":
+                meta(cs, ce, b"udta")
+            elif t[0] == 0xA9 or t == b"name":
+                _whole(_fits(_records, mv[cs:ce]), t, b"udta")
+            else:
+                _leaves(mv, [(t, 0, cs, ce)], b"udta")
+            if t[0] == 0xA9 or t == b"XMP_":
+                zones.append((cs, ce))
+
+    def meta(s, e, where):
+        b = mv[s:e]
+        at = s if b[4:8] == b"hdlr" and b[:4] != b"hdlr" else s + 4 if b[:4] == bytes(4) and b[8:12] == b"hdlr" else -1
+        if at < 0:
+            raise PregenError(f"media/1: a meta in {_n(where)} that does not begin with its hdlr")
+        for t, _, cs, ce in _kids(m, at, e, b"meta", {b"hdlr", b"keys", b"ilst", b"xml "}.__contains__, (b"hdlr",)):
+            if t == b"hdlr" and mv[cs + 8:cs + 12] not in (b"mdir", b"mdta", b"ID32"):
+                raise PregenError(f"media/1: a {_n(mv[cs + 8:cs + 12])} hdlr in meta is not a known box")
+            if t == b"ilst":
+                for it, _, ics, ice in _kids(m, cs, ce, b"ilst", lambda t: t[0] in (0, 0xA9) or t in _ITUNES,
+                                             multi=lambda t: True):
+                    items = _kids(m, ics, ice, it, {b"data", b"mean", b"name"}.__contains__, multi=lambda t: True,
+                                  free=False)
+                    _leaves(mv, items, it)
+                    zones.extend((k[2], k[3]) for k in items if k[0] == b"data")
+            else:
+                _leaves(mv, [(t, 0, cs, ce)], b"meta")
+
+    def entry(t, cs, ce, handler, drefs):
+        b = mv[cs:ce]
+        kind = (b"vide" if handler == b"vide" else b"soun" if handler == b"soun" else b"soun" if t in _SOUND
+                else b"vide" if t in _VISUAL else t if t in _OTHER else None)    # as FFmpeg reads it
+        if kind is None:
+            raise PregenError(f"media/1: a {_n(t)} sample entry under a {_n(handler)} handler is not a known box")
+        fixed = 78 if kind == b"vide" else {0: 28, 1: 44, 2: 64}.get(_u(b, 8, 2)) if kind == b"soun" else _OTHER[kind]
+        _whole(fixed is not None and len(b) >= fixed, t, b"stsd")
+        if not 1 <= _u(b, 6, 2) <= drefs:
+            raise PregenError("media/1: a sample entry whose data reference index names no entry")
+        if kind == b"vide" and _u(b, 74, 2) & 31 in (1, 2, 4, 8) and not _u(b, 74, 2) & 32 and not _u(b, 76, 2):
+            raise PregenError("media/1: a sample entry whose palette players read after its fields")
+        if kind == b"tmcd" and b[fixed:] == bytes(2):           # ffmpeg's timecode entry ends with two zero bytes
+            return
+        end = ce
+        if b[-4:] == bytes(4) and len(b) >= fixed + 4:           # QuickTime ends the boxes with a 32-bit 0, skipped
+            try:
+                list(_boxes(m, cs + fixed, ce))
+            except PregenError:
+                end = ce - 4
+        for k, _, s, e in _kids(m, cs + fixed, end, t, _ENTRY_BOXES.__contains__):
+            if k == b"wave":
+                _leaves(mv, _kids(m, s, e, b"wave", _WAVE.__contains__), b"wave")
+            elif k == b"sv3d":                  # FFmpeg reads svhd, proj, prhd and one projection in a row
+                (h, _, hs, he), (_, _, ps, pe) = _kids(m, s, e, b"sv3d", {b"svhd", b"proj"}.__contains__,
+                                                       (b"svhd", b"proj"), free=False)
+                proj = [(x[0], x[3] - x[2]) for x in _kids(m, ps, pe, b"proj", {b"prhd", b"equi", b"cbmp"}.__contains__,
+                                                             free=False)]
+                _whole(h == b"svhd" and he - hs > 4 and proj in ([(b"prhd", 16), (b"equi", 20)],
+                                                                 [(b"prhd", 16), (b"cbmp", 12)]), k, t)
+            elif k == b"uuid":
+                _whole(mv[s:s + 16] == _IPOD and e - s == 20, k, t)
+            else:
+                _leaves(mv, [(k, 0, s, e)], t)
+
+    def stbl(s, e, handler, drefs):
+        groups = {b"sgpd": set(), b"sbgp": set()}
+        kids = _kids(m, s, e, b"stbl", {b"stsd", b"stts", b"ctts", b"stsc", b"stsz", b"stz2", b"stco", b"co64",
+                                        b"stss", b"stps", b"sdtp", b"sgpd", b"sbgp", b"cslg", b"subs"}.__contains__,
+                     multi=groups.__contains__)
+        samples = next((_u(mv[cs:ce], 8) for t, _, cs, ce in kids if t in (b"stsz", b"stz2")), 0)
+        for t, _, cs, ce in kids:
+            b = mv[cs:ce]
+            if t in groups:
+                if b[4:8] in groups[t]:
+                    raise PregenError(f"media/1: two {_n(t)} boxes of one grouping type in stbl")
+                groups[t].add(b[4:8])
+            if t == b"stsd":
+                entries = list(_boxes(m, cs + 8, ce))
+                if _u(b, 0, 1) or len({x[0] for x in entries}) > 1:
+                    raise PregenError("media/1: an stsd of another version, or with entries of more than one format")
+                for x in entries:
+                    entry(x[0], x[2], x[3], handler, drefs)
+            elif t == b"sdtp":
+                _whole(len(b) == 4 + samples, t, b"stbl")
+            else:
+                _leaves(mv, [(t, 0, cs, ce)], b"stbl")
+
+    def minf(s, e, handler):
+        kids = _kids(m, s, e, b"minf", (_HEADERS | {b"hdlr", b"dinf", b"stbl"}).__contains__, (b"dinf", b"stbl"))
+        if sum(k[0] in _HEADERS for k in kids) != 1:
+            raise PregenError("media/1: a minf without exactly one media header")
+        drefs = 0
+        for t, _, cs, ce in kids:
+            if t == b"hdlr" and mv[cs + 8:cs + 12] not in _DATA_HANDLERS:
+                raise PregenError(f"media/1: a {_n(mv[cs + 8:cs + 12])} hdlr in minf is not a known box")
+            if t == b"dinf":
+                (_, _, rs, re_), = _kids(m, cs, ce, b"dinf", {b"dref"}.__contains__, (b"dref",), free=False)
+                refs, drefs = list(_boxes(m, rs + 8, re_)), _u(mv[rs:re_], 4)
+                if not drefs or drefs != len(refs):
+                    raise PregenError("media/1: a dref whose entry count is not the number of its entries, or 0")
+                for rt, _, ecs, ece in refs:
+                    ok = rt in (b"url ", b"urn ") and ece - ecs >= 4 or rt == b"alis" and ece - ecs == 4
+                    if not ok or not mv[ecs + 3] & 1:
+                        raise PregenError("media/1: a data reference that is not a self-contained url, urn or alis")
+            elif t == b"gmhd":
+                for g, _, gs, ge in _kids(m, cs, ce, b"gmhd", {b"gmin", b"text", b"tmcd"}.__contains__):
+                    _leaves(mv, _kids(m, gs, ge, g, {b"tcmi"}.__contains__) if g == b"tmcd" else [(g, 0, gs, ge)],
+                            b"gmhd")
+            elif t != b"stbl":
+                _leaves(mv, [(t, 0, cs, ce)], b"minf")
+        for t, _, cs, ce in kids:
+            if t == b"stbl":
+                stbl(cs, ce, handler, drefs)
+
+    def trak(s, e):
+        for t, _, cs, ce in _kids(m, s, e, b"trak", {b"tkhd", b"edts", b"tref", b"mdia", b"udta", b"meta",
+                                                     b"tapt"}.__contains__, (b"tkhd", b"mdia")):
+            if t == b"edts":
+                _leaves(mv, _kids(m, cs, ce, b"edts", {b"elst"}.__contains__, (b"elst",)), b"edts")
+            elif t == b"tref":
+                for r, _, rs, re_ in _kids(m, cs, ce, b"tref", _TREF.__contains__):
+                    _whole((re_ - rs) % 4 == 0, r, b"tref")
+            elif t == b"tapt":
+                _leaves(mv, _kids(m, cs, ce, b"tapt", {b"clef", b"prof", b"enof"}.__contains__), b"tapt")
+            elif t == b"mdia":
+                kids = _kids(m, cs, ce, b"mdia", {b"mdhd", b"hdlr", b"minf", b"elng", b"udta"}.__contains__,
+                             (b"mdhd", b"hdlr", b"minf"))
+                names = [k[0] for k in kids]
+                if names.index(b"hdlr") > names.index(b"minf"):     # FFmpeg reads the sample entries by the hdlr
+                    raise PregenError("media/1: an mdia whose hdlr comes after its minf")
+                h = kids[names.index(b"hdlr")][2]
+                for k, _, ks, ke in kids:
+                    if k == b"minf":
+                        minf(ks, ke, mv[h + 8:h + 12])
+                    elif k == b"udta":
+                        udta(ks, ke)
+                    else:
+                        _leaves(mv, [(k, 0, ks, ke)], b"mdia")
+            elif t == b"udta":
+                udta(cs, ce)
+            elif t == b"meta":
+                meta(cs, ce, b"trak")
+            else:
+                _leaves(mv, [(t, 0, cs, ce)], b"trak")
+
+    for t, _, cs, ce in _kids(m, 0, len(mv), b"moov", {b"mvhd", b"trak", b"udta", b"meta", b"iods"}.__contains__,
+                              (b"mvhd",), multi={b"trak"}.__contains__):
+        if t == b"trak":
+            trak(cs, ce)
+        elif t == b"udta":
+            udta(cs, ce)
+        elif t == b"meta":
+            meta(cs, ce, b"moov")
+        else:
+            _leaves(mv, [(t, 0, cs, ce)], b"moov")
 
 
 def _root(f):
@@ -331,9 +641,18 @@ def media_hash(f) -> dict:
     _, bs, cs, ce = moovs[0]
     f.seek(bs)
     whole = f.read(ce - bs)
-    mv, zones = whole[cs - bs:], []
-    moov = _el(b"moov", _value(io.BytesIO(mv), mv, b"moov", 0, len(mv), mdats, zones))
-    at = 0                                       # the table scan: the movie box but the direct children of each stbl
+    mv, zones, m = whole[cs - bs:], [], io.BytesIO(whole[cs - bs:])
+    moov = _el(b"moov", _value(m, mv, b"moov", 0, len(mv), mdats, zones))
+    at = 0                                       # a second movie: outside mdat data, carriers included
+    for s, e in mdats:
+        _scan_file(f, at, s, _MOVIE, "{}: a second movie")
+        at = e
+    _scan_file(f, at, size, _MOVIE, "{}: a second movie")
+    _scan_file(f, 0, size, _MPEG, "the pattern hdlr ... mhlr MPEG, which makes players read the file as another format",
+               15)
+    _scan_file(f, 0, size, _NUT, "a NUT startcode, which makes players read the file as another format", 7)
+    _known(m, mv, zones)
+    at = 0                                       # the table scan: the movie box but the sample tables and metadata text
     for zs, ze in sorted(zones):
         _scan(whole[at:cs - bs + zs])
         at = cs - bs + ze
@@ -341,14 +660,6 @@ def media_hash(f) -> dict:
     for box in top:
         if box[0] not in (b"moov", b"mdat") and not _carrier(f, box):
             _scan_file(f, box[1], box[3])
-    at = 0                                       # a second movie: outside mdat data, carriers included
-    for cs, ce in mdats:
-        _scan_file(f, at, cs, _MOVIE, "{}: a second movie")
-        at = ce
-    _scan_file(f, at, size, _MOVIE, "{}: a second movie")
-    _scan_file(f, 0, size, _MPEG, "the pattern hdlr ... mhlr MPEG, which makes players read the file as another format",
-               15)
-    _scan_file(f, 0, size, _NUT, "a NUT startcode, which makes players read the file as another format", 7)
 
     def stream():
         yield b"PREGEN-MEDIA\x00media/1\x00"

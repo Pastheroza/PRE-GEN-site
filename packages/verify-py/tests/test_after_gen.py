@@ -48,16 +48,22 @@ FTYP = box(b"ftyp", b"isom", U(512), b"isomiso2mp41")
 DATA_AT = len(FTYP) + 8                       # the first sample's offset: right after the mdat header
 
 
-def trak(tid=1, hdlr=b"vide", samples=(b"abc", b"de"), offset=DATA_AT, tref=b"", stbl=None, entry=None, minf=b""):
+AVC1 = box(b"avc1", bytes(6), b"\x00\x01", bytes(70))       # a visual sample entry's fields, data reference 1
+DINF = box(b"dinf", full(b"dref", 0, 0, U(1), full(b"url ", 0, 1)))     # one self-contained data reference
+VMHD = full(b"vmhd", 0, 1, bytes(8))
+
+
+def trak(tid=1, hdlr=b"vide", samples=(b"abc", b"de"), offset=DATA_AT, tref=b"", stbl=None, entry=None, minf=b"",
+         dinf=DINF, mhd=VMHD, mdhd=None):
     sizes = [len(s) for s in samples]
-    tables = {b"stsd": full(b"stsd", 0, 0, U(1), entry or box(b"avc1", bytes(78))),
+    tables = {b"stsd": full(b"stsd", 0, 0, U(1), entry or AVC1),
               b"stts": full(b"stts", 0, 0, U(1, len(sizes), 10)),
               b"stsc": full(b"stsc", 0, 0, U(1, 1, len(sizes), 1)),
               b"stsz": full(b"stsz", 0, 0, U(0, len(sizes), *sizes)),
               b"stco": full(b"stco", 0, 0, U(1, offset))}
     tables.update(stbl or {})
-    minf = box(b"minf", full(b"vmhd", 0, 1, bytes(8)), minf, box(b"stbl", *(v for v in tables.values() if v is not None)))
-    mdia = box(b"mdia", full(b"mdhd", 0, 0, U(0, 0, 1000, 10 * len(sizes)), bytes(4)),
+    minf = box(b"minf", mhd, minf, dinf, box(b"stbl", *(v for v in tables.values() if v is not None)))
+    mdia = box(b"mdia", mdhd or full(b"mdhd", 0, 0, U(0, 0, 1000, 10 * len(sizes)), bytes(4)),
                full(b"hdlr", 0, 0, U(0), hdlr, bytes(12), b"\x00"), minf)
     tkhd = full(b"tkhd", 0, 3, U(0, 0, tid, 0, 0), bytes(8), bytes(8), struct.pack(">9i", *MATRIX), U(64 << 16, 48 << 16))
     return box(b"trak", tkhd, tref, mdia)
@@ -263,8 +269,14 @@ def CHUNKS(size):
     return {b"stts": full(b"stts", 0, 0, U(1, 2, 1)), b"stsz": full(b"stsz", 0, 0, U(size, 2))}
 
 
-GMHD_KEPT = mp4(({"tref": box(b"tapt", b"t") + box(b"edts", box(b"x123", b"e")), "minf": box(b"hdlr", b"h"),
-                  "stbl": {b"stss": full(b"stss", 0, 0, U(0))}},)).replace(b"vmhd", b"gmhd")
+GMHD_KEPT = mp4(({"tref": box(b"tapt", full(b"clef", 0, 0, U(64 << 16, 48 << 16)))
+                  + box(b"edts", full(b"elst", 0, 0, U(1, 20, 0), struct.pack(">hh", 1, 0))),
+                  "minf": full(b"hdlr", 0, 0, U(0), b"alis", bytes(12)), "mhd": box(b"gmhd", full(b"gmin", 0, 0, bytes(12))),
+                  "stbl": {b"stss": full(b"stss", 0, 0, U(0))}},))
+TITLE = b"Costco spring sale"                            # metadata text that spells stco: read as text, not searched
+TITLED = box(b"udta", box(b"\xa9nam", struct.pack(">HH", len(TITLE), 0x55C4), TITLE),
+             full(b"meta", 0, 0, full(b"hdlr", 0, 0, U(0), b"mdir", b"appl", bytes(8), b"\x00"),
+                  box(b"ilst", box(b"\xa9nam", box(b"data", U(1, 0), TITLE)))))
 
 
 def derived():
@@ -287,7 +299,7 @@ def derived():
         "tiny.mp4": mp4(),
         "tiny-kept.mp4": GMHD_KEPT,
         "tiny-tref.mp4": mp4(({}, {"tid": 2, "hdlr": b"meta"},
-                              {"tid": 5, "hdlr": b"soun", "tref": box(b"tref", box(b"sync", U(1)))})),
+                              {"tid": 5, "hdlr": b"soun", "entry": PCM, "tref": box(b"tref", box(b"sync", U(1)))})),
         "x-no-moov.mp4": mp4(moov=False),
         "x-two-moov.mp4": mp4(top=box(b"moov", MVHD)),
         "x-moof.mp4": mp4(top=box(b"moof", full(b"mfhd", 0, 0, U(1)))),
@@ -310,7 +322,7 @@ def derived():
         "attack-stray-stco.mp4": mp4(({"tref": full(b"stco", 0, 0, U(1, DATA_AT + 1))},)),
         "attack-elst-in-udta.mp4": mp4(({"tref": box(b"udta", full(b"elst", 0, 0, U(1, 5, 0), struct.pack(">hh", 1, 0)))},)),
         "attack-short-uuid.mp4": mp4(top=struct.pack(">I4s", 20, b"uuid") + bytes(12)),
-        "attack-dref-external.mp4": mp4(({"minf": box(b"dinf", full(b"dref", 0, 0, U(1), full(b"url ", 0, 0, b"https://x.example/a\0")))},)),
+        "attack-dref-external.mp4": mp4(({"dinf": box(b"dinf", full(b"dref", 0, 0, U(1), full(b"url ", 0, 0, b"https://x.example/a\0")))},)),
         "attack-dos.mp4": mp4(tuple({"tid": j, "hdlr": b"meta", "stbl": HUGE} for j in range(1, 21))),
         # round 3: what a player reads outside media/1's boxes is kept as is (other hash), or the file is refused
         "attack-top-trak.mp4": mp4(top=trak(tid=2)),
@@ -326,9 +338,9 @@ def derived():
         "attack-two-stco.mp4": mp4(({"stbl": {b"stco2": full(b"stco", 0, 0, U(1, DATA_AT))}},)),
         "attack-two-tkhd.mp4": mp4(({"tref": full(b"tkhd", 0, 3, bytes(80))},)),
         "attack-two-media-headers.mp4": mp4(({"minf": full(b"smhd", 0, 0, bytes(4))},)),
-        "attack-dinf-extra.mp4": mp4(({"minf": box(b"dinf", full(b"dref", 0, 0, U(1), full(b"url ", 0, 1)), box(b"udta"))},)),
-        "attack-dref-alis.mp4": mp4(({"minf": box(b"dinf", full(b"dref", 0, 0, U(1), full(b"alis", 0, 1, bytes(150))))},)),
-        "dref-alis-empty.mp4": mp4(({"minf": box(b"dinf", full(b"dref", 0, 0, U(1), full(b"alis", 0, 1)))},)),  # Apple
+        "attack-dinf-extra.mp4": mp4(({"dinf": box(b"dinf", full(b"dref", 0, 0, U(1), full(b"url ", 0, 1)), box(b"udta"))},)),
+        "attack-dref-alis.mp4": mp4(({"dinf": box(b"dinf", full(b"dref", 0, 0, U(1), full(b"alis", 0, 1, bytes(150))))},)),
+        "dref-alis-empty.mp4": mp4(({"dinf": box(b"dinf", full(b"dref", 0, 0, U(1), full(b"alis", 0, 1)))},)),  # Apple
         # round 4: fields players act on (track order, the file type, durations, language) are hashed like any byte
         "attack-trak-order.mp4": mp4(({"tid": 2}, {"tid": 1})),
         "attack-ftyp-qt.mp4": mp4().replace(b"ftypisom", b"ftypqt  ", 1),
@@ -377,6 +389,14 @@ def derived():
                                                                     jumb("x"))))),
         "attack-c2pa-older-bad.mp4": mp4(top=c2pa_box(jumb("urn:old", box(b"jumb", box(b"free"))), manifest(2, assertion(rec)))),
         "attack-c2pa-not-canonical.mp4": mp4(top=c2pa_box(manifest(1, jumb("org.pregen.after_gen", box(b"json", json.dumps(rec).encode()))))),
+        # round 10, known boxes only: a player reads a box's fields past its end, a count past its entries, a hdlr
+        # anywhere in a track, and any box by its type; text in metadata is read as text
+        "attack-mdhd-short.mp4": mp4(({"mdhd": full(b"mdhd", 0, 0, U(0, 0))},)),
+        "attack-dref-count.mp4": mp4(({"dinf": box(b"dinf", full(b"dref", 0, 0, U(2), full(b"url ", 0, 1)))},)),
+        "attack-hdlr-in-stbl.mp4": mp4(({"entry": PCM, "samples": (b"abcd", b"efgh"),
+                                         "stbl": {**CHUNKS(1), b"hdlr": full(b"hdlr", 0, 0, U(0), b"soun", bytes(12))}},)),
+        "attack-unknown-box-in-trak.mp4": mp4(({"tref": box(b"xyz1", U(1))},)),
+        "tiny-title-stco.mp4": mp4(moov_extra=TITLED),
     }
     out["a-xmp-foreign-pg.mp4"] = a + xmp_box(ag._packet(FOREIGN_XMP, rec))           # the last box, rewritten
     return out, rec
@@ -557,12 +577,19 @@ REFUSALS = [
     ("attack-chunkmode-meta.mp4", "read by chunk"), ("attack-chunkmode-minf-soun.mp4", "read by chunk"), ("attack-dref-alis.mp4", "self-contained"),
     ("attack-pcm-stsz1.mp4", "read by chunk"), ("attack-offset-in-moov.mp4", "outside the data of an mdat"),
     ("attack-chunk-past-mdat.mp4", "run past"), ("x-stts-stsz.mp4", "count different samples"),
-    ("attack-stray-stco.mp4", "stco outside its place"), ("attack-top-trak.mp4", "stts outside its place"),
+    ("attack-stray-stco.mp4", "stco in trak is not a known box"), ("attack-top-trak.mp4", "stts outside its place"),
     ("attack-top-udta-trak.mp4", "stts outside its place"), ("attack-two-stco.mp4", "two stco"),
     ("attack-stsc-first2.mp4", "stsc"), ("attack-stsc-count0.mp4", "stsc"), ("attack-two-stsz.mp4", "two stsz"),
-    ("attack-trak-udta-stco.mp4", "stco outside its place"), ("attack-free-tables.mp4", "stsz outside its place"),
+    ("attack-trak-udta-stco.mp4", "stco in udta is not a known box"), ("attack-free-tables.mp4", "stsz outside its place"),
     ("attack-iloc-meta.mp4", "iloc outside its place"), ("attack-chunkmode-none.mp4", "read by chunk"),
-    ("attack-chunkmode-stz2.mp4", "read by chunk"), ("attack-stco-in-entry.mp4", "stco outside its place")]
+    ("attack-chunkmode-stz2.mp4", "read by chunk"), ("attack-stco-in-entry.mp4", "stco in mp4v is not a known box"),
+    # known boxes only
+    ("attack-mdhd-short.mp4", "mdhd in mdia is not whole"), ("attack-dref-count.mp4", "entry count"),
+    ("attack-hdlr-in-stbl.mp4", "read by chunk"), ("attack-unknown-box-in-trak.mp4", "xyz1 in trak is not a known box"),
+    ("attack-dinf-extra.mp4", "udta in dinf is not a known box"), ("attack-elst-in-udta.mp4", "elst in udta"),
+    ("attack-glbl.mp4", "glbl in stbl"), ("attack-st3d-clli.mp4", "in stbl is not a known box"),
+    ("attack-two-media-headers.mp4", "one media header"), ("attack-two-tkhd.mp4", "two tkhd"),
+    ("attack-udta-mvex-moof.mp4", "mvex in udta")]
 
 
 @pytest.mark.parametrize("name,why", REFUSALS)
@@ -584,6 +611,7 @@ def test_every_byte_a_player_could_read_counts():
               and n not in {r[0] for r in REFUSALS}]
     assert len({media(n)["hash"] for n in hashed} | {tiny}) == len(hashed) + 1, hashed   # each its own hash
     assert media("attack-pcm-ok.mp4")["leaves"] == 1
+    assert all(media(n)["leaves"] == 1 for n in derived()[0] if n.startswith(("tiny", "dref-", "a-")))
 
 
 def test_more_refusals():
@@ -625,7 +653,78 @@ def test_more_refusals():
             assert "read by chunk" in refused(pcm(size + 1)), t
         else:
             assert "read by chunk" in refused(pcm(size)), t
-        assert H(pcm(size, b"vide")), t                                       # not a sound track: read by stsz
+        assert "not whole" in refused(pcm(size, b"vide")), t                  # under vide, its fields are a visual one's
+    # not a sound track: read by stsz, its entry as a visual one whatever its four-character code
+    assert H(mp4(({"entry": box(b"sowt", bytes(6), b"\x00\x01", bytes(70)), "samples": (b"xyz",) * 2, "stbl": CHUNKS(1)},)))
+
+
+def esds(dsi=b"\x12\x10", n=None):
+    """An ES descriptor: decoder config, its specific info (`n` the length it states), SL config."""
+    dec = bytes([0x40, 0x15]) + bytes(11) + bytes([5, len(dsi) if n is None else n]) + dsi
+    es = b"\x00\x01\x00" + bytes([4, len(dec)]) + dec + (bytes([6, 1, 2]) if n is None else b"")
+    return full(b"esds", 0, 0, bytes([3, len(es)]) + es)
+
+
+def mp4a(version=0, *boxes):
+    fields = struct.pack(">HHIHHHHI", version, 0, 0, 2, 16, 0, 0, 44100 << 16) + (U(1024, 0, 0, 2) if version else b"")
+    return box(b"mp4a", bytes(6), b"\x00\x01", fields, *boxes)
+
+
+WAVE = box(b"wave", box(b"frma", b"mp4a"), box(b"mp4a", bytes(4)), esds(), struct.pack(">I4s", 8, bytes(4)))
+MDTA = full(b"meta", 0, 0, full(b"hdlr", 0, 0, U(0), b"mdta", bytes(12), b"\x00"),
+            full(b"keys", 0, 0, U(1), struct.pack(">I4s", 12, b"mdta"), b"titl"),
+            box(b"ilst", box(U(1), box(b"data", U(1, 0), b"x"))))
+KNOWN = [  # trak() arguments, or a box for moov: None when the file hashes, else a part of its refusal
+    ({"mdhd": full(b"mdhd", 1, 0, bytes(32))}, None), ({"mdhd": full(b"mdhd", 0, 0, bytes(24))}, "mdhd in mdia is not whole"),
+    ({"mdhd": full(b"mdhd", 2, 0, bytes(32))}, "mdhd in mdia is not whole"),
+    ({"tref": box(b"edts", full(b"elst", 0, 0, U(2, 20, 0), struct.pack(">hh", 1, 0)))}, "elst in edts is not whole"),
+    ({"tref": box(b"edts", full(b"elst", 1, 0, U(1), bytes(20)))}, None),
+    ({"stbl": {b"stss": full(b"stss", 0, 0, U(2, 1))}}, "stss in stbl is not whole"),
+    ({"stbl": {b"sdtp": full(b"sdtp", 0, 0, b"\x20\x10")}}, None), ({"stbl": {b"sdtp": full(b"sdtp", 0, 0, b"\x20")}}, "sdtp"),
+    ({"stbl": {b"sgpd": full(b"sgpd", 1, 0, b"roll", U(2, 1), b"\xff\xff"), b"sbgp": full(b"sbgp", 0, 0, b"roll", U(1, 2, 1))}}, None),
+    ({"stbl": {b"sgpd": full(b"sgpd", 0, 0, b"roll", U(1), b"\xff\xff")}}, "sgpd in stbl is not whole"),
+    ({"tref": box(b"tref", box(b"chap", U(2) + b"\x00\x01"))}, "chap in tref is not whole"),
+    ({"tref": box(b"tref", box(b"stco", U(1)))}, "stco in tref is not a known box"),
+    ({"tref": full(b"meta", 0, 0, full(b"hdlr", 0, 0, U(0), b"soun", bytes(12), b"\x00"))}, "soun hdlr in meta"),
+    ({"tref": box(b"udta", box(b"\xa9nam", struct.pack(">HH", 9, 0), b"title"))}, "\xa9nam in udta is not whole"),
+    ({"tref": box(b"udta", box(b"name", struct.pack(">HH", 5, 0), b"title"), box(b"Xtra", b"x"), box(b"free"))}, None),
+    (box(b"udta", full(b"meta", 0, 0, full(b"hdlr", 0, 0, U(0), b"mdir", bytes(12)), box(b"ilst", box(b"stco", box(b"data", U(1, 0), b"x"))))), "stco in ilst"),
+    (box(b"udta", full(b"meta", 0, 0, full(b"hdlr", 0, 0, U(0), b"mdir", bytes(12)), box(b"ilst", box(b"\xa9nam", box(b"free"))))), "free in \xa9nam"),
+    (box(b"udta", full(b"chpl", 0, 0, b"\x01", bytes(8), b"\x04stco")), "stco outside its place"),   # chapter names are searched
+    (box(b"udta", full(b"chpl", 0, 0, b"\x02", bytes(8), b"\x04stco")), "chpl in udta is not whole"),
+    (MDTA, None), (MDTA.replace(U(1, 12), U(2, 12)), "keys in meta is not whole"), (box(b"iods", b"x"), None),
+    (box(b"wide"), "wide in moov is not a known box"),
+    ({"hdlr": b"meta", "entry": mp4a(0, esds())}, None), ({"hdlr": b"soun", "entry": mp4a(1, WAVE, box(b"chan", bytes(16)))}, None),
+    ({"hdlr": b"soun", "entry": mp4a(0, esds(n=3))}, "esds in mp4a is not whole"),
+    ({"hdlr": b"soun", "entry": mp4a(0, box(b"chan", bytes(12), U(1)))}, "chan in mp4a is not whole"),
+    ({"hdlr": b"soun", "entry": mp4a(1, box(b"wave", box(b"frma", b"mp4a"), box(b"mdhd")))}, "mdhd in wave"),
+    ({"hdlr": b"meta", "entry": box(b"rtp ", bytes(6), b"\x00\x01")}, "rtp  sample entry under a meta handler"),
+    ({"hdlr": b"text", "entry": box(b"tx3g", bytes(6), b"\x00\x01", bytes(30), box(b"ftab", b"\x00\x01\x00\x01\x00"))}, None),
+    ({"hdlr": b"tmcd", "entry": box(b"tmcd", bytes(6), b"\x00\x01", bytes(18), bytes(2))}, None),
+    ({"hdlr": b"vide", "entry": box(b"tx3g", bytes(6), b"\x00\x01", bytes(30))}, "tx3g in stsd is not whole"),  # read as visual
+    ({"entry": box(b"avc1", bytes(6), b"\x00\x01", bytes(70), box(b"pasp", U(1, 1)), bytes(4))}, None),   # QuickTime's 0
+    ({"entry": box(b"avc1", bytes(6), b"\x00\x01", bytes(70), box(b"pasp", U(1, 1)), U(1))}, "past its parent"),
+    ({"entry": box(b"avc1", bytes(6), b"\x00\x01", bytes(70), box(b"abcd"))}, "abcd in avc1 is not a known box"),
+    ({"entry": box(b"avc1", bytes(6), b"\x00\x01", bytes(66), struct.pack(">HH", 8, 0))}, "palette"),
+    ({"entry": box(b"avc1", bytes(6), b"\x00\x02", bytes(70))}, "names no entry"),
+    ({"stbl": {b"stsd": full(b"stsd", 0, 0, U(2), AVC1, AVC1.replace(b"avc1", b"hvc1"))}}, "more than one format"),
+    ({"dinf": b""}, "minf without its dinf"), ({"mhd": b""}, "one media header"),
+    ({"dinf": box(b"dinf", full(b"dref", 0, 0, U(0)))}, "entry count"),
+]
+
+
+@pytest.mark.parametrize("change,why", KNOWN)
+def test_known_boxes_only(change, why):
+    data = mp4((change,)) if isinstance(change, dict) else mp4(moov_extra=change)
+    if why is None:
+        assert H(data)["leaves"] == 1
+    else:
+        assert why in refused(data)
+
+
+def test_metadata_text_is_read_as_text():
+    assert media("tiny-title-stco.mp4")["leaves"] == 1
+    assert "stco outside its place" in refused(mp4(moov_extra=TITLED.replace(b"\xa9nam", b"name", 1)))   # not a text atom
 
 
 # ── read_after_gen and embed_xmp ────────────────────────────────────────────────

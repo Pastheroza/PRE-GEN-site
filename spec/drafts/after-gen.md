@@ -155,12 +155,11 @@ one piece). The hash is the root of an RFC 6962 Merkle tree over the pieces (lea
 two smaller than the count), as 64 lowercase hex characters; `leaves` is the number of pieces.
 A verifier never needs the whole file in memory.
 
-**What keeps the hash, and what changes it.** Appending, removing or rewriting the XMP box,
-inserting or removing the C2PA box (a C2PA tool rewrites the chunk offsets when it inserts its
-box before the movie, and the offsets are hashed by position within `mdat`) keep the hash. An
+**What keeps the hash, and what changes it.** Inserting, removing or rewriting a carrier
+keeps the hash: the XMP box is appended at the end of the file, and a C2PA tool that inserts its
+box before the movie rewrites the chunk offsets, which are hashed by position within `mdat`. An
 existing XMP box is rewritten in place when it is the last box or the new packet fits in it,
-padded with spaces as XMP allows; otherwise embedding is refused, since turning it into padding
-would change the hash. Any other change changes it: a remux, moving the movie box, a new title or chapters,
+padded with spaces as XMP allows; otherwise embedding is refused. Any other change changes it: a remux, moving the movie box, a new title or chapters,
 a tool's own tag in `udta`, new creation times. So a production asks for approval of the file
 it will publish, after its last remux and metadata edit, and adds only the record afterwards.
 
@@ -173,13 +172,16 @@ says why, for:
   `moov` or more than one; a box whose size runs
   past its parent, or that is shorter than its own header (a `uuid` box under 24 bytes); a value
   that does not fit a signed 64-bit integer;
+- **a box that is not known, or not whole** (see "Known boxes only" below);
 - **carriers that are not what they claim:** an XMP box whose packet is not UTF-8 text free of
   NUL bytes, a C2PA box that does not parse as a JUMBF manifest store, more than one of either,
   or a carrier larger than 64 MiB;
 - a fragmented file (`mvex` in `moov`, or a `moof` at the top level); encrypted samples (an
-  `encv`, `enca` or `encs` entry, or a `sinf` in any entry); a data reference that is not in the same file (a `dref` entry that is not a
-  self-contained `url ` or `urn `, or a self-contained `alis` with nothing after its version and
-  flags, as Apple's writers make it);
+  `encv`, `enca` or `encs` entry, or a `sinf` in any entry); a data reference that is not in the
+  same file (a `dref` entry that is not a self-contained `url ` or `urn `, or a self-contained
+  `alis` with nothing after its version and flags, as Apple's writers make it); a `dinf` that
+  holds anything but one `dref`; a `dref` whose entry count is not the number of entries it
+  holds, or is 0; a sample entry whose data reference index names no entry;
 - **a second movie anywhere:** the code `cmov` or `hoov` at any byte position of the file
   outside `mdat` data, carriers included (a player decompresses or adopts such a movie wherever
   it finds one); the sixteen-byte pattern `hdlr`, any four bytes, `mhlr`, `MPEG` anywhere in the
@@ -190,10 +192,11 @@ says why, for:
   `stts`, `ctts`, `iloc`, `saio`, `saiz`, `sidx`, `ssix`, `tfra`, `mfra`, `trun`, `tfhd` found
   at any byte position of a top-level box other than `mdat` and the carriers, except as a
   sample table (`stts`, `ctts`, `stsc`, `stsz`, `stz2`, `stco`, `co64`) that is a direct child
-  of an `stbl` on the path `moov`/`trak`/`mdia`/`minf`/`stbl`, whose payload is not searched.
-  Everything else is searched, the sample descriptions in `stsd` included, since a player reads
-  boxes appended to a sample entry; a text in metadata that spells such a code makes the file
-  refused;
+  of an `stbl` on the path `moov`/`trak`/`mdia`/`minf`/`stbl`, whose payload is not searched,
+  and metadata text that players read as text, not as boxes: the payload of a `data` box inside
+  an `ilst`, of a `udta` child whose type begins with the byte `A9` (©), and of a `udta` `XMP_`
+  box. Everything else is searched, the sample descriptions in `stsd` included, since a player
+  reads boxes appended to a sample entry;
 - **tables that read two ways:** an `stbl` without exactly one `stsd`, one `stts`, one `stsc`,
   one of `stsz` and `stz2` and one of `stco` and `co64`, or with more than one `ctts`; an
   `stsc` whose first entry's first chunk is not 1, whose first chunks do not strictly increase
@@ -202,10 +205,11 @@ says why, for:
   the count of `stsz`/`stz2`; a table whose length is not exactly what its count gives;
 - **chunks outside `mdat`:** a chunk offset that does not fall inside the data of a top-level
   `mdat`, or a chunk whose samples run past the end of that data;
-- **sound read by chunk:** a track whose `stts` durations are all 1, unless its `trak` has at least
-  one `hdlr` (in `mdia` or in `minf`) other than a data handler (handler type `url `, `urn ` or
-  `alis`, which a MOV puts in `minf` and which sets no track type), and every such one has the
-  handler type `vide`: a player may take any
+- **sound read by chunk:** a track whose `stts` durations are all 1, unless the handler types found
+  wherever the code `hdlr` occurs in its `trak` (a player acts on a `hdlr` anywhere in a track;
+  the handler type is the four bytes twelve bytes after the code), leaving out data and
+  metadata handlers (`url `, `urn `, `alis`, `mdir`, `mdta`, `ID32`, `mp7t`, `mp7b`), are at
+  least one and all `vide`: a player may take any
   other track's sample entry as audio, whatever its first handler says, and then reads its
   chunks by the sample entry, not by `stsz`. Such a track is refused unless its `stsz` gives one fixed size
   equal to the frame size players take from the entry: for a version 1 entry, its bytes per frame
@@ -215,6 +219,49 @@ says why, for:
   `in32` and `fl32` 4, `fl64` 8; for `ipcm` and `fpcm`, the sample size its `pcmC` box states ÷ 8.
   Any other entry in chunk mode is refused, and so is a version 1 or 2 entry whose fields
   disagree with that codec width where the codec has one.
+
+**Known boxes only.** A player reads a box by its type wherever it meets one, and reads the
+fields of a box even past the box's end when the box is shorter than they are or its count
+says more entries than it holds; the bytes it then reads may be a carrier's. So inside `moov`
+a verifier accepts only the boxes below, only where they are listed, and only whole: each one
+exactly as long as its fields, its version and its counts make it, and each container exactly
+filled by its children. Anything else inside `moov` refuses the file. `free` and `skip` are
+accepted in every container below.
+- `moov`: `mvhd`, `trak`, `udta`, `meta`, `iods`.
+- `trak`: `tkhd`, `edts`, `tref`, `mdia`, `udta`, `meta`, `tapt`. `edts`: `elst`. `tref`:
+  reference types from a closed list (such as `chap`, `tmcd`, `hint`, `cdsc`, `auxl`, `sync`),
+  each holding a whole number of track ids. `tapt`: `clef`, `prof`, `enof`.
+- `mdia`: `mdhd`, `hdlr` (exactly one, before `minf`, since a player reads the sample entries
+  by the handler it has seen), `minf`, `elng`, `udta`. `minf`: one media header (`vmhd`,
+  `smhd`, `sthd`, `hmhd`, `nmhd`, `gmhd`), `hdlr` (a data handler: `url `, `urn ` or `alis`),
+  `dinf`, `stbl`. `gmhd`: `gmin`, `text`, `tmcd` (holding `tcmi`).
+- `stbl`: `stsd`, `stts`, `ctts`, `stsc`, `stsz` or `stz2`, `stco` or `co64`, `stss`, `stps`,
+  `sdtp`, `sgpd` (version 1 or 2), `sbgp`, `cslg`, `subs`. `stsd` is version 0 and holds one
+  kind of entry. An entry's kind follows the track's handler (`vide` visual, `soun` sound),
+  otherwise its code from closed lists of visual, sound, timecode and text codes; an entry of
+  no known kind refuses the file, since a player may read it as video and read its fixed
+  fields past a short entry. A visual entry whose palette a player would read from the file is
+  refused. Each sample entry is its fixed fields (visual 78 bytes, sound 28, 44 or 64 by
+  version, `tmcd` 26, `tx3g` and `text` 38) followed by whole boxes of these types: `avcC`,
+  `hvcC`, `av1C`, `vpcC`, `esds` (its descriptors inside it, as players read them), `dOps`,
+  `dfLa`, `alac`, `dac3`, `dec3`, `pcmC`, `colr` (`nclx`, `nclc` or `prof`), `pasp`, `clap`,
+  `btrt`, `fiel`, `gama`, `chrm`, `chan`, `wave` (holding `frma`, `enda`, `mp4a`, `esds`,
+  `alac`, `chan`, `dac3` and a terminator), `mdcv`, `clli`, `st3d`, `sv3d` (holding `svhd` and
+  `proj`), `dvcC`, `dvvC`, `glbl`, `tcmi`, `ftab`, `name`, and the 20-byte iPod `uuid`; then,
+  as Apple's writers end it, optionally four zero bytes (`tmcd`: two).
+- `udta` (in any of the places above): `meta`, `XMP_`, `chpl`, `name`, `loci`, `Xtra`, and
+  text atoms whose type begins with the byte `A9` (©), each made of (length, language, text)
+  records that fill it exactly. `meta` (in its ISO or QuickTime form): `hdlr` whose handler
+  type is `mdir`, `mdta` or `ID32`, `keys`, `ilst`, `xml `. `ilst`: items whose type is an
+  `mdta` key index, begins with the byte `A9` (©), is `----` or comes from a closed list of
+  iTunes atoms, each holding only `data`, `mean` and `name` boxes.
+- At most one box of a type in a container, except `trak`, `ilst` items and their children,
+  one `sgpd` and one `sbgp` per grouping type, `free` and `skip`. Required: `mvhd`; `tkhd`
+  and `mdia`; `mdhd`, `hdlr` and `minf`; `dinf` and `stbl`; `elst` in `edts`.
+
+The libraries list the exact layout of each box beside their code.
+A file that holds a box outside this list, such as one a newer tool writes, is remuxed by a
+tool that keeps only these before it is approved; a later version of `media/1` may list more.
 
 **Re-encoded copies.** A transcoded copy has other coded samples and does not match. A later
 version may carry soft bindings (C2PA soft-binding algorithm names with opaque values) for a
@@ -236,10 +283,10 @@ The record is the same whatever carries it, and a verifier checks it the same wa
   `BE7ACFCB-97A9-42E8-9C71-999491E3AFAC`, appended at the end of the file so that no offset
   moves. Namespace `https://pregen.org/ns/after-gen/1/`, prefix `pgag`: `pgag:Record` holds the
   envelope as canonical JSON text; `pgag:Id`, `pgag:Registry` (the prefix) and `pgag:Status`
-  (the status address) are copies for people and tools, never read as the record. An existing XMP
-  box keeps its properties and is rewritten in place: when it is the last box of the file it
-  may grow; elsewhere the new packet must fit in it, padded with spaces, or embedding is
-  refused (see "What keeps the hash"). So that every reader finds the same record, the packet
+  (the status address) are copies for people and tools, never read as the record. The names
+  `pgag:Code` and `pgag:Licence` are reserved for readable codes of the approval and of its
+  licence, which a verifier will recompute from the signed record. An existing XMP
+  box keeps its properties and is rewritten in place (see "What keeps the hash"). So that every reader finds the same record, the packet
   is read by a fixed lexical rule, not by an XML library: it holds no `<!--`, `<![CDATA[`,
   `<!DOCTYPE` or `<!ENTITY`, and no `<?` other than the packet's opening `<?xpacket begin=`
   and closing `<?xpacket end=`; the namespace `https://pregen.org/ns/after-gen/1/` appears
