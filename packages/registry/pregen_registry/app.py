@@ -107,8 +107,8 @@ def create_app(registry: Registry, policy_file=None) -> FastAPI:
         return registry.grant(grant_id)
 
     @app.get("/v2/codes/{code}")
-    def lookup(code: str):
-        return registry.lookup(code)
+    def lookup(code: str, media: str | None = None):
+        return registry.lookup(code, media)
 
     @app.get("/v2/codes/{code}/terms")
     def status(code: str):

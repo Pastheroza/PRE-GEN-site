@@ -530,8 +530,9 @@ def test_a_licensee_with_a_grant_on_a_private_subject_sees_its_real_refusals():
 def test_grant_add_needs_a_licensee_or_any_provider(tmp_path, capsys):
     from pregen_registry.cli import main as cli
     cli(["init", "--dir", str(tmp_path), "--prefix", "ABCD", "--name", "R", "--api", "https://r.example"])
-    code = mint_code("ABCD", 1)
+    capsys.readouterr()
     cli(["subject", "add", "--dir", str(tmp_path), "--name", "Maya"])
+    code = capsys.readouterr().out.strip()
     with pytest.raises(SystemExit, match="any-provider"):
         cli(["grant", "add", "--dir", str(tmp_path), "--subject", code])
     capsys.readouterr()

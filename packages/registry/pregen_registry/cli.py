@@ -4,7 +4,7 @@
                        --policy https://registry.example/policy --complaints mailto:… [--sandbox] [--open-providers]
   pregen-registry serve --dir DATA [--host 0.0.0.0 --port 8000]
   pregen-registry subject add --dir DATA --name "Maya Cole" [--level verified]
-  pregen-registry grant add --dir DATA --subject PG-… (--licensee ID | --any-provider) [--purposes research,commercial] [--days 365] [--max-uses N]
+  pregen-registry grant add --dir DATA --subject TOG-… (--licensee ID | --any-provider) [--purposes research,commercial] [--days 365] [--max-uses N]
   pregen-registry grant revoke --dir DATA --id GRANT_ID    (the grant ends now)
   pregen-registry provider add --dir DATA [--id frame-ai]     (prints the credential once)
   pregen-registry provider remove --dir DATA --id frame-ai    (its token stops working)
@@ -15,11 +15,11 @@
   pregen-registry key next --dir DATA      (makes the next operator key and lists it in /keys as `next`)
   pregen-registry key rotate --dir DATA    (once the directory lists it: the next key signs, the old one is retired)
   pregen-registry subject list --dir DATA      (every code, with its check character)
-  pregen-registry subject anchor --dir DATA --code PG-… --anchor wikidata:Q… [--proof-url https://…]
-  pregen-registry subject opt-out --dir DATA --code PG-…  (the person opted out or withdrew: refused from the next answer)
-  pregen-registry subject level --dir DATA --code PG-… --level verified   (after you checked identity and authority)
-  pregen-registry subject publish --dir DATA --code PG-… [--off]   (name and level public at /v2/codes, by the person's choice)
-  pregen-registry check --api https://registry.example [--directory URL --steward HEX] [--provider-id ID --token T --subject PG-… [--purpose P] [--licensee ID]]
+  pregen-registry subject anchor --dir DATA --code TOG-… --anchor wikidata:Q… [--proof-url https://…]
+  pregen-registry subject opt-out --dir DATA --code TOG-…  (the person opted out or withdrew: refused from the next answer)
+  pregen-registry subject level --dir DATA --code TOG-… --level verified   (after you checked identity and authority)
+  pregen-registry subject publish --dir DATA --code TOG-… [--off]   (name and level public at /v2/codes, by the person's choice)
+  pregen-registry check --api https://registry.example [--directory URL --steward HEX] [--provider-id ID --token T --subject TOG-… [--purpose P] [--licensee ID]]
 """
 from __future__ import annotations
 
@@ -29,6 +29,8 @@ import re
 import os
 import sys
 from pathlib import Path
+
+from pregen import code_key
 
 from .protocol import Key
 from .registry import Config, Registry
@@ -82,7 +84,7 @@ def main(argv=None):
         p = sub.add_parser(name)
         p.add_argument("--dir", required=True)
         if name == "init":
-            p.add_argument("--prefix", required=True, help="four letters from the PG alphabet")
+            p.add_argument("--prefix", required=True, help="4 to 8 letters A-Z (TOG-CODE.md §9); a sandbox: four letters of the PG alphabet")
             p.add_argument("--name", required=True)
             p.add_argument("--api", required=True, help="the public URL of this registry")
             p.add_argument("--policy", default="")
@@ -98,7 +100,7 @@ def main(argv=None):
         elif name == "subject":
             p.add_argument("action", choices=["add", "anchor", "list", "opt-out", "level", "publish"])
             p.add_argument("--name", help="add: the subject's name")
-            p.add_argument("--code", help="anchor, opt-out: the subject's PG code")
+            p.add_argument("--code", help="anchor, opt-out, level, publish: the subject's ToG code (a PG- spelling is read as its TOG one)")
             p.add_argument("--anchor", help="anchor: wikidata:Q…, isni:…, or a domain (identity.md)")
             p.add_argument("--proof-url", help="anchor: where the person posted \"PRE-GEN: <code>\" on an official channel")
             p.add_argument("--level", default="self", choices=["self", "asserted", "consented", "verified"])
@@ -107,7 +109,7 @@ def main(argv=None):
             p.add_argument("--off", action="store_true", help="publish: stop showing them")
         elif name == "grant":
             p.add_argument("action", choices=["add", "revoke"])
-            p.add_argument("--subject", help="add: the subject's PG code")
+            p.add_argument("--subject", help="add: the subject's ToG code")
             p.add_argument("--id", help="revoke: the grant id")
             p.add_argument("--licensee", default="")
             p.add_argument("--purposes", default="research")
@@ -131,7 +133,7 @@ def main(argv=None):
     p.add_argument("--steward", help="the steward public key (hex) of that directory; default: the PRE-GEN steward")
     p.add_argument("--provider-id")
     p.add_argument("--token")
-    p.add_argument("--subject", help="a PG code this registry holds, to ask about")
+    p.add_argument("--subject", help="a ToG code this registry holds, to ask about")
     p.add_argument("--purpose", default="commercial", help="the use.purpose of that request (default commercial)")
     p.add_argument("--licensee", default="", help="the licensee_id to ask for (connected to --provider-id)")
     a = ap.parse_args(argv)
@@ -179,7 +181,7 @@ def main(argv=None):
         if a.sandbox:                       # Registry() seeded the standard test subjects
             print("Sandbox test subjects (copy them; the last character is a check character):")
             for s in reg._q("SELECT code, name FROM subjects ORDER BY serial"):
-                print(f"  {s['code']}  {s['name']}")
+                print(f"  {code_key(s['code'])}  {s['name']}")
             from .registry import mint_code
             print(f"  {mint_code(a.prefix, 8)}  Test subject 8 (not registered: PG_UNKNOWN_SUBJECT)")
     elif a.cmd == "serve":
@@ -201,7 +203,7 @@ def main(argv=None):
         print(f"{a.code}: name and level " + ("hidden" if a.off else "public") + " at /v2/codes")
     elif a.cmd == "subject" and a.action == "list":
         for s in load(a.dir)._q("SELECT code, name, level FROM subjects ORDER BY serial"):
-            print(f"{s['code']}  {s['level']}  {s['name']}")
+            print(f"{code_key(s['code'])}  {s['level']}  {s['name']}")       # a row born PG- is written TOG-
     elif a.cmd == "subject" and a.action == "level":
         if not a.code:
             sys.exit("subject level needs --code and --level")
@@ -221,10 +223,10 @@ def main(argv=None):
     elif a.cmd == "subject":
         if not (a.code and a.anchor):
             sys.exit("subject anchor needs --code and --anchor")
-        reg = load(a.dir)
-        if not reg._row("SELECT code FROM subjects WHERE code = ?", (a.code,)):
-            sys.exit(f"no subject {a.code} in this registry")
-        reg.set_identity(a.code, anchor=a.anchor, proof_url=a.proof_url)
+        try:
+            load(a.dir).set_identity(a.code, anchor=a.anchor, proof_url=a.proof_url)
+        except ValueError as e:
+            sys.exit(str(e))
         print(f"{a.code} anchored to {a.anchor}; GET /v2/anchors lists it")
     elif a.cmd == "grant" and a.action == "revoke":
         try:

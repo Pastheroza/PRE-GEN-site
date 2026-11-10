@@ -108,7 +108,7 @@ def test_a_refusal_is_genuine_but_never_permits():
 
 
 def test_no_new_registry_issues_bare_codes():
-    with pytest.raises(ValueError, match="four letters"):
+    with pytest.raises(ValueError, match="4 to 8 letters"):
         Config(prefix="", name="x", api="https://x.example")
 
 

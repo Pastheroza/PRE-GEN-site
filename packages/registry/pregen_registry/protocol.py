@@ -1,21 +1,21 @@
-"""PRE-GEN messages: envelope, signatures, message ids and PG codes.
+"""PRE-GEN messages: envelope, signatures, message ids and person codes.
 
-Spec: spec/PRE-GEN-CORE.md (Messages), PG-CODE.md §3–§5 and §9.
+Spec: spec/PRE-GEN-CORE.md (Messages), TOG-CODE.md §5.
 """
 from __future__ import annotations
 
 import hashlib
 import json
-import re
+import secrets
 from importlib import resources
 
 import jsonschema
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from pregen import canonical_json as canonical, fingerprint, verify_bytes
+from pregen import CROCKFORD, canonical_json as canonical, check_char, fingerprint, parse_code, verify_bytes
 from referencing import Registry, Resource
 
 __all__ = ["ProtocolError", "Key", "canonical", "message_id", "signing_input", "seal", "check_envelope",
-           "check_body", "mint_code", "parse_code", "sha256_hex"]
+           "check_body", "mint_code", "mint_serial", "sha256_hex"]
 
 
 class ProtocolError(Exception):
@@ -102,25 +102,26 @@ def check_envelope(env, type_: str, roles: tuple[str, ...], key_for) -> dict:
     return env["body"]
 
 
-# ── PG codes (PG-CODE.md) ──────────────────────────────────────────────────
+# ── Person codes (TOG-CODE.md §5). Reading, folding and act codes are the library's (pregen.parse_code, code_key,
+# code_for); the registry only mints. ──────────────────────────────────────────────────────────────────────────────
 
-ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
-CHECK_ALPHABET = ALPHABET + "*~$=!"
-_CODE = re.compile(r"^PG-(?:([ABCDEFGHJKMNPQRSTVWXYZ]{4})-)?([0-9]{6,})([0-9A-Z*~$=!])$")
-
-
-def _check_char(body: str) -> str:
-    return CHECK_ALPHABET[sum(ALPHABET.index(c) * (i + 1) for i, c in enumerate(body)) % 37]
+RESERVED_SERIAL = 900_000_000       # TOG-CODE §11: the floor of PG-CODE §11, never issued
 
 
 def mint_code(prefix: str, serial: int) -> str:
+    """A person's code, written TOG-. A serial under 10^8 is a PG-born person respelled by its marker (the sandbox's
+    fixed test subjects, PG-CODE §5): same digits, same check. A new person has 9 digits (mint_serial). Raises
+    PregenError for a code no shape holds: a symbol check on 9 digits, or a prefix the old shapes cannot carry."""
     digits = f"{serial:06d}"
-    return f"PG-{prefix + '-' if prefix else ''}{digits}{_check_char(prefix + digits)}"
+    code = f"TOG-{prefix + '-' if prefix else ''}{digits}{check_char(prefix + digits)}"
+    parse_code(code)
+    return code
 
 
-def parse_code(code: str) -> tuple[str, int] | None:
-    """(prefix, serial) of a subject code, or None if it is not one (or its check character is wrong)."""
-    m = _CODE.match(code) if isinstance(code, str) else None
-    if not m or _check_char((m.group(1) or "") + m.group(2)) != m.group(3):
-        return None
-    return m.group(1) or "", int(m.group(2))
+def mint_serial(prefix: str) -> int:
+    """A new person's serial: 9 digits at random below the reserved floor, so a gap means nothing and there is no
+    registration order to read; one whose check would be a symbol is skipped (TOG-CODE §5). The caller skips taken."""
+    while True:
+        serial = 100_000_000 + secrets.randbelow(RESERVED_SERIAL - 100_000_000)
+        if check_char(prefix + str(serial)) in CROCKFORD:
+            return serial

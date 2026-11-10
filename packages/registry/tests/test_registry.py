@@ -5,11 +5,11 @@ import threading
 
 import pytest
 from fastapi.testclient import TestClient
-from pregen import PregenError, canonical_json, fingerprint, verify_bytes
+from pregen import PregenError, canonical_json, code_key, fingerprint, parse_code, verify_bytes
 
 from pregen_registry.app import create_app
 from pregen_registry.cli import main as cli
-from pregen_registry.protocol import Key, check_body, message_id, mint_code, parse_code, seal, signing_input
+from pregen_registry.protocol import Key, check_body, message_id, mint_code, mint_serial, seal, signing_input
 from pregen_registry.registry import PARTY_MIN_INTERVAL, Config, Registry
 
 
@@ -83,12 +83,21 @@ def code(n, prefix="TEST"):
     return mint_code(prefix, n)
 
 
-# ── PG codes ────────────────────────────────────────────────────────────
+# ── ToG codes ───────────────────────────────────────────────────────────
 
-def test_pg_codes_follow_pg_code_md():
-    assert mint_code("", 42) == "PG-000042*" and mint_code("", 12345678) == "PG-12345678K"     # PG-CODE.md §5
-    assert parse_code("PG-000042*") == ("", 42)
-    assert parse_code(code(1)) == ("TEST", 1) and parse_code(code(1)[:-1] + "0") is None
+def test_codes_are_written_tog_and_new_persons_are_random_nine_digits():
+    # PG-born codes are respelled by their marker only: same digits, same check (TOG-CODE.md §5)
+    assert mint_code("", 42) == "TOG-000042*" and mint_code("", 12345678) == "TOG-12345678K"
+    assert code(1) == "TOG-TEST-000001N" == code_key("PG-TEST-000001N")
+    serials = {mint_serial("PRAMPT") for _ in range(300)}
+    assert len(serials) == 300 and all(100_000_000 <= s < 900_000_000 for s in serials)   # under the reserved floor
+    for s in serials:                                     # a letter or digit check, never a symbol; the library reads it
+        p = parse_code(mint_code("PRAMPT", s))
+        assert (p["shape"], p["issuer"], p["serial"]) == ("person", "PRAMPT", str(s))
+    with pytest.raises(ValueError, match="4 to 8 letters"):
+        Config(prefix="LICA", name="x", api="https://x.example")      # LIC with one letter added
+    with pytest.raises(ValueError, match="PG alphabet"):              # a sandbox keeps its fixed PG-born test codes
+        Config(prefix="PRAMPT", name="x", api="https://x.example", sandbox=True)
 
 
 # ── publication ─────────────────────────────────────────────────────────
@@ -138,7 +147,8 @@ def test_another_registrys_code_and_lookup():
     assert p.answer(p.body(code(9, "NWRD")))["body"]["reason"] == "PG_OTHER_REGISTRY"
     assert c.get(f"/v2/codes/{code(9, 'NWRD')}").json()["status"] == "other_registry"
     assert c.get(f"/v2/codes/{code(8)}").json()["status"] == "unknown"
-    assert c.get("/v2/codes/PG-000042X").status_code == 422
+    r = c.get("/v2/codes/PG-000042X")
+    assert (r.status_code, r.json()["error"]) == (400, "mistyped")
 
 
 def test_authentication_profile_and_use():
@@ -262,7 +272,8 @@ def test_a_name_is_public_only_when_published(tmp_path, capsys):
     private = capsys.readouterr().out.strip()
     from pregen_registry.cli import load
     c = TestClient(create_app(load(d)))
-    assert c.get(f"/v2/codes/{private}").json() == {"code": private, "registry": "TEST", "status": "unknown"}
+    assert c.get(f"/v2/codes/{private}").json() == {"code": private, "kind": "subject", "registry": "TEST",
+                                                     "status": "unknown"}
     cli(["subject", "publish", "--dir", d, "--code", private])
     assert TestClient(create_app(load(d))).get(f"/v2/codes/{private}").json()["name"] == "Private Person"
     reg, _, _ = make(sandbox=False)                            # the Python API too, not only the CLI
@@ -284,7 +295,7 @@ def test_a_level_can_be_raised_and_provider_ids_hold_no_colon(tmp_path):
 
 def test_a_person_added_to_a_sandbox_never_takes_a_standard_test_code():
     reg, c, _ = make()
-    assert reg.add_subject("Extra test person") == code(13)
+    assert re.fullmatch(r"TOG-TEST-[1-8][0-9]{8}[0-9A-HJKMNP-TV-Z]", reg.add_subject("Extra test person"))
     p = Provider(reg, c)
     assert p.answer(p.body(code(8), job="j8"))["body"]["reason"] == "PG_UNKNOWN_SUBJECT"
 
@@ -523,7 +534,7 @@ def test_message_vectors_match_this_implementation():
         assert message_id(env["type"], env["body"]) == v["message_id"]
         for signer, sig in zip(env["body"].get("signers", []), env["signatures"]):
             assert verify_bytes(keys[signer["key_id"]], sig, bytes.fromhex(v["signing_input_hex"])), v["name"]
-    assert parse_code(vectors["vectors"][0]["envelope"]["body"]["subject_ref"]) == ("TEST", 1)
+    assert code_key(vectors["vectors"][0]["envelope"]["body"]["subject_ref"]) == code(1)   # signed PG-: legacy input
 
 
 def test_the_policy_page_is_served_from_policy_md(tmp_path):

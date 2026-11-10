@@ -24,11 +24,12 @@ import urllib.request
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
-from pregen import (CATEGORIES, INTIMATE, PROHIBITED_FOR_MINORS, PregenError, check_provider_url, check_public_key,
-                    fingerprint, forbids, issuer_of, terms_opens)
+from pregen import (CATEGORIES, DIRECTORY_URL, INTIMATE, PROHIBITED_FOR_MINORS, Mistyped, PregenError,
+                    check_provider_url, check_public_key, code_for, code_key, fingerprint, forbids, issuer_of, parse_code,
+                    terms_opens)
 from urllib.parse import urlsplit
 
-from .protocol import Key, ProtocolError, canonical, check_body, check_envelope, message_id, mint_code, parse_code, seal
+from .protocol import Key, ProtocolError, canonical, check_body, check_envelope, message_id, mint_code, mint_serial, seal
 
 PROFILE = "likeness/1"
 EXTENSIONS = ["reports", "provider-keys", "limits", "jobs", "grants", "licensee", "observe", "lookup", "identity",
@@ -66,7 +67,7 @@ CREATE TABLE IF NOT EXISTS subjects (
 CREATE TABLE IF NOT EXISTS grants (
   id TEXT PRIMARY KEY, subject_code TEXT NOT NULL, licensee_id TEXT NOT NULL, purposes TEXT NOT NULL,
   not_before INTEGER NOT NULL, expires_at INTEGER NOT NULL, max_uses INTEGER, uses_offset INTEGER NOT NULL DEFAULT 0,
-  envelope TEXT NOT NULL, resale INTEGER NOT NULL DEFAULT 0, categories TEXT NOT NULL DEFAULT '[]');
+  envelope TEXT NOT NULL, resale INTEGER NOT NULL DEFAULT 0, categories TEXT NOT NULL DEFAULT '[]', code TEXT);
 CREATE TABLE IF NOT EXISTS providers (provider_id TEXT PRIMARY KEY, token_hash TEXT NOT NULL, created_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS connections (provider_id TEXT NOT NULL, licensee_id TEXT NOT NULL, PRIMARY KEY (provider_id, licensee_id));
 CREATE TABLE IF NOT EXISTS accepted (provider_id TEXT PRIMARY KEY);
@@ -81,7 +82,7 @@ CREATE TABLE IF NOT EXISTS terms (id TEXT PRIMARY KEY, subject_code TEXT NOT NUL
   envelope TEXT NOT NULL, act TEXT NOT NULL, UNIQUE (subject_code, version));
 CREATE TABLE IF NOT EXISTS answers (id TEXT PRIMARY KEY, ask_id TEXT NOT NULL, envelope TEXT NOT NULL,
   status TEXT NOT NULL, issued_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, grant_id TEXT, use TEXT,
-  report_id TEXT);
+  report_id TEXT, code TEXT);
 CREATE TABLE IF NOT EXISTS bind_consents (nonce_hash TEXT PRIMARY KEY, client_id TEXT NOT NULL,
   redirect_uri TEXT NOT NULL, challenge TEXT NOT NULL, expires_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS bind_codes (code_hash TEXT PRIMARY KEY, provider_id TEXT NOT NULL, redirect_uri TEXT NOT NULL,
@@ -98,6 +99,16 @@ def _hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+def _reply(answer: dict, code: str | None) -> dict:
+    """POST /v2/requests: the signed answer; with an allow, its ToG code beside it, a readable copy (TOG-CODE §14)."""
+    return {"answer": answer, "attachments": [], **({"code": code} if code else {})}
+
+
+def _tog(subject) -> str:
+    """A subject row's code in its one written spelling (TOG-CODE §7.3): a row born PG- keeps its stored spelling."""
+    return code_key(subject["code"])
+
+
 @dataclass
 class Config:
     prefix: str
@@ -111,8 +122,14 @@ class Config:
     terms: bool = True              # extension terms: subjects may publish terms, and requests may accept them; open only
 
     def __post_init__(self):
-        if not re.fullmatch(r"[ABCDEFGHJKMNPQRSTVWXYZ]{4}", self.prefix):
-            raise ValueError("a registry's prefix is four letters of the PG alphabet (new codes are never bare, PG-CODE.md §9)")
+        try:                            # TOG-CODE §9: 4 to 8 letters A-Z, never LIC at either end (the library's grammar)
+            parse_code(f"TOG-{self.prefix}-1000000000", check=False)
+        except PregenError:
+            raise ValueError("a registry's prefix is 4 to 8 letters A-Z that never begin or end with LIC, and no 4-letter "
+                             "prefix is LIC with one letter added (TOG-CODE.md §9; new codes are never bare)") from None
+        if self.sandbox and not re.fullmatch(r"[ABCDEFGHJKMNPQRSTVWXYZ]{4}", self.prefix):
+            raise ValueError("a sandbox's prefix is four letters of the PG alphabet: its fixed test subjects are PG-born "
+                             "codes, respelled TOG- (extensions/sandbox.md)")
         if self.providers not in ("open", "registered"):
             raise ValueError("providers is open or registered")
         if self.sandbox:
@@ -177,6 +194,10 @@ class Registry:
             self.db.executescript(SCHEMA)
         if "signatures" not in {r["name"] for r in self.db.execute("PRAGMA table_info(asks)")}:   # a 0.3 database
             self.db.execute("ALTER TABLE asks ADD COLUMN signatures TEXT NOT NULL DEFAULT '[]'")
+        for table in ("grants", "answers"):     # 0.5: the act's ToG code, computed from its signed record (an index)
+            if "code" not in {r["name"] for r in self.db.execute(f"PRAGMA table_info({table})")}:
+                self.db.execute(f"ALTER TABLE {table} ADD COLUMN code TEXT")
+            self.db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS {table}_code ON {table} (code)")   # issued once
         self.lock = threading.RLock()  # one sqlite connection: every use of it holds this lock
         if not config.sandbox and (self._meta("sandbox") or self.db.execute("SELECT 1 FROM bindings").fetchone()
                                    or self.db.execute("SELECT 1 FROM subjects WHERE serial = 1 AND name = ?",
@@ -188,6 +209,7 @@ class Registry:
         if config.sandbox:
             self._check_sandbox_serials()   # before anything is written: a refused start changes nothing
         self._record_key()
+        self._backfill_codes()
         if config.sandbox:
             self.seed_sandbox()
 
@@ -244,19 +266,75 @@ class Registry:
             self.db.execute("INSERT OR REPLACE INTO meta (k, v) VALUES (?, ?)", (k, v))
         return v
 
+    # ── ToG codes (TOG-CODE.md): one spelling, TOG-; a PG- string is legacy input only ─
+    def _subject(self, db, ref: str):
+        """The row of the person `ref` names here, or None (another registry's code, or none of ours). Found by number
+        (lookup.md, Spellings), so a PG- string is legacy input for the same person and a row keeps the spelling it was
+        born with; a record or list writes its TOG spelling (_tog). An over-padded number is PG_MALFORMED with the TOG
+        spelling as a hint, never an answer; a string that is not a person's code is PG_MALFORMED."""
+        try:
+            p, key = parse_code(ref), code_key(ref)
+        except Mistyped:
+            raise ProtocolError("PG_MALFORMED", "mistyped code: its check character does not match") from None
+        except PregenError:
+            raise ProtocolError("PG_MALFORMED", "not a person's ToG code (TOG-CODE.md §7)") from None
+        if p["kind"] != "subject":
+            raise ProtocolError("PG_MALFORMED", "not a person's code: a subject_ref names a person (TOG-CODE.md §2)")
+        if p["issuer"] != self.config.prefix:
+            return None
+        s = db.execute("SELECT * FROM subjects WHERE serial = ?", (int(p["serial"]),)).fetchone()
+        if s is not None and _tog(s) != key:
+            raise ProtocolError("PG_MALFORMED", f"over-padded number: the code is {_tog(s)}", hint=_tog(s))
+        return s
+
+    def _own(self, db, code: str):
+        """An operator action's subject: its row, or ValueError."""
+        try:
+            s = self._subject(db, code)
+        except ProtocolError as e:
+            raise ValueError(f"{code}: {e.detail}") from None
+        if s is None:
+            raise ValueError(f"no subject {code} in this registry")
+        return s
+
+    def _code(self, env: dict, subject_ref: str, grant_id: str | None = None) -> str | None:
+        """The ToG code of an act this registry signed, computed from the record (TOG-CODE §6.1, the flat model: the
+        registry signs only for its own people), or None when it gives none (a symbol check, a ZZZZ tail)."""
+        try:
+            return code_for({"type": env["type"], "id": message_id(env["type"], env["body"]), "signer": self.config.prefix,
+                             "subject_ref": subject_ref,
+                             "grant": {"id": grant_id, "signer": self.config.prefix} if grant_id else None})
+        except PregenError:
+            return None
+
+    def _backfill_codes(self):
+        """Licences and allows signed before 0.5 get their ToG code by computation, exactly like new ones (TOG-CODE
+        §6.2, hard switch): an index beside the record, never a rewritten record. One that gives no code waits for
+        its home's countersignature (the home model, not published yet) and stays without one."""
+        with self.tx() as db:
+            for r in db.execute("SELECT id, envelope FROM grants WHERE code IS NULL").fetchall():
+                env = json.loads(r["envelope"])
+                db.execute("UPDATE grants SET code = ? WHERE id = ?", (self._code(env, env["body"]["subject_ref"]), r["id"]))
+            for r in db.execute("SELECT a.id, a.envelope, a.grant_id, json_extract(k.request, '$.subject_ref') AS ref "
+                                "FROM answers a JOIN asks k ON k.id = a.ask_id WHERE a.status = 'allow' "
+                                "AND a.code IS NULL").fetchall():
+                db.execute("UPDATE answers SET code = ? WHERE id = ?",
+                           (self._code(json.loads(r["envelope"]), r["ref"], r["grant_id"]), r["id"]))
+
     # ── operator actions (CLI) ───────────────────────────────────────────
     def add_subject(self, name: str, *, serial: int | None = None, level: str = "self", holder_public: str | None = None,
                     **flags) -> str:
-        """`holder_public`: the person holds their own key (custody self); the registry never sees it."""
+        """A new person is born TOG-<prefix>-<9 random digits><check> (TOG-CODE §5); `serial` only for a sandbox's
+        fixed test subjects. `holder_public`: the person holds their own key (custody self); the registry never sees it."""
         if holder_public:
             check_public_key(holder_public)          # a small-order key would let anyone sign as the person (C1)
         # A real person's name is public at /v2/codes only by their choice; a sandbox holds no real people.
         flags.setdefault("published", int(self.config.sandbox))
         with self.tx() as db:
             if serial is None:
-                serial = (db.execute("SELECT COALESCE(MAX(serial), 0) FROM subjects").fetchone()[0] or 0) + 1
-                if self.config.sandbox:                     # 1-12 are the standard test codes; 8 stays unregistered
-                    serial = max(serial, 13)
+                serial = mint_serial(self.config.prefix)
+                while db.execute("SELECT 1 FROM subjects WHERE serial = ?", (serial,)).fetchone():
+                    serial = mint_serial(self.config.prefix)
             code = mint_code(self.config.prefix, serial)
             key = None if holder_public else Key()
             flags["immutable_denials"] = json.dumps(flags.get("immutable_denials", []))
@@ -274,9 +352,7 @@ class Registry:
         """`resale`: licensee_id is a provider that may sell generations to its own users (catalog.md).
         `categories`: content categories granted explicitly; intimate ones need `holder_key`, the person's own key."""
         with self.tx() as db:
-            s = db.execute("SELECT * FROM subjects WHERE code = ?", (subject_code,)).fetchone()
-            if not s:
-                raise ValueError("unknown subject")
+            s = self._own(db, subject_code)
             signer = Key(s["key_private"]) if s["key_private"] else holder_key
             if signer is None or signer.public_hex != s["key_public"]:
                 raise ValueError("a grant is signed by the subject's own key: this subject holds it (self custody)")
@@ -286,14 +362,20 @@ class Registry:
                 use["categories"] = sorted(categories)
             if resale:
                 use["resale"] = True
-            env = seal("pg.grant.v1", {"subject_ref": subject_code, "licensee_id": licensee_id, "profile": PROFILE,
-                                       "use": use, "not_before": now, "expires_at": now + days * 86400,
-                                       "max_uses": max_uses, **({"ext": ext} if ext else {})},
-                       [("rights_holder", signer), ("registry", self.key)])
+            for second in range(64):  # grants.md: a code ending in a symbol, starting ZZZZ or issued already: sign
+                env = seal("pg.grant.v1", {     # again with a changed body, here a licence one second shorter
+                    "subject_ref": _tog(s), "licensee_id": licensee_id, "profile": PROFILE, "use": use, "not_before": now,
+                    "expires_at": now + days * 86400 - second, "max_uses": max_uses, **({"ext": ext} if ext else {})},
+                    [("rights_holder", signer), ("registry", self.key)])
+                code = self._code(env, _tog(s))
+                if code and not db.execute("SELECT 1 FROM grants WHERE code = ?", (code,)).fetchone():
+                    break
+            else:
+                raise ValueError("no ToG code after 64 signings")
             gid = message_id(env["type"], env["body"])
-            db.execute("INSERT INTO grants VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                       (gid, subject_code, licensee_id, json.dumps(sorted(purposes)), now, now + days * 86400,
-                        max_uses, uses_offset, json.dumps(env), int(resale), json.dumps(sorted(categories))))
+            db.execute("INSERT INTO grants VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                       (gid, s["code"], licensee_id, json.dumps(sorted(purposes)), now, env["body"]["expires_at"],
+                        max_uses, uses_offset, json.dumps(env), int(resale), json.dumps(sorted(categories)), code))
             return gid
 
     def set_identity(self, code: str, *, anchor: str | None = None, proof_url: str | None = None,
@@ -302,7 +384,7 @@ class Registry:
         the person's consent to be listed."""
         with self.tx() as db:
             db.execute("UPDATE subjects SET anchor = ?, proof_url = ?, offer = ? WHERE code = ?",
-                       (anchor, proof_url, json.dumps(offer) if offer is not None else None, code))
+                       (anchor, proof_url, json.dumps(offer) if offer is not None else None, self._own(db, code)["code"]))
 
     def add_provider(self, provider_id: str | None = None) -> tuple[str, str]:
         provider_id = provider_id or "sbx-" + secrets.token_hex(4)
@@ -318,22 +400,19 @@ class Registry:
     def set_published(self, code: str, published: bool):
         """lookup.md: a code's name and level are public only if the rights holder chose to publish them."""
         with self.tx() as db:
-            if not db.execute("UPDATE subjects SET published = ? WHERE code = ?", (int(published), code)).rowcount:
-                raise ValueError(f"no subject {code} in this registry")
+            db.execute("UPDATE subjects SET published = ? WHERE code = ?", (int(published), self._own(db, code)["code"]))
 
     def set_level(self, code: str, level: str):
         """How far the registry has established who holds the person's rights; answers carry it from now on."""
         if level not in ("self", "asserted", "consented", "verified"):
             raise ValueError(f"unknown level {level}")
         with self.tx() as db:
-            if not db.execute("UPDATE subjects SET level = ? WHERE code = ?", (level, code)).rowcount:
-                raise ValueError(f"no subject {code} in this registry")
+            db.execute("UPDATE subjects SET level = ? WHERE code = ?", (level, self._own(db, code)["code"]))
 
     def opt_out(self, code: str):
         """The person opted out or withdrew: every answer from now on is PG_SUBJECT_OPTED_OUT (core rule 3)."""
         with self.tx() as db:
-            if not db.execute("UPDATE subjects SET opted_out = 1 WHERE code = ?", (code,)).rowcount:
-                raise ValueError(f"no subject {code} in this registry")
+            db.execute("UPDATE subjects SET opted_out = 1 WHERE code = ?", (self._own(db, code)["code"],))
 
     def publish_terms(self, code: str, *, purposes, excluded_categories=(), template: dict, legal: dict,
                       factor: str | None = None) -> str:
@@ -345,11 +424,11 @@ class Registry:
         if not rules["purposes"] or not set(rules["purposes"]) <= PURPOSES or not set(rules["excluded_categories"]) <= CATEGORIES:
             raise ValueError(f"purposes from {sorted(PURPOSES)}, at least one; exclusions from {sorted(CATEGORIES)}")
         with self.tx() as db:
-            s = db.execute("SELECT * FROM subjects WHERE code = ?", (code,)).fetchone()
-            if not self.config.terms or s is None or not s["published"] or s["level"] not in TERMS_LEVELS:
+            s = self._own(db, code)
+            if not self.config.terms or not s["published"] or s["level"] not in TERMS_LEVELS:
                 raise ValueError("terms are published only for a published subject that is consented or verified (T-1)")
             last = db.execute("SELECT id, envelope FROM terms WHERE subject_code = ? ORDER BY version DESC LIMIT 1",
-                              (code,)).fetchone()
+                              (s["code"],)).fetchone()
             old = json.loads(last["envelope"])["body"] if last else None
             new = {"rules": rules, "minor": bool(s["minor"]), "template": template, "legal": legal}
             if old is not None and all(old[k] == v for k, v in new.items()):
@@ -360,8 +439,8 @@ class Registry:
             if opens and factor not in ("authenticator", "email"):
                 raise ValueError("this version opens: it needs the subject's own instruction with a second factor (T-3)")
             now = self.clock()
-            act = {"subject": code, **new, "factor": factor if opens else None, "at": now}   # the private record of the act
-            body = {"subject_ref": code, "profile": PROFILE, "version": old["version"] + 1 if old else 1,
+            act = {"subject": _tog(s), **new, "factor": factor if opens else None, "at": now}   # the private record
+            body = {"subject_ref": _tog(s), "profile": PROFILE, "version": old["version"] + 1 if old else 1,
                     **({"amends": last["id"]} if old else {}), **new, "assent": "registry",
                     "instruction": hashlib.sha256(canonical(act)).hexdigest(), **({"factor": factor} if opens else {}),
                     "issued_at": now}
@@ -369,7 +448,7 @@ class Registry:
             check_body("terms", env["body"])
             tid = message_id(env["type"], env["body"])
             db.execute("INSERT INTO terms VALUES (?, ?, ?, ?, ?)",
-                       (tid, code, body["version"], json.dumps(env), canonical(act).decode()))
+                       (tid, s["code"], body["version"], json.dumps(env), canonical(act).decode()))
             return tid
 
     def _current_terms(self, db, s):
@@ -408,7 +487,7 @@ class Registry:
         if taken:
             raise ValueError(f"this sandbox's {', '.join(taken)} must be the standard test subjects 1-7 and 9-12 "
                              "(extensions/sandbox.md). Make a fresh sandbox with `pregen-registry init --sandbox` and "
-                             "add your own test people there again; they get serials from 13.")
+                             "add your own test people there again; they get new random codes.")
         return have
 
     def seed_sandbox(self):
@@ -469,13 +548,15 @@ class Registry:
         if not self.config.sandbox:
             raise ProtocolError("PG_NOT_FOUND", "this registry is not a sandbox", status=404)
         body = self._checked_request(provider_id, authorization, env)
-        offer = next((o for o in self.catalog()["offers"] if o["subject_ref"] == body["subject_ref"]), None)
+        key = code_key(body["subject_ref"])          # either spelling buys the one person
+        offer = next((o for o in self.catalog()["offers"] if o["subject_ref"] == key), None)
         if offer is None:
             raise ProtocolError("PG_NOT_FOUND", "this subject is not in the catalog", status=404)
         with self.lock:                # the purchase number keeps two purchases in one second two grants
+            s = self._subject(self.db, key)
             n = self._row("SELECT COUNT(*) FROM grants WHERE subject_code = ? AND licensee_id = ?",
-                          (body["subject_ref"], provider_id))[0] + 1
-            return self.grant(self.add_grant(body["subject_ref"], licensee_id=provider_id, purposes=offer["purposes"],
+                          (s["code"], provider_id))[0] + 1
+            return self.grant(self.add_grant(key, licensee_id=provider_id, purposes=offer["purposes"],
                                              max_uses=1, resale=bool(offer.get("resale")),
                                              ext={"sandbox": True, "purchase": n}))
 
@@ -503,16 +584,16 @@ class Registry:
                     ack = db.execute("SELECT ack FROM reports WHERE id = ?", (ask["null_report"],)).fetchone()
                     raise ProtocolError("PG_ASK_CLOSED", "this subject of the job was reported not generated with no "
                                         "answer", status=409, ack=json.loads(ack["ack"]))
-                open_ = db.execute("SELECT envelope FROM answers WHERE ask_id = ? AND expires_at > ? AND (use IS NULL "
-                                   "OR use != 'released') ORDER BY issued_at DESC", (ask["id"], now)).fetchone()
+                open_ = db.execute("SELECT envelope, code FROM answers WHERE ask_id = ? AND expires_at > ? AND (use IS "
+                                   "NULL OR use != 'released') ORDER BY issued_at DESC", (ask["id"], now)).fetchone()
                 if open_:
-                    return {"answer": json.loads(open_["envelope"]), "attachments": []}
+                    return _reply(json.loads(open_["envelope"]), open_["code"])
             decision = self._decide(db, body, now)
             # T-7: signed, but binds no job, no ask; a masked answer (P-5a) is kept like any other, so nothing tells apart
             if decision[1] == "PG_TERMS_NOT_ACCEPTED" and not self._masked(db, body, decision[1]):
-                return {"answer": self._answer(db, None, body, decision, now), "attachments": []}
+                return _reply(*self._answer(db, None, body, decision, now))
             ask = ask or self._bind(db, body, env["signatures"])
-            return {"answer": self._answer(db, ask["id"], body, decision, now), "attachments": []}
+            return _reply(*self._answer(db, ask["id"], body, decision, now))
 
     def _checked_request(self, provider_id: str, authorization: str | None, env) -> dict:
         """A request's shape and its provider's authentication: signed by an open provider, or a registered one's token."""
@@ -522,10 +603,8 @@ class Registry:
         else:
             body = check_envelope(env, "pg.request.v1", (), lambda *_: None)
         check_body("request", body)
-        try:                                     # one code, one string: never a signed answer to another spelling (H5)
-            issuer_of(body["subject_ref"])
-        except PregenError:
-            raise ProtocolError("PG_MALFORMED", "subject_ref is not a canonical PG code (PG-CODE.md §7)") from None
+        with self.lock:                          # never a signed answer to a string that is not a person's code, nor
+            self._subject(self.db, body["subject_ref"])  # to an over-padded number (H5, TOG-CODE §7.2)
         if "terms" in body and not self.config.terms:   # terms T-5: sent only to a registry that declares it
             raise ProtocolError("PG_MALFORMED", "this registry does not declare the extension terms")
         if not self.is_open(provider_id):
@@ -574,13 +653,15 @@ class Registry:
             db.execute("INSERT INTO jobs VALUES (?, ?, ?)", (body["provider_id"], body["job_id"], body["job_hash"]))
         elif row["job_hash"] != body["job_hash"]:
             raise ProtocolError("PG_JOB_CONFLICT", "this job_id is bound to another job", status=409)
-        rid = message_id("pg.request.v1", body)
-        ask = db.execute("SELECT * FROM asks WHERE provider_id = ? AND job_id = ? AND subject_ref = ?",
-                         (body["provider_id"], body["job_id"], body["subject_ref"])).fetchone()
+        try:                     # one person, one ask, in either spelling (a 0.4 row keeps the spelling it was asked in)
+            rid, key = message_id("pg.request.v1", body), code_key(body["subject_ref"])
+        except PregenError:      # a report's request with no answer reaches here unchecked
+            raise ProtocolError("PG_MALFORMED", "subject_ref is not a person's ToG code (TOG-CODE.md §7)") from None
+        ask = db.execute("SELECT * FROM asks WHERE provider_id = ? AND job_id = ? AND subject_ref IN (?, ?)",
+                         (body["provider_id"], body["job_id"], key, "PG" + key[3:])).fetchone()
         if ask is None:
             db.execute("INSERT INTO asks (id, provider_id, job_id, subject_ref, request, signatures) VALUES (?, ?, ?, ?, ?, ?)",
-                       (rid, body["provider_id"], body["job_id"], body["subject_ref"], json.dumps(body),
-                        json.dumps(list(signatures))))
+                       (rid, body["provider_id"], body["job_id"], key, json.dumps(body), json.dumps(list(signatures))))
             ask = db.execute("SELECT * FROM asks WHERE id = ?", (rid,)).fetchone()
         elif ask["id"] != rid:
             if ask["closing_ack"] or not self._stale(db, json.loads(ask["request"])) or db.execute(
@@ -597,7 +678,7 @@ class Registry:
         """T-7: the request cites terms that are not the subject's current terms."""
         if "terms" not in req:
             return False
-        s = db.execute("SELECT * FROM subjects WHERE code = ?", (req["subject_ref"],)).fetchone()
+        s = self._subject(db, req["subject_ref"])
         terms = self._current_terms(db, s) if s is not None else None
         return terms is None or terms[0] != req["terms"]
 
@@ -605,10 +686,9 @@ class Registry:
         """(status, reason, grant row, level) under likeness/1, in the order of extensions/terms.md (The gate): the
         subject step, the floor and the person's refusals, the registry's state, the person's exclusions where no grant
         covers the use, who asks, then grants."""
-        parsed = parse_code(req["subject_ref"])
-        if parsed is not None and parsed[0] != self.config.prefix:
+        if issuer_of(req["subject_ref"]) != self.config.prefix:
             return "deny", "PG_OTHER_REGISTRY", None, "self"
-        s = db.execute("SELECT * FROM subjects WHERE code = ?", (req["subject_ref"],)).fetchone()
+        s = self._subject(db, req["subject_ref"])
         if s is None:
             return "deny", "PG_UNKNOWN_SUBJECT", None, "self"
         use, level = req["use"], s["level"]
@@ -675,7 +755,7 @@ class Registry:
         if not self.is_open(pid) or self.config.sandbox or reason == "PG_OTHER_REGISTRY" \
                 or db.execute("SELECT 1 FROM accepted WHERE provider_id = ?", (pid,)).fetchone():
             return False
-        s = db.execute("SELECT published, offer, anchor FROM subjects WHERE code = ?", (req["subject_ref"],)).fetchone()
+        s = self._subject(db, req["subject_ref"])
         if s is not None and (s["published"] or s["offer"] is not None or s["anchor"] is not None):  # lookup, catalog
             return False                                                         # or the anchor list names it
         licensee, now = req.get("licensee_id", ""), self.clock()      # P-5a: a licensee connected or bound to this
@@ -684,12 +764,13 @@ class Registry:
         if not (binding or licensee and db.execute("SELECT 1 FROM connections WHERE provider_id = ? AND licensee_id = ?",
                                                    (pid, licensee)).fetchone()):
             return True
-        return not any(g["licensee_id"] == licensee or g["id"] in bound for g in db.execute(
+        return s is None or not any(g["licensee_id"] == licensee or g["id"] in bound for g in db.execute(
             "SELECT id, licensee_id FROM grants WHERE subject_code = ? AND not_before <= ? AND expires_at > ?",
-            (req["subject_ref"], now, now)))
+            (s["code"], now, now)))
 
-    def _answer(self, db, ask_id, req: dict, decision, now: int) -> dict:
-        """The signed answer to `decision`, kept under `ask_id`; with none (terms T-7) it is kept nowhere."""
+    def _answer(self, db, ask_id, req: dict, decision, now: int) -> tuple[dict, str | None]:
+        """The signed answer to `decision`, kept under `ask_id`; with none (terms T-7) it is kept nowhere. With an allow,
+        its ToG code (proof.md: TOG-PG-LIC-…, computed from the answer, issued once)."""
         status, reason, grant, level = decision
         if self._masked(db, req, reason):    # P-5a: and the level of an unknown code, so it tells nothing
             status, reason, grant, level = "deny", "PG_PROVIDER_NOT_ACCEPTED", None, "self"
@@ -704,17 +785,30 @@ class Registry:
         binding = self._binding(db, req["provider_id"], req.get("licensee_id", "")) if status == "allow" else None
         if binding is not None and grant["id"] in json.loads(binding["grants"]):   # B-3c: an allow resting on it
             body["ext"] = {**body.get("ext", {}), "bind": {"binding": binding["id"]}}
-        env = seal("pg.answer.v1", body, [("registry", self.key)])
+        # proof.md: an allow whose code would end in a symbol, start ZZZZ or was issued already is signed again with a
+        # changed body: a second shorter, or longer when a sandbox's answer would not live a second
+        code = None
+        for second in range(64):
+            body["expires_at"] = now + (self.ttl - second if second < self.ttl else self.ttl + second)
+            env = seal("pg.answer.v1", body, [("registry", self.key)])
+            if ask_id is not None and db.execute("SELECT 1 FROM answers WHERE id = ?",
+                                                 (message_id(env["type"], env["body"]),)).fetchone():
+                # the same answer, to the second, was given back: never served again (jobs.md), so ask a second later
+                raise ProtocolError("PG_RATE_LIMITED", "ask again in a second", status=429)
+            if status != "allow":
+                break
+            code = self._code(env, req["subject_ref"], grant["id"])
+            if code and not db.execute("SELECT 1 FROM answers WHERE code = ?", (code,)).fetchone():
+                break
+        else:
+            raise ProtocolError("PG_RATE_LIMITED", "ask again in a second", status=429)
         use = "reserved" if status == "allow" else None   # catalog.md: every allow is billed unless given back
         if ask_id is None:
-            return env
-        if db.execute("SELECT 1 FROM answers WHERE id = ?", (message_id(env["type"], env["body"]),)).fetchone():
-            # the same answer, to the second, was given back: never served again (jobs.md), so ask a second later
-            raise ProtocolError("PG_RATE_LIMITED", "ask again in a second", status=429)
-        db.execute("INSERT INTO answers VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)",
-                   (message_id(env["type"], env["body"]), ask_id, json.dumps(env), status, now, now + self.ttl,
-                    grant["id"] if grant is not None else None, use))
-        return env
+            return env, code
+        db.execute("INSERT INTO answers VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)",
+                   (message_id(env["type"], env["body"]), ask_id, json.dumps(env), status, now, body["expires_at"],
+                    grant["id"] if grant is not None else None, use, code))
+        return env, code
 
     # ── extension provider-identity: providers known by their domain ─────
     @staticmethod
@@ -1156,36 +1250,68 @@ class Registry:
             raise ProtocolError("PG_NOT_FOUND", "no such grant", status=404)
         return {"grant": json.loads(row["envelope"])}
 
-    def lookup(self, code: str) -> dict:
-        parsed = parse_code(code)
-        if parsed is None:
-            raise ProtocolError("PG_MALFORMED", "not a PG subject code (or its check character is wrong)")
-        if parsed[0] != self.config.prefix:
-            return {"code": code, "registry": parsed[0], "status": "other_registry"}
-        s = self._row("SELECT * FROM subjects WHERE code = ?", (code,))
-        if s is None or not s["published"]:
-            return {"code": code, "registry": self.config.prefix, "status": "unknown"}
-        out = {"code": code, "registry": self.config.prefix, "status": "active", "name": s["name"], "level": s["level"],
-               "subject_key": {"key_id": fingerprint(s["key_public"]),
-                               "public_key_hex": s["key_public"], "custody": s["custody"]}}
+    def lookup(self, code: str, media: str | None = None) -> dict:
+        """lookup.md: any code, either spelling, answered for its TOG spelling by the registry of its first prefix.
+        Nothing is returned that the rights holder did not choose to publish: an unpublished person answers as a code
+        never issued, unless they refused (opted out: Do Not Generate). An act answers its record's facts, never
+        the person; `media`, the report's output_hash, adds its pg.proof.v1 entry."""
+        try:
+            p = parse_code(code)
+        except Mistyped:
+            raise ProtocolError("mistyped", "its check character does not match: a mistyped code", status=400) from None
+        except PregenError:
+            raise ProtocolError("invalid_format", "not a ToG code (TOG-CODE.md §7)", status=400) from None
+        # an old PG licence id has no TOG spelling without its record; this registry never issued one
+        head = {**({"code": p["key"]} if p["key"] else {}), "kind": p["kind"]}
+        if p["issuer"] != self.config.prefix:
+            return {**head, "registry": p["issuer"], "status": "other_registry", "directory": DIRECTORY_URL}
+        head["registry"] = self.config.prefix
         with self.lock:
-            terms = self._current_terms(self.db, s)
-        if terms:
-            api = self.config.api.rstrip("/")
-            out |= {"terms": {"id": terms[0], "url": f"{api}/v2/terms/{terms[0]}"},
-                    "status_url": f"{api}/v2/codes/{code}/terms"}
-        return out
+            if p["kind"] == "subject":
+                s = self._subject(self.db, code)                # an over-padded number: PG_MALFORMED with a hint
+                if s is None or not s["published"]:
+                    return {**head, "status": "opted_out" if s is not None and s["opted_out"] else "unknown"}
+                out = {**head, "status": "active", "name": s["name"], "level": s["level"],
+                       "subject_key": {"key_id": fingerprint(s["key_public"]), "public_key_hex": s["key_public"],
+                                       "custody": s["custody"]}}
+                terms = self._current_terms(self.db, s)
+                if terms:
+                    api = self.config.api.rstrip("/")
+                    out |= {"terms": {"id": terms[0], "url": f"{api}/v2/terms/{terms[0]}"},
+                            "status_url": f"{api}/v2/codes/{p['key']}/terms"}
+                return out
+            if p["kind"] == "license" and p["key"]:
+                g = self.db.execute("SELECT expires_at FROM grants WHERE code = ?", (p["key"],)).fetchone()
+                if g is not None:
+                    return {**head, "status": "active" if g["expires_at"] > self.clock() else "expired",
+                            "issuer": self.config.prefix}
+            if p["kind"] == "generated":
+                a = self.db.execute("SELECT a.issued_at, a.use, a.report_id, k.request FROM answers a JOIN asks k ON "
+                                    "k.id = a.ask_id WHERE a.code = ?", (p["key"],)).fetchone()
+                if a is not None:            # an act code has no "withdrawn": the deal stays a contract (rule 3)
+                    req = json.loads(a["request"])
+                    out = {**head, "status": "valid", "issued_at": a["issued_at"], "purpose": req["use"]["purpose"],
+                           **({"terms": req["terms"]} if "terms" in req else {}), "provider": req["provider_id"],
+                           "reported": a["use"] == "consumed"}    # false: allowed, no output reported
+                    entry = self._proof_entries("r.id = ?", (a["report_id"],)) if media and a["report_id"] else []
+                    if entry and entry[0]["report"]["body"]["output_hash"] == media:
+                        out["proof"] = entry[0]
+                    return out
+        return {**head, "status": "unknown"}
 
     def status(self, code: str) -> dict:
         """lookup.md `status_url`: a published subject's current terms and every earlier version, newest first; for
         any other code, nothing (the versions themselves stay fetchable by id, T-2)."""
-        s = self._row("SELECT * FROM subjects WHERE code = ?", (code,))
         with self.lock:
+            try:
+                s = self._subject(self.db, code)
+            except ProtocolError:
+                s = None
             if s is None or self._current_terms(self.db, s) is None:
                 raise ProtocolError("PG_NOT_FOUND", "no published terms for this code", status=404)
             rows = self.db.execute("SELECT envelope FROM terms WHERE subject_code = ? ORDER BY version DESC",
-                                   (code,)).fetchall()
-        return {"code": code, "terms": [json.loads(r["envelope"]) for r in rows]}
+                                   (s["code"],)).fetchall()
+        return {"code": _tog(s), "terms": [json.loads(r["envelope"]) for r in rows]}
 
     def terms(self, terms_id: str) -> dict:
         """terms T-2: every version ever published, whatever became of the subject since."""
@@ -1199,14 +1325,14 @@ class Registry:
         rows = self._q("SELECT * FROM subjects WHERE anchor IS NOT NULL ORDER BY serial")
         status = lambda s: "opted_out" if s["opted_out"] else (s["status"] if s["status"] in UNAVAILABLE else "active")  # noqa: E731
         return seal("pg.anchors.v1", {"registry": self.config.prefix, "issued_at": self.clock(), "anchors": [
-            {"anchor": s["anchor"], "code": s["code"], "level": s["level"], "proof_url": s["proof_url"] or "",
+            {"anchor": s["anchor"], "code": _tog(s), "level": s["level"], "proof_url": s["proof_url"] or "",
              "status": status(s)} for s in rows]}, [("registry", self.key)])
 
     def catalog(self) -> dict:
         """catalog.md: subjects who chose to be offered. A listing is not a permission: every generation still asks."""
         rows = self._q("SELECT * FROM subjects WHERE offer IS NOT NULL AND opted_out = 0 ORDER BY serial")
         return {"registry": self.config.prefix, "offers": [
-            {"subject_ref": s["code"], "name": s["name"], "anchor": s["anchor"] or "", "level": s["level"],
+            {"subject_ref": _tog(s), "name": s["name"], "anchor": s["anchor"] or "", "level": s["level"],
              **json.loads(s["offer"])} for s in rows if s["status"] not in UNAVAILABLE]}
 
     def statement(self, provider_id: str, authorization: str | None, pg_access: str | None = None,
@@ -1227,18 +1353,30 @@ class Registry:
         """proof.md: the part of a proof this registry holds, found by its report id."""
         if not re.fullmatch(r"[0-9a-f]{16}", short_id):
             raise ProtocolError("PG_MALFORMED", "a proof id is 16 hex characters")
-        rows = self._q("SELECT r.envelope AS report, r.ack, k.request, k.signatures, a.envelope AS answer, t.envelope AS "
-                       "terms FROM reports r JOIN asks k ON k.id = r.ask_id JOIN answers a ON a.report_id = r.id "
-                       "LEFT JOIN terms t ON t.id = json_extract(k.request, '$.terms') "
-                       "WHERE r.id LIKE ? AND k.closing_ack IS NOT NULL", (short_id + "%",))
-        if len(rows) != 1:
+        items = self._proof_entries("r.id LIKE ?", (short_id + "%",))
+        if len(items) != 1:
             raise ProtocolError("PG_NOT_FOUND", "no such proof", status=404)
-        r = rows[0]
-        item = {"request": {"type": "pg.request.v1", "body": json.loads(r["request"]), "signatures": json.loads(r["signatures"])},
-                "answer": json.loads(r["answer"]), "report": json.loads(r["report"]), "ack": json.loads(r["ack"])}
-        if r["terms"]:                                     # terms: the record the request accepted travels with it
-            item["terms"] = json.loads(r["terms"])
-        return {"format": "pg.proof.v1", "subjects": [item]}
+        return {"format": "pg.proof.v1", "subjects": items}
+
+    def _proof_entries(self, where: str, args) -> list[dict]:
+        rows = self._q("SELECT r.envelope AS report, r.ack, k.request, k.signatures, a.envelope AS answer, a.code, "
+                       "t.envelope AS terms, g.envelope AS licence_env, g.code AS licence FROM reports r JOIN asks k ON "
+                       "k.id = r.ask_id JOIN answers a ON a.report_id = r.id LEFT JOIN terms t ON t.id = "
+                       "json_extract(k.request, '$.terms') LEFT JOIN grants g ON g.id = a.grant_id "
+                       f"WHERE {where} AND k.closing_ack IS NOT NULL", args)
+        items = []
+        for r in rows:
+            item = {"request": {"type": "pg.request.v1", "body": json.loads(r["request"]),
+                                "signatures": json.loads(r["signatures"])},
+                    "answer": json.loads(r["answer"]), "report": json.loads(r["report"]), "ack": json.loads(r["ack"])}
+            if r["terms"]:                                 # terms: the record the request accepted travels with it
+                item["terms"] = json.loads(r["terms"])
+            if r["code"]:                                  # proof.md: readable copies, recomputed by every platform
+                item["code"] = r["code"]
+                if r["licence"]:                           # with the grant, so that the licence copy can be
+                    item |= {"licence": r["licence"], "grant": json.loads(r["licence_env"])}   # recomputed
+            items.append(item)
+        return items
 
     def document(self) -> dict:
         api = self.config.api.rstrip("/")

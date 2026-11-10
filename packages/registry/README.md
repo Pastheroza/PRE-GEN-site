@@ -18,9 +18,9 @@ pregen-registry serve --dir ./data
 curl -X POST http://127.0.0.1:8000/v2/sandbox/access      # a provider id and token, no account
 ```
 
-The sandbox answers the standard test codes `PG-TEST-000001N` `PG-TEST-000002Z`
-`PG-TEST-0000034` `PG-TEST-000004E` `PG-TEST-000005R` `PG-TEST-000006$` `PG-TEST-0000077`
-`PG-TEST-000008H` `PG-TEST-000009V` `PG-TEST-000010M` `PG-TEST-000011Y` `PG-TEST-0000123` (code 8 is deliberately
+The sandbox answers the standard test codes `TOG-TEST-000001N` `TOG-TEST-000002Z`
+`TOG-TEST-0000034` `TOG-TEST-000004E` `TOG-TEST-000005R` `TOG-TEST-000006$` `TOG-TEST-0000077`
+`TOG-TEST-000008H` `TOG-TEST-000009V` `TOG-TEST-000010M` `TOG-TEST-000011Y` `TOG-TEST-0000123` (code 8 is deliberately
 not registered). Codes 1 to 8 test refusals; 9 a test purchase (`POST /v2/sandbox/purchases`: one use,
 a race, a give-back), 10 a person's terms, 11 a minor, 12 a creator's licence reached only through `bind`.
 The last character is a check
@@ -29,7 +29,17 @@ character; with another prefix the codes differ, and `init` prints them. Each on
 
 A sandbox made by 0.3 holds codes 1 to 7 only; it gains 9 to 12 when it next starts on 0.4. If an earlier
 version gave one of your own test people serial 9, 10, 11 or 12, it refuses to start and names that code: make a
-fresh sandbox with `init --sandbox` and add them again (they now get serials from 13).
+fresh sandbox with `init --sandbox` and add them again (they now get new random codes).
+
+## ToG codes (0.5)
+
+Every code this registry writes is a ToG code ([`TOG-CODE.md`](https://www.pregen.org/spec/TOG-CODE.md)), spelled
+`TOG-`. A new person is born `TOG-<prefix>-<9 random digits><check>`. A person born `PG-` under 0.4 is written
+`TOG-` with the same number and check (`PG-TEST-000001N` is `TOG-TEST-000001N`); the database keeps the row as it
+was, and the old spelling is still read, as legacy input for the same person, in requests, lookups and commands.
+Every licence has a `TOG-LIC-…` code and every allow a `TOG-PG-LIC-…` code, computed from the signed record; an
+allow or licence whose code would end in a symbol, or that was issued already, is signed again a second shorter.
+Records signed before 0.5 get their codes by the same computation when the registry starts. Needs `pregen` 0.14.
 
 A sandbox also offers `bind` ([`extensions/bind.md`](https://www.pregen.org/spec/extensions/bind.md)): an app sends
 the person to `/v2/bind/authorize`, where the sandbox's test creator, signed in with no password, approves; the
@@ -41,7 +51,7 @@ For a test that watches an answer expire, a sandbox started with `PREGEN_REGISTR
 
 ## Run a real registry
 
-1. **Pick a prefix.** Four letters from `ABCDEFGHJKMNPQRSTVWXYZ`, then apply for it
+1. **Pick a prefix.** 4 to 8 letters `A`–`Z` (`TOG-CODE.md` §9), then apply for it
    (https://www.pregen.org/registries).
 2. **Create the registry:**
    `pregen-registry init --dir ./data --prefix ABCD --name "…" --api https://registry.example --policy https://… --complaints mailto:… --open-providers`
@@ -52,14 +62,14 @@ For a test that watches an answer expire, a sandbox started with `PREGEN_REGISTR
    `init`, out of band. Back up `data/operator.key` offline; it is created with mode 600.
 4. **Add subjects, grants, providers and end users:**
    - `pregen-registry subject add --dir ./data --name "…" --level verified`
-   - `pregen-registry grant add --dir ./data --subject 'PG-ABCD-…' --any-provider --purposes commercial --days 365 --max-uses 100`
+   - `pregen-registry grant add --dir ./data --subject 'TOG-ABCD-…' --any-provider --purposes commercial --days 365 --max-uses 100`
    - `pregen-registry provider add --dir ./data --id frame-ai` — prints the credential once (providers known by
      their domain need no credential: [`extensions/provider-identity.md`](https://www.pregen.org/spec/extensions/provider-identity.md);
      `pregen-registry provider accept --dir ./data --id https://frame.example` once you have vetted one)
    - `pregen-registry connect --dir ./data --provider frame-ai --licensee frame-ai:user-1`
 5. **Serve it behind TLS:** `pregen-registry serve --dir ./data --host 0.0.0.0 --port 8000`, or HTTPS directly with
    `--ssl-certfile cert.pem --ssl-keyfile key.pem`.
-6. **Anchor public people:** `pregen-registry subject anchor --dir ./data --code 'PG-ABCD-…' --anchor wikidata:Q… --proof-url https://…`
+6. **Anchor public people:** `pregen-registry subject anchor --dir ./data --code 'TOG-ABCD-…' --anchor wikidata:Q… --proof-url https://…`
 7. **Check yourself:** `pregen-registry check --api https://registry.example [--directory URL]` ends `OK: all checks
    passed` when your document, key set and listing are right.
 
@@ -83,11 +93,11 @@ never signs again. Move its private key file offline.
 | `GET /.well-known/pregen-registry.json` | who this registry is |
 | `GET /keys` | its signed operator key set: every key it ever signed with, current and retired |
 | `GET /policy` | the registry's policy (`policy.md` from the data folder) |
-| `POST /v2/requests` | ask → `{"answer": <signed pg.answer.v1>}` |
+| `POST /v2/requests` | ask → `{"answer": <signed pg.answer.v1>}`, with an allow also its `code` (`TOG-PG-LIC-…`) |
 | `POST /v2/reports` | report → `{"ack": <signed pg.report_ack.v1>}` |
 | `POST /v2/keys`, `GET /v2/keys/{provider_id}` | provider keysets (a provider known by its domain publishes them in its party document instead) |
 | `GET /v2/grants/{id}` | a signed grant (credential, or `PG-Access`) |
-| `GET /v2/codes/{code}` | public lookup; with the subject's current terms, if they have any |
+| `GET /v2/codes/{code}` | public lookup of any ToG code (or its `PG-` spelling): a person, with their current terms if any; a licence; an allow (`?media=<output hash>` adds its proof entry) |
 | `GET /v2/codes/{code}/terms` | the `status_url` of a published subject with terms: the current version and every earlier one |
 | `GET /v2/terms/{id}` | every version of a subject's terms ever published (extension `terms`) |
 | `GET /v2/anchors` | signed `pg.anchors.v1` list of anchored subjects (extension `identity`) |

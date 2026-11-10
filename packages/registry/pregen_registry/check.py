@@ -81,8 +81,9 @@ def check(api: str, directory_url: str | None = None, steward: str | None = None
             good = False
     yield good, "every key id is its key's fingerprint, and no key is small-order"
     yield pregen.verify_signed(ks, current["public_key_hex"], "signature"), "key set signed by its current key"
-    from .registry import mint_code
-    probe = {"subject_ref": mint_code(doc.get("prefix", "TEST"), 1), "provider_id": "pregen-check-nobody",
+    from .protocol import mint_code, mint_serial
+    prefix = doc.get("prefix", "TEST")
+    probe = {"subject_ref": mint_code(prefix, mint_serial(prefix)), "provider_id": "pregen-check-nobody",
              "profile": "likeness/1", "use": {"purpose": "commercial"}, "job_id": "pregen-check", "job_hash": "0" * 64}
     status, err = _post(api + "/v2/requests", pregen.sign_envelope("pg.request.v1", probe),
                         {"X-Provider-ID": "pregen-check-nobody", "Authorization": "Bearer " + secrets.token_hex(8)})
