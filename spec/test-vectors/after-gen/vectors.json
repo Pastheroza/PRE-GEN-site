@@ -1,5 +1,5 @@
 {
- "description": "after-gen/1 (spec/drafts/after-gen.md): media/1 of each file, or its refusal; for files carrying a record, the message id read from C2PA and XMP and what check_after_gen says against the file's own media/1; a record of the terms kind for a.mp4 and its summary's id and basis. The directory and key sets are those of answers.json.",
+ "description": "after-gen/1 (spec/drafts/after-gen.md): media/1 of each file, or its refusal; for files carrying a record, the message id read from C2PA and XMP, the readable copies read beside the XMP record, and what check_after_gen says against the file's own media/1 (and, for the XMP record, its copies); a record of the terms kind for a.mp4 and its summary's id and basis. The directory and key sets are those of answers.json.",
  "now": 1790000000,
  "record": {
   "type": "pg.after_gen.v1",
@@ -59,10 +59,10 @@
     "instruction": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "factor": "authenticator"
    },
-   "issued_at": 1789999900
+   "issued_at": 1789999901
   },
   "signatures": [
-   "c262136179156d90fb2a55d1aeeb1b179135b0ea2b1528ac3f8135396133623f1d4d853bbb01a69c4720ff6a148bb58fe0eecee0330f20df42b4e2e97e925709"
+   "5f9d0c29743aa3818e839d23a471c9e6804925187a428a1c755ea01fd389e7dbc5866f5ae9ae5bf7665311d88126e0bdd52fe7edcf146f9c9be1cbfa8a90f60b"
   ]
  },
  "files": [
@@ -123,6 +123,30 @@
    }
   },
   {
+   "file": "a-xmp-code-ag.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "30a395600665973aee7f69e64c97bf160642e651aede46400a690e9c6e8f6c26",
+    "leaves": 1
+   }
+  },
+  {
+   "file": "a-xmp-code-other.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "30a395600665973aee7f69e64c97bf160642e651aede46400a690e9c6e8f6c26",
+    "leaves": 1
+   }
+  },
+  {
+   "file": "a-xmp-code-symbol.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "30a395600665973aee7f69e64c97bf160642e651aede46400a690e9c6e8f6c26",
+    "leaves": 1
+   }
+  },
+  {
    "file": "a-xmp-foreign-pg.mp4",
    "media": {
     "binding": "media/1",
@@ -132,6 +156,30 @@
   },
   {
    "file": "a-xmp-foreign.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "30a395600665973aee7f69e64c97bf160642e651aede46400a690e9c6e8f6c26",
+    "leaves": 1
+   }
+  },
+  {
+   "file": "a-xmp-licence-is-code.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "30a395600665973aee7f69e64c97bf160642e651aede46400a690e9c6e8f6c26",
+    "leaves": 1
+   }
+  },
+  {
+   "file": "a-xmp-terms-licence.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "30a395600665973aee7f69e64c97bf160642e651aede46400a690e9c6e8f6c26",
+    "leaves": 1
+   }
+  },
+  {
+   "file": "a-xmp-terms.mp4",
    "media": {
     "binding": "media/1",
     "hash": "30a395600665973aee7f69e64c97bf160642e651aede46400a690e9c6e8f6c26",
@@ -447,6 +495,22 @@
    }
   },
   {
+   "file": "attack-xmp-code-attribute.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "30a395600665973aee7f69e64c97bf160642e651aede46400a690e9c6e8f6c26",
+    "leaves": 1
+   }
+  },
+  {
+   "file": "attack-xmp-code-twice.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "30a395600665973aee7f69e64c97bf160642e651aede46400a690e9c6e8f6c26",
+    "leaves": 1
+   }
+  },
+  {
    "file": "attack-xmp-comment.mp4",
    "media": {
     "binding": "media/1",
@@ -626,46 +690,129 @@
  "read": [
   {
    "file": "a-c2pa-cbor.mp4",
-   "c2pa": "25024d9f7b6a016f3de09cde522360f3749c809cccd6c0f51a21fab17ff07de9",
+   "c2pa": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263",
    "xmp": null,
+   "codes": {},
    "check": {
-    "c2pa": "25024d9f7b6a016f3de09cde522360f3749c809cccd6c0f51a21fab17ff07de9"
+    "c2pa": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263"
    }
   },
   {
    "file": "a-c2pa-earlier.mp4",
    "c2pa": null,
    "xmp": null,
+   "codes": {},
    "check": {}
   },
   {
    "file": "a-c2pa-json.mp4",
-   "c2pa": "25024d9f7b6a016f3de09cde522360f3749c809cccd6c0f51a21fab17ff07de9",
+   "c2pa": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263",
    "xmp": null,
+   "codes": {},
    "check": {
-    "c2pa": "25024d9f7b6a016f3de09cde522360f3749c809cccd6c0f51a21fab17ff07de9"
+    "c2pa": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263"
+   }
+  },
+  {
+   "file": "a-xmp-code-ag.mp4",
+   "c2pa": null,
+   "xmp": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263",
+   "codes": {
+    "Code": "TOG-AG-TEST-A4A7-1Q8G-36RP",
+    "Licence": "TOG-LIC-TEST-XVQE-XVQE-XVQY"
+   },
+   "check": {
+    "xmp": "the readable code does not match the record"
+   }
+  },
+  {
+   "file": "a-xmp-code-other.mp4",
+   "c2pa": null,
+   "xmp": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263",
+   "codes": {
+    "Code": "TOG-AG-LIC-TEST-S3AD-T9EZ-H8BR",
+    "Licence": "TOG-LIC-TEST-XVQE-XVQE-XVQY"
+   },
+   "check": {
+    "xmp": "the readable code does not match the record"
+   }
+  },
+  {
+   "file": "a-xmp-code-symbol.mp4",
+   "c2pa": null,
+   "xmp": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263",
+   "codes": {
+    "Code": "TOG-AG-LIC-TEST-A4A7-1Q8G-360S",
+    "Licence": "TOG-LIC-TEST-XVQE-XVQE-XVQY"
+   },
+   "check": {
+    "xmp": "the readable code does not match the record"
    }
   },
   {
    "file": "a-xmp-foreign-pg.mp4",
    "c2pa": null,
-   "xmp": "25024d9f7b6a016f3de09cde522360f3749c809cccd6c0f51a21fab17ff07de9",
+   "xmp": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263",
+   "codes": {
+    "Code": "TOG-AG-LIC-TEST-A4A7-1Q8G-36RS",
+    "Licence": "TOG-LIC-TEST-XVQE-XVQE-XVQY"
+   },
    "check": {
-    "xmp": "25024d9f7b6a016f3de09cde522360f3749c809cccd6c0f51a21fab17ff07de9"
+    "xmp": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263"
    }
   },
   {
    "file": "a-xmp-foreign.mp4",
    "c2pa": null,
    "xmp": null,
+   "codes": {},
    "check": {}
+  },
+  {
+   "file": "a-xmp-licence-is-code.mp4",
+   "c2pa": null,
+   "xmp": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263",
+   "codes": {
+    "Code": "TOG-AG-LIC-TEST-A4A7-1Q8G-36RS",
+    "Licence": "TOG-AG-LIC-TEST-A4A7-1Q8G-36RS"
+   },
+   "check": {
+    "xmp": "the readable code does not match the record"
+   }
+  },
+  {
+   "file": "a-xmp-terms-licence.mp4",
+   "c2pa": null,
+   "xmp": "ecbe58212f16a22dc4ae64038dad2c880e102c5f680aa8ed8ad069f8f88d4946",
+   "codes": {
+    "Code": "TOG-AG-TEST-XJZ5-G89F-2TH4",
+    "Licence": "TOG-LIC-TEST-XVQE-XVQE-XVQY"
+   },
+   "check": {
+    "xmp": "the readable code does not match the record"
+   }
+  },
+  {
+   "file": "a-xmp-terms.mp4",
+   "c2pa": null,
+   "xmp": "ecbe58212f16a22dc4ae64038dad2c880e102c5f680aa8ed8ad069f8f88d4946",
+   "codes": {
+    "Code": "TOG-AG-TEST-XJZ5-G89F-2TH4"
+   },
+   "check": {
+    "xmp": "ecbe58212f16a22dc4ae64038dad2c880e102c5f680aa8ed8ad069f8f88d4946"
+   }
   },
   {
    "file": "a-xmp.mp4",
    "c2pa": null,
-   "xmp": "25024d9f7b6a016f3de09cde522360f3749c809cccd6c0f51a21fab17ff07de9",
+   "xmp": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263",
+   "codes": {
+    "Code": "TOG-AG-LIC-TEST-A4A7-1Q8G-36RS",
+    "Licence": "TOG-LIC-TEST-XVQE-XVQE-XVQY"
+   },
    "check": {
-    "xmp": "25024d9f7b6a016f3de09cde522360f3749c809cccd6c0f51a21fab17ff07de9"
+    "xmp": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263"
    }
   },
   {
@@ -676,6 +823,7 @@
    "file": "attack-c2pa-not-a-store.mp4",
    "c2pa": null,
    "xmp": null,
+   "codes": {},
    "check": {}
   },
   {
@@ -690,42 +838,66 @@
    "file": "attack-xmp-attribute.mp4",
    "c2pa": null,
    "xmp": null,
+   "codes": {},
+   "check": {}
+  },
+  {
+   "file": "attack-xmp-code-attribute.mp4",
+   "c2pa": null,
+   "xmp": null,
+   "codes": {},
+   "check": {}
+  },
+  {
+   "file": "attack-xmp-code-twice.mp4",
+   "c2pa": null,
+   "xmp": null,
+   "codes": {},
    "check": {}
   },
   {
    "file": "attack-xmp-comment.mp4",
    "c2pa": null,
    "xmp": null,
+   "codes": {},
    "check": {}
   },
   {
    "file": "attack-xmp-ns-twice.mp4",
    "c2pa": null,
    "xmp": null,
+   "codes": {},
    "check": {}
   },
   {
    "file": "attack-xmp-nul.mp4",
    "c2pa": null,
    "xmp": null,
+   "codes": {},
    "check": {}
   },
   {
    "file": "attack-xmp-pi.mp4",
    "c2pa": null,
    "xmp": null,
+   "codes": {},
    "check": {}
   },
   {
    "file": "attack-xmp-rebound.mp4",
    "c2pa": null,
    "xmp": null,
+   "codes": {},
    "check": {}
   },
   {
    "file": "b-copied-record.mov",
    "c2pa": null,
-   "xmp": "25024d9f7b6a016f3de09cde522360f3749c809cccd6c0f51a21fab17ff07de9",
+   "xmp": "511470dd1019b1ce2697e48fc0348752f4e9411abc19fdc433ad8b994cc94263",
+   "codes": {
+    "Code": "TOG-AG-LIC-TEST-A4A7-1Q8G-36RS",
+    "Licence": "TOG-LIC-TEST-XVQE-XVQE-XVQY"
+   },
    "check": {
     "xmp": "not for this file"
    }

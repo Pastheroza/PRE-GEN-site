@@ -4,6 +4,7 @@ vectors.json for both libraries; `python tests/test_after_gen.py` rewrites the f
 import hashlib
 import io
 import json
+import re
 import shutil
 import struct
 import subprocess
@@ -240,8 +241,33 @@ def status(rec, key=KEY, **change):
     return pregen.sign_envelope("pg.after_gen_status.v1", body, key)
 
 
-def check(env, media=None, directory=D):
-    return pregen.check_after_gen(env, directory, get_json, media=media)
+def check(env, media=None, directory=D, codes=None):
+    return pregen.check_after_gen(env, directory, get_json, media=media, codes=codes)
+
+
+def coded(media, **change):
+    """A record as a registry signs it: issued_at a second later while its code would not exist (The readable codes)."""
+    t = change.pop("issued_at", NOW - 100)
+    while not pregen.after_gen_codes(rec := record(media, issued_at=t, **change))["Code"]:
+        t += 1
+    return rec
+
+
+def with_codes(env, **codes):
+    """embed_xmp's packet for `env` with its readable copies replaced: a value, or None to drop the copy."""
+    p = ag._packet(None, env)
+    for k, v in codes.items():
+        p = re.sub(rf"<pgag:{k}>[^<]*</pgag:{k}>".encode(), b"", p)
+        if v is not None:
+            p = p.replace(b"</pgag:Record>", f"</pgag:Record><pgag:{k}>{v}</pgag:{k}>".encode())
+    return p
+
+
+def relabel(code, kind):
+    """The same tail under another kind, with the check of that kind: a well-formed code of another meaning."""
+    prefix, tail = code.split("-")[-4], code[-14:].replace("-", "")[:-1]
+    t = tail + ag._tog_check(f"{len(prefix)}0{ag._TOG_KINDS.index(kind) + 1}{prefix}{tail}")
+    return f"TOG-{kind}-{prefix}-{t[:4]}-{t[4:8]}-{t[8:]}"
 
 
 # ── the vector files ────────────────────────────────────────────────────────────
@@ -288,7 +314,8 @@ def derived():
     """Every vector file made here from the ffmpeg ones, by name; deterministic (Ed25519 signs deterministically)."""
     a = (DIR / "a.mp4").read_bytes()
     A = H(a)
-    rec, other = record(A), record(H((DIR / "b.mov").read_bytes()))
+    rec, other, terms = coded(A), coded(H((DIR / "b.mov").read_bytes())), coded(A, basis=TERMS)
+    code, lic = pregen.after_gen_codes(rec).values()
     flip = bytearray(a)
     flip[DATA_AT + 100] ^= 1                  # inside the first video sample of a.mp4 (mdat starts at 40)
     out = {
@@ -402,6 +429,17 @@ def derived():
                                          "stbl": {**CHUNKS(1), b"hdlr": full(b"hdlr", 0, 0, U(0), b"soun", bytes(12))}},)),
         "attack-unknown-box-in-trak.mp4": mp4(({"tref": box(b"xyz1", U(1))},)),
         "tiny-title-stco.mp4": mp4(moov_extra=TITLED),
+        # the readable codes: copies beside the record, recomputed from it; one that differs refuses the file
+        "a-xmp-terms.mp4": a + xmp_box(ag._packet(None, terms)),
+        "a-xmp-code-symbol.mp4": a + xmp_box(with_codes(rec, Code=code[:-2] + ("0" if code[-2] != "0" else "1") + code[-1])),
+        "a-xmp-code-other.mp4": a + xmp_box(with_codes(rec, Code=pregen.after_gen_codes(other)["Code"])),
+        "a-xmp-code-ag.mp4": a + xmp_box(with_codes(rec, Code=relabel(code, "AG"))),
+        "a-xmp-licence-is-code.mp4": a + xmp_box(with_codes(rec, Licence=code)),
+        "a-xmp-terms-licence.mp4": a + xmp_box(with_codes(terms, Licence=lic)),
+        "attack-xmp-code-twice.mp4": a + xmp_box(with_codes(rec, Code=code).replace(
+            b"</rdf:RDF>", f"<rdf:Description><pgag:Code>{code}</pgag:Code></rdf:Description></rdf:RDF>".encode())),
+        "attack-xmp-code-attribute.mp4": a + xmp_box(with_codes(rec, Code=None).replace(
+            b"<rdf:Description", f'<rdf:Description pgag:Code="{code}"'.encode())),
     }
     out["a-xmp-foreign-pg.mp4"] = a + xmp_box(ag._packet(FOREIGN_XMP, rec))           # the last box, rewritten
     return out, rec
@@ -422,19 +460,20 @@ def vectors():
             except pregen.PregenError as e:
                 reads.append({"file": n, "refused": str(e)})
                 continue
-            ids = {k: v and pregen.message_id(v["type"], v["body"]) for k, v in got.items()}
+            ids = {k: got[k] and pregen.message_id(got[k]["type"], got[k]["body"]) for k in ("c2pa", "xmp")}
             res = {}
-            for k, v in got.items():
-                if v is not None:
+            for k in ("c2pa", "xmp"):
+                if got[k] is not None:
                     try:
-                        res[k] = check(v, pregen.media_hash(DIR / n))["id"]
+                        res[k] = check(got[k], pregen.media_hash(DIR / n), codes=got["codes"] if k == "xmp" else None)["id"]
                     except pregen.PregenError as e:
                         res[k] = str(e)
-            reads.append({"file": n, **ids, "check": res})
-    terms = record(H((DIR / "a.mp4").read_bytes()), basis=TERMS)
+            reads.append({"file": n, **ids, "codes": got["codes"], "check": res})
+    terms = coded(H((DIR / "a.mp4").read_bytes()), basis=TERMS)
     return {"description": "after-gen/1 (spec/drafts/after-gen.md): media/1 of each file, or its refusal; for files "
-                           "carrying a record, the message id read from C2PA and XMP and what check_after_gen says "
-                           "against the file's own media/1; a record of the terms kind for a.mp4 and its summary's id "
+                           "carrying a record, the message id read from C2PA and XMP, the readable copies read beside the XMP "
+                           "record, and what check_after_gen says against the file's own media/1 (and, for the XMP "
+                           "record, its copies); a record of the terms kind for a.mp4 and its summary's id "
                            "and basis. The directory and key sets are those of answers.json.",
             "now": NOW, "record": rec, "files": entries, "read": reads,
             "terms_record": {"record": terms, "file": "a.mp4",
@@ -740,9 +779,18 @@ def test_metadata_text_is_read_as_text():
 # ── read_after_gen and embed_xmp ────────────────────────────────────────────────
 
 def test_read_the_vector_files():
-    rid = pregen.message_id("pg.after_gen.v1", derived()[1]["body"])
+    rec = derived()[1]
+    rid, codes = pregen.message_id("pg.after_gen.v1", rec["body"]), pregen.after_gen_codes(rec)
     got = {r["file"]: r for r in json.loads((DIR / "vectors.json").read_text())["read"]}
-    assert got["a-xmp.mp4"] == {"file": "a-xmp.mp4", "c2pa": None, "xmp": rid, "check": {"xmp": rid}}
+    assert got["a-xmp.mp4"] == {"file": "a-xmp.mp4", "c2pa": None, "xmp": rid, "codes": codes, "check": {"xmp": rid}}
+    assert codes["Code"].startswith("TOG-AG-LIC-TEST-") and codes["Licence"].startswith("TOG-LIC-TEST-")
+    assert got["a-xmp-terms.mp4"]["codes"]["Code"].startswith("TOG-AG-TEST-") and \
+        len(got["a-xmp-terms.mp4"]["codes"]) == 1 and len(got["a-xmp-terms.mp4"]["check"]["xmp"]) == 64
+    for n in ("a-xmp-code-symbol.mp4", "a-xmp-code-other.mp4", "a-xmp-code-ag.mp4", "a-xmp-licence-is-code.mp4",
+              "a-xmp-terms-licence.mp4"):
+        assert got[n]["check"] == {"xmp": "the readable code does not match the record"}, n
+    for n in ("attack-xmp-code-twice.mp4", "attack-xmp-code-attribute.mp4"):     # the packet carries no record
+        assert (got[n]["xmp"], got[n]["codes"], got[n]["check"]) == (None, {}, {}), n
     assert got["a-c2pa-json.mp4"]["c2pa"] == rid and got["a-c2pa-cbor.mp4"]["c2pa"] == rid     # the last manifest wins
     assert got["a-c2pa-earlier.mp4"]["c2pa"] is None
     assert got["a-xmp-foreign.mp4"]["xmp"] is None and got["a-xmp-foreign-pg.mp4"]["xmp"] == rid
@@ -754,9 +802,10 @@ def test_embed_xmp_round_trip(tmp_path):
     pregen.embed_xmp(DIR / "a.mp4", tmp_path / "x.mp4", rec)
     data = (tmp_path / "x.mp4").read_bytes()
     assert data.startswith((DIR / "a.mp4").read_bytes()) and media("a.mp4") == pregen.media_hash(tmp_path / "x.mp4")
-    assert pregen.read_after_gen(tmp_path / "x.mp4") == {"c2pa": None, "xmp": rec}
+    assert pregen.read_after_gen(tmp_path / "x.mp4") == {"c2pa": None, "xmp": rec, "codes": {"Licence": LIC_CODE}}
     packet = data[len((DIR / "a.mp4").read_bytes()) + 24:]
     rid = pregen.message_id("pg.after_gen.v1", rec["body"])
+    assert b"<pgag:Code>" not in packet                         # this record's code cannot be formed: none is written
     for part in (f"<pgag:Id>{rid}</pgag:Id>", "<pgag:Registry>TEST</pgag:Registry>",
                  'xmlns:pgag="https://pregen.org/ns/after-gen/1/"'):
         assert part.encode() in packet
@@ -764,10 +813,19 @@ def test_embed_xmp_round_trip(tmp_path):
     # again: the last box is rewritten in place, never turned into padding
     pregen.embed_xmp(tmp_path / "x.mp4", tmp_path / "y.mp4", rec)
     assert (tmp_path / "y.mp4").read_bytes() == data
+    rec = coded(media("a.mp4"))                                 # a record as a registry signs it: both codes written
+    pregen.embed_xmp(DIR / "a.mp4", tmp_path / "x.mp4", rec)
+    got = pregen.read_after_gen(tmp_path / "x.mp4")
+    assert got == {"c2pa": None, "xmp": rec, "codes": pregen.after_gen_codes(rec)}
+    assert check(got["xmp"], media("a.mp4"), codes=got["codes"])["id"] == pregen.message_id("pg.after_gen.v1", rec["body"])
+    rec = coded(media("a.mp4"), basis=TERMS)                    # under the person's terms: the approval's code only
+    pregen.embed_xmp(DIR / "a.mp4", tmp_path / "x.mp4", rec)
+    assert pregen.read_after_gen(tmp_path / "x.mp4")["codes"] == {"Code": pregen.after_gen_codes(rec)["Code"]}
+    assert b"pgag:Licence" not in (tmp_path / "x.mp4").read_bytes()
 
 
 def test_embed_xmp_keeps_existing_properties(tmp_path):
-    rec = record(media("a.mp4"))
+    rec = coded(media("a.mp4"))
     pregen.embed_xmp(DIR / "a-xmp-foreign.mp4", tmp_path / "x.mp4", rec)
     x = (tmp_path / "x.mp4").read_bytes()
     assert x == (DIR / "a-xmp-foreign-pg.mp4").read_bytes()
@@ -831,7 +889,7 @@ def read(data):
 def test_c2pa_reading():
     rec, a = record(media("a.mp4")), (DIR / "a.mp4").read_bytes()
     assert read(insert_after_ftyp(a, c2pa_box(manifest(1, assertion(rec, "cbor")))))["c2pa"] == rec
-    assert read(a + c2pa_box(manifest(1, assertion(rec)), purpose=b"merkle")) == {"c2pa": None, "xmp": None}
+    assert read(a + c2pa_box(manifest(1, assertion(rec)), purpose=b"merkle")) == {"c2pa": None, "xmp": None, "codes": {}}
     assert read(a + c2pa_box(manifest(1, assertion(rec, label="org.pregen.after_gen.v2"))))["c2pa"] is None
     assert pregen.c2pa_assertion(rec) == {"label": "org.pregen.after_gen", "data": rec}
 
@@ -905,6 +963,103 @@ def test_xmp_by_the_lexical_rule_only():
         assert read(a + xmp_box(packet))["xmp"] is None, packet[:60]
     with pytest.raises(pregen.PregenError, match="more than one XMP"):
         read(a + xmp_box(good) + xmp_box(good))
+
+
+def test_the_codes_in_xmp_by_the_same_rule(tmp_path):
+    a, rec = (DIR / "a.mp4").read_bytes(), coded(media("a.mp4"))
+    code, lic = pregen.after_gen_codes(rec).values()
+    good = ag._packet(None, rec)
+    assert read(a + xmp_box(good)) == {"c2pa": None, "xmp": rec, "codes": {"Code": code, "Licence": lic}}
+    assert read(a + xmp_box(with_codes(rec, Code=None, Licence=None)))["codes"] == {}            # a copy may be missing
+    assert read(a + xmp_box(with_codes(rec, Code="A&amp;B&lt;")))["codes"]["Code"] == "A&B<"    # the five entities
+    assert read(a + xmp_box(with_codes(rec, Code="")))["codes"]["Code"] == ""
+    tag = f"<pgag:Code>{code}</pgag:Code>".encode()
+    for packet in (good.replace(tag, tag * 2),                                                  # twice
+                   good.replace(b"</rdf:RDF>", b"<rdf:Description>" + tag + b"</rdf:Description></rdf:RDF>"),
+                   good.replace(tag, b"").replace(b"<rdf:Description", f'<rdf:Description pgag:Code="{code}"'.encode()),
+                   good.replace(b"<pgag:Id>", b'<pgag:Id pgag:Licence="x">'),                  # an attribute form
+                   good.replace(tag, tag.replace(b"</pgag:Code>", b"<x/></pgag:Code>")),       # not text only
+                   good.replace(tag, tag.replace(b"<pgag:Code>", b"<pgag:Code>&#84;")),        # another entity
+                   good.replace(tag, tag.replace(b"</pgag:Code>", b"")),                       # no end tag
+                   good.replace(tag, tag.replace(b"<pgag:Code>", b"<pgag:Code>\xff"))):        # not UTF-8
+        assert read(a + xmp_box(packet)) == {"c2pa": None, "xmp": None, "codes": {}}, packet[-300:]
+    spells = coded(media("a.mp4"), scope={**SCOPE, "project": "pgag:Code=x"})   # a record that spells the attribute
+    with pytest.raises(pregen.PregenError, match="^xmp: "):
+        pregen.embed_xmp(DIR / "a.mp4", tmp_path / "x.mp4", spells)
+
+
+# the ToG code design's printed examples: the TOG check table (I L O U = 32-35), every kind digit, one and two prefixes
+TOG_EVENTS = [("403PRAM", "TOG-AG-PRAM-ZZZZ-T8JE-WDJX"), ("444NWRDPRAM", "TOG-AG-LIC-NWRD-PRAM-ZZZZ-ZJGH-HQH3"),
+              ("405PRAM", "TOG-LIC-PRAM-ZZZZ-QH28-TDQ8"), ("405OMNI", "TOG-LIC-OMNI-ZZZZ-EKC0-Z18T"),
+              ("405KAST", "TOG-LIC-KAST-ZZZZ-FJ4Y-SM2N"), ("401TGOV", "TOG-PG-TGOV-ZZZZ-DHMW-8C2S"),
+              ("402VELR", "TOG-PG-LIC-VELR-ZZZZ-Q4VE-P7E4"), ("442NWRDPRAM", "TOG-PG-LIC-NWRD-PRAM-ZZZZ-VGDY-WCWV"),
+              ("645KOBEMKPRAM", "TOG-LIC-KOBEMK-PRAM-ZZZZ-BYAV-K2AQ"), ("445NWRDSKAN", "TOG-LIC-NWRD-SKAN-ZZZZ-37NF-0EAS")]
+TOG_PERSONS = ["TOG-PRAM-900000037K", "TOG-OMNI-9000000055", "TOG-KINO-900000007B", "TOG-TGOV-9000001014"]
+
+
+def test_the_tog_check_on_the_design_examples():
+    for head, code in TOG_EVENTS:
+        tail = code[-14:].replace("-", "")
+        assert ag._tog_check(head + tail[:-1]) == tail[-1], code
+        assert ag._tog_check(head + tail[:-2] + ("0" if tail[-2] != "0" else "1")) != tail[-1], code
+    for code in TOG_PERSONS:
+        prefix, serial = code[4:8], code[9:]
+        assert ag._tog_check(prefix + serial[:-1]) == serial[-1], code
+    assert ag._tog_check("PRAMIL") != ag._tog_check("PRAM11")       # I and L are not 1: their own values
+
+
+LIC_CODE = "TOG-LIC-TEST-XVQE-XVQE-XVQY"      # basis.licence.id "e" * 64: the tail of 0xeee..., then the check
+
+
+def test_the_readable_codes():
+    rec = coded(a())
+    rid = pregen.message_id("pg.after_gen.v1", rec["body"])
+    code, lic = pregen.after_gen_codes(rec).values()
+    tail = "".join("0123456789ABCDEFGHJKMNPQRSTVWXYZ"[int(f"{int(rid, 16):0256b}"[i:i + 5], 2)] for i in range(0, 55, 5))
+    assert code == "TOG-AG-LIC-TEST-" + "-".join(((tail + code[-1])[i:i + 4]) for i in (0, 4, 8)) and lic == LIC_CODE
+    assert code[-1] == ag._tog_check("404TEST" + tail) and LIC_CODE[-1] == ag._tog_check("405TEST" + "XVQEXVQEXVQ")
+    terms = coded(a(), basis=TERMS)
+    assert pregen.after_gen_codes(terms)["Code"].startswith("TOG-AG-TEST-") and pregen.after_gen_codes(terms)["Licence"] is None
+    # none where a code does not exist: a check * ~ $ = !, a tail starting ZZZZ, no prefix
+    plain = record(a())                                        # issued_at NOW - 100: its check would be a symbol
+    pid = pregen.message_id("pg.after_gen.v1", plain["body"])
+    ptail = "".join("0123456789ABCDEFGHJKMNPQRSTVWXYZ"[int(f"{int(pid, 16):0256b}"[i:i + 5], 2)] for i in range(0, 55, 5))
+    assert ag._tog_check("404TEST" + ptail) in "*~$=!" and pregen.after_gen_codes(plain)["Code"] is None
+    assert ag._tog_code("AG", "TEST", "f" * 64) is None and ag._tog_code("LIC", "TEST", "f" * 64) is None   # ZZZZ...
+    assert ag._tog_code("AG", "", rid) is None and ag._tog_code("AG", "TEST", "e" * 63) is None
+    bare = {**rec, "body": {**rec["body"], "subject_ref": "PG-000042*"}}
+    codes = pregen.after_gen_codes(bare)                                       # the bare namespace is PRAMPTA's
+    assert codes["Code"].startswith("TOG-AG-LIC-PRAM-") and codes["Licence"].startswith("TOG-LIC-PRAM-")
+    for broken in (None, {}, {"body": []}, {"body": {"subject_ref": "x"}}, {**rec, "body": {**rec["body"], "basis": 1}}):
+        assert pregen.after_gen_codes(broken)["Licence"] is None
+    assert pregen.after_gen_codes({**rec, "body": {**rec["body"], "basis": {"kind": "licence", "licence": "x"}}})[
+        "Licence"] is None
+
+
+def test_the_copies_must_be_the_codes_of_the_record():
+    rec, terms = coded(a()), coded(a(), basis=TERMS)
+    code, lic = pregen.after_gen_codes(rec).values()
+    rid = pregen.message_id("pg.after_gen.v1", rec["body"])
+    for codes in ({"Code": code, "Licence": lic}, {"Code": code}, {"Licence": lic}, {}, None):
+        assert check(rec, a(), codes=codes)["id"] == rid                                  # a missing copy is fine
+    assert check(terms, codes={"Code": pregen.after_gen_codes(terms)["Code"]})["basis"] == TERMS
+    other = pregen.after_gen_codes(coded(a(), issued_at=NOW - 50))["Code"]
+    changed = code[:-2] + ("0" if code[-2] != "0" else "1") + code[-1]
+    plain = record(a())                                                                 # its code cannot be formed
+    for env, codes, why in ((rec, {"Code": changed}, "one symbol changed"),
+                            (rec, {"Code": other}, "another record's code"),
+                            (rec, {"Code": relabel(code, "AG")}, "AG in place of AG-LIC"),
+                            (rec, {"Licence": code}, "the approval's code as the licence's"),
+                            (rec, {"Licence": relabel(lic, "AG")}, "a licence copy with AG in place of LIC"),
+                            (rec, {"Code": code.lower()}, "lower case: one spelling"),
+                            (rec, {"Code": code, "Licence": changed}, "one of two copies"),
+                            (rec, {"Code": code, "Other": code}, "a copy of nothing"),
+                            (terms, {"Licence": lic}, "a licence copy under a terms basis"),
+                            (terms, {"Code": relabel(pregen.after_gen_codes(terms)["Code"], "AG-LIC")}, "AG-LIC under terms"),
+                            (plain, {"Code": "TOG-AG-LIC-TEST-0000-0000-0000"}, "a copy whose code cannot be formed")):
+        assert other != code
+        with pytest.raises(pregen.PregenError, match="^the readable code does not match the record$"):
+            check(env, codes=codes)
 
 
 # ── check_after_gen ─────────────────────────────────────────────────────────────

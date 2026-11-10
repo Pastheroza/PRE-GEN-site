@@ -314,7 +314,7 @@ kinds). In `after-gen/1` a record is signed by the person's own registry alone (
 countersignature), so each code has one prefix:
 - **The approval:** `TOG-AG-<prefix>-XXXX-XXXX-XXXX` under the person's terms,
   `TOG-AG-LIC-<prefix>-XXXX-XXXX-XXXX` under a licence. `<prefix>` is the registry prefix of
-  `subject_ref`. The eleven tail symbols are the first 55 bits of the record's message id in
+  `subject_ref` (`PRAM` for a code of the bare namespace, which is PRAMPTA's). The eleven tail symbols are the first 55 bits of the record's message id in
   Crockford base32, most significant first. The last symbol is the check over the body: the
   prefix's length, `0`, the kind digit (`AG` 3, `AG-LIC` 4), the prefix, the tail.
 - **The licence:** `TOG-LIC-<prefix>-XXXX-XXXX-XXXX`, the same construction over the message id
@@ -326,7 +326,7 @@ A registry never signs a record whose code would not exist: when the check would
 **Copies, never authority.** In XMP they are `pgag:Code` and `pgag:Licence`, each at most once,
 read by the same lexical rule as `pgag:Record`. A verifier recomputes both from the signed
 record and refuses the file when a copy differs from what it computes, when `pgag:Licence` is
-present under a terms basis, or when the licence's code cannot be formed. A missing copy is not
+present under a terms basis, or when a copy is present whose code cannot be formed. A missing copy is not
 a refusal: the record is enough. Like the record, the copies lie outside `media/1`.
 
 ## The procedure

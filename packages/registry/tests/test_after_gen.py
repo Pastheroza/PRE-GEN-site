@@ -16,7 +16,7 @@ from pregen_registry.app import create_app
 from pregen_registry.cli import load
 from pregen_registry.cli import main as cli
 from pregen_registry.protocol import Key, ProtocolError, check_body, message_id
-from pregen_registry.registry import AG_REVIEW, Config, Registry
+from pregen_registry.registry import AG_CONSTANTS, AG_REVIEW, Config, Registry
 
 MEDIA = "ab" * 32
 AGENCY = "https://agency.example"
@@ -137,7 +137,8 @@ def test_the_subject_approves_with_their_own_key_and_the_record_stands():
         "notice": "Recorded after the content existed. Not a PRE-GEN permission given before generation. Says nothing "
                   "about whether the content is AI-generated."}
     assert body["approval"] == {"assent": "self", "decision": message_id(d["type"], d["body"])}
-    assert (body["subject_ref"], body["holder"], body["request"], body["issued_at"]) == (w.me, w.p.id, rid, w.clock.t)
+    assert (body["subject_ref"], body["holder"], body["request"]) == (w.me, w.p.id, rid)
+    assert w.clock.t <= body["issued_at"] < w.clock.t + 64      # a second later for each code that would not exist
     assert body["content"] == {"binding": "media/1", "hash": MEDIA, "leaves": 1843}
     assert body["basis"] == {"kind": "licence", "licence": {"format": "pg.grant.v1", "id": w.mine},
                              "use": {"n": 1, "of": None}}                         # the reference issues the licence kind only
@@ -530,10 +531,11 @@ def test_16_status_says_active_withdrawn_with_both_times_or_expired():
     w = World()
     rid = w.pending(subject=w.me, scope=w.scope(not_after=w.clock.t + 86400))
     rec = w.decide(rid).json()["record"]
-    approved = w.clock.t
-    _, s = w.status(rec)
+    body, s = w.status(rec)
+    approved = body["issued_at"]                                # now, or a second later for each code that would not exist
+    assert w.clock.t <= approved < w.clock.t + 64
     assert s == {"signers": s["signers"], "record": rec, "state": "active", "approved_at": approved,
-                 "withdrawn_at": None, "not_after": approved + 86400, "issued_at": w.clock.t,
+                 "withdrawn_at": None, "not_after": w.clock.t + 86400, "issued_at": w.clock.t,
                  "expires_at": w.clock.t + 300}
     w.clock.t += 600
     refused(w.c.post(f"/v2/after-gen/{rec}/withdraw", json=sign(w.own, "subject", "pg.after_gen_withdrawal.v1", {
@@ -552,7 +554,7 @@ def test_16_status_says_active_withdrawn_with_both_times_or_expired():
                                                             {"record": rec, "issued_at": w.clock.t}))
     assert r.json() == {"record": rec, "state": "withdrawn", "withdrawn_at": w.clock.t}, r.text
     _, s = w.status(rec)
-    assert (s["state"], s["approved_at"], s["withdrawn_at"]) == ("withdrawn", approved, approved + 600)
+    assert (s["state"], s["approved_at"], s["withdrawn_at"]) == ("withdrawn", approved, w.clock.t)
     w.clock.t += 86400                                                           # withdrawn stays withdrawn
     assert w.status(rec)[1]["state"] == "withdrawn"
     other = w.decide(w.pending(subject=w.me, media="cd" * 32, scope=w.scope(not_after=w.clock.t + 10))).json()["record"]
@@ -627,17 +629,48 @@ def test_the_library_accepts_every_record_and_status_the_registry_signs():
         assert (checked["id"], checked["approval"]["assent"]) == (rec, assent)
         assert checked["basis"] == out["record"]["body"]["basis"] and checked["basis"]["kind"] == "licence"
         assert checked["status_url"] == f"https://test.example/v2/after-gen/{rec}"
+        codes = lib.after_gen_codes(out["record"])               # a signed record always has its readable code
+        assert re.fullmatch(r"TOG-AG-LIC-TEST-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}",
+                            codes["Code"]) and not codes["Code"].startswith("TOG-AG-LIC-TEST-ZZZZ")
+        copies = {k: v for k, v in codes.items() if v}
+        assert lib.check_after_gen(out["record"], directory, get_json, codes=copies)["id"] == rec
         assert lib.check_after_gen_status(out["status"], out["record"], directory, get_json, now=w.clock.t)["state"] == "active"
     w.clock.t += 60
     w.reg.withdraw_after_gen(records[1], instruction=INSTRUCTION)
     out = w.c.get(f"/v2/after-gen/{records[1]}").json()
     assert lib.check_after_gen_status(out["status"], out["record"], directory, get_json, now=w.clock.t) == {
-        "state": "withdrawn", "approved_at": w.clock.t - 60, "withdrawn_at": w.clock.t, "not_after": w.clock.t - 60 + 86400}
+        "state": "withdrawn", "approved_at": out["record"]["body"]["issued_at"], "withdrawn_at": w.clock.t,
+        "not_after": w.clock.t - 60 + 86400}
     w.clock.t += 86400                                                            # a directory a day old is loaded again
     directory = lib.verify_directory({**d, "signature": steward.sign(lib.canonical_json(d))}, steward.public_hex,
                                      now=w.clock.t)
     out = w.c.get(f"/v2/after-gen/{records[0]}").json()
     assert lib.check_after_gen_status(out["status"], out["record"], directory, get_json, now=w.clock.t)["state"] == "expired"
+
+
+def test_a_record_whose_code_would_not_exist_is_signed_a_second_later():
+    """The readable codes: when the check would be one of * ~ $ = ! (or the tail would begin ZZZZ), the registry signs
+    again with issued_at one second later. The body is known before signing, so the clock is set to such a second."""
+    w = World()
+    rid = w.pending()
+    scope = json.loads(w.row(rid)["scope"])
+
+    def body_at(t):
+        return {**AG_CONSTANTS, "signers": [{"role": "registry", "key_id": w.reg.key.id}], "subject_ref": w.s,
+                "content": {"binding": "media/1", "hash": MEDIA, "leaves": 1843}, "request": rid, "holder": w.p.id,
+                "basis": {"kind": "licence", "licence": {"format": "pg.grant.v1", "id": w.g}, "use": {"n": 1, "of": None}},
+                "scope": scope, "approval": {"assent": "registry", "instruction": INSTRUCTION, "factor": "email"},
+                "issued_at": t}
+
+    def code_at(t):
+        return lib.after_gen_codes({"type": "pg.after_gen.v1", "body": body_at(t)})["Code"]
+    t = next(t for t in range(w.clock.t, w.clock.t + 3600) if code_at(t) is None)
+    w.clock.t = t
+    rec = w.reg.approve_after_gen(rid, instruction=INSTRUCTION, factor="email")
+    later = next(t + k for k in range(1, 64) if code_at(t + k))
+    body = w.status(rec)[0]
+    assert body["issued_at"] == later and rec == message_id("pg.after_gen.v1", body_at(later))
+    assert lib.after_gen_codes({"type": "pg.after_gen.v1", "body": body})["Code"] == code_at(later)
 
 
 # ── a record is never an answer (vector 11), and the requester's authentication ──

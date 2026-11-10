@@ -717,17 +717,34 @@ function exactEnvelope(bytes) {
   } catch { return null; }
 }
 
-// pgag:Record by the fixed lexical rule (Carrying the record), never by an XML parser, so that every reader finds the
-// same record: the envelope, or null for a packet that breaks the rule and so carries no record.
-function fromXmp(packet) {
-  const p = bytesText(packet), n = (x) => p.split(x).length - 1, pis = [n("<?xpacket begin="), n("<?xpacket end=")];
-  if (["<!--", "<![CDATA[", "<!DOCTYPE", "<!ENTITY"].some((x) => p.includes(x)) || Math.max(...pis) > 1
-      || n("<?") !== pis[0] + pis[1] || n(NS) !== 1 || n(`xmlns:pgag="${NS}"`) !== 1 || n("xmlns:pgag=") !== 1
-      || n("<pgag:Record>") !== 1 || p.includes("pgag:Record=")) return null;
-  const start = p.indexOf("<pgag:Record>") + 13, end = p.indexOf("</pgag:Record>", start), text = p.slice(start, end);
+// The unescaped text of the one <pgag:name> element by the lexical rule, as bytes; undefined when there is none; null
+// when the rule is broken (a second element, an attribute form, a "<" or another entity in it, no end tag).
+function xmpText(p, name) {
+  const tag = `<pgag:${name}>`, count = p.split(tag).length - 1;
+  if (count > 1 || p.includes(`pgag:${name}=`)) return null;
+  if (!count) return undefined;
+  const start = p.indexOf(tag) + tag.length, end = p.indexOf(`</pgag:${name}>`, start), text = p.slice(start, end);
   if (end < 0 || text.includes("<") || /&(?!(?:amp|lt|gt|quot|apos);)/.test(text)) return null;
   const XML = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
-  return exactEnvelope(Uint8Array.from(text.replace(/&(amp|lt|gt|quot|apos);/g, (_, e) => XML[e]), (c) => c.charCodeAt(0)));
+  return Uint8Array.from(text.replace(/&(amp|lt|gt|quot|apos);/g, (_, e) => XML[e]), (c) => c.charCodeAt(0));
+}
+
+// pgag:Record by the fixed lexical rule (Carrying the record), never by an XML parser, so that every reader finds the
+// same record, with the readable copies beside it: {xmp: the envelope, codes: {Code?, Licence?}}, or {xmp: null,
+// codes: {}} for a packet that breaks the rule and so carries no record.
+function fromXmp(packet) {
+  const none = { xmp: null, codes: {} };
+  const p = bytesText(packet), n = (x) => p.split(x).length - 1, pis = [n("<?xpacket begin="), n("<?xpacket end=")];
+  if (["<!--", "<![CDATA[", "<!DOCTYPE", "<!ENTITY"].some((x) => p.includes(x)) || Math.max(...pis) > 1
+      || n("<?") !== pis[0] + pis[1] || n(NS) !== 1 || n(`xmlns:pgag="${NS}"`) !== 1 || n("xmlns:pgag=") !== 1) return none;
+  const text = xmpText(p, "Record"), env = text ? exactEnvelope(text) : null, codes = {};
+  if (!env) return none;
+  for (const k of ["Code", "Licence"]) {
+    const v = xmpText(p, k);
+    if (v === null) return none;
+    if (v !== undefined) try { codes[k] = UTF8.decode(v); } catch { return none; }
+  }
+  return { xmp: env, codes };
 }
 
 async function carriers(r) {
@@ -736,14 +753,15 @@ async function carriers(r) {
   return { top, xmp: await Promise.all(uuid(XMP_UUID).map(read)), c2pa: await Promise.all(uuid(C2PA_UUID).map(read)) };
 }
 
-/** The records a file carries, unchecked: {c2pa, xmp}, each an envelope or null. C2PA: the org.pregen.after_gen
- * assertion of the active (last) manifest. XMP: pgag:Record of the top-level XMP uuid box. Check each with checkAfterGen. */
+/** The records a file carries, unchecked: {c2pa, xmp, codes}, c2pa and xmp each an envelope or null. C2PA: the
+ * org.pregen.after_gen assertion of the active (last) manifest. XMP: pgag:Record of the top-level XMP uuid box, and in
+ * codes the readable copies beside it, {Code?, Licence?}. Check each with checkAfterGen, the XMP one with its codes. */
 export async function readAfterGen(source) {
   const { xmp, c2pa } = await carriers(reader(source));
   if (xmp.length > 1) A("more than one XMP box");
   const stores = c2pa.map(fromC2pa).filter((x) => x !== undefined);
   if (stores.length > 1) A("more than one C2PA manifest store");
-  return { c2pa: stores[0] ?? null, xmp: xmp.length ? fromXmp(xmp[0].data.subarray(16)) : null };
+  return { c2pa: stores[0] ?? null, ...(xmp.length ? fromXmp(xmp[0].data.subarray(16)) : { xmp: null, codes: {} }) };
 }
 
 const XPACKET = '<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>\n'
@@ -771,7 +789,8 @@ function dropPgag(packet) {
  * last box of size 0 ("to the end of the file") gets its real size written first, and one larger than 4 GiB is refused.
  * An existing XMP box keeps its properties (an earlier pgag description is dropped) and is rewritten in place: as the
  * last box it may grow; elsewhere the new packet must fit in it, padded with spaces, or embedding is refused. pgag:Id, pgag:Registry and, given the
- * directory, pgag:Status ({api}/v2/after-gen/{id}) are copies for people, never read as the record. */
+ * directory, pgag:Status ({api}/v2/after-gen/{id}) are copies for people, never read as the record. pgag:Code, and
+ * pgag:Licence under a licence, are the readable codes, written when they can be formed. */
 export async function embedXmp(bytes, envelope, { directory } = {}) {
   if (!(bytes instanceof Uint8Array)) A("embedXmp takes the file as a Uint8Array");
   if (envelope?.type !== RECORD || !envelope.body || typeof envelope.body !== "object") A(`not a ${RECORD} envelope`);
@@ -794,17 +813,19 @@ export async function embedXmp(bytes, envelope, { directory } = {}) {
   if (at < 0) A("the existing XMP packet has no rdf:RDF");
   const open = packet.slice(at).match(/^<rdf:RDF\b(?:[^>"']|"[^"]*"|'[^']*')*>/)[0];
   const body = envelope.body, id = await messageId(RECORD, body), api = directory?.registryFor(body.subject_ref)?.api;
+  const codes = Object.fromEntries(Object.entries(await afterGenCodes(envelope)).filter(([, v]) => v)); // those formed
   const description = `\n<rdf:Description rdf:about="" xmlns:pgag="${NS}">\n`
     + `<pgag:Record>${escapeXml(canonicalJson(envelope))}</pgag:Record>\n`
     + `<pgag:Id>${id}</pgag:Id>\n`
     + `<pgag:Registry>${escapeXml(issuerOf(body.subject_ref))}</pgag:Registry>\n`
+    + Object.entries(codes).map(([k, v]) => `<pgag:${k}>${v}</pgag:${k}>\n`).join("")
     + (api ? `<pgag:Status>${escapeXml(api.replace(/\/+$/, ""))}/v2/after-gen/${id}</pgag:Status>\n` : "")
     + "</rdf:Description>";
   let text = utf8.encode(packet.slice(0, at + open.length) + description + packet.slice(at + open.length));
   const back = fromXmp(text);
-  if (!back || canonicalJson(back) !== canonicalJson(envelope)) {
-    A("the packet would not carry the record under the lexical rule: an existing property spells pgag:Record= or "
-      + "xmlns:pgag=, or the record is not canonical JSON");
+  if (!back.xmp || canonicalJson(back.xmp) !== canonicalJson(envelope) || canonicalJson(back.codes) !== canonicalJson(codes)) {
+    A("the packet would not carry the record under the lexical rule: an existing property spells pgag:Record=, "
+      + "pgag:Code=, pgag:Licence= or xmlns:pgag=, or the record is not canonical JSON");
   }
   const uuid = Uint8Array.from(XMP_UUID.match(/../g), (h) => parseInt(h, 16));
   if (old && old.start + old.size < bytes.length) { // in place, the same size, padded before the trailer
@@ -820,6 +841,35 @@ export async function embedXmp(bytes, envelope, { directory } = {}) {
   head.set(code("uuid"), 4);
   if (big) view(head).setBigUint64(8, BigInt(32 + text.length));
   return concat([out.subarray(0, old ? old.start : out.length), head, uuid, text]);
+}
+
+// ── the readable codes ──
+
+const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ", TOG_VALUES = CROCKFORD + "ILOU"; // the TOG table: I L O U take 32-35
+const TOG_KINDS = ["PG", "PG-LIC", "AG", "AG-LIC", "LIC"]; // kind digits 1-5
+
+// The one-prefix ToG event code (The readable codes): TOG-<kind>-<prefix>-XXXX-XXXX-XXXX, the tail the first 55 bits of
+// the message id `mid`. null where no code exists: no prefix, a tail starting ZZZZ, a check * ~ $ = !.
+function togCode(kind, prefix, mid) {
+  if (!prefix || !hex64(mid)) return null;
+  const n = BigInt("0x" + mid) >> 201n;
+  let tail = "";
+  for (let i = 10; i >= 0; i--) tail += CROCKFORD[Number((n >> BigInt(5 * i)) & 31n)];
+  const body = `${prefix.length}0${TOG_KINDS.indexOf(kind) + 1}${prefix}${tail}`;
+  const check = (CROCKFORD + "*~$=!")[[...body].reduce((sum, c, i) => sum + TOG_VALUES.indexOf(c) * (i + 1), 0) % 37];
+  if (tail.startsWith("ZZZZ") || !CROCKFORD.includes(check)) return null;
+  const t = tail + check;
+  return `TOG-${kind}-${prefix}-${t.slice(0, 4)}-${t.slice(4, 8)}-${t.slice(8)}`;
+}
+
+/** The readable codes of a pg.after_gen.v1 record, computed from it: {Code: the approval's, Licence: the licence's under
+ * a licence basis}, each null where it cannot be formed (and Licence null under a terms basis). */
+export async function afterGenCodes(env) {
+  try {
+    const b = env.body, prefix = issuerOf(b.subject_ref) || "PRAM", licence = isObject(b.basis) && b.basis.kind === "licence";
+    return { Code: togCode(licence ? "AG-LIC" : "AG", prefix, await messageId(RECORD, b)),
+      Licence: licence ? togCode("LIC", prefix, isObject(b.basis.licence) ? b.basis.licence.id : null) : null };
+  } catch { return { Code: null, Licence: null }; }
 }
 
 // ── checking the record and its status ──
@@ -906,9 +956,10 @@ const approvedBy = (a) => (a.assent === "self" ? "approved by the person"
 
 /** Steps 3 and 4 of "How a verifier checks a file": the record's shape and constants, its signature by exactly one
  * registry key the directory lists for the subject's prefix at issued_at (a revoked registry's records fail), the
- * approval form, the floor; then, given `media` (a mediaHash result or its hex hash), that it is this file. Throws
- * PregenError; returns what to show, with the three statements. */
-export async function checkAfterGen(env, { directory, getJson, fetch: fetchFn, media } = {}) {
+ * approval form, the floor; then, given `media` (a mediaHash result or its hex hash), that it is this file; given
+ * `codes` (the copies readAfterGen found beside the XMP record), that each present copy is the code computed from the
+ * record (a missing copy is fine). Throws PregenError; returns what to show, with the three statements. */
+export async function checkAfterGen(env, { directory, getJson, fetch: fetchFn, media, codes } = {}) {
   const f = fetchOf({ fetch: fetchFn, getJson });
   if (!isObject(env) || env.type !== RECORD || !isObject(env.body)) A(`not a ${RECORD} envelope`);
   recordShape(env.body);
@@ -921,6 +972,12 @@ export async function checkAfterGen(env, { directory, getJson, fetch: fetchFn, m
     const m = typeof media === "string" ? { binding: "media/1", hash: media, leaves: b.content.leaves } : media;
     if (m.binding !== b.content.binding || m.hash !== b.content.hash || m.leaves !== b.content.leaves) fail("not for this file");
     fileMatch = true;
+  }
+  if (codes) {
+    const want = await afterGenCodes(env);
+    if (Object.entries(codes).some(([k, v]) => !Object.hasOwn(want, k) || want[k] === null || want[k] !== v)) {
+      A("the readable code does not match the record");
+    }
   }
   return { id: await messageId(RECORD, b), subject_ref: b.subject_ref, prefix: issuerOf(b.subject_ref), label: b.label,
     notice: b.notice, not: [...b.not], holder: b.holder, basis: b.basis, scope: b.scope,

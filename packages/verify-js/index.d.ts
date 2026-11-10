@@ -165,8 +165,15 @@ export interface RangeReader { size: number; read(offset: number, length: number
 export interface Envelope { type: string; body: Record<string, any>; signatures: string[] }
 /** media/1 of an ISO base media file (MP4, MOV, M4V), read in ranges. Throws PregenError("media/1: <reason>"). */
 export function mediaHash(source: Uint8Array | Blob | RangeReader): Promise<MediaHash>;
-/** The records a file carries, unchecked: the C2PA assertion of the active manifest and the XMP pgag:Record, or null. */
-export function readAfterGen(source: Uint8Array | Blob | RangeReader): Promise<{ c2pa: Envelope | null; xmp: Envelope | null }>;
+/** The readable copies beside a record in XMP (pgag:Code, pgag:Licence), each present or not. */
+export interface AfterGenCodeCopies { Code?: string; Licence?: string }
+/** The records a file carries, unchecked: the C2PA assertion of the active manifest and the XMP pgag:Record, or null;
+ * `codes`, the readable copies beside the XMP record. */
+export function readAfterGen(source: Uint8Array | Blob | RangeReader): Promise<{ c2pa: Envelope | null; xmp: Envelope | null;
+  codes: AfterGenCodeCopies }>;
+/** The readable codes computed from a record: the approval's (TOG-AG-… or TOG-AG-LIC-…) and, under a licence basis, the
+ * licence's (TOG-LIC-…); null where a code cannot be formed, Licence null under a terms basis. */
+export function afterGenCodes(env: unknown): Promise<{ Code: string | null; Licence: string | null }>;
 /** The file with the record in a top-level XMP uuid box appended at the end; an existing XMP box becomes `free` of the
  * same size and its properties move into the new packet. Given the directory, pgag:Status is {api}/v2/after-gen/{id}. */
 export function embedXmp(bytes: Uint8Array, envelope: Envelope, options?: { directory?: Directory }): Promise<Uint8Array>;
@@ -182,9 +189,10 @@ export interface AfterGenSummary {
   fileMatch: true | null;
 }
 /** The record's shape, constants and floor, its signature by one registry key of the subject's prefix, and, given
- * `media`, that it names this file (else PregenError "not for this file"). */
+ * `media`, that it names this file (else PregenError "not for this file"); given `codes`, that each present copy is the
+ * code computed from the record. */
 export function checkAfterGen(env: unknown, options?: { directory?: Directory; getJson?: (url: string) => Promise<any>; fetch?: Fetch;
-  media?: MediaHash | string }): Promise<AfterGenSummary>;
+  media?: MediaHash | string; codes?: AfterGenCodeCopies }): Promise<AfterGenSummary>;
 /** The live status of this record ({api}/v2/after-gen/{id}): signed for the subject's prefix, naming this record,
  * current, at most 300 seconds of life. */
 export function checkAfterGenStatus(statusEnv: unknown, recordEnv: unknown, options?: { directory?: Directory;

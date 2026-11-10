@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { AFTER_GEN_LABEL, AFTER_GEN_NOTICE, AFTER_GEN_NOT, mediaHash, readAfterGen, embedXmp, c2paAssertion, checkAfterGen,
   checkAfterGenStatus, canonicalJson, messageId, signEnvelope, verifyDirectory, fingerprint, publicKeyHex, newPrivateKeyHex,
-  sha256Hex, PregenError } from "../index.js";
+  sha256Hex, PregenError, afterGenCodes } from "../index.js";
 
 // ── a box writer, and an independent media/1 (elements, leaves, RFC 6962) to check the library against ──
 
@@ -327,11 +327,20 @@ async function record(changes = {}, key = KEY) {
 }
 const RECORD = await record();
 const TERMS = { kind: "terms", terms: "f".repeat(64) };
+// The readable codes embedXmp writes: those that can be formed (RECORD is signed by a fresh key: its code may not exist).
+const written = async (env) => Object.fromEntries(Object.entries(await afterGenCodes(env)).filter(([, v]) => v));
+// A record as a registry signs it: issued_at a second later while its code would not exist.
+async function coded(changes = {}) {
+  for (let t = 1794200000; ; t++) {
+    const env = await record({ ...changes, issued_at: t });
+    if ((await afterGenCodes(env)).Code) return env;
+  }
+}
 
 test("XMP: embedded at the end, read back, and media/1 unchanged", async () => {
   const out = await embedXmp(FILE, RECORD);
   assert.deepEqual(out.subarray(0, FILE.length), FILE);
-  assert.deepEqual(await readAfterGen(out), { c2pa: null, xmp: RECORD });
+  assert.deepEqual(await readAfterGen(out), { c2pa: null, xmp: RECORD, codes: await written(RECORD) });
   assert.deepEqual(await mediaHash(out), MEDIA);
   const id = await messageId("pg.after_gen.v1", RECORD.body);
   const packet = Buffer.from(out.subarray(FILE.length + 24)).toString();
@@ -339,7 +348,13 @@ test("XMP: embedded at the end, read back, and media/1 unchanged", async () => {
   assert.ok(packet.includes('xmlns:pgag="https://pregen.org/ns/after-gen/1/"') && !packet.includes("pgag:Status"));
   const withStatus = Buffer.from(await embedXmp(FILE, RECORD, { directory })).toString("latin1");
   assert.ok(withStatus.includes(`<pgag:Status>${API}/v2/after-gen/${id}</pgag:Status>`)); // built, never read
-  assert.deepEqual(await readAfterGen(FILE), { c2pa: null, xmp: null });
+  assert.deepEqual(await readAfterGen(FILE), { c2pa: null, xmp: null, codes: {} });
+  const rec = await coded(), codes = await afterGenCodes(rec), both = Buffer.from(await embedXmp(FILE, rec)).toString();
+  assert.ok(both.includes(`<pgag:Code>${codes.Code}</pgag:Code>`) && codes.Code.startsWith("TOG-AG-LIC-TEST-"));
+  assert.deepEqual((await readAfterGen(await embedXmp(FILE, rec))).codes, await written(rec));
+  const terms = await coded({ basis: TERMS }), one = await embedXmp(FILE, terms);
+  assert.deepEqual((await readAfterGen(one)).codes, { Code: (await afterGenCodes(terms)).Code });
+  assert.ok(!Buffer.from(one).toString().includes("pgag:Licence"));
 });
 
 test("XMP: read by the fixed lexical rule only; a packet that breaks it carries no record", async () => {
@@ -451,7 +466,8 @@ test("C2PA: the assertion from the active manifest, as JSON or CBOR", async () =
   assert.deepEqual((await readAfterGen(withC2pa(two))).c2pa, RECORD); // the last manifest is the active one
   const none = c2paBox(manifest(assertion(label, jsonBox(RECORD))), manifest(assertion("c2pa.actions", jsonBox({ a: 1 }))));
   assert.equal((await readAfterGen(withC2pa(none))).c2pa, null);
-  assert.deepEqual(await readAfterGen(new Blob([await embedXmp(withC2pa(two), RECORD)])), { c2pa: RECORD, xmp: RECORD });
+  assert.deepEqual(await readAfterGen(new Blob([await embedXmp(withC2pa(two), RECORD)])),
+    { c2pa: RECORD, xmp: RECORD, codes: await written(RECORD) });
 });
 
 test("C2PA: a malformed store or assertion is refused", async () => {
@@ -485,6 +501,97 @@ test("C2PA: a malformed store or assertion is refused", async () => {
 // ── checking the record (vectors 6, 9, 10, 13) ──
 
 const check = (env, options = {}) => checkAfterGen(env, { directory, getJson, ...options });
+
+// ── the readable codes ──
+
+const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+const togCheck = (body) => (CROCKFORD + "*~$=!")[[...body].reduce((n, c, i) => n + (CROCKFORD + "ILOU").indexOf(c) * (i + 1), 0) % 37];
+const tailOf = (id) => Array.from({ length: 11 }, (_, i) => CROCKFORD[Number((BigInt("0x" + id) >> BigInt(251 - 5 * i)) & 31n)]).join("");
+const spell = (kind, prefix, t) => `TOG-${kind}-${prefix}-${t.slice(0, 4)}-${t.slice(4, 8)}-${t.slice(8)}`;
+const relabel = (code, kind) => { // the same tail under another kind, with that kind's check: well formed, another meaning
+  const prefix = code.split("-").at(-4), tail = code.slice(-14).replaceAll("-", "").slice(0, -1);
+  return spell(kind, prefix, tail + togCheck(`${prefix.length}0${["PG", "PG-LIC", "AG", "AG-LIC", "LIC"].indexOf(kind) + 1}${prefix}${tail}`));
+};
+
+test("the TOG check table on the ToG code design's printed examples", () => {
+  const events = [["403PRAM", "TOG-AG-PRAM-ZZZZ-T8JE-WDJX"], ["444NWRDPRAM", "TOG-AG-LIC-NWRD-PRAM-ZZZZ-ZJGH-HQH3"],
+    ["405PRAM", "TOG-LIC-PRAM-ZZZZ-QH28-TDQ8"], ["405OMNI", "TOG-LIC-OMNI-ZZZZ-EKC0-Z18T"], ["405KAST", "TOG-LIC-KAST-ZZZZ-FJ4Y-SM2N"],
+    ["401TGOV", "TOG-PG-TGOV-ZZZZ-DHMW-8C2S"], ["402VELR", "TOG-PG-LIC-VELR-ZZZZ-Q4VE-P7E4"],
+    ["442NWRDPRAM", "TOG-PG-LIC-NWRD-PRAM-ZZZZ-VGDY-WCWV"], ["645KOBEMKPRAM", "TOG-LIC-KOBEMK-PRAM-ZZZZ-BYAV-K2AQ"],
+    ["445NWRDSKAN", "TOG-LIC-NWRD-SKAN-ZZZZ-37NF-0EAS"]];
+  for (const [head, code] of events) {
+    const tail = code.slice(-14).replaceAll("-", "");
+    assert.equal(togCheck(head + tail.slice(0, -1)), tail.at(-1), code);
+  }
+  for (const code of ["TOG-PRAM-900000037K", "TOG-OMNI-9000000055", "TOG-KINO-900000007B", "TOG-TGOV-9000001014"]) {
+    assert.equal(togCheck(code.slice(4, 8) + code.slice(9, -1)), code.at(-1), code);
+  }
+});
+
+test("afterGenCodes: the first 55 bits of the message id and the check over the body; none where no code exists", async () => {
+  let none = 0;
+  for (let t = 0; t < 200; t++) {
+    for (const basis of [undefined, TERMS]) {
+      const env = { type: "pg.after_gen.v1", body: { ...(await baseBody()), issued_at: 1794200000 + t, ...(basis ? { basis } : {}) } };
+      const tail = tailOf(await messageId(env.type, env.body)), check = togCheck(`40${basis ? 3 : 4}TEST${tail}`);
+      const want = tail.startsWith("ZZZZ") || !CROCKFORD.includes(check) ? null : spell(basis ? "AG" : "AG-LIC", "TEST", tail + check);
+      const lic = tailOf("b".repeat(64)) + togCheck("405TEST" + tailOf("b".repeat(64)));
+      assert.deepEqual(await afterGenCodes(env), { Code: want, Licence: basis ? null : spell("LIC", "TEST", lic) });
+      none += want === null;
+    }
+  }
+  assert.ok(none > 20 && none < 100); // about 1 in 7: a check * ~ $ = !
+  const rec = await coded();
+  const bare = await afterGenCodes({ ...rec, body: { ...rec.body, subject_ref: "PG-000042*" } }); // the bare namespace is PRAMPTA's
+  // the key is random per run, so either code may fall on a symbol check and not exist; when it exists it is PRAM's
+  assert.ok((bare.Code === null || bare.Code.startsWith("TOG-AG-LIC-PRAM-"))
+    && (bare.Licence === null || bare.Licence.startsWith("TOG-LIC-PRAM-")));
+  assert.equal((await afterGenCodes(change(rec, "body.basis.licence.id", "f".repeat(64)))).Licence, null); // a tail starting ZZZZ
+  for (const broken of [null, {}, { body: [] }, { body: { subject_ref: "x" } }]) {
+    assert.deepEqual(await afterGenCodes(broken), { Code: null, Licence: null });
+  }
+  assert.equal((await afterGenCodes(change(rec, "body.basis.licence", "x"))).Licence, null);
+});
+
+test("the copies beside a record must be its codes; a missing copy is fine", async () => {
+  const rec = await coded(), terms = await coded({ basis: TERMS }), plain = await record({ issued_at: 1794200000 });
+  const { Code: code, Licence: lic } = await afterGenCodes(rec), id = await messageId(rec.type, rec.body);
+  for (const codes of [{ Code: code, Licence: lic }, { Code: code }, { Licence: lic }, {}, undefined]) {
+    assert.equal((await check(rec, { media: MEDIA, codes })).id, id);
+  }
+  assert.equal((await check(terms, { codes: { Code: (await afterGenCodes(terms)).Code } })).basis.kind, "terms");
+  const other = (await afterGenCodes(await coded({ "basis.use.n": 4 }))).Code;
+  const changed = code.slice(0, -2) + (code.at(-2) === "0" ? "1" : "0") + code.at(-1);
+  assert.notEqual(other, code);
+  const refused = [[rec, { Code: changed }], [rec, { Code: other }], [rec, { Code: relabel(code, "AG") }],
+    [rec, { Licence: code }], [rec, { Licence: relabel(lic, "AG") }], [rec, { Code: code.toLowerCase() }],
+    [rec, { Code: code, Licence: changed }], [rec, { Code: code, Other: code }], [terms, { Licence: lic }],
+    [terms, { Code: relabel((await afterGenCodes(terms)).Code, "AG-LIC") }]];
+  if (!(await afterGenCodes(plain)).Code) refused.push([plain, { Code: "TOG-AG-LIC-TEST-0000-0000-0000" }]); // cannot be formed
+  for (const [env, codes] of refused) {
+    await assert.rejects(check(env, { codes }), (e) => e instanceof PregenError
+      && e.message === "after-gen: the readable code does not match the record", JSON.stringify(codes));
+  }
+});
+
+test("XMP: the codes by the same lexical rule as the record", async () => {
+  const rec = await coded(), { Code: code } = await afterGenCodes(rec);
+  const good = Buffer.from(await embedXmp(FILE, rec)).toString("latin1").slice(FILE.length + 24), tag = `<pgag:Code>${code}</pgag:Code>`;
+  const read = (packet) => readAfterGen(new Uint8Array(B(FILE, uuidBox(XMP_UUID, Buffer.from(packet, "latin1")))));
+  assert.deepEqual(await read(good), { c2pa: null, xmp: rec, codes: await written(rec) });
+  assert.deepEqual((await read(good.replace(tag, "<pgag:Code>A&amp;B&lt;</pgag:Code>"))).codes.Code, "A&B<");
+  for (const packet of [good.replace(tag, tag + tag),
+    good.replace("</rdf:RDF>", `<rdf:Description>${tag}</rdf:Description></rdf:RDF>`),
+    good.replace(tag, "").replace("<rdf:Description", `<rdf:Description pgag:Code="${code}"`),
+    good.replace("<pgag:Id>", '<pgag:Id pgag:Licence="x">'),
+    good.replace(tag, tag.replace("</pgag:Code>", "<x/></pgag:Code>")),
+    good.replace(tag, tag.replace("<pgag:Code>", "<pgag:Code>&#84;")),
+    good.replace(tag, tag.replace("</pgag:Code>", "")),
+    good.replace(tag, tag.replace("<pgag:Code>", "<pgag:Code>\xff"))]) {
+    assert.deepEqual(await read(packet), { c2pa: null, xmp: null, codes: {} }, packet.slice(-300));
+  }
+  await assert.rejects(embedXmp(FILE, await coded({ "scope.project": "pgag:Code=x" })), /lexical rule/);
+});
 
 test("a valid record checks out, with the three statements and who approved", async () => {
   const s = await check(RECORD, { media: MEDIA });
@@ -742,12 +849,14 @@ test("spec/test-vectors/after-gen/vectors.json: every file's media/1 or refusal,
       continue;
     }
     const got = await readAfterGen(file(v.file));
+    assert.deepEqual(got.codes, v.codes, `${v.file} codes`);
     for (const via of ["c2pa", "xmp"]) {
       assert.equal(got[via] && await messageId(got[via].type, got[via].body), v[via], `${v.file} ${via}`);
       if (!(via in v.check)) continue;
-      const media = hashes[v.file] ?? await mediaHash(file(v.file));
-      const said = await checkAfterGen(got[via], { directory: dir, getJson: keys, media }).then((s) => s.id, (e) => e.message);
+      const media = hashes[v.file] ?? await mediaHash(file(v.file)), codes = via === "xmp" ? got.codes : undefined;
+      const said = await checkAfterGen(got[via], { directory: dir, getJson: keys, media, codes }).then((s) => s.id, (e) => e.message);
       if (/^[0-9a-f]{64}$/.test(v.check[via]) || v.check[via] === "not for this file") assert.equal(said, v.check[via], `${v.file} ${via}`);
+      else if (v.check[via] === "the readable code does not match the record") assert.equal(said, `after-gen: ${v.check[via]}`, v.file);
       else assert.doesNotMatch(said, /^[0-9a-f]{64}$/, `${v.file} ${via}: refused`);
     }
   }

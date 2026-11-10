@@ -843,15 +843,41 @@ def _xmp_record(p: bytes):
     the same record: the envelope, or None for a packet that breaks the rule and so carries no record."""
     pis = (p.count(b"<?xpacket begin="), p.count(b"<?xpacket end="))
     if any(x in p for x in _XMP_NOT) or max(pis) > 1 or p.count(b"<?") != sum(pis) or p.count(_PGAG.encode()) != 1 \
-            or p.count(_XMP_DECL) != 1 or p.count(b"xmlns:pgag=") != 1 or p.count(b"<pgag:Record>") != 1 \
-            or b"pgag:Record=" in p:
+            or p.count(_XMP_DECL) != 1 or p.count(b"xmlns:pgag=") != 1:
         return None
-    start = p.index(b"<pgag:Record>") + 13
-    end = p.find(b"</pgag:Record>", start)
+    text = _xmp_text(p, b"Record")
+    return _envelope(text) if text else None
+
+
+def _xmp_text(p: bytes, name: bytes):
+    """The unescaped text of the one <pgag:name> element by the lexical rule; None when there is none; False when the
+    rule is broken (a second element, an attribute form, a `<` or another entity in it, no end tag)."""
+    tag = b"<pgag:" + name + b">"
+    if p.count(tag) > 1 or b"pgag:" + name + b"=" in p:
+        return False
+    if tag not in p:
+        return None
+    start = p.index(tag) + len(tag)
+    end = p.find(b"</pgag:" + name + b">", start)
     text = p[start:end]
     if end < 0 or b"<" in text or re.search(rb"&(?!(?:amp|lt|gt|quot|apos);)", text):
-        return None
-    return _envelope(re.sub(rb"&(amp|lt|gt|quot|apos);", lambda x: _XMP_ESC[x[1]], text))
+        return False
+    return re.sub(rb"&(amp|lt|gt|quot|apos);", lambda x: _XMP_ESC[x[1]], text)
+
+
+def _xmp_codes(p: bytes):
+    """pgag:Code and pgag:Licence, the copies present, by the same rule; None when either breaks it."""
+    out = {}
+    for k in ("Code", "Licence"):
+        v = _xmp_text(p, k.encode())
+        if v is False:
+            return None
+        if v is not None:
+            try:
+                out[k] = v.decode("utf-8")
+            except UnicodeDecodeError:
+                return None
+    return out
 
 
 def _xmp_tree(packet: bytes):
@@ -868,9 +894,12 @@ def _xmp_tree(packet: bytes):
 
 
 def _xmp(f, box):
+    """(the record, its readable copies): (None, {}) for a packet that carries no record."""
     _, _, cs, ce = box
     f.seek(cs + 16)
-    return _xmp_record(f.read(ce - cs - 16))
+    p = f.read(ce - cs - 16)
+    env, codes = _xmp_record(p), _xmp_codes(p)
+    return (env, codes) if env is not None and codes is not None else (None, {})
 
 
 def _top(f, uuid):
@@ -887,7 +916,8 @@ def _top(f, uuid):
 def read_after_gen(f) -> dict:
     """Step 2 of How a verifier checks a file: the record in the file's C2PA manifest (the org.pregen.after_gen
     assertion of the active, last, manifest; JSON or CBOR) and in its XMP (pgag:Record). Only extracts: check what it
-    returns with check_after_gen. Returns {"c2pa": envelope or None, "xmp": envelope or None}."""
+    returns with check_after_gen. Returns {"c2pa": envelope or None, "xmp": envelope or None, "codes": the readable
+    copies beside the XMP record, {"Code"?, "Licence"?}; pass them to check_after_gen with that record}."""
     if isinstance(f, (str, os.PathLike)):
         with open(f, "rb") as fh:
             return read_after_gen(fh)
@@ -897,7 +927,8 @@ def read_after_gen(f) -> dict:
         raise PregenError("c2pa: more than one manifest store")
     if len(xmp) > 1:
         raise PregenError("xmp: more than one XMP box")
-    return {"c2pa": stores[0] if stores else None, "xmp": _xmp(f, xmp[0]) if xmp else None}
+    env, codes = _xmp(f, xmp[0]) if xmp else (None, {})
+    return {"c2pa": stores[0] if stores else None, "xmp": env, "codes": codes}
 
 
 def _serialize(el, names, out, decl=""):
@@ -911,6 +942,11 @@ def _serialize(el, names, out, decl=""):
     for c in el:
         _serialize(c, names, out)
     out.append(f"</{q(el.tag)}>{escape(el.tail or '')}")
+
+
+def _written_codes(env) -> dict:
+    """The readable codes embed_xmp writes: those that can be formed."""
+    return {k: v for k, v in after_gen_codes(env).items() if v}
 
 
 def _packet(old, env) -> bytes:
@@ -931,7 +967,7 @@ def _packet(old, env) -> bytes:
     body = env["body"]
     d = ET.SubElement(rdf, f"{{{_RDF}}}Description", {f"{{{_RDF}}}about": ""})
     for k, v in (("Record", canonical_json(env).decode("utf-8")), ("Id", message_id(_TYPE, body)),
-                 ("Registry", issuer_of(body.get("subject_ref")))):
+                 ("Registry", issuer_of(body.get("subject_ref"))), *_written_codes(env).items()):
         ET.SubElement(d, f"{{{_PGAG}}}{k}").text = v
     decl = "".join(f" xmlns:{p}={quoteattr(u)}" for u, p in names.items() if u != _XML_NS)
     out = ['<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>']
@@ -952,7 +988,8 @@ def embed_xmp(src, dst, envelope: dict) -> None:
     appended at the end, so no offset moves; a last box that runs to the end of the file (size 0) gets its real size
     written first, when it fits in 32 bits. An existing XMP box keeps its properties and is rewritten in place: as the
     last box it may grow; elsewhere the new packet must fit in it, padded with spaces, or embedding is refused, since
-    anything else would move or change hashed bytes. Refuses a record whose content hash is not dst's media/1 hash."""
+    anything else would move or change hashed bytes. Refuses a record whose content hash is not dst's media/1 hash.
+    Beside pgag:Record it writes the readable codes that can be formed: pgag:Code, and pgag:Licence under a licence."""
     if not isinstance(envelope, dict) or envelope.get("type") != _TYPE or not isinstance(envelope.get("body"), dict):
         raise PregenError(f"not a {_TYPE} envelope")
     if os.path.exists(dst) and os.path.samefile(src, dst):
@@ -976,9 +1013,10 @@ def embed_xmp(src, dst, envelope: dict) -> None:
                 if to_end[1] >= 1 << 32:
                     raise PregenError("file: the last box runs to the end and does not fit in 32 bits")
         new = _packet(packet, envelope)
-        if _xmp_record(new) != envelope:
+        if _xmp_record(new) != envelope or _xmp_codes(new) != _written_codes(envelope):
             raise PregenError("xmp: the packet would not carry the record under the lexical rule: an existing property "
-                              "spells pgag:Record= or xmlns:pgag=, or the record is not canonical JSON")
+                              "spells pgag:Record=, pgag:Code=, pgag:Licence= or xmlns:pgag=, or the record is not canonical "
+                              "JSON")
         _, s, cs, e = old[0] if old else (None, size, size, size)
         if old and e < size:
             if len(new) > e - cs - 16:
@@ -1011,6 +1049,47 @@ def embed_xmp(src, dst, envelope: dict) -> None:
 def c2pa_assertion(envelope: dict) -> dict:
     """The assertion a production adds with its own C2PA tool and its own certificate (Carrying the record)."""
     return {"label": "org.pregen.after_gen", "data": envelope}
+
+
+# ── the readable codes ───────────────────────────────────────────────────────────────────────────
+
+_CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+_TOG_VALUES = _CROCKFORD + "ILOU"          # the TOG check table: I L O U take 32-35
+_TOG_KINDS = ("PG", "PG-LIC", "AG", "AG-LIC", "LIC")   # kind digits 1-5
+
+
+def _tog_check(body: str) -> str:
+    """PG-CODE 4.1 over the TOG table: the sum of value x 1-based position, mod 37."""
+    return (_CROCKFORD + "*~$=!")[sum(_TOG_VALUES.index(c) * (i + 1) for i, c in enumerate(body)) % 37]
+
+
+def _tog_code(kind: str, prefix, mid):
+    """The one-prefix ToG event code (The readable codes): TOG-<kind>-<prefix>-XXXX-XXXX-XXXX, the tail the first 55
+    bits of the message id `mid`. None where no code exists: no prefix, a tail starting ZZZZ, a check * ~ $ = !."""
+    if not prefix or not _hex(mid):
+        return None
+    n = int(mid, 16) >> 201
+    tail = "".join(_CROCKFORD[(n >> 5 * (10 - i)) & 31] for i in range(11))
+    check = _tog_check(f"{len(prefix)}0{_TOG_KINDS.index(kind) + 1}{prefix}{tail}")
+    if tail.startswith("ZZZZ") or check not in _CROCKFORD:
+        return None
+    t = tail + check
+    return f"TOG-{kind}-{prefix}-{t[:4]}-{t[4:8]}-{t[8:]}"
+
+
+def after_gen_codes(env: dict) -> dict:
+    """The readable codes of a pg.after_gen.v1 record, computed from it: {"Code": the approval's, "Licence": the
+    licence's under a licence basis}, each None where it cannot be formed (and Licence None under a terms basis)."""
+    try:
+        b = env["body"]
+        prefix, basis = issuer_of(b["subject_ref"]) or "PRAM", b.get("basis")   # the bare namespace is PRAMPTA's
+        licence = isinstance(basis, dict) and basis.get("kind") == "licence"
+        lic = basis.get("licence") if licence else None
+        lic_id = lic.get("id") if isinstance(lic, dict) else None
+        return {"Code": _tog_code("AG-LIC" if licence else "AG", prefix, message_id(_TYPE, b)),
+                "Licence": _tog_code("LIC", prefix, lic_id) if licence else None}
+    except (KeyError, TypeError, PregenError):
+        return {"Code": None, "Licence": None}
 
 
 # ── the record and its status ──────────────────────────────────────────────────────────────────
@@ -1074,12 +1153,14 @@ def _approved_by(a) -> str:
     return "approved by the person" if a["assent"] == "self" else "approved on the person's own instruction at the registry"
 
 
-def check_after_gen(env: dict, directory=None, get_json=_get_json, media=None) -> dict:
+def check_after_gen(env: dict, directory=None, get_json=_get_json, media=None, codes=None) -> dict:
     """Steps 3-4 of How a verifier checks a file: a pg.after_gen.v1 record in shape (exactly its members, in the body
     and every object of it; the constants; the closed vocabularies; one of the two approval forms), signed by exactly
     one registry key the directory lists for the subject's prefix at issued_at (a revoked registry's records fail),
-    and, given `media` (a media_hash result or its hash), naming that file. Raises PregenError; returns a summary.
-    It says nothing about whether the record still stands: check_after_gen_status."""
+    and, given `media` (a media_hash result or its hash), naming that file. Given `codes` (the copies read beside the
+    record, read_after_gen's "codes"), each present copy must be the code computed from the record (The readable
+    codes); a missing copy is fine. Raises PregenError; returns a summary. It says nothing about whether the record
+    still stands: check_after_gen_status."""
     directory = directory or load_directory(get_json=get_json)
     body = env.get("body") if isinstance(env, dict) else None
     code = body.get("subject_ref") if isinstance(body, dict) else None
@@ -1126,6 +1207,10 @@ def check_after_gen(env: dict, directory=None, get_json=_get_json, media=None) -
                 ("media/1", c["leaves"]):
             raise PregenError("not for this file")
         match = True
+    if codes:
+        want = after_gen_codes(env)
+        if any(k not in want or want[k] is None or want[k] != v for k, v in codes.items()):
+            raise PregenError("the readable code does not match the record")
     return {"id": rid, "subject_ref": code, "prefix": issuer_of(code), "label": b["label"],
             "notice": b["notice"], "not": b["not"], "holder": b["holder"], "basis": basis,
             "scope": b["scope"], "approval": b["approval"], "approved_by": _approved_by(b["approval"]),

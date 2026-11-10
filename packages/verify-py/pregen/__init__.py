@@ -24,6 +24,7 @@ __all__ = [
     "CATEGORIES", "PROHIBITED_FOR_MINORS", "INTIMATE", "floor", "forbids", "terms_opens", "check_terms",
     "AFTER_GEN_LABEL", "AFTER_GEN_NOTICE", "AFTER_GEN_NOT", "media_hash", "read_after_gen", "embed_xmp",
     "c2pa_assertion", "check_after_gen", "check_after_gen_status", "after_gen_request", "after_gen_decision",
+    "after_gen_codes",
 ]
 
 STEWARD_PUBLIC_KEY_HEX = "5cb949aab04186e3e216ec541b847c912fc3f78138c0ec3cb2560b2dad0d1f1b"
@@ -1266,5 +1267,6 @@ class Simulator:
 
 
 # draft after-gen (spec/drafts/after-gen.md); imported last: it uses the names above.
-from .after_gen import (AFTER_GEN_LABEL, AFTER_GEN_NOT, AFTER_GEN_NOTICE, after_gen_decision, after_gen_request,  # noqa: E402
-                        c2pa_assertion, check_after_gen, check_after_gen_status, embed_xmp, media_hash, read_after_gen)
+from .after_gen import (AFTER_GEN_LABEL, AFTER_GEN_NOT, AFTER_GEN_NOTICE, after_gen_codes, after_gen_decision,  # noqa: E402
+                        after_gen_request, c2pa_assertion, check_after_gen, check_after_gen_status, embed_xmp,
+                        media_hash, read_after_gen)

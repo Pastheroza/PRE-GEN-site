@@ -1,7 +1,7 @@
 // Check a file: AFTER-GEN draft (spec/drafts/after-gen.md, "How a verifier checks a file").
 // Everything runs here. The file never leaves the device; when it carries no record, only its
 // media/1 hash goes to the registries of the signed directory.
-import { loadDirectory, mediaHash, readAfterGen, checkAfterGen, checkAfterGenStatus } from "/packages/verify-js/index.js";
+import { loadDirectory, mediaHash, readAfterGen, checkAfterGen, checkAfterGenStatus, afterGenCodes } from "/packages/verify-js/index.js";
 
 const TEST_STEWARD = "78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0"; // signs only the test directory
 const $ = (id) => document.getElementById(id);
@@ -60,8 +60,8 @@ async function findByHash(directory, hash) {
   return found;
 }
 
-// One block per record that checks out: a file may show several people.
-function show(summary, status, error) {
+// One block per record that checks out: a file may show several people. `codes` are computed from the record.
+function show(summary, status, error, codes) {
   const s = summary.scope;
   const state = status.state === "active" ? "In force"
     : status.state === "withdrawn" ? `Withdrawn by the person on ${when(status.withdrawn_at)}`
@@ -77,10 +77,12 @@ function show(summary, status, error) {
   const rows = [
     ["Status today", state],
     ["Person", summary.subject_ref],
+    ...(codes.Code ? [["Approval code", codes.Code]] : []),
     ["Registry", summary.prefix],
     ["Who may publish it", summary.holder],
     ...(summary.basis.kind === "terms" ? [["Basis: the person's terms", summary.basis.terms]] : [
       ["Licence", summary.basis.licence.id],
+      ...(codes.Licence ? [["Licence code", codes.Licence]] : []),
       ["Use of the licence", summary.basis.use.of == null ? `use ${summary.basis.use.n}` : `use ${summary.basis.use.n} of ${summary.basis.use.of}`],
     ]),
     ["Project", s.project],
@@ -130,13 +132,14 @@ async function check(file) {
   // Every record is collected, from the file and from the registries by the fingerprint, so a planted record cannot
   // hide a real one, and a file that shows several people shows every record.
   step("s-find", "busy");
+  // The readable codes in XMP are copies beside its record: checked with that record only.
   let inFile = [];
   try {
     const found = await readAfterGen(file);
-    inFile = [found.c2pa, found.xmp].filter(Boolean);
+    inFile = [found.c2pa && { env: found.c2pa }, found.xmp && { env: found.xmp, codes: found.codes }].filter(Boolean);
   } catch { /* unreadable metadata: the registries are asked anyway */ }
   const held = await findByHash(directory, media.hash);
-  const records = inFile.concat(held);
+  const records = inFile.concat(held.map((env) => ({ env })));
   if (!records.length) {
     step("s-find", "fail");
     return say("No approval found for this file",
@@ -148,10 +151,10 @@ async function check(file) {
   step("s-sign", "busy");
   const good = new Map();
   let lastError;
-  for (const r of records) {
+  for (const { env, codes } of records) {
     try {
-      const summary = await checkAfterGen(r, { directory, media });
-      if (!good.has(summary.id)) good.set(summary.id, { summary, env: r });
+      const summary = await checkAfterGen(env, { directory, media, codes });
+      if (!good.has(summary.id)) good.set(summary.id, { summary, env, codes: await afterGenCodes(env) });
     } catch (e) { lastError = e; }
   }
   if (!good.size) {
@@ -160,6 +163,10 @@ async function check(file) {
     if (/not for this file/.test(msg)) {
       return say("The record in this file belongs to another file",
         "The record names a different video. A record copied into another file approves nothing.");
+    }
+    if (/readable code/.test(msg)) {
+      return say("The code written in this file does not match its record",
+        "A code is a copy for people to read: it must be the one computed from the signed record. It approves nothing.");
     }
     if (/may not sign|unknown_issuer|revoked|not listed|directory/.test(msg)) {
       say("The record is not signed by a listed registry",
@@ -175,15 +182,15 @@ async function check(file) {
 
   step("s-status", "busy");
   let confirmed = 0;
-  for (const { summary, env } of good.values()) {
+  for (const { summary, env, codes } of good.values()) {
     try {
       const api = apiFor(directory, summary.subject_ref);
       if (!api) throw new Error("the registry has no https API in the directory");
       const { status } = await getJson(`${api}/v2/after-gen/${summary.id}`);
-      show(summary, await checkAfterGenStatus(status, env, { directory }));
+      show(summary, await checkAfterGenStatus(status, env, { directory }), undefined, codes);
       confirmed++;
     } catch (e) {
-      show(summary, { state: "unknown", not_after: summary.scope.not_after }, e.message);
+      show(summary, { state: "unknown", not_after: summary.scope.not_after }, e.message, codes);
     }
   }
   step("s-status", confirmed === good.size ? "ok" : "fail", `${confirmed} of ${good.size} confirmed`);
