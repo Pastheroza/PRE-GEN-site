@@ -162,6 +162,10 @@
    }
   },
   {
+   "file": "attack-c2pa-not-a-store.mp4",
+   "refused": "media/1: a C2PA box that does not parse as a JUMBF manifest store"
+  },
+  {
    "file": "attack-c2pa-not-canonical.mp4",
    "media": {
     "binding": "media/1",
@@ -171,15 +175,19 @@
   },
   {
    "file": "attack-c2pa-older-bad.mp4",
-   "media": {
-    "binding": "media/1",
-    "hash": "372d26236e0918222ce8bcb2760dc59e7127c504c4339f0acb98ffe93b5ae57e",
-    "leaves": 1
-   }
+   "refused": "media/1: a C2PA box that does not parse as a JUMBF manifest store"
   },
   {
    "file": "attack-chunk-past-mdat.mp4",
    "refused": "media/1: a chunk whose samples run past its mdat's data"
+  },
+  {
+   "file": "attack-chunkmode-meta.mp4",
+   "refused": "media/1: a sound track read by chunk whose entry does not give its sample size"
+  },
+  {
+   "file": "attack-chunkmode-minf-soun.mp4",
+   "refused": "media/1: a sound track read by chunk whose entry does not give its sample size"
   },
   {
    "file": "attack-chunkmode-none.mp4",
@@ -191,7 +199,7 @@
   },
   {
    "file": "attack-cmov.mp4",
-   "refused": "media/1: a compressed movie (cmov)"
+   "refused": "media/1: cmov: a second movie"
   },
   {
    "file": "attack-dinf-extra.mp4",
@@ -203,7 +211,7 @@
   },
   {
    "file": "attack-dos.mp4",
-   "refused": "media/1: a chunk whose samples run past its mdat's data"
+   "refused": "media/1: a sound track read by chunk whose entry does not give its sample size"
   },
   {
    "file": "attack-dref-alis.mp4",
@@ -224,6 +232,10 @@
   {
    "file": "attack-free-tables.mp4",
    "refused": "media/1: stsz outside its place"
+  },
+  {
+   "file": "attack-ftyp-not-first.mp4",
+   "refused": "media/1: the first box is not ftyp"
   },
   {
    "file": "attack-ftyp-qt.mp4",
@@ -248,6 +260,14 @@
     "hash": "378ebaf6c35d554f2423785a67342a1fdda527b8955465bd86c8d41ab4dc742d",
     "leaves": 1
    }
+  },
+  {
+   "file": "attack-hoov-in-xmp.mp4",
+   "refused": "media/1: hoov: a second movie"
+  },
+  {
+   "file": "attack-hoov.mp4",
+   "refused": "media/1: hoov: a second movie"
   },
   {
    "file": "attack-iloc-meta.mp4",
@@ -276,6 +296,14 @@
     "hash": "395b2ac0c57ec4280cf955ef9a4e2b99e2bb16843d2a005961e6e87a7d914165",
     "leaves": 1
    }
+  },
+  {
+   "file": "attack-mpeg-hdlr-in-mdat.mp4",
+   "refused": "media/1: the pattern hdlr ... mhlr MPEG, which makes players read the file as another format"
+  },
+  {
+   "file": "attack-mpeg-hdlr.mp4",
+   "refused": "media/1: the pattern hdlr ... mhlr MPEG, which makes players read the file as another format"
   },
   {
    "file": "attack-mvhd-duration.mp4",
@@ -335,11 +363,7 @@
   },
   {
    "file": "attack-top-cmov.mp4",
-   "media": {
-    "binding": "media/1",
-    "hash": "c5060254176d8d4f2e07f9d1cbed91ed3b4318f21a99103e4b73b3d454d71449",
-    "leaves": 1
-   }
+   "refused": "media/1: cmov: a second movie"
   },
   {
    "file": "attack-top-trak.mp4",
@@ -360,6 +384,10 @@
   {
    "file": "attack-trak-udta-stco.mp4",
    "refused": "media/1: stco outside its place"
+  },
+  {
+   "file": "attack-two-c2pa.mp4",
+   "refused": "media/1: more than one C2PA box"
   },
   {
    "file": "attack-two-media-headers.mp4",
@@ -387,11 +415,7 @@
   },
   {
    "file": "attack-udta-cmov.mp4",
-   "media": {
-    "binding": "media/1",
-    "hash": "834eda6f70c55b3db787873b4926e5eeb2fd8f437636f064189f2e1715128b37",
-    "leaves": 1
-   }
+   "refused": "media/1: cmov: a second movie"
   },
   {
    "file": "attack-udta-mvex-moof.mp4",
@@ -424,6 +448,10 @@
     "hash": "372d26236e0918222ce8bcb2760dc59e7127c504c4339f0acb98ffe93b5ae57e",
     "leaves": 1
    }
+  },
+  {
+   "file": "attack-xmp-nul.mp4",
+   "refused": "media/1: an XMP box whose packet is not UTF-8 text free of NUL bytes"
   },
   {
    "file": "attack-xmp-pi.mp4",
@@ -616,6 +644,12 @@
    "refused": "c2pa: more than one org.pregen.after_gen assertion, or not one json or cbor box"
   },
   {
+   "file": "attack-c2pa-not-a-store.mp4",
+   "c2pa": null,
+   "xmp": null,
+   "check": {}
+  },
+  {
    "file": "attack-c2pa-not-canonical.mp4",
    "refused": "c2pa: the assertion is not an envelope (as JSON, exactly its canonical JSON)"
   },
@@ -637,6 +671,12 @@
   },
   {
    "file": "attack-xmp-ns-twice.mp4",
+   "c2pa": null,
+   "xmp": null,
+   "check": {}
+  },
+  {
+   "file": "attack-xmp-nul.mp4",
    "c2pa": null,
    "xmp": null,
    "check": {}

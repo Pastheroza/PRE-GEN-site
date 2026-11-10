@@ -142,10 +142,21 @@ function u(b, at, n = 4) {
   return x;
 }
 
-// Tables outside their place: any of the codes at any byte position.
-function scan(b) {
-  const x = bytesText(b).match(TABLES);
-  if (x) M(`${x[1]} outside its place`);
+const MOVIE = /(cmov|hoov)/, MPEG = /(hdlr[\s\S]{4}mhlrMPEG)/, CARRIER_MAX = 64 << 20;
+
+// Any of the codes of `rx` at any byte position of `b` (One reading only).
+function scan(b, rx = TABLES, why = (c) => `${c} outside its place`) {
+  const x = bytesText(b).match(rx);
+  if (x) M(why(x[1]));
+}
+
+// scan over [s, e) of the file in pieces, each overlapping the last by `keep` bytes.
+async function scanFile(r, s, e, rx = TABLES, why = undefined, keep = 3) {
+  for (let carry = new Uint8Array(0); s < e; s += PIECE) {
+    const chunk = concat([carry, await r.read(s, Math.min(PIECE, e - s))]);
+    scan(chunk, rx, why);
+    carry = chunk.subarray(Math.max(0, chunk.length - keep));
+  }
 }
 
 const exact = (ok) => ok || M("a table whose length is not exactly what its count gives");
@@ -187,7 +198,7 @@ function frame(e) {
 
 // Checks an stbl on the path (One reading only) and returns its chunk offset table as hashed, by start: per offset, the
 // position of the mdat whose data holds it and the offset within that data.
-function stbl(kids, mdats, sound) {
+function stbl(kids, mdats, video) {
   const one = new Map();
   for (const k of kids) {
     const key = { stz2: "stsz", co64: "stco" }[k.type] ?? k.type;
@@ -221,7 +232,7 @@ function stbl(kids, mdats, sound) {
   });
   if (n && !runs.length) M("an stsc that reads two ways");
   if (total !== z.count || durations.reduce((s, [c]) => s + c, 0) !== z.count) M("stsc, stts and the sample sizes count different samples");
-  if (sound && z.count && durations.every(([c, d]) => !c || d === 1)) { // sound read by chunk
+  if (!video && z.count && durations.every(([c, d]) => !c || d === 1)) { // sound read by chunk
     for (const e of entries) {
       if (one.get("stsz").type !== "stsz" || !z.fixed || frame(e) !== z.fixed) {
         M("a sound track read by chunk whose entry does not give its sample size");
@@ -247,12 +258,12 @@ function stbl(kids, mdats, sound) {
 
 // The value of the element of a box on the path moov/trak/mdia/minf/stbl: its children's elements. The direct children
 // of an stbl are added to `zones` ([start, end) in the movie box's content), the bytes the table scan leaves out.
-function value(data, type, mdats, zones, at = 0, sound = false) {
+function value(data, type, mdats, zones, at = 0, hdlrs = []) {
   const kids = boxesIn(data);
   if (type === "moov" && kids.some((k) => k.type === "mvex")) M("a fragmented file (mvex)");
-  if (type === "moov" && kids.some((k) => k.type === "cmov")) M("a compressed movie (cmov)");
-  const hdlr = type === "mdia" && kids.find((k) => k.type === "hdlr");
-  if (hdlr) sound = latin1(hdlr.data, 8, 4) === "soun";
+  if (type === "mdia" || type === "minf") { // the handler types of the track, in mdia and in minf alike
+    hdlrs = [...hdlrs, ...kids.filter((k) => k.type === "hdlr").map((k) => latin1(k.data, 8, 4))];
+  }
   if (type === "minf") {
     for (const d of kids.filter((k) => k.type === "dinf")) {
       for (const r of boxesIn(d.data).filter((k) => k.type === "dref")) {
@@ -266,10 +277,10 @@ function value(data, type, mdats, zones, at = 0, sound = false) {
   }
   let offsets = new Map();
   if (type === "stbl") {
-    offsets = stbl(kids, mdats, sound);
+    offsets = stbl(kids, mdats, hdlrs.length > 0 && hdlrs.every((h) => h === "vide"));
     for (const k of kids) zones.push([at + k.start, at + k.start + k.size]);
   }
-  return concat(kids.map((k) => el(k.type, PATH[type] === k.type ? value(k.data, k.type, mdats, zones, at + k.start + k.hdr, sound)
+  return concat(kids.map((k) => el(k.type, PATH[type] === k.type ? value(k.data, k.type, mdats, zones, at + k.start + k.hdr, hdlrs)
     : offsets.get(k.start) ?? k.data)));
 }
 
@@ -280,25 +291,39 @@ function value(data, type, mdats, zones, at = 0, sound = false) {
 export async function mediaHash(source) {
   const r = reader(source);
   const top = await topBoxes(r, M);
+  if (top[0]?.type !== "ftyp") M("the first box is not ftyp");
+  for (const [uuid, name] of [[XMP_UUID, "XMP"], [C2PA_UUID, "C2PA"]]) { // carriers that are not what they claim
+    const boxes = top.filter((b) => b.uuid === uuid);
+    if (boxes.length > 1) M(`more than one ${name} box`);
+    for (const b of boxes) {
+      if (b.size > CARRIER_MAX) M(`an ${name} box larger than 64 MiB`);
+      const data = (await r.read(b.start, b.size)).subarray(b.hdr);
+      if (name === "XMP") {
+        let ok = true;
+        try { UTF8.decode(data.subarray(16)); } catch { ok = false; }
+        if (!ok || data.subarray(16).includes(0)) M("an XMP box whose packet is not UTF-8 text free of NUL bytes");
+      } else {
+        let ok;
+        try { ok = c2paStore({ ...b, data }) !== undefined; } catch { ok = false; }
+        if (!ok) M("a C2PA box that does not parse as a JUMBF manifest store");
+      }
+    }
+  }
   const moovs = top.filter((b) => b.type === "moov");
   if (moovs.length !== 1) M(moovs.length ? "more than one moov box" : "no moov box");
   if (top.some((b) => b.type === "moof")) M("a fragmented file (moof)");
   const mdats = top.filter((b) => b.type === "mdat").map((b) => [b.start + b.hdr, b.start + b.size]);
   const whole = await r.read(moovs[0].start, moovs[0].size), h = moovs[0].hdr, zones = [];
   const moov = el("moov", value(whole.subarray(h), "moov", mdats, zones));
-  let from = 0; // the table scan: the movie box but the direct children of each stbl
-  for (const [zs, ze] of zones.sort((a, b) => a[0] - b[0])) { scan(whole.subarray(from, h + zs)); from = h + ze; }
-  scan(whole.subarray(from));
+  let at = 0; // the table scan: the movie box but the direct children of each stbl
+  for (const [zs, ze] of zones.sort((a, b) => a[0] - b[0])) { scan(whole.subarray(at, h + zs)); at = h + ze; }
+  scan(whole.subarray(at));
   const carrier = (b) => b.uuid === XMP_UUID || b.uuid === C2PA_UUID;
-  for (const b of top) {
-    if (b.type === "moov" || b.type === "mdat" || carrier(b)) continue;
-    let carry = new Uint8Array(0);
-    for (let p = b.start; p < b.start + b.size; p += PIECE) {
-      const chunk = concat([carry, await r.read(p, Math.min(PIECE, b.start + b.size - p))]);
-      scan(chunk);
-      carry = chunk.subarray(Math.max(0, chunk.length - 3));
-    }
-  }
+  for (const b of top) if (b.type !== "moov" && b.type !== "mdat" && !carrier(b)) await scanFile(r, b.start, b.start + b.size);
+  let from = 0; // a second movie: outside mdat data, carriers included
+  for (const [s, e] of mdats) { await scanFile(r, from, s, MOVIE, (c) => `${c}: a second movie`); from = e; }
+  await scanFile(r, from, r.size, MOVIE, (c) => `${c}: a second movie`);
+  await scanFile(r, 0, r.size, MPEG, () => "the pattern hdlr ... mhlr MPEG, which makes players read the file as another format", 15);
 
   const stack = [], buf = new Uint8Array(PIECE); // the stream, cut into pieces of 1 MiB: a leaf each
   let fill = 0, leaves = 0;
@@ -399,7 +424,8 @@ function jumbf(box, depth = 0) {
   return { type: hex(d.data.subarray(0, 16)), label, kids: kids.slice(1).map((k) => (k.type === "jumb" ? jumbf(k, depth + 1) : k)) };
 }
 
-function fromC2pa(box) {
+// A C2PA box's manifest store, every superbox in it checked; undefined for another purpose.
+function c2paStore(box) {
   const p = box.data.subarray(16); // after the usertype: version and flags, purpose, [offset], store
   const end = p.indexOf(0, 4);
   if (p.length < 5 || end < 0) A("a C2PA box without its purpose");
@@ -410,6 +436,12 @@ function fromC2pa(box) {
   const store = jumbf(boxes[0]);
   if (store.label !== "c2pa") A("not a C2PA manifest store");
   if (!store.kids.length || store.kids.some((k) => !k.kids)) A("a C2PA store holds manifests only");
+  return store;
+}
+
+function fromC2pa(box) {
+  const store = c2paStore(box);
+  if (store === undefined) return undefined;
   const manifest = store.kids.at(-1); // the active manifest is the last
   const assertions = manifest.kids.filter((k) => k.kids && k.label === "c2pa.assertions");
   if (assertions.length !== 1) A("a C2PA manifest holds one assertion store");

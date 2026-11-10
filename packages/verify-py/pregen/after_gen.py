@@ -87,11 +87,26 @@ def _u(b, at, n=4):
     return int.from_bytes(b[at:at + n], "big")
 
 
-def _scan(b):
-    """Tables outside their place: any of the codes at any byte position."""
-    x = _TABLES.search(b)
+_MOVIE = re.compile(rb"(cmov|hoov)")
+_MPEG = re.compile(rb"(hdlr[\s\S]{4}mhlrMPEG)")
+_CARRIER_MAX = 64 << 20
+
+
+def _scan(b, rx=_TABLES, why="{} outside its place"):
+    """Any of the codes of `rx` at any byte position of `b` (One reading only)."""
+    x = rx.search(b)
     if x:
-        raise PregenError(f"media/1: {x[1].decode()} outside its place")
+        raise PregenError("media/1: " + why.format(x[1].decode("latin-1")))
+
+
+def _scan_file(f, s, e, rx=_TABLES, why="{} outside its place", keep=3):
+    """_scan over [s, e) of the file in pieces, each overlapping the last by `keep` bytes."""
+    carry = b""
+    while s < e:
+        f.seek(s)
+        chunk = carry + f.read(min(_PIECE, e - s))
+        _scan(chunk, rx, why)
+        carry, s = chunk[-keep:], s + _PIECE
 
 
 def _exact(ok):
@@ -139,7 +154,7 @@ def _frame(m, mv, t, s, e):
     return None if frame is None or width is not None and frame != channels * width else frame
 
 
-def _stbl(m, mv, kids, mdats, sound):
+def _stbl(m, mv, kids, mdats, video):
     """Checks an stbl on the path (One reading only) and returns its chunk offset table as hashed, by start: per offset,
     the position of the mdat whose data holds it and the offset within that data."""
     one = {}
@@ -180,7 +195,7 @@ def _stbl(m, mv, kids, mdats, sound):
         raise PregenError("media/1: an stsc that reads two ways")
     if total != sizes[0] or sum(c for c, _ in durations) != sizes[0]:
         raise PregenError("media/1: stsc, stts and the sample sizes count different samples")
-    if sound and sizes[0] and all(d == 1 for c, d in durations if c):          # sound read by chunk
+    if not video and sizes[0] and all(d == 1 for c, d in durations if c):      # sound read by chunk
         for et, _, ecs, ece in entries:
             if one[b"stsz"][0] != b"stsz" or not sizes[1] or _frame(m, mv, et, ecs, ece) != sizes[1]:
                 raise PregenError("media/1: a sound track read by chunk whose entry does not give its sample size")
@@ -201,18 +216,15 @@ def _stbl(m, mv, kids, mdats, sound):
     return {cs: b"".join(value)}
 
 
-def _value(m, mv, t, s, e, mdats, zones, sound=False):
+def _value(m, mv, t, s, e, mdats, zones, hdlrs=()):
     """The value of the element of a box on the path moov/trak/mdia/minf/stbl: its children's elements. The direct
     children of an stbl are added to `zones`, the bytes the table scan leaves out."""
     kids = list(_boxes(m, s, e))
     names = [k for k, *_ in kids]
     if t == b"moov" and b"mvex" in names:
         raise PregenError("media/1: a fragmented file (mvex)")
-    if t == b"moov" and b"cmov" in names:
-        raise PregenError("media/1: a compressed movie (cmov)")
-    if t == b"mdia" and b"hdlr" in names:
-        _, _, cs, ce = kids[names.index(b"hdlr")]
-        sound = mv[cs + 8:min(ce, cs + 12)] == b"soun"
+    if t in (b"mdia", b"minf"):                  # the handler types of the track, in mdia and in minf alike
+        hdlrs += tuple(mv[cs + 8:min(ce, cs + 12)] for k, _, cs, ce in kids if k == b"hdlr")
     if t == b"minf":
         for _, _, cs, ce in (k for k in kids if k[0] == b"dinf"):
             for _, _, rcs, rce in (k for k in _boxes(m, cs, ce) if k[0] == b"dref"):
@@ -221,9 +233,9 @@ def _value(m, mv, t, s, e, mdats, zones, sound=False):
                         raise PregenError("media/1: a data reference that is not a self-contained url or urn")
     offsets = {}
     if t == b"stbl":
-        offsets = _stbl(m, mv, kids, mdats, sound)
+        offsets = _stbl(m, mv, kids, mdats, bool(hdlrs) and all(h == b"vide" for h in hdlrs))
         zones += [(ks, ke) for _, ks, _, ke in kids]
-    return b"".join(_el(k, _value(m, mv, k, cs, ce, mdats, zones, sound) if _PATH.get(t) == k
+    return b"".join(_el(k, _value(m, mv, k, cs, ce, mdats, zones, hdlrs) if _PATH.get(t) == k
                         else offsets.get(cs, mv[cs:ce])) for k, _, cs, ce in kids)
 
 
@@ -275,6 +287,30 @@ def media_hash(f) -> dict:
     f.seek(0, 2)
     size = f.tell()
     top = list(_boxes(f, 0, size, top=True))
+    if not top or top[0][0] != b"ftyp":
+        raise PregenError("media/1: the first box is not ftyp")
+    for uuid, name in ((_XMP_UUID, "XMP"), (_C2PA_UUID, "C2PA")):      # carriers that are not what they claim
+        boxes = _top(f, uuid)
+        if len(boxes) > 1:
+            raise PregenError(f"media/1: more than one {name} box")
+        for _, bs, cs, be in boxes:
+            if be - bs > _CARRIER_MAX:
+                raise PregenError(f"media/1: an {name} box larger than 64 MiB")
+            f.seek(cs + 16)
+            if name == "XMP":
+                packet = f.read(be - cs - 16)
+                try:
+                    packet.decode("utf-8")
+                except UnicodeDecodeError:
+                    packet = b"\x00"
+                if b"\x00" in packet:
+                    raise PregenError("media/1: an XMP box whose packet is not UTF-8 text free of NUL bytes")
+            else:
+                try:
+                    if _store(f, boxes[0]) is None:
+                        raise PregenError("c2pa: not a manifest")
+                except PregenError:
+                    raise PregenError("media/1: a C2PA box that does not parse as a JUMBF manifest store") from None
     moovs = [b for b in top if b[0] == b"moov"]
     if not moovs:
         raise PregenError("media/1: no moov box")
@@ -295,12 +331,14 @@ def media_hash(f) -> dict:
     _scan(whole[at:])
     for box in top:
         if box[0] not in (b"moov", b"mdat") and not _carrier(f, box):
-            carry, p = b"", box[1]
-            while p < box[3]:
-                f.seek(p)
-                chunk = carry + f.read(min(_PIECE, box[3] - p))
-                _scan(chunk)
-                carry, p = chunk[-3:], p + _PIECE
+            _scan_file(f, box[1], box[3])
+    at = 0                                       # a second movie: outside mdat data, carriers included
+    for cs, ce in mdats:
+        _scan_file(f, at, cs, _MOVIE, "{}: a second movie")
+        at = ce
+    _scan_file(f, at, size, _MOVIE, "{}: a second movie")
+    _scan_file(f, 0, size, _MPEG, "the pattern hdlr ... mhlr MPEG, which makes players read the file as another format",
+               15)
 
     def stream():
         yield b"PREGEN-MEDIA\x00media/1\x00"
@@ -425,7 +463,9 @@ def _jumbf(m, s, e, depth=0):
     return label, [(t, cs, ce, _jumbf(m, cs, ce, depth + 1) if t == b"jumb" else None) for t, _, cs, ce in kids[1:]]
 
 
-def _c2pa(f, box):
+def _store(f, box):
+    """A C2PA box's manifest store: (its bytes, the manifests), every superbox in it checked; None for another
+    purpose."""
     _, _, cs, ce = box
     f.seek(cs + 16)
     p = f.read(ce - cs - 16)
@@ -433,7 +473,7 @@ def _c2pa(f, box):
     if end < 0:
         raise PregenError("c2pa: a C2PA box without its purpose")
     if p[4:end] != b"manifest":
-        return False
+        return None
     if len(p) < end + 9:
         raise PregenError("c2pa: a manifest box without its offset")
     m = io.BytesIO(p[end + 9:])
@@ -443,6 +483,14 @@ def _c2pa(f, box):
     label, manifests = _jumbf(m, store[0][2], store[0][3])        # the whole store: a malformed superbox refuses
     if label != "c2pa" or not manifests or any(k[3] is None for k in manifests):
         raise PregenError("c2pa: not a manifest store")
+    return m, manifests
+
+
+def _c2pa(f, box):
+    store = _store(f, box)
+    if store is None:
+        return False
+    m, manifests = store
     stores = [k[3] for k in manifests[-1][3][1] if k[3] and k[3][0] == "c2pa.assertions"]
     if len(stores) != 1:
         raise PregenError("c2pa: the active manifest needs exactly one assertion store")

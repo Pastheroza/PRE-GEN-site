@@ -137,7 +137,8 @@ test("media/1: every byte a player could read counts, padding too; the carriers 
   const flipped = Uint8Array.from(file);
   flipped[file.indexOf(0x2d, 30)] ^= 1; // a byte of "frame-one" in mdat
   assert.notEqual((await mediaHash(flipped)).hash, want.hash);
-  const more = mp4({ tracks: [VIDEO, AUDIO], extraTop: [uuidBox(XMP_UUID, "<x/>"), uuidBox(C2PA_UUID, Buffer.alloc(4), "other\0")] });
+  const store = box("jumb", box("jumd", Buffer.alloc(16), [3], "c2pa\0"), box("jumb", box("jumd", Buffer.alloc(16), [3], "m\0")));
+  const more = mp4({ tracks: [VIDEO, AUDIO], extraTop: [uuidBox(XMP_UUID, "<x/>"), uuidBox(C2PA_UUID, [0, 0, 0, 0], "manifest\0", u64(0), store)] });
   assert.deepEqual(await mediaHash(more), want);
   for (const pad of ["free", "skip", "wide"]) assert.notEqual((await mediaHash(mp4({ tracks: [VIDEO, AUDIO], extraTop: [box(pad)] }))).hash, want.hash);
   for (const other of [mp4({ tracks: [AUDIO, VIDEO] }), mp4({ tracks: [{ ...VIDEO, handler: "meta" }, AUDIO] }),
@@ -168,7 +169,16 @@ const REFUSED = [
   ["two moov", new Uint8Array(B(plain, mvhdOnly)), /more than one moov/],
   ["a moof", new Uint8Array(B(plain, box("moof", full("mfhd", 0, 0, u32(1))))), /fragmented/],
   ["mvex in moov", mp4({ tracks: [VIDEO], moovExtra: [box("mvex", full("trex", 0, 0, Buffer.alloc(20)))] }), /fragmented/],
-  ["a cmov in moov", mp4({ tracks: [VIDEO], moovExtra: [box("cmov", box("dcom", "zlib"), box("cmvd", u32(0)))] }), /compressed movie/],
+  ["a cmov in moov", mp4({ tracks: [VIDEO], moovExtra: [box("cmov", box("dcom", "zlib"), box("cmvd", u32(0)))] }), /a second movie/],
+  ["a cmov in trak/udta", mp4({ tracks: [{ ...VIDEO, extraTrak: [box("udta", box("cmov"))] }] }), /a second movie/],
+  ["hoov in the XMP carrier", mp4({ tracks: [VIDEO], extraTop: [uuidBox(XMP_UUID, "<x>hoov</x>")] }), /a second movie/],
+  ["the MPEG handler pattern in mdat", mp4({ tracks: [VIDEO], extraTop: [box("mdat", "hdlr", Buffer.alloc(4), "mhlrMPEG")] }), /mhlr MPEG/],
+  ["a carrier before ftyp", new Uint8Array(B(uuidBox(XMP_UUID, "<x/>"), plain)), /first box is not ftyp/],
+  ["an XMP packet with a NUL byte", mp4({ tracks: [VIDEO], extraTop: [uuidBox(XMP_UUID, "<x/>\0")] }), /NUL/],
+  ["a C2PA box of another purpose", mp4({ tracks: [VIDEO], extraTop: [uuidBox(C2PA_UUID, [0, 0, 0, 0], "other\0")] }), /manifest store/],
+  ["two XMP boxes", mp4({ tracks: [VIDEO], extraTop: [uuidBox(XMP_UUID, "<x/>"), uuidBox(XMP_UUID, "<y/>")] }), /more than one XMP/],
+  ["sound read by chunk under a meta handler", mp4({ tracks: [{ ...PCM_TRACK, handler: "meta", fixed: 1 }] }), /read by chunk/],
+  ["sound read by chunk with soun in minf", mp4({ tracks: [{ ...PCM_TRACK, handler: "vide", fixed: 1, extraMinf: [full("hdlr", 0, 0, u32(0), "soun", Buffer.alloc(12))] }] }), /read by chunk/],
   ["an encv entry", mp4({ tracks: [{ ...VIDEO, entry: box("encv", Buffer.alloc(6), u16(1)) }] }), /encrypted/],
   ["a sinf in an entry", mp4({ tracks: [{ ...VIDEO, entry: box("avc1", Buffer.alloc(6), u16(1), Buffer.alloc(70), box("sinf", box("frma", "avc1"))) }] }), /encrypted/],
   ["a chunk past the end of the file", mp4({ tracks: [{ ...VIDEO, offset: 1e6 }] }), /outside the data of an mdat/],
@@ -206,7 +216,7 @@ test("media/1: sound read by chunk whose stsz is its frame size hashes; a track 
 test("media/1: tracks claiming billions of samples are refused at once", async () => {
   const file = new Uint8Array(readFileSync(new URL("../../../spec/test-vectors/after-gen/attack-dos.mp4", import.meta.url)));
   const start = performance.now();
-  await assert.rejects(mediaHash(file), /run past/);
+  await assert.rejects(mediaHash(file), /read by chunk/);
   assert.ok(performance.now() - start < 2000);
 });
 for (const [name, file, reason] of REFUSED) {

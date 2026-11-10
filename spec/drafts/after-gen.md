@@ -166,13 +166,19 @@ it will publish, after its last remux and metadata edit, and adds only the recor
 carriers. What remains is to make sure that every player finds its samples where `media/1`
 does, so that no player reads media from a carrier. A verifier therefore refuses `media/1`, and
 says why, for:
-- a file with no `moov` or more than one; a box whose size runs past its parent, or that is
-  shorter than its own header (a `uuid` box under 24 bytes); a value that does not fit a signed
-  64-bit integer;
+- a file whose first box is not `ftyp`, with no `moov` or more than one; a box whose size runs
+  past its parent, or that is shorter than its own header (a `uuid` box under 24 bytes); a value
+  that does not fit a signed 64-bit integer;
+- **carriers that are not what they claim:** an XMP box whose packet is not UTF-8 text free of
+  NUL bytes, a C2PA box that does not parse as a JUMBF manifest store, more than one of either,
+  or a carrier larger than 64 MiB;
 - a fragmented file (`mvex` in `moov`, or a `moof` at the top level); encrypted samples (an
-  `encv`, `enca` or `encs` entry, or a `sinf` in any entry); a compressed movie (`cmov` in
-  `moov`); a data reference that is not in the same file (a `dref` entry that is not a
+  `encv`, `enca` or `encs` entry, or a `sinf` in any entry); a data reference that is not in the same file (a `dref` entry that is not a
   self-contained `url ` or `urn `);
+- **a second movie anywhere:** the code `cmov` or `hoov` at any byte position of the file
+  outside `mdat` data, carriers included (a player decompresses or adopts such a movie wherever
+  it finds one); and the sixteen-byte pattern `hdlr`, any four bytes, `mhlr`, `MPEG` anywhere in
+  the file (it makes a player give up reading the file as MP4 and scan it as another format);
 - **tables outside their place:** any of the codes `stco`, `co64`, `stsc`, `stsz`, `stz2`,
   `stts`, `ctts`, `iloc`, `saio`, `saiz`, `sidx`, `ssix`, `tfra`, `mfra`, `trun`, `tfhd` found
   at any byte position of a top-level box other than `mdat` and the carriers, except as a
@@ -187,9 +193,11 @@ says why, for:
   the count of `stsz`/`stz2`; a table whose length is not exactly what its count gives;
 - **chunks outside `mdat`:** a chunk offset that does not fall inside the data of a top-level
   `mdat`, or a chunk whose samples run past the end of that data;
-- **sound read by chunk:** a sound track whose `stts` durations are all 1 (players then read
-  its chunks by the sample entry, not by `stsz`), unless its `stsz` gives one fixed size equal
-  to the frame size players take from the entry: for a version 1 entry, its bytes per frame
+- **sound read by chunk:** a track whose `stts` durations are all 1, unless its `trak` has at least
+  one `hdlr` (in `mdia` or in `minf`) and every one has the handler type `vide`: a player may take any
+  other track's sample entry as audio, whatever its first handler says, and then reads its
+  chunks by the sample entry, not by `stsz`. Such a track is refused unless its `stsz` gives one fixed size
+  equal to the frame size players take from the entry: for a version 1 entry, its bytes per frame
   (with samples per packet 1); for a version 2 entry, its bytes per packet (with frames per
   packet 1); for a version 0 entry, the entry's channel count times the codec's bytes per
   sample: `raw `, `ulaw`, `alaw` 1, `twos` and `sowt` the entry's sample size ÷ 8, `in24` 3,
@@ -377,3 +385,7 @@ the reference registry or in both libraries.
 - `media/1` for formats other than ISO base media files. A JPEG, PNG or WebM file gets no
   record in this version.
 - Computing soft bindings for transcoded copies.
+- Players beyond those tested. The guarantee that one `media/1` hash means one playback was
+  tested against FFmpeg 9 and Apple AVFoundation. A player that reads media from a place the
+  rules above do not foresee, such as one that scans a whole file for another format's start
+  codes, is outside it.
