@@ -14,7 +14,7 @@ import xml.etree.ElementTree as ET
 from urllib.parse import urlsplit
 from xml.sax.saxutils import escape, quoteattr
 
-from . import (CATEGORIES, INTIMATE, _HEX64, _PURPOSES, _count, _get_json, _ints, _printable, _registry_signed,
+from . import (CATEGORIES, INTIMATE, _HEX64, _MAX_INT, _PURPOSES, _count, _get_json, _printable, _registry_signed,
                _words, check_provider_url, canonical_json, fingerprint, issuer_of, load_directory, message_id,
                public_key_hex, sign_envelope, PregenError, DIRECTORY_MAX_AGE)
 
@@ -54,7 +54,9 @@ def _boxes(f, start, end, top=False, who="media/1"):
             if not top:
                 raise PregenError(f"{who}: a box runs past its parent")
             size = end - pos
-        if size < hl or pos + size > end:
+        if size < hl + (16 if t == b"uuid" else 0):              # a uuid box: its 16-byte user type too
+            raise PregenError(f"{who}: a box is shorter than its header")
+        if pos + size > end:
             raise PregenError(f"{who}: a box runs past its parent")
         yield t, pos, pos + hl, pos + size
         pos += size
@@ -91,12 +93,16 @@ def _i(*xs) -> bytes:
         raise PregenError("media/1: a value does not fit in a signed 64-bit integer") from None
 
 
-def _full(m, box):
-    """A full box's version and its bytes."""
+def _full(m, box, layout=None):
+    """A full box's version and its bytes; `layout` (version 0, version 1) is the length of its fixed fields."""
     m.seek(box[0])
     b = m.read(box[1] - box[0])
     if len(b) < 4:
         raise PregenError("media/1: a box is too short")
+    if layout and b[0] not in (0, 1):
+        raise PregenError("media/1: a version that is not read")
+    if layout and len(b) < layout[b[0]]:
+        raise PregenError("media/1: a box shorter than its version's layout")
     return b[0], b
 
 
@@ -113,9 +119,7 @@ def _table(m, box, entry, where):
 def _track(m, trak, file_size):
     """One trak: (track_ID, handler, the fields of its first leaf except tref, tref ids, samples)."""
     k = _kids(m, *trak)
-    v, tkhd = _full(m, _one(k, b"tkhd", "trak"))
-    if v not in (0, 1):
-        raise PregenError("media/1: unknown tkhd version")
+    v, tkhd = _full(m, _one(k, b"tkhd", "trak"), (84, 96))
     tid = struct.unpack_from(">I", tkhd, 20 if v else 12)[0]
     layer, alt, vol, _, *rest = struct.unpack_from(">hhhH9iII", tkhd, 44 if v else 32)
     tkhd_el = _el(b"tkhd", _i(tkhd[3] & 1, layer, alt, vol, *rest))
@@ -138,9 +142,7 @@ def _track(m, trak, file_size):
                 raise PregenError("media/1: a tref box is not a list of track ids")
             tref.append((t, [x for (x,) in struct.iter_unpack(">I", b)]))
     mk = _kids(m, *_one(k, b"mdia", "trak"))
-    v, mdhd = _full(m, _one(mk, b"mdhd", "mdia"))
-    if v not in (0, 1):
-        raise PregenError("media/1: unknown mdhd version")
+    v, mdhd = _full(m, _one(mk, b"mdhd", "mdia"), (24, 36))
     mdts = struct.unpack_from(">I", mdhd, 20 if v else 12)[0]
     hdlr = _full(m, _one(mk, b"hdlr", "mdia"))[1][8:12]
     if len(hdlr) != 4:
@@ -148,10 +150,24 @@ def _track(m, trak, file_size):
     minf = _one(mk, b"minf", "mdia")
     head = b""
     for t, _, cs, ce in _boxes(m, *minf):
-        if t in (b"vmhd", b"smhd", b"sthd", b"hmhd", b"nmhd"):
-            head = _el(t, _full(m, (cs, ce))[1][4:])
+        if t in _MEDIA_HEADERS:
+            b = _full(m, (cs, ce))[1]
+            if len(b) < _MEDIA_HEADERS[t]:
+                raise PregenError("media/1: a media header shorter than its layout")
+            head = _el(t, b[4:])
             break
-    sk = _kids(m, *_one(_kids(m, *minf), b"stbl", "minf"))
+    nk = _kids(m, *minf)
+    dinf = _opt(nk, b"dinf", "minf")
+    dref = dinf and _opt(_kids(m, *dinf), b"dref", "dinf")
+    if dref:
+        (n,) = struct.unpack_from(">I", _full(m, dref)[1], 4)
+        refs = list(_boxes(m, dref[0] + 8, dref[1]))
+        if len(refs) != n:
+            raise PregenError("media/1: the dref count does not agree with its entries")
+        for _, _, cs, ce in refs:
+            if not _full(m, (cs, ce))[1][3] & 1:
+                raise PregenError("media/1: a data reference that is not in the same file")
+    sk = _kids(m, *_one(nk, b"stbl", "minf"))
     stsd = _one(sk, b"stsd", "stbl")
     _, b = _full(m, stsd)
     (n,) = struct.unpack_from(">I", b, 4)
@@ -214,6 +230,31 @@ def _track(m, trak, file_size):
     return tid, hdlr, first, tref, samples
 
 
+_MEDIA_HEADERS = {b"vmhd": 12, b"smhd": 8, b"sthd": 4, b"hmhd": 20, b"nmhd": 4}     # each with its layout's length
+# Every box in its place: the boxes media/1 reads, by the listed box that holds them (the others are read whole)
+_LISTED = {b"moov": (b"mvhd", b"trak"), b"trak": (b"tkhd", b"tref", b"edts", b"mdia"), b"edts": (b"elst",),
+           b"mdia": (b"mdhd", b"hdlr", b"minf"), b"minf": (b"dinf", b"stbl"), b"dinf": (b"dref",),
+           b"stbl": (b"stsd", b"stts", b"ctts", b"stsc", b"stsz", b"stco", b"co64")}
+_PLACED = re.compile(rb"(?=(mvhd|trak|tkhd|tref|edts|elst|mdia|mdhd|minf|vmhd|smhd|sthd|hmhd|nmhd|dinf|dref|stbl|stsd"
+                     rb"|stts|ctts|stsc|stsz|stz2|stco|co64|avcC|hvcC|av1C|vpcC|esds|dOps|dfLa|colr|pasp|clap|hdlr))")
+_DATA_HANDLERS = {b"mdir", b"mdta", b"ID32", b"alis", b"url ", b"mp7t", b"mp7b"}
+
+
+def _unread(m, s, e, t, out):
+    """Appends to `out` the ranges [start, end) of the content [s, e) of the listed box `t` that media/1 does not read:
+    every box there that it does not list, whole, adjacent ones joined. The first media header of minf is listed."""
+    header = t == b"minf"
+    for k, ks, cs, ke in _boxes(m, s, e):
+        if k in _LISTED[t] or header and k in _MEDIA_HEADERS:
+            header = header and k not in _MEDIA_HEADERS
+            if k in _LISTED:
+                _unread(m, cs, ke, k, out)
+        elif out and out[-1][1] == ks:
+            out[-1][1] = ke
+        else:
+            out.append([ks, ke])
+
+
 def _root(f):
     """RFC 6962 Merkle tree root of the leaf hashes `f` yields, without holding them (split at the largest power of
     two smaller than the count: a stack of full subtrees, folded from the right at the end)."""
@@ -259,17 +300,22 @@ def media_hash(f) -> dict:
         mk = _kids(m, 0, ce - cs)
         if b"mvex" in mk:
             raise PregenError("media/1: a fragmented file (mvex)")
-        v, mvhd = _full(m, _one(mk, b"mvhd", "moov"))
-        if v not in (0, 1):
-            raise PregenError("media/1: unknown mvhd version")
+        v, mvhd = _full(m, _one(mk, b"mvhd", "moov"), (100, 112))
         tmsc = struct.unpack_from(">I", mvhd, 20 if v else 12)[0]
         rate, volu, *mtrx = struct.unpack_from(">ih10x9i", mvhd, 32 if v else 20)
         tracks = [_track(m, t, size) for t in mk.get(b"trak", [])]
+        unread = []
+        _unread(m, 0, ce - cs, b"moov", unread)
     except struct.error:
         raise PregenError("media/1: a box is too short") from None
+    moov = m.getvalue()
+    for s, e in unread:
+        for x in _PLACED.finditer(moov, s, e):
+            if x[1] != b"hdlr" or moov[x.start() + 12:x.start() + 16] not in _DATA_HANDLERS:
+                raise PregenError(f"media/1: {x[1].decode()} outside its place in moov")
     if len({t[0] for t in tracks}) != len(tracks):
         raise PregenError("media/1: two tracks with one track_ID")
-    tracks = sorted((t for t in tracks if t[1] not in (b"meta", b"hint")), key=lambda t: t[0])
+    tracks = sorted(tracks, key=lambda t: t[0])                     # every track, whatever its handler
     where = {t[0]: i for i, t in enumerate(tracks)}
     ranges = sorted((s[4], s[4] + s[5]) for t in tracks for s in t[4] if s[5])
     for j, (a, b) in enumerate(ranges):
@@ -314,6 +360,21 @@ def _no_dupes(pairs):
     return d
 
 
+def _deep(v, d=0) -> bool:
+    """Nested more than 64 levels: as the CBOR reader, so both libraries read the same values."""
+    return d > 64 or isinstance(v, (dict, list)) and any(_deep(x, d + 1)
+                                                         for x in (v.values() if isinstance(v, dict) else v))
+
+
+def _envelope(text: bytes):
+    """The envelope whose canonical JSON is exactly `text`, or None."""
+    try:
+        env = json.loads(text.decode("utf-8"), object_pairs_hook=_no_dupes)
+        return env if isinstance(env, dict) and not _deep(env) and canonical_json(env) == text else None
+    except (ValueError, RecursionError, PregenError):            # UnicodeError is a ValueError
+        return None
+
+
 def _cbor(b: bytes):
     """A minimal strict CBOR reader: maps with text keys, arrays, text, integers, true, false, null; nothing else."""
     def item(p, depth):
@@ -334,6 +395,8 @@ def _cbor(b: bytes):
             n, p = int.from_bytes(b[p:p + w], "big"), p + w
         else:
             raise PregenError("c2pa: an indefinite or reserved CBOR length")
+        if major in (0, 1) and n > _MAX_INT - major:
+            raise PregenError("c2pa: a CBOR integer beyond 2^53 - 1")
         if major == 0:
             return n, p
         if major == 1:
@@ -366,8 +429,10 @@ def _cbor(b: bytes):
     return v
 
 
-def _superbox(m, s, e):
-    """A JUMBF superbox's label and its content boxes."""
+def _jumbf(m, s, e, depth=0):
+    """A JUMBF superbox, every superbox in it checked: (label, kids), each kid (type, start, end, superbox or None)."""
+    if depth > 64:
+        raise PregenError("c2pa: JUMBF nested too deep")
     kids = list(_boxes(m, s, e, who="c2pa"))
     if not kids or kids[0][0] != b"jumd":
         raise PregenError("c2pa: a JUMBF superbox without its description")
@@ -384,7 +449,7 @@ def _superbox(m, s, e):
             label = d[17:end].decode("utf-8")
         except UnicodeDecodeError:
             raise PregenError("c2pa: a JUMBF label is not UTF-8") from None
-    return label, kids[1:]
+    return label, [(t, cs, ce, _jumbf(m, cs, ce, depth + 1) if t == b"jumb" else None) for t, _, cs, ce in kids[1:]]
 
 
 def _c2pa(f, box):
@@ -402,38 +467,48 @@ def _c2pa(f, box):
     store = list(_boxes(m, 0, len(p) - end - 9, who="c2pa"))
     if len(store) != 1 or store[0][0] != b"jumb":
         raise PregenError("c2pa: the box does not hold one JUMBF manifest store")
-    label, manifests = _superbox(m, store[0][2], store[0][3])
-    if label != "c2pa" or not manifests or any(t != b"jumb" for t, *_ in manifests):
+    label, manifests = _jumbf(m, store[0][2], store[0][3])        # the whole store: a malformed superbox refuses
+    if label != "c2pa" or not manifests or any(k[3] is None for k in manifests):
         raise PregenError("c2pa: not a manifest store")
-    stores = [k for k in _superbox(m, *manifests[-1][2:])[1] if k[0] == b"jumb"]
-    stores = [k for k in stores if _superbox(m, *k[2:])[0] == "c2pa.assertions"]
+    stores = [k[3] for k in manifests[-1][3][1] if k[3] and k[3][0] == "c2pa.assertions"]
     if len(stores) != 1:
         raise PregenError("c2pa: the active manifest needs exactly one assertion store")
-    found = []
-    for t, _, s, e in _superbox(m, *stores[0][2:])[1]:
-        if t == b"jumb":
-            label, content = _superbox(m, s, e)
-            if label and _C2PA_LABEL.fullmatch(label):
-                found.append(content)
+    found = [k[3][1] for k in stores[0][1] if k[3] and k[3][0] and _C2PA_LABEL.fullmatch(k[3][0])]
     if not found:
         return None
-    if len(found) > 1 or len(found[0]) != 1 or found[0][0][0] not in (b"json", b"cbor"):
+    if len(found) > 1 or len(found[0]) != 1 or found[0][0][3] or found[0][0][0] not in (b"json", b"cbor"):
         raise PregenError("c2pa: more than one org.pregen.after_gen assertion, or not one json or cbor box")
-    t, _, s, e = found[0][0]
+    t, s, e, _ = found[0][0]
     m.seek(s)
     data = m.read(e - s)
-    try:
-        env = json.loads(data, object_pairs_hook=_no_dupes) if t == b"json" else _cbor(data)
-    except ValueError as err:
-        raise PregenError(f"c2pa: the assertion is not JSON: {err}") from None
+    env = _envelope(data) if t == b"json" else _cbor(data)
     if not isinstance(env, dict):
-        raise PregenError("c2pa: the assertion is not an envelope")
+        raise PregenError("c2pa: the assertion is not an envelope (as JSON, exactly its canonical JSON)")
     return env
 
 
+_XMP_NOT = (b"<!--", b"<![CDATA[", b"<!DOCTYPE", b"<!ENTITY")
+_XMP_DECL = b'xmlns:pgag="https://pregen.org/ns/after-gen/1/"'
+_XMP_ESC = {b"amp": b"&", b"lt": b"<", b"gt": b">", b"quot": b'"', b"apos": b"'"}
+
+
+def _xmp_record(p: bytes):
+    """pgag:Record by the fixed lexical rule (Carrying the record), never by an XML library, so that every reader finds
+    the same record: the envelope, or None for a packet that breaks the rule and so carries no record."""
+    if any(x in p for x in _XMP_NOT) or p.count(_XMP_DECL) != 1 or p.count(b"xmlns:pgag=") != 1 \
+            or p.count(b"<pgag:Record>") != 1 or b"pgag:Record=" in p:
+        return None
+    start = p.index(b"<pgag:Record>") + 13
+    end = p.find(b"</pgag:Record>", start)
+    text = p[start:end]
+    if end < 0 or b"<" in text or re.search(rb"&(?!(?:amp|lt|gt|quot|apos);)", text):
+        return None
+    return _envelope(re.sub(rb"&(amp|lt|gt|quot|apos);", lambda x: _XMP_ESC[x[1]], text))
+
+
 def _xmp_tree(packet: bytes):
-    if b"<!DOCTYPE" in packet or b"<!ENTITY" in packet:
-        raise PregenError("xmp: a packet with a DTD")
+    if any(x in packet for x in _XMP_NOT):
+        raise PregenError("xmp: the existing packet holds a comment, CDATA or a DTD, which the lexical rule refuses")
     try:
         root = ET.fromstring(packet)
     except ET.ParseError as e:
@@ -447,20 +522,7 @@ def _xmp_tree(packet: bytes):
 def _xmp(f, box):
     _, _, cs, ce = box
     f.seek(cs + 16)
-    _, rdf = _xmp_tree(f.read(ce - cs - 16))
-    rec = f"{{{_PGAG}}}Record"
-    found = [el.text or "" for el in rdf.iter(rec)] + [el.attrib[rec] for el in rdf.iter() if rec in el.attrib]
-    if not found:
-        return None
-    if len(found) > 1:
-        raise PregenError("xmp: more than one pgag:Record")
-    try:
-        env = json.loads(found[0], object_pairs_hook=_no_dupes)
-    except ValueError as e:
-        raise PregenError(f"xmp: pgag:Record is not JSON: {e}") from None
-    if not isinstance(env, dict) or canonical_json(env) != found[0].encode("utf-8"):
-        raise PregenError("xmp: pgag:Record is not an envelope in canonical JSON")
-    return env
+    return _xmp_record(f.read(ce - cs - 16))
 
 
 def _top(f, uuid):
@@ -557,6 +619,9 @@ def embed_xmp(src, dst, envelope: dict) -> None:
                 if to_end[1] >= 1 << 32:
                     raise PregenError("file: the last box runs to the end and does not fit in 32 bits")
         new = _packet(packet, envelope)
+        if _xmp_record(new) != envelope:
+            raise PregenError("xmp: the packet would not carry the record under the lexical rule: an existing property "
+                              "spells pgag:Record= or xmlns:pgag=, or the record is not canonical JSON")
         fs.seek(0)
         with open(dst, "wb") as fd:
             shutil.copyfileobj(fs, fd)
@@ -605,9 +670,9 @@ def _hex(v) -> bool:
     return isinstance(v, str) and bool(_HEX64.fullmatch(v))
 
 
-def _star(v, pattern) -> bool:
-    return v == ["*"] or isinstance(v, list) and len(v) >= 1 and v == sorted(set(v)) \
-        and all(isinstance(x, str) and re.fullmatch(pattern, x) for x in v)
+def _star(v, pattern, most) -> bool:
+    return v == ["*"] or isinstance(v, list) and 1 <= len(v) <= most \
+        and all(isinstance(x, str) and re.fullmatch(pattern, x) for x in v) and v == sorted(set(v))
 
 
 def _scope(s):
@@ -620,10 +685,10 @@ def _scope(s):
         raise PregenError("scope.categories: an intimate category is never approved after generation")
     if not _words(s["categories"], CATEGORIES):
         raise PregenError("scope.categories: sorted, without repeats, in the closed vocabulary")
-    if not _star(s["territories"], r"[A-Z]{2}"):
-        raise PregenError('scope.territories: sorted ISO 3166-1 alpha-2 codes or ["*"]')
-    if not _star(s["channels"], r"[a-z0-9-]{1,32}"):
-        raise PregenError('scope.channels: sorted words of [a-z0-9-]{1,32} or ["*"]')
+    if not _star(s["territories"], r"[A-Z]{2}", 250):
+        raise PregenError('scope.territories: at most 250 sorted ISO 3166-1 alpha-2 codes or ["*"]')
+    if not _star(s["channels"], r"[a-z0-9-]{1,32}", 64):
+        raise PregenError('scope.channels: at most 64 sorted words of [a-z0-9-]{1,32} or ["*"]')
     p = s["project"]
     if not (isinstance(p, str) and 1 <= len(p) <= 200 and p.isprintable()):
         raise PregenError("scope.project: printable text of 1 to 200 characters")
@@ -633,7 +698,7 @@ def _scope(s):
 
 def _approval(a, holder):
     form = a.get("assent") if isinstance(a, dict) else None
-    if form not in _APPROVAL:
+    if type(form) is not str or form not in _APPROVAL:                  # never a list or any other type
         raise PregenError("approval.assent: self, registry or agent")
     _obj(a, _APPROVAL[form], f"approval ({form})")
     if form == "self" and not _hex(a["decision"]):
@@ -644,7 +709,7 @@ def _approval(a, holder):
         check_provider_url(a["agent"], allow_port=True)     # a sandbox id may carry a port; a registry decides who is a party
         if not (_hex(a["mandate"]) and _hex(a["decision"]) and a["factor"] == "signature"):
             raise PregenError("approval: the mandate's and the decision's message ids, factor signature")
-        if a["agent"] == holder:
+        if urlsplit(a["agent"]).hostname == urlsplit(holder).hostname:  # whatever the port
             raise PregenError("approval: a representative is never the holder of the same record")
 
 
@@ -663,7 +728,8 @@ def check_after_gen(env: dict, directory=None, get_json=_get_json, media=None) -
     and, given `media` (a media_hash result or its hash), naming that file. Raises PregenError; returns a summary.
     It says nothing about whether the record still stands: check_after_gen_status."""
     directory = directory or load_directory(get_json=get_json)
-    code = (env.get("body") or {}).get("subject_ref") if isinstance(env, dict) else None
+    body = env.get("body") if isinstance(env, dict) else None
+    code = body.get("subject_ref") if isinstance(body, dict) else None
     if isinstance(code, str) and directory.is_false_claim(code):
         raise PregenError(f"{code} is a false claim the steward recorded")
     b = _registry_signed(env, _TYPE, code, directory, get_json)
@@ -687,6 +753,8 @@ def check_after_gen(env: dict, directory=None, get_json=_get_json, media=None) -
         raise PregenError("request is a message id and issued_at an integer time")
     check_provider_url(b["holder"], allow_port=True)
     _scope(b["scope"])
+    if b["scope"]["not_after"] <= b["issued_at"]:
+        raise PregenError("scope.not_after: later than issued_at")
     _approval(b["approval"], b["holder"])
     rid = message_id(_TYPE, b)
     status_url = directory.registry_for(code)["api"].rstrip("/") + "/v2/after-gen/" + rid  # The status: never from the record
@@ -706,28 +774,30 @@ def check_after_gen(env: dict, directory=None, get_json=_get_json, media=None) -
 def check_after_gen_status(status_env: dict, record_env: dict, directory=None, get_json=_get_json, now=None) -> dict:
     """Step 5: a pg.after_gen_status.v1 for this record (The status), signed by a registry key the directory lists for
     the record's subject prefix, current (at most 300 seconds of life), its state one of active, withdrawn, expired.
-    Check the record itself with check_after_gen. Raises PregenError; returns {state, approved_at, withdrawn_at,
+    The record is checked first with check_after_gen. Raises PregenError; returns {state, approved_at, withdrawn_at,
     not_after}."""
     import time
     now = int(time.time()) if now is None else now
     directory = directory or load_directory(get_json=get_json)
     if now - directory.loaded_at > DIRECTORY_MAX_AGE:
         raise PregenError("the directory was loaded more than 24 hours ago: load it again")
-    rec = _ints(record_env.get("body")) if isinstance(record_env, dict) and record_env.get("type") == _TYPE else None
-    if not isinstance(rec, dict) or not isinstance(rec.get("scope"), dict):
-        raise PregenError(f"record must be the {_TYPE} envelope")
-    s = _registry_signed(status_env, _STATUS, rec.get("subject_ref"), directory, get_json)
+    r = check_after_gen(record_env, directory, get_json)
+    s = _registry_signed(status_env, _STATUS, r["subject_ref"], directory, get_json)
     _obj(s, _STATUS_MEMBERS, _STATUS)
-    if s["record"] != message_id(_TYPE, rec):
+    if set(s["signers"][0]) != {"role", "key_id"}:
+        raise PregenError(f"{_STATUS}: a signer that is not {{role, key_id}}")
+    if s["record"] != r["id"]:
         raise PregenError("a status for another record")
     iat, exp = s["issued_at"], s["expires_at"]
-    if not (_count(iat) and _count(exp)) or not 0 < exp - iat <= _MAX_STATUS_LIFETIME:
+    if not all(_count(x) for x in (iat, exp, s["approved_at"], s["not_after"])):
+        raise PregenError("status times are integers")
+    if not 0 < exp - iat <= _MAX_STATUS_LIFETIME:
         raise PregenError(f"a status lives at most {_MAX_STATUS_LIFETIME} seconds")
     if iat > now + 60:
         raise PregenError("a status issued in the future")
     if exp <= now:
         raise PregenError("the status expired")
-    if s["approved_at"] != rec.get("issued_at") or s["not_after"] != rec["scope"].get("not_after"):
+    if s["approved_at"] != r["issued_at"] or s["not_after"] != r["scope"]["not_after"]:
         raise PregenError("the status does not repeat the record's issued_at and not_after")
     state, w = s["state"], s["withdrawn_at"]
     if state not in ("active", "withdrawn", "expired") \

@@ -154,6 +154,98 @@
    }
   },
   {
+   "file": "attack-c2pa-nested.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "e3be5e27f2b21c4959c32bda7f7e3829fca1183a6e1fb1344c894daeb8af51b9",
+    "leaves": 4
+   }
+  },
+  {
+   "file": "attack-c2pa-not-canonical.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "e3be5e27f2b21c4959c32bda7f7e3829fca1183a6e1fb1344c894daeb8af51b9",
+    "leaves": 4
+   }
+  },
+  {
+   "file": "attack-c2pa-older-bad.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "e3be5e27f2b21c4959c32bda7f7e3829fca1183a6e1fb1344c894daeb8af51b9",
+    "leaves": 4
+   }
+  },
+  {
+   "file": "attack-dos.mp4",
+   "refused": "media/1: a sample range falls outside the file"
+  },
+  {
+   "file": "attack-dref-external.mp4",
+   "refused": "media/1: a data reference that is not in the same file"
+  },
+  {
+   "file": "attack-elst-in-udta.mp4",
+   "refused": "media/1: elst outside its place in moov"
+  },
+  {
+   "file": "attack-hidden-track.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "b7890264c12ddc45e5b5f467bcc2aa1549da11acd5f049d3aa80296823e1e764",
+    "leaves": 6
+   }
+  },
+  {
+   "file": "attack-meta-blue.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "3a3466149607d2aee1e2cd89f45c2df076e13bbdb012e1002d5eec3ca3c3ed21",
+    "leaves": 3
+   }
+  },
+  {
+   "file": "attack-meta-red.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "6a11a2bb72dc4d2970a3654c064e2c5b9922d0aaa7567280f1b1240f4b0ba47c",
+    "leaves": 3
+   }
+  },
+  {
+   "file": "attack-short-uuid.mp4",
+   "refused": "media/1: a box is shorter than its header"
+  },
+  {
+   "file": "attack-stray-stco.mp4",
+   "refused": "media/1: stco outside its place in moov"
+  },
+  {
+   "file": "attack-xmp-attribute.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "e3be5e27f2b21c4959c32bda7f7e3829fca1183a6e1fb1344c894daeb8af51b9",
+    "leaves": 4
+   }
+  },
+  {
+   "file": "attack-xmp-comment.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "e3be5e27f2b21c4959c32bda7f7e3829fca1183a6e1fb1344c894daeb8af51b9",
+    "leaves": 4
+   }
+  },
+  {
+   "file": "attack-xmp-rebound.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "e3be5e27f2b21c4959c32bda7f7e3829fca1183a6e1fb1344c894daeb8af51b9",
+    "leaves": 4
+   }
+  },
+  {
    "file": "b-copied-record.mov",
    "media": {
     "binding": "media/1",
@@ -197,8 +289,8 @@
    "file": "tiny-tref.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "c18dd30db2990613668e4bca4b2b10e655f5482dd0fdf1b7a1b96fcad631a8ec",
-    "leaves": 7
+    "hash": "5341394f45dea7c44b7f74a518e33bd6f9f49319b49b3be9c127693f337bf474",
+    "leaves": 10
    }
   },
   {
@@ -302,6 +394,36 @@
    "check": {
     "xmp": "0128b388b46c04fb82203cfb936fb4e597bd751f8460ef3262744afdaa1c872c"
    }
+  },
+  {
+   "file": "attack-c2pa-nested.mp4",
+   "refused": "c2pa: more than one org.pregen.after_gen assertion, or not one json or cbor box"
+  },
+  {
+   "file": "attack-c2pa-not-canonical.mp4",
+   "refused": "c2pa: the assertion is not an envelope (as JSON, exactly its canonical JSON)"
+  },
+  {
+   "file": "attack-c2pa-older-bad.mp4",
+   "refused": "c2pa: a JUMBF superbox without its description"
+  },
+  {
+   "file": "attack-xmp-attribute.mp4",
+   "c2pa": null,
+   "xmp": null,
+   "check": {}
+  },
+  {
+   "file": "attack-xmp-comment.mp4",
+   "c2pa": null,
+   "xmp": null,
+   "check": {}
+  },
+  {
+   "file": "attack-xmp-rebound.mp4",
+   "c2pa": null,
+   "xmp": null,
+   "check": {}
   },
   {
    "file": "b-copied-record.mov",

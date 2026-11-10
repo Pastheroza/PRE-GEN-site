@@ -8,7 +8,7 @@ import time
 import pregen as lib
 import pytest
 from fastapi.testclient import TestClient
-from test_registry import Clock, OpenProvider, code, make
+from test_registry import Clock, OpenProvider, Provider, code, make
 
 from pregen_registry import app as app_module
 from pregen_registry.app import create_app
@@ -190,27 +190,25 @@ def test_the_sandbox_review_page_is_the_test_creators_with_a_simulated_factor():
 
 def production(tmp_path, *flags):
     d = str(tmp_path)
-    cli(["init", "--dir", d, "--prefix", "ABCD", "--name", "R", "--api", "https://r.example", *flags])
+    cli(["init", "--dir", d, "--prefix", "ABCD", "--name", "R", "--api", "https://r.example", "--open-providers", *flags])
     reg = load(d)
+    p = OpenProvider(reg, None, url="https://studio.example")
+    reg.fetch_party = lambda url: p.doc                                        # read from the studio's domain
     s = reg.add_subject("Maya", level="verified")
-    pid, token = reg.add_provider("studio")
-    g = reg.add_grant(s, licensee_id=pid, purposes=("commercial",), max_uses=3)
-    body = {"signers": [], "requester": pid, "subject_ref": s, "licence": {"format": "pg.grant.v1", "id": g},
-            "content": {"binding": "media/1", "hash": MEDIA, "leaves": 7},
-            "scope": {"purposes": ["commercial"], "categories": [], "territories": ["*"], "channels": ["*"],
-                      "project": "Launch film", "not_after": int(time.time()) + 86400},
-            "issued_at": int(time.time()), "nonce": secrets.token_urlsafe(16)}
-    return d, reg, pid, token, s, g, {"request": {"type": "pg.after_gen_request.v1", "body": body, "signatures": []},
-                                      "preview_url": "https://studio.example/p/1"}
+    g = reg.add_grant(s, licensee_id=p.id, purposes=("commercial",), max_uses=3)
+    scope = {"purposes": ["commercial"], "categories": [], "territories": ["*"], "channels": ["*"],
+             "project": "Launch film", "not_after": int(time.time()) + 86400}
+    env = lib.after_gen_request(p.id, p.key, s, g, {"binding": "media/1", "hash": MEDIA, "leaves": 7}, scope)
+    return d, reg, p, s, g, {"request": env, "preview_url": "https://studio.example/p/1"}
 
 
 def test_the_operator_approves_on_the_subjects_instruction_with_a_second_factor(tmp_path, capsys):
-    d, reg, pid, token, s, g, payload = production(tmp_path, "--after-gen")
+    d, reg, p, s, g, payload = production(tmp_path, "--after-gen")
     assert "after-gen" in reg.document()["extensions"]
-    r = reg.after_gen_request(pid, f"Bearer {token}", payload)                 # a registry credential, no signature
+    r = reg.after_gen_request(p.id, None, payload)                             # signed by the studio's domain key
     assert r["state"] == "pending" and "review_url" not in r                   # production: never the approval page
-    with pytest.raises(ProtocolError, match="PG_NOT_AUTHENTICATED"):
-        reg.after_gen_request(pid, "Bearer wrong", payload)
+    with pytest.raises(ProtocolError, match="PG_NOT_AUTHENTICATED"):            # a party known by its domain sends
+        reg.after_gen_request(p.id, "Bearer x", payload)                        # no credential (P-1)
     rid = r["request"]
     capsys.readouterr()
     cli(["after-gen", "show", "--dir", d, rid])
@@ -225,8 +223,10 @@ def test_the_operator_approves_on_the_subjects_instruction_with_a_second_factor(
     assert out["record"]["body"]["approval"] == {"assent": "registry", "instruction": INSTRUCTION, "factor": "authenticator"}
     assert out["record"]["body"]["use"] == {"n": 1, "of": 3} and out["status"]["body"]["state"] == "active"
     assert reg._row("SELECT preview_url FROM after_gen_requests WHERE id = ?", (rid,))[0] is None
+    cfg = tmp_path / "registry.json"                                            # after-gen turned off: no new request,
+    cfg.write_text(json.dumps({**json.loads(cfg.read_text()), "after_gen": False}))   # but its records still answer
     cli(["after-gen", "withdraw", "--dir", d, rec_id, "--instruction-sha256", INSTRUCTION])     # closing: no factor
-    assert reg.after_gen_status(rec_id)["status"]["body"]["state"] == "withdrawn"
+    assert load(d).after_gen_status(rec_id)["status"]["body"]["state"] == "withdrawn"
     cli(["mandate", "add", "--dir", d, s, AGENCY, "--purposes", "commercial", "--not-after", str(int(time.time()) + 600),
          "--instruction-sha256", INSTRUCTION, "--factor", "email"])
     mid = capsys.readouterr().out.strip().splitlines()[-1]
@@ -242,10 +242,13 @@ def test_a_production_registry_declares_after_gen_only_when_configured(tmp_path)
     doc = c.get("/.well-known/pregen-registry.json").json()
     check_body("registry-document", doc)
     assert "after-gen" not in doc["extensions"]
-    for r in (c.get(f"/v2/after-gen?media={MEDIA}"), c.get(f"/v2/after-gen/{MEDIA}"),
-              c.post("/v2/after-gen/requests", json={}), c.post("/v2/after-gen/decisions", json={})):
+    for r in (c.get(f"/v2/after-gen/{MEDIA}"), c.post("/v2/after-gen/requests", json={}),
+              c.post("/v2/after-gen/decisions", json={})):
         refused(r, "PG_NOT_FOUND", 404)
-    on = Registry(Config(prefix="ABCD", name="R", api="https://r.example", after_gen=True), Key())
+    assert c.get(f"/v2/after-gen?media={MEDIA}").json() == {"records": []}      # it signed none
+    with pytest.raises(ValueError, match="open-providers"):                     # a record names a party id
+        Config(prefix="ABCD", name="R", api="https://r.example", after_gen=True)
+    on = Registry(Config(prefix="ABCD", name="R", api="https://r.example", providers="open", after_gen=True), Key())
     check_body("registry-document", on.document())
     assert "after-gen" in on.document()["extensions"]
     sandbox = TestClient(create_app(make()[0])).get("/.well-known/pregen-registry.json").json()
@@ -290,7 +293,11 @@ def test_2_never_the_requester_another_party_or_a_key_the_registry_holds():
     refused(w.decide(rid, key=w.p.key), "PG_NOT_AUTHENTICATED", 401)             # the requester's key as the subject
     w.mandate(subject=w.me, agent=w.p.id)                                       # even with a mandate of its own
     refused(w.decide(rid, role="agent", key=w.p.key, agent=w.p.id), "PG_NO_MANDATE", 403)
-    refused(w.decide(rid, role="agent", agent=AGENCY), "PG_NO_MANDATE", 403)     # another party, no mandate
+    port = OpenProvider(w.reg, w.c, url=w.p.id + ":8443")                        # the holder's host on another port
+    w.c.post("/v2/sandbox/party", json=port.doc)
+    w.mandate(subject=w.me, agent=port.id)
+    refused(w.decide(rid, role="agent", key=port.key, agent=port.id), "PG_NO_MANDATE", 403)
+    refused(w.decide(rid, role="agent", agent=AGENCY), "PG_NOT_FOUND", 404)      # another party, no mandate
     managed = w.pending()                                                       # Maya: the registry holds her key
     held = w.reg.db.execute("SELECT key_private FROM subjects WHERE code = ?", (w.s,)).fetchone()[0]
     r = w.decide(managed, key=Key(held).private_hex)
@@ -303,15 +310,15 @@ def test_3_a_mandate_must_list_after_gen_be_live_be_for_this_subject_and_cover_t
     w = World()
     rid = w.pending()
     agent = {"role": "agent", "agent": AGENCY}
-    w.mandate(powers=("sign_contracts",))
-    refused(w.decide(rid, **agent), "PG_NO_MANDATE", 403)                        # without after_gen
-    w.reg.end_mandate(w.mandate())
-    refused(w.decide(rid, **agent), "PG_NO_MANDATE", 403)                        # ended
+    w.mandate(powers=("sign_contracts",))                                       # without a live after_gen mandate
+    refused(w.decide(rid, **agent), "PG_NOT_FOUND", 404)                         # of this subject, the request is
+    w.reg.end_mandate(w.mandate())                                              # as unknown as one that is not there
+    refused(w.decide(rid, **agent), "PG_NOT_FOUND", 404)                         # ended
     w.mandate(days=1)
     w.clock.t += 2 * 86400
-    refused(w.decide(rid, **agent), "PG_NO_MANDATE", 403)                        # expired
+    refused(w.decide(rid, **agent), "PG_NOT_FOUND", 404)                         # expired
     w.mandate(subject=w.me)
-    refused(w.decide(rid, **agent), "PG_NO_MANDATE", 403)                        # another subject's
+    refused(w.decide(rid, **agent), "PG_NOT_FOUND", 404)                         # another subject's
     w.mandate(purposes=("editorial",))
     refused(w.decide(rid, **agent), "PG_SCOPE_VIOLATION", 403)                   # beyond limits.purposes
     w.mandate(purposes=("commercial", "editorial"))
@@ -327,7 +334,9 @@ def test_4_registry_names_a_factor_and_self_never_does():
     for approval in ({"assent": "self", "decision": "d" * 64, "factor": "email"},       # self naming a factor
                      {"assent": "registry", "instruction": INSTRUCTION},                 # registry naming none
                      {"assent": "registry", "instruction": INSTRUCTION, "factor": "sms"},
-                     {"assent": "holder", "decision": "d" * 64}):
+                     {"assent": "holder", "decision": "d" * 64},
+                     {"assent": "agent", "agent": w.p.id + ":8443", "mandate": "e" * 64, "decision": "d" * 64,
+                      "factor": "signature"}):                                    # the holder's host, another port
         with pytest.raises(ProtocolError, match="PG_MALFORMED"), w.reg.tx() as db:
             w.reg._sign_after_gen(db, row, scope, approval, w.clock.t)
     managed = w.row(w.pending())
@@ -435,7 +444,7 @@ def test_15_the_licence_is_for_this_subject_and_holder_valid_with_a_use_left_and
                   w.scope(not_after=w.clock.t + 366 * 86400)):
         refused(w.ask(scope=scope), "PG_SCOPE_VIOLATION", 403)                   # wider than the licence
     rid = w.pending()
-    refused(w.decide(rid, role="agent", agent=AGENCY, scope=w.scope(channels=["*"])), "PG_SCOPE_VIOLATION")
+    refused(w.decide(rid, role="agent", agent=AGENCY, scope=w.scope(channels=["*"])), "PG_NOT_FOUND", 404)
     w.mandate()
     refused(w.decide(rid, role="agent", agent=AGENCY, scope=w.scope(channels=["*"])), "PG_SCOPE_VIOLATION")  # wider
     assert w.decide(rid, role="agent", agent=AGENCY).json()["state"] == "approved"   # than the request
@@ -593,10 +602,29 @@ def test_requests_are_authenticated_fresh_and_in_shape():
     refused(w.ask(issued_at=w.clock.t - 301), "PG_MALFORMED", 422)
     refused(w.ask(scope=w.scope(not_after=w.clock.t)), "PG_MALFORMED", 422)
     refused(w.ask(subject=code(1).lower()), "PG_MALFORMED", 422)
+    territories = sorted(a + b for a in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" for b in "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+    channels = [f"c{i:02d}" for i in range(65)]
     for scope in (w.scope(purposes=[]), w.scope(territories=["es"]), w.scope(territories=["*", "ES"]),
                   w.scope(channels=["Social"]), w.scope(project=""), w.scope(project="a\nb"),
-                  {**w.scope(), "fee": 1}, w.scope(territories=["IT", "ES"])):
+                  {**w.scope(), "fee": 1}, w.scope(territories=["IT", "ES"]), w.scope(territories=territories[:251]),
+                  w.scope(channels=channels)):                                  # at most 250 territories, 64 channels
         refused(w.ask(scope=scope), "PG_MALFORMED", 422)
+    assert w.ask(scope=w.scope(territories=territories[:250], channels=channels[:64])).status_code == 200
+    registered = Provider(w.reg, w.c)                                           # a credential alone is no party id:
+    body = {"signers": [], **w.body(), "requester": registered.id}              # the record could not name it
+    refused(w.c.post("/v2/after-gen/requests", headers=registered.h, json={"request": {
+        "type": "pg.after_gen_request.v1", "body": body, "signatures": []}}), "PG_NOT_AUTHENTICATED", 401)
+    assert w.reg.db.execute("SELECT COUNT(*) FROM after_gen_requests WHERE requester = ?",
+                            (registered.id,)).fetchone()[0] == 0
+    signer = [{"role": "requester", "key_id": w.p.key_id}]
+    post = lambda path, v: w.c.post(path, content=json.dumps(v), headers={**w.p.h, "content-type": "application/json"})  # noqa: E731
+    for bad in (1.5, 2**70, "\ud800"):                                           # unsignable JSON: refused, never a 500
+        refused(post("/v2/after-gen/requests", {"request": {
+            "type": "pg.after_gen_request.v1", "body": {"signers": signer, **w.body(), "nonce": bad},
+            "signatures": ["00" * 64]}}), "PG_MALFORMED", 422)
+        refused(post("/v2/requests", {"type": "pg.request.v1", "body": {
+            "signers": [{**signer[0], "role": "provider"}], **w.p.body(code(1)), "job_id": bad},
+            "signatures": ["00" * 64]}), "PG_MALFORMED", 422)
     body = w.body()
     first, again = w.ask(body=body).json(), w.ask(body=body).json()
     assert again == {k: first[k] for k in ("request", "state", "review_until")}  # the identical request: its state
@@ -617,10 +645,15 @@ def test_an_unvetted_domain_learns_nothing_of_an_unpublished_subject():
     w.p = OpenProvider(reg, w.c)
     doc[w.p.id] = w.p.doc
     hidden = reg.add_subject("Hidden", level="verified")
-    w.s, w.me = hidden, None
     reg.opt_out(hidden)
-    w.g = reg.add_grant(hidden, licensee_id="", purposes=("commercial",), categories=("advertising",))
-    refused(w.ask(), "PG_PROVIDER_NOT_ACCEPTED", 403)                            # P-5: an open licence tells nothing
+    w.me, answers = None, []
+    for s in (reg.add_subject("Fine", level="verified"), reg.add_subject("Kid", level="verified", minor=1), hidden):
+        w.s, w.g = s, reg.add_grant(s, licensee_id="", purposes=("commercial",), categories=("advertising",))
+        r = w.ask(scope=w.scope(categories=[]))                                  # P-5a: on an open licence, one
+        answers.append((r.status_code, r.json()))                               # refusal whatever the subject's state
+    assert answers == [(403, {"error": "PG_PROVIDER_NOT_ACCEPTED",
+                              "error_description": "this registry has not accepted this provider (P-5)"})] * 3
+    assert reg.db.execute("SELECT COUNT(*) FROM after_gen_requests").fetchone()[0] == 0
     w.g = reg.add_grant(hidden, licensee_id=w.p.id, purposes=("commercial",), categories=("advertising",))
     refused(w.ask(), "PG_SUBJECT_OPTED_OUT", 403)                                # its own licence: it may know
     r = w.ask()
@@ -641,3 +674,79 @@ def test_cors_only_on_the_two_public_reads(monkeypatch):
     refused(w.ask(media="ee" * 32, preview="http://x"), "PG_MALFORMED", 422)       # an invalid one takes no slot
     assert w.ask(media="ee" * 32).status_code == 200
     refused(w.ask(media="ff" * 32), "PG_RATE_LIMITED", 429)
+
+
+# ── step 4 as of now, the decision kept, and what a decider learns ──────
+
+def test_a_not_after_already_past_is_never_signed_and_takes_no_use():
+    w = World(max_uses=3)
+    late = w.pending(subject=w.me, scope=w.scope(not_after=w.clock.t + 60))
+    w.clock.t += 7200                                                           # passed during the review
+    refused(w.decide(late), "PG_SCOPE_VIOLATION", 403)
+    with pytest.raises(ProtocolError, match="PG_SCOPE_VIOLATION"):
+        w.reg.approve_after_gen(late, instruction=INSTRUCTION, factor="email")
+    refused(w.decide(w.pending(subject=w.me, media="cd" * 32), scope=w.scope(not_after=w.clock.t)),
+            "PG_SCOPE_VIOLATION", 403)                                          # a decision narrowing it to now
+    assert w.reg.db.execute("SELECT COUNT(*) FROM after_gen_records").fetchone()[0] == 0
+    assert record_body(w, w.pending(subject=w.me, media="ef" * 32))["use"] == {"n": 1, "of": 3}   # none was counted
+
+
+def test_use_n_is_the_licences_count_when_signed_so_a_give_back_can_repeat_it():
+    """after-gen.md, `use`: the count at signing, this record included; an allow given back lowers it."""
+    w = World()
+    w.reg.revoke_grant(w.g)
+    g = w.licence(w.s, max_uses=3)
+    allow = w.p.answer(w.p.body(w.s, purpose="commercial"))                      # use 1: an allow
+    first = w.reg.approve_after_gen(w.pending(licence=g, media="11" * 32), instruction=INSTRUCTION, factor="email")
+    assert w.p.report(allow, outcome="not_generated").status_code == 200        # the allow's use is given back
+    second = w.reg.approve_after_gen(w.pending(licence=g, media="22" * 32), instruction=INSTRUCTION, factor="email")
+    assert [w.status(r)[0]["use"] for r in (first, second)] == [{"n": 2, "of": 3}] * 2
+
+
+def test_the_registry_keeps_the_decision_it_received_and_an_agent_without_a_mandate_learns_nothing():
+    w = World()
+    d = w.decision(own := w.pending(subject=w.me))
+    w.mandate()
+    a = w.decision(agent := w.pending(), role="agent")
+    records = [w.decide(own, env=d).json()["record"], w.decide(agent, agent=AGENCY, env=a).json()["record"],
+               w.reg.approve_after_gen(w.pending(media="cd" * 32), instruction=INSTRUCTION, factor="email")]
+    kept = [w.reg.db.execute("SELECT decision FROM after_gen_records WHERE id = ?", (r,)).fetchone()[0] for r in records]
+    assert [json.loads(k) if k else None for k in kept] == [d, a, None]
+    assert set(w.c.get(f"/v2/after-gen/{records[0]}").json()) == {"record", "status"}         # kept, not published
+    intruder = OpenProvider(w.reg, w.c, url="https://intruder.example")
+    w.c.post("/v2/sandbox/party", json=intruder.doc)
+    refused_ = w.pending(subject=w.me, media="ef" * 32, scope=w.scope(project="Secret"))
+    w.decide(refused_, outcome="refuse")
+    pending = w.pending(subject=w.me, media="11" * 32, scope=w.scope(project="Secret"))
+    unknown = w.decide("f" * 64, role="agent", agent=intruder.id, key=intruder.key, scope=w.scope())
+    for rid, scope in ((refused_, w.scope(project="Secret")), (pending, w.scope(project="guess")),
+                       (pending, w.scope(project="Secret"))):
+        r = w.decide(rid, role="agent", agent=intruder.id, key=intruder.key, scope=scope)
+        assert (r.status_code, r.json()) == (unknown.status_code, unknown.json()) == (404, unknown.json())
+
+
+def test_turned_off_it_takes_no_new_request_or_approval_but_its_records_still_answer():
+    """after-gen.md step 5: status, lookup and withdrawal keep working for every record signed."""
+    w = World()
+    rec = w.decide(w.pending(subject=w.me)).json()["record"]
+    pending = w.pending(subject=w.me, media="cd" * 32)
+    w.reg.config.after_gen = False
+    refused(w.ask(subject=w.me, media="ef" * 32), "PG_NOT_FOUND", 404)
+    refused(w.decide(pending), "PG_NOT_FOUND", 404)
+    with pytest.raises(ProtocolError, match="PG_NOT_FOUND"):
+        w.reg.approve_after_gen(pending, instruction=INSTRUCTION, factor="email")
+    assert w.c.get(f"/v2/after-gen?media={MEDIA}").json() == {"records": [rec]} and w.status(rec)[1]["state"] == "active"
+    refused(w.c.post(f"/v2/after-gen/{rec}/withdraw", content="null", headers={"content-type": "application/json"}),
+            "PG_MALFORMED", 422)                                                # never the instruction path
+    good = sign(w.own, "subject", "pg.after_gen_withdrawal.v1", {"record": rec, "issued_at": w.clock.t})
+    assert w.c.post(f"/v2/after-gen/{rec}/withdraw", json=good).status_code == 200
+    assert w.status(rec)[1]["state"] == "withdrawn"
+
+
+def test_the_public_reads_expire_an_undecided_request_and_drop_its_viewing_link():
+    for read in (lambda w: w.c.get(f"/v2/after-gen?media={MEDIA}"), lambda w: w.c.get(f"/v2/after-gen/{'f' * 64}")):
+        w = World()
+        rid = w.pending(subject=w.me)
+        w.clock.t += AG_REVIEW
+        read(w)
+        assert (w.row(rid)["state"], w.row(rid)["preview_url"], w.row(rid)["review_hash"]) == ("expired", None, None)

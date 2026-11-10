@@ -512,7 +512,7 @@ export function checkProviderUrl(url, { allowPort = false } = {}) {
   const host = u.hostname;
   // A sandbox (allowPort) also takes a port, and on your own machine only <32 hex of the key id>.localhost.
   if (u.protocol !== "https:" || u.origin !== url || u.username || (u.port && !allowPort) || host === "localhost"
-      || !(HOST.test(host) || (allowPort && /^[0-9a-f]{32}\.localhost$/.test(host)))) {
+      || u.port === "0" || !(HOST.test(host) || (allowPort && /^[0-9a-f]{32}\.localhost$/.test(host)))) {
     fail(`not a provider URL: ${JSON.stringify(url)} (https://<domain>, lower case, no path, port, query or fragment)`);
   }
   return url;

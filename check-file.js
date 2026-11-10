@@ -124,20 +124,29 @@ async function check(file) {
     const inFile = await readAfterGen(file);
     records = [inFile.c2pa, inFile.xmp].filter(Boolean);
   } catch { /* unreadable metadata: look the hash up instead */ }
-  const fromFile = records.length > 0;
-  if (!fromFile) records = await findByHash(directory, media.hash);
+  // A record in the file is tried first; if none checks out, the registries are asked by the fingerprint, so a
+  // planted record cannot hide a real approval.
+  let summary, env, lastError, where = "in the file's metadata";
+  const tryAll = async (list) => {
+    for (const r of list) {
+      try { summary = await checkAfterGen(r, { directory, media }); env = r; return; } catch (e) { lastError = e; }
+    }
+  };
+  await tryAll(records);
+  if (!summary) {
+    const held = await findByHash(directory, media.hash);
+    if (held.length) where = "at the registry, by the file's fingerprint";
+    await tryAll(held);
+    records = records.concat(held);
+  }
   if (!records.length) {
     step("s-find", "fail");
     return say("No approval found for this file",
       "The file carries no AFTER-GEN record, and no registry holds one for its fingerprint. This says nothing about whether the video is permitted, generated or real.");
   }
-  step("s-find", "ok", fromFile ? "in the file's metadata" : "at the registry, by the file's fingerprint");
+  step("s-find", "ok", where);
 
   step("s-sign", "busy");
-  let summary, env, lastError;
-  for (const r of records) {
-    try { summary = await checkAfterGen(r, { directory, media }); env = r; break; } catch (e) { lastError = e; }
-  }
   if (!summary) {
     step("s-sign", "fail");
     const msg = lastError?.message || "";
@@ -167,8 +176,8 @@ async function check(file) {
   } catch (e) {
     step("s-status", "fail");
     show(summary, { state: "unknown", not_after: summary.scope.not_after });
-    result.firstChild.textContent = "Approved after generation, status not confirmed";
-    result.insertBefore(el("p", `The registry did not confirm the status today (${e.message}). It may have been withdrawn.`, "cf-why"), result.children[1]);
+    result.firstChild.textContent = "A record was found, but whether it stands today could not be confirmed";
+    result.insertBefore(el("p", `The registry did not answer for its status (${e.message}). The person may have withdrawn it. Treat it as not confirmed until the registry answers.`, "cf-why"), result.children[1]);
   }
 }
 

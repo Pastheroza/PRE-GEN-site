@@ -11,7 +11,7 @@ from importlib import resources
 
 import jsonschema
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from pregen import canonical_json as canonical, fingerprint, verify_bytes
+from pregen import PregenError, canonical_json as canonical, fingerprint, verify_bytes
 from referencing import Registry, Resource
 
 __all__ = ["ProtocolError", "Key", "canonical", "message_id", "signing_input", "seal", "check_envelope",
@@ -94,7 +94,10 @@ def check_envelope(env, type_: str, roles: tuple[str, ...], key_for) -> dict:
     if not isinstance(signers, list) or [s.get("role") if isinstance(s, dict) else None for s in signers] != list(roles) \
             or len({s.get("key_id") for s in signers}) != len(signers) or len(env["signatures"]) != len(signers):
         raise ProtocolError("PG_MALFORMED", f"{type_} is signed by {list(roles) or 'no one'}")
-    data = signing_input(type_, env["body"])
+    try:
+        data = signing_input(type_, env["body"])
+    except PregenError as e:                    # an unsafe integer, a float, a lone surrogate: nothing to sign
+        raise ProtocolError("PG_MALFORMED", f"{type_}: {e}") from None
     for signer, sig in zip(signers, env["signatures"]):
         pub = key_for(signer["role"], signer.get("key_id"))
         if pub is None or not isinstance(sig, str) or not verify_bytes(pub, sig, data):

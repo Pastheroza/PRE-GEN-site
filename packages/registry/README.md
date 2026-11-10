@@ -104,13 +104,15 @@ AFTER-GEN ([`drafts/after-gen.md`](https://www.pregen.org/spec/drafts/after-gen.
 video that already exists, under a licence the registry holds. The registry signs a `pg.after_gen.v1` record that
 names the file by its `media/1` hash. A record is never a PRE-GEN permission: no answer rests on one, and a report
 that cites one is refused. A sandbox declares `after-gen` by default. A production registry declares it only with
-`"after_gen": true` in `registry.json`, or `init --after-gen`.
+`"after_gen": true` in `registry.json`, or `init --open-providers --after-gen`: the record names its holder by its
+party id, so requesters are providers known by their domain. Turned off again, the registry takes no new request or
+approval, and keeps answering status, lookup and withdrawal for every record it signed.
 
 | Method and path | What |
 |---|---|
-| `POST /v2/after-gen/requests` | `{"request": <pg.after_gen_request.v1>, "preview_url"?: "https://…"}`, authenticated as a provider request is. Returns `{request, state: "pending", review_until}`; a sandbox adds `review_url`, its test approval page |
-| `GET /v2/after-gen/requests/{id}` | the requester only (credential or `PG-Access`): `{request, state, review_until, record?}` |
-| `POST /v2/after-gen/decisions` | a `pg.after_gen_decision.v1` signed by the subject's own key (custody self, role `subject`), or by an agent's key (role `agent`, `X-Provider-ID` naming the agent) under a mandate that lists `after_gen` |
+| `POST /v2/after-gen/requests` | `{"request": <pg.after_gen_request.v1>, "preview_url"?: "https://…"}`, signed by the requester's key from its own domain (role `requester`, no credential). Returns `{request, state: "pending", review_until}`; a sandbox adds `review_url`, its test approval page |
+| `GET /v2/after-gen/requests/{id}` | the requester only (`PG-Access`): `{request, state, review_until, record?}` |
+| `POST /v2/after-gen/decisions` | a `pg.after_gen_decision.v1` signed by the subject's own key (custody self, role `subject`), or by an agent's key (role `agent`, `X-Provider-ID` naming the agent) under a mandate that lists `after_gen`; to an agent without such a live mandate of the subject, every request is an unknown one (404). The registry keeps the decision with the record |
 | `GET`, `POST /v2/after-gen/review/{token}` | sandbox only: the approval page of the sandbox's test creator, with a simulated second factor |
 | `POST /v2/after-gen/{record}/withdraw` | a `pg.after_gen_withdrawal.v1` `{signers, record, issued_at}` signed by the subject's own key |
 | `GET /v2/after-gen?media={64 hex}` | `{"records": [ids]}`, approved records only; readable from any origin |

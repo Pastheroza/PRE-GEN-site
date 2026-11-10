@@ -15,7 +15,7 @@ const XMP_UUID = "be7acfcb97a942e89c71999491e3afac", C2PA_UUID = "d8fec3d61b0e48
 const NS = "https://pregen.org/ns/after-gen/1/";
 const fail = (message) => { throw new PregenError(message); };
 const M = (reason) => fail("media/1: " + reason);
-const utf8 = new TextEncoder();
+const utf8 = new TextEncoder(), UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }); // keeps a BOM, as Python
 const view = (b) => new DataView(b.buffer, b.byteOffset, b.byteLength);
 const latin1 = (b, at, n) => String.fromCharCode(...b.subarray(at, at + n));
 const hex = (b) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
@@ -52,9 +52,9 @@ function head(b, room, top, err) {
     if (!top) err("a box runs past its parent"); // size 0 (to the end) is for a top-level box only
     size = room;
   }
-  if (type === "uuid") hdr += 16;
-  if (size < hdr || size > room) err("a box runs past its parent");
-  return { type, size, hdr, zero: v.getUint32(0) === 0, uuid: type === "uuid" ? hex(b.subarray(hdr - 16, hdr)) : null };
+  if (size < hdr + (type === "uuid" ? 16 : 0)) err("a box is shorter than its header"); // a uuid box: its user type too
+  if (size > room) err("a box runs past its parent");
+  return { type, size, hdr, zero: v.getUint32(0) === 0, uuid: type === "uuid" ? hex(b.subarray(hdr, hdr + 16)) : null };
 }
 
 async function topBoxes(r, err) {
@@ -110,7 +110,11 @@ function el(c, value) {
 /** Integers as eight bytes each, big-endian, two's complement. */
 function ints(values) {
   const out = new Uint8Array(8 * values.length), v = view(out);
-  values.forEach((x, i) => v.setBigUint64(8 * i, BigInt.asUintN(64, BigInt(x))));
+  values.forEach((x, i) => {
+    const n = BigInt(x);
+    if (n !== BigInt.asIntN(64, n)) M("a value does not fit in a signed 64-bit integer");
+    v.setBigInt64(8 * i, n);
+  });
   return out;
 }
 const leafHash = (leaf) => sha256(concat([new Uint8Array([0]), leaf]));
@@ -130,12 +134,14 @@ async function root(stack) {
   return h;
 }
 
-const MEDIA_HEADERS = ["vmhd", "smhd", "sthd", "hmhd", "nmhd"];
+const MEDIA_HEADERS = { vmhd: 12, smhd: 8, sthd: 4, hmhd: 20, nmhd: 4 }; // each with its layout's length
 const READ_LIMIT = 8 * 1024 * 1024; // a chunk larger than this is read sample by sample
 
-function fullBox(box, versions = [0, 1]) {
+// A full box of version 0 or 1; `layout` (version 0, version 1) is the length of its fixed fields.
+function fullBox(box, layout = [4, 4]) {
   const v = need(box, 4), version = box.data[0];
-  if (!versions.includes(version)) M(`${box.type} version ${version} is not read`);
+  if (version > 1) M(`${box.type} version ${version} is not read`);
+  need(box, layout[version]);
   return { v, version, flags: v.getUint32(0) & 0xffffff };
 }
 
@@ -149,8 +155,7 @@ function table(box, header, entry, where) {
 function trackHead(trak) {
   const kids = boxesIn(trak.data);
   const tkhd = one(kids, "tkhd", "trak"), mdia = one(kids, "mdia", "trak");
-  const { v, version, flags } = fullBox(tkhd);
-  need(tkhd, version ? 96 : 84);
+  const { v, version, flags } = fullBox(tkhd, [84, 96]);
   const mk = boxesIn(mdia.data), hdlr = one(mk, "hdlr", "mdia");
   need(hdlr, 12);
   const tref = one(kids, "tref", "trak", true);
@@ -158,19 +163,24 @@ function trackHead(trak) {
     if (b.data.length % 4) M(`tref ${b.type} is not a list of track ids`);
     return { type: b.type, ids: Array.from({ length: b.data.length / 4 }, (_, i) => view(b.data).getUint32(4 * i)) };
   }) : [];
-  return { kids, mk, tkhd: { v, version, flags }, id: v.getUint32(version ? 20 : 12), handler: latin1(hdlr.data, 8, 4),
+  return { kids, mk, tkhd: { v, version, flags }, id: v.getUint32(version ? 20 : 12),
     hdlrBytes: hdlr.data.subarray(8, 12), refs, edts: one(kids, "edts", "trak", true) };
 }
 
-// Every track is read in full, so its tables must agree; only a listed track (in `position`) gives leaves and ranges.
-// Returns its first leaf and its samples as chunks: {off, len, sdi, n, first}.
-function trackBody(t, position, ranges) {
+// A track's first leaf and its samples as chunks, {off, len, sdi, n, first}, added to `ranges`; its tables must agree.
+function trackBody(t, position, ranges, fileSize) {
   const where = `track ${t.id}`;
-  const mdhdBox = one(t.mk, "mdhd", "mdia"), mdhd = fullBox(mdhdBox);
-  need(mdhdBox, mdhd.version ? 24 : 16);
+  const mdhd = fullBox(one(t.mk, "mdhd", "mdia"), [24, 36]);
   const timescale = mdhd.v.getUint32(mdhd.version ? 20 : 12);
   const nk = boxesIn(one(t.mk, "minf", "mdia").data);
-  const mhd = nk.find((b) => MEDIA_HEADERS.includes(b.type));
+  const mhd = nk.find((b) => Object.hasOwn(MEDIA_HEADERS, b.type));
+  if (mhd) need(mhd, MEDIA_HEADERS[mhd.type]);
+  const dinf = one(nk, "dinf", "minf", true), dref = dinf && one(boxesIn(dinf.data), "dref", "dinf", true);
+  if (dref) {
+    const n = need(dref, 8).getUint32(4), refs = boxesIn(dref.data.subarray(8));
+    if (refs.length !== n) M(`the dref count in ${where} does not agree with its entries`);
+    if (refs.some((x) => !(need(x, 4) && x.data[3] & 1))) M("a data reference that is not in the same file");
+  }
   const sk = boxesIn(one(nk, "stbl", "minf").data);
   if (sk.some((b) => b.type === "stz2")) M("stz2 is not read");
 
@@ -201,7 +211,7 @@ function trackBody(t, position, ranges) {
     }
   }
 
-  const leaf = position.has(t.id) && concat([
+  const leaf = concat([
     el("hdlr", t.hdlrBytes),
     el("tref", concat(t.refs.map((r) => el(r.type, ints(r.ids.map((id) => position.get(id))))))),
     ...(mhd ? [el(mhd.type, mhd.data.subarray(4))] : []),
@@ -214,6 +224,7 @@ function trackBody(t, position, ranges) {
   // Sample tables. Counts must agree everywhere: one reading only.
   const stszBox = one(sk, "stsz", "stbl"), zv = need(stszBox, 12), fixed = zv.getUint32(4), count = zv.getUint32(8);
   if (stszBox.data.length !== 12 + (fixed ? 0 : 4 * count)) M(`the stsz count in ${where} does not agree with its size`);
+  if (fixed * count > fileSize) M("a sample range falls outside the file"); // before any loop over the samples
   const sizeOf = fixed ? () => fixed : (i) => zv.getUint32(12 + 4 * i);
   const stts = table(one(sk, "stts", "stbl"), 8, 8, where);
   let total = 0;
@@ -244,13 +255,13 @@ function trackBody(t, position, ranges) {
     while (e + 1 < stsc.n && sc(e + 1, 0) - 1 <= c) e++;
     const n = sc(e, 1);
     if (s + n > count) M("stsc and stsz count different samples");
-    let len = 0;
-    for (let j = 0; j < n; j++) len += sizeOf(s + j);
+    let len = fixed * n;
+    if (!fixed) for (let j = 0; j < n; j++) len += sizeOf(s + j);
     chunks.push({ off: offset(c), len, n, sdi: sc(e, 2), first: s });
     s += n;
   }
   if (s !== count) M("stsc and stsz count different samples");
-  if (position.has(t.id)) ranges.push(...chunks);
+  ranges.push(...chunks);
   return { leaf, chunks, sizeOf, stts, ctts };
 }
 
@@ -262,6 +273,42 @@ function runs(t, signed) {
     left--;
     return signed ? t.v.getInt32(8 * i + 4) : t.v.getUint32(8 * i + 4);
   };
+}
+
+// Every box in its place: the boxes media/1 reads, by the listed box that holds them (the others are read whole).
+const LISTED = { moov: ["mvhd", "trak"], trak: ["tkhd", "tref", "edts", "mdia"], edts: ["elst"],
+  mdia: ["mdhd", "hdlr", "minf"], minf: ["dinf", "stbl"], dinf: ["dref"],
+  stbl: ["stsd", "stts", "ctts", "stsc", "stsz", "stco", "co64"] };
+const PLACED = /(?=(mvhd|trak|tkhd|tref|edts|elst|mdia|mdhd|minf|vmhd|smhd|sthd|hmhd|nmhd|dinf|dref|stbl|stsd|stts|ctts|stsc|stsz|stz2|stco|co64|avcC|hvcC|av1C|vpcC|esds|dOps|dfLa|colr|pasp|clap|hdlr))/g;
+const DATA_HANDLERS = ["mdir", "mdta", "ID32", "alis", "url ", "mp7t", "mp7b"];
+const bytesText = (b) => { // one character per byte
+  let s = "";
+  for (let i = 0; i < b.length; i += 8192) s += String.fromCharCode(...b.subarray(i, i + 8192));
+  return s;
+};
+
+// The ranges [start, end) of `b`, the content of a listed box of this type, that media/1 does not read: every box there
+// that it does not list, whole, adjacent ones joined. The first media header of minf is listed.
+function unread(b, type, at = 0, out = []) {
+  let header = type === "minf";
+  for (const k of boxesIn(b)) {
+    if (LISTED[type].includes(k.type) || (header && Object.hasOwn(MEDIA_HEADERS, k.type))) {
+      header &&= !Object.hasOwn(MEDIA_HEADERS, k.type);
+      if (Object.hasOwn(LISTED, k.type)) unread(k.data, k.type, at + k.start + k.hdr, out);
+    } else if (out.at(-1)?.[1] === at + k.start) out.at(-1)[1] = at + k.start + k.size;
+    else out.push([at + k.start, at + k.start + k.size]);
+  }
+  return out;
+}
+
+// A player may act on a table, an edit list or a track box wherever it finds one in moov: refuse any such code in the
+// bytes media/1 did not read, except hdlr of a metadata or data-reference handler.
+function misplaced(moov) {
+  for (const [s, e] of unread(moov, "moov")) {
+    for (const x of bytesText(moov.subarray(s, e)).matchAll(PLACED)) {
+      if (x[1] !== "hdlr" || !DATA_HANDLERS.includes(latin1(moov, s + x.index + 12, 4))) M(`${x[1]} outside its place in moov`);
+    }
+  }
 }
 
 /** media/1 of an ISO base media file (MP4, MOV, M4V): {binding: "media/1", hash, leaves}. `source` is a Uint8Array, a
@@ -277,26 +324,25 @@ export async function mediaHash(source) {
   const moov = boxesIn(moovBytes.subarray(moovBox.hdr));
   if (moov.some((b) => b.type === "mvex")) M("a fragmented file (mvex)");
 
-  const mvhdBox = one(moov, "mvhd", "moov"), mvhd = fullBox(mvhdBox);
-  need(mvhdBox, mvhd.version ? 112 : 100);
+  const mvhd = fullBox(one(moov, "mvhd", "moov"), [100, 112]);
   const mv = mvhd.v, ts = mvhd.version ? 20 : 12, rate = ts + (mvhd.version ? 12 : 8);
   const movie = concat([utf8.encode("PREGEN-MEDIA\0media/1\0"), el("FRMT", utf8.encode("isobmff")),
     el("tmsc", ints([mv.getUint32(ts)])), el("rate", ints([mv.getInt32(rate)])), el("volu", ints([mv.getInt16(rate + 4)])),
     el("mtrx", ints(Array.from({ length: 9 }, (_, i) => mv.getInt32(rate + 16 + 4 * i))))]);
 
+  // Every track, whatever its handler: a player may play a track whose handler says meta or hint.
   const tracks = moov.filter((b) => b.type === "trak").map(trackHead);
   if (new Set(tracks.map((t) => t.id)).size !== tracks.length) M("two tracks with one track_ID");
-  const listed = tracks.filter((t) => !["meta", "hint"].includes(t.handler)).sort((a, b) => a.id - b.id);
+  const listed = [...tracks].sort((a, b) => a.id - b.id);
   const position = new Map(listed.map((t, i) => [t.id, i]));
   for (const t of listed) {
     for (const ref of t.refs) if (ref.ids.some((id) => !position.has(id))) M("a tref names a track that is not listed");
   }
-  const ranges = [];
-  const all = new Map(tracks.map((t) => [t, trackBody(t, position, ranges)]));
-  const bodies = listed.map((t) => all.get(t));
+  const ranges = [], bodies = listed.map((t) => trackBody(t, position, ranges, r.size));
+  misplaced(moovBytes.subarray(moovBox.hdr));
 
-  // Every sample of a listed track inside the file, none sharing a byte with another (a chunk's samples are
-  // contiguous). An empty sample has no byte to place or share.
+  // Every sample inside the file, none sharing a byte with another (a chunk's samples are contiguous). An empty sample
+  // has no byte to place or share.
   const spans = ranges.filter((c) => c.len > 0).sort((a, b) => a.off - b.off);
   for (const c of spans) if (c.off + c.len > r.size) M("a sample range falls outside the file");
   for (let i = 1; i < spans.length; i++) if (spans[i].off < spans[i - 1].off + spans[i - 1].len) M("sample ranges overlap");
@@ -341,7 +387,7 @@ const A = (reason) => fail("after-gen: " + reason);
 
 // A strict minimal CBOR: text-keyed maps, arrays, text, integers, true, false, null. Nothing else.
 function cbor(b) {
-  const v = view(b), text = new TextDecoder("utf-8", { fatal: true });
+  const v = view(b);
   let at = 0;
   const take = (n) => { if (at + n > b.length) A("CBOR ends early"); at += n; return at - n; };
   const arg = (info) => {
@@ -365,9 +411,11 @@ function cbor(b) {
       return simple;
     }
     const n = arg(info);
+    if (major <= 1 && n > Number.MAX_SAFE_INTEGER - major) A("a CBOR integer beyond 2^53 - 1");
+    if (major >= 4 && n > b.length - at) A("CBOR ends early"); // every item takes at least one byte
     if (major === 0) return n;
     if (major === 1) return -1 - n;
-    if (major === 3) { const s = take(n); try { return text.decode(b.subarray(s, s + n)); } catch { A("CBOR text is not UTF-8"); } }
+    if (major === 3) { const s = take(n); try { return UTF8.decode(b.subarray(s, s + n)); } catch { A("CBOR text is not UTF-8"); } }
     if (major === 4) return Array.from({ length: n }, () => item(depth + 1));
     if (major === 5) {
       const entries = [];
@@ -386,8 +434,9 @@ function cbor(b) {
   return out;
 }
 
-// A JUMBF superbox: {type (UUID hex), label, kids}, where kids are superboxes or content boxes.
-function jumbf(box) {
+// A JUMBF superbox, every superbox in it checked: {type (UUID hex), label, kids}, kids being superboxes or content boxes.
+function jumbf(box, depth = 0) {
+  if (depth > 64) A("JUMBF nested too deep");
   const kids = boxesIn(box.data, A);
   const d = kids[0];
   if (!d || d.type !== "jumd" || d.data.length < 17) A("a JUMBF superbox without its description");
@@ -396,9 +445,9 @@ function jumbf(box) {
   if (toggles & 2) {
     const end = d.data.indexOf(0, 17);
     if (end < 0) A("a JUMBF label without its NUL");
-    try { label = new TextDecoder("utf-8", { fatal: true }).decode(d.data.subarray(17, end)); } catch { A("a JUMBF label is not UTF-8"); }
+    try { label = UTF8.decode(d.data.subarray(17, end)); } catch { A("a JUMBF label is not UTF-8"); }
   }
-  return { type: hex(d.data.subarray(0, 16)), label, kids: kids.slice(1).map((k) => (k.type === "jumb" ? jumbf(k) : k)) };
+  return { type: hex(d.data.subarray(0, 16)), label, kids: kids.slice(1).map((k) => (k.type === "jumb" ? jumbf(k, depth + 1) : k)) };
 }
 
 function fromC2pa(box) {
@@ -418,44 +467,40 @@ function fromC2pa(box) {
   const ours = assertions[0].kids.filter((k) => k.kids && /^org\.pregen\.after_gen(?:__[0-9]+)?$/.test(k.label ?? ""));
   if (!ours.length) return null;
   if (ours.length > 1) A(`more than one ${ASSERTION} assertion`);
-  const content = ours[0].kids.filter((k) => !k.kids);
-  if (content.length !== 1) A(`${ASSERTION} holds one content box`);
-  const c = content[0];
+  const c = ours[0].kids[0];
+  if (ours[0].kids.length !== 1 || c.kids) A(`${ASSERTION} holds one content box and no superbox`);
   if (c.type !== "json" && c.type !== "cbor") A(`${ASSERTION} is stored as JSON or CBOR`);
-  let env;
-  if (c.type === "cbor") env = cbor(c.data);
-  else try { env = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(c.data)); } catch { A(`${ASSERTION} is not JSON`); }
-  if (!isObject(env)) A(`${ASSERTION} is not an envelope`);
+  const env = c.type === "cbor" ? cbor(c.data) : exactEnvelope(c.data);
+  if (!isObject(env)) A(`${ASSERTION} is not an envelope (as JSON, exactly its canonical JSON)`);
   return env;
 }
 
-const unescapeXml = (s) => s.replace(/&(?:#x([0-9a-fA-F]+)|#([0-9]+)|(lt|gt|amp|quot|apos));/g, (_, h, d, n) =>
-  h ? String.fromCodePoint(parseInt(h, 16)) : d ? String.fromCodePoint(parseInt(d, 10))
-    : { lt: "<", gt: ">", amp: "&", quot: '"', apos: "'" }[n]);
 const escapeXml = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const deep = (v, d = 0) => d > 64 || (Boolean(v) && typeof v === "object" && Object.values(v).some((x) => deep(x, d + 1)));
 
-// pgag:Record under whatever prefix the packet binds to the namespace, as an element or an attribute. The record is
-// the canonical JSON text of an envelope, nothing else.
+// The envelope whose canonical JSON is exactly these bytes, or null.
+function exactEnvelope(bytes) {
+  try {
+    const text = UTF8.decode(bytes), env = JSON.parse(text);
+    return isObject(env) && !deep(env) && canonicalJson(env) === text ? env : null;
+  } catch { return null; }
+}
+
+// pgag:Record by the fixed lexical rule (Carrying the record), never by an XML parser, so that every reader finds the
+// same record: the envelope, or null for a packet that breaks the rule and so carries no record.
 function fromXmp(packet) {
-  const prefixes = new Set([...packet.matchAll(/xmlns:([A-Za-z_][\w-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)]
-    .filter((m) => (m[2] ?? m[3]) === NS).map((m) => m[1]));
-  const found = [];
-  for (const p of prefixes) {
-    const re = new RegExp(`<${p}:Record>([^<]*)</${p}:Record>|<${p}:Record\\s*/>|[\\s"']${p}:Record\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, "g");
-    for (const m of packet.matchAll(re)) found.push(m[1] ?? m[2] ?? m[3] ?? "");
-  }
-  if (!found.length) return null;
-  if (found.length > 1) A("more than one pgag:Record");
-  const text = unescapeXml(found[0]);
-  let env;
-  try { env = JSON.parse(text); } catch { A("pgag:Record is not JSON"); }
-  if (!isObject(env) || canonicalJson(env) !== text) A("pgag:Record is not an envelope in canonical JSON");
-  return env;
+  const p = bytesText(packet), n = (x) => p.split(x).length - 1;
+  if (["<!--", "<![CDATA[", "<!DOCTYPE", "<!ENTITY"].some((x) => p.includes(x)) || n(`xmlns:pgag="${NS}"`) !== 1
+      || n("xmlns:pgag=") !== 1 || n("<pgag:Record>") !== 1 || p.includes("pgag:Record=")) return null;
+  const start = p.indexOf("<pgag:Record>") + 13, end = p.indexOf("</pgag:Record>", start), text = p.slice(start, end);
+  if (end < 0 || text.includes("<") || /&(?!(?:amp|lt|gt|quot|apos);)/.test(text)) return null;
+  const XML = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
+  return exactEnvelope(Uint8Array.from(text.replace(/&(amp|lt|gt|quot|apos);/g, (_, e) => XML[e]), (c) => c.charCodeAt(0)));
 }
 
 async function carriers(r) {
   const top = await topBoxes(r, A), uuid = (u) => top.filter((b) => b.type === "uuid" && b.uuid === u);
-  const read = async (b) => ({ ...b, data: (await r.read(b.start, b.size)).subarray(b.hdr - 16) });
+  const read = async (b) => ({ ...b, data: (await r.read(b.start, b.size)).subarray(b.hdr) });
   return { top, xmp: await Promise.all(uuid(XMP_UUID).map(read)), c2pa: await Promise.all(uuid(C2PA_UUID).map(read)) };
 }
 
@@ -466,7 +511,7 @@ export async function readAfterGen(source) {
   if (xmp.length > 1) A("more than one XMP box");
   const stores = c2pa.map(fromC2pa).filter((x) => x !== undefined);
   if (stores.length > 1) A("more than one C2PA manifest store");
-  return { c2pa: stores[0] ?? null, xmp: xmp.length ? fromXmp(new TextDecoder().decode(xmp[0].data.subarray(16))) : null };
+  return { c2pa: stores[0] ?? null, xmp: xmp.length ? fromXmp(xmp[0].data.subarray(16)) : null };
 }
 
 const XPACKET = '<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>\n'
@@ -510,10 +555,13 @@ export async function embedXmp(bytes, envelope, { directory } = {}) {
   let packet = XPACKET;
   if (xmp.length) {
     const old = xmp[0];
-    packet = dropPgag(new TextDecoder().decode(old.data.subarray(16)));
+    try { packet = UTF8.decode(old.data.subarray(16)); } catch { A("the existing XMP packet is not UTF-8"); }
+    if (["<!--", "<![CDATA[", "<!DOCTYPE", "<!ENTITY"].some((x) => packet.includes(x))) {
+      A("the existing XMP packet holds a comment, CDATA or a DTD, which the lexical rule refuses");
+    }
+    packet = dropPgag(packet);
     out.set(code("free"), old.start + 4);
-    const hdr = old.hdr - 16; // keep the size fields, zero the usertype and the packet
-    out.fill(0, old.start + hdr, old.start + old.size);
+    out.fill(0, old.start + old.hdr, old.start + old.size); // keep the size fields, zero the usertype and the packet
   }
   const at = packet.search(/<rdf:RDF\b(?:[^>"']|"[^"]*"|'[^']*')*>/);
   if (at < 0) A("the existing XMP packet has no rdf:RDF");
@@ -526,6 +574,11 @@ export async function embedXmp(bytes, envelope, { directory } = {}) {
     + (api ? `<pgag:Status>${escapeXml(api.replace(/\/+$/, ""))}/v2/after-gen/${id}</pgag:Status>\n` : "")
     + "</rdf:Description>";
   const text = utf8.encode(packet.slice(0, at + open.length) + description + packet.slice(at + open.length));
+  const back = fromXmp(text);
+  if (!back || canonicalJson(back) !== canonicalJson(envelope)) {
+    A("the packet would not carry the record under the lexical rule: an existing property spells pgag:Record= or "
+      + "xmlns:pgag=, or the record is not canonical JSON");
+  }
   const box = new Uint8Array(24 + text.length);
   view(box).setUint32(0, box.length);
   box.set(code("uuid"), 4);
@@ -547,7 +600,8 @@ const hex64 = (v) => typeof v === "string" && /^[0-9a-f]{64}$/.test(v);
 const time = (v) => Number.isSafeInteger(v) && v >= 1;
 const sortedUnique = (v) => Array.isArray(v) && v.every((x) => typeof x === "string")
   && canonicalJson(v) === canonicalJson([...new Set(v)].sort());
-const wordsOrAll = (v, re) => sortedUnique(v) && v.length > 0 && (canonicalJson(v) === '["*"]' || v.every((x) => re.test(x)));
+const wordsOrAll = (v, re, most) => sortedUnique(v) && v.length > 0
+  && (canonicalJson(v) === '["*"]' || (v.length <= most && v.every((x) => re.test(x))));
 const BODY = ["signers", "kind", "label", "notice", "not", "subject_ref", "content", "request", "holder", "licence", "use",
   "scope", "approval", "issued_at"]; // no status_url: the id hashes the body, so a verifier builds {api}/v2/after-gen/{id}
 const APPROVAL = { self: ["assent", "decision"], registry: ["assent", "instruction", "factor"],
@@ -590,11 +644,12 @@ function recordShape(b) {
   if (!sortedUnique(s.categories)) A("scope.categories: a sorted list without repeats");
   if (s.categories.some((x) => INTIMATE.includes(x))) A("scope.categories names an intimate category");
   if (s.categories.some((x) => !CATEGORIES.includes(x))) A("scope.categories names a word outside the closed vocabulary");
-  if (!wordsOrAll(s.territories, /^[A-Z]{2}$/)) A('scope.territories: sorted ISO 3166-1 alpha-2 codes, or ["*"]');
-  if (!wordsOrAll(s.channels, /^[a-z0-9-]{1,32}$/)) A('scope.channels: sorted words of [a-z0-9-]{1,32}, or ["*"]');
+  if (!wordsOrAll(s.territories, /^[A-Z]{2}$/, 250)) A('scope.territories: at most 250 sorted ISO 3166-1 alpha-2 codes, or ["*"]');
+  if (!wordsOrAll(s.channels, /^[a-z0-9-]{1,32}$/, 64)) A('scope.channels: at most 64 sorted words of [a-z0-9-]{1,32}, or ["*"]');
   if (typeof s.project !== "string" || [...s.project].length < 1 || [...s.project].length > 200) A("scope.project: 1 to 200 printable characters");
   if (!time(s.not_after)) A("scope.not_after is an integer time");
-  const a = b.approval, form = isObject(a) && Object.hasOwn(APPROVAL, a.assent) ? APPROVAL[a.assent] : null;
+  const a = b.approval; // assent is one of the three words, never a list (which Object.hasOwn would read as a string)
+  const form = isObject(a) && typeof a.assent === "string" && Object.hasOwn(APPROVAL, a.assent) ? APPROVAL[a.assent] : null;
   if (!form || !members(a, form)) A("approval is exactly one of its three forms: self, registry or agent");
   if (a.assent === "self" && !hex64(a.decision)) A("approval self names the subject's decision");
   if (a.assent === "registry" && (!hex64(a.instruction) || !["authenticator", "email"].includes(a.factor))) {
@@ -602,14 +657,16 @@ function recordShape(b) {
   }
   if (a.assent === "agent") {
     if (!hex64(a.mandate) || !hex64(a.decision) || a.factor !== "signature") A("approval agent names the mandate, the decision and factor signature");
-    if (partyId(a.agent, "approval.agent") === b.holder) A("a representative is never the holder of the same record");
+    partyId(a.agent, "approval.agent");
+    if (new URL(a.agent).hostname === new URL(b.holder).hostname) A("a representative is never the holder of the same record");
   }
   if (!time(b.issued_at)) A("issued_at is an integer time");
+  if (s.not_after <= b.issued_at) A("scope.not_after is later than issued_at");
 }
 
 const approvedBy = (a) => (a.assent === "self" ? "approved by the person"
   : a.assent === "registry" ? "approved on the person's instruction at the registry"
-  : `approved by ${new URL(a.agent).host} under mandate ${a.mandate}`);
+  : `approved by ${new URL(a.agent).hostname} under mandate ${a.mandate}`);
 
 /** Steps 3 and 4 of "How a verifier checks a file": the record's shape and constants, its signature by exactly one
  * registry key the directory lists for the subject's prefix at issued_at (a revoked registry's records fail), the

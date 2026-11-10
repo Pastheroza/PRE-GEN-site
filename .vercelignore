@@ -1,2 +1,6 @@
-packages/
+packages/*
+!packages/verify-js
+packages/verify-js/*
+!packages/verify-js/index.js
+!packages/verify-js/after-gen.js
 .github/

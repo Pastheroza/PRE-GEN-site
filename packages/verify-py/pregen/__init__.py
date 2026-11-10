@@ -605,10 +605,10 @@ def check_provider_url(url, allow_port: bool = False) -> str:
     if not isinstance(url, str) or not url.startswith("https://"):
         raise PregenError("a provider URL is https://<your domain>")
     u = urlsplit(url)
-    host, _, port = u.netloc.partition(":")
+    host, colon, port = u.netloc.partition(":")
     local = allow_port and re.fullmatch(r"[0-9a-f]{32}\.localhost", host)
     if "@" in u.netloc or u.path or u.query or u.fragment or url != "https://" + u.netloc or host == "localhost" \
-            or not (_HOST.fullmatch(host) or local) or (port and not (allow_port and re.fullmatch(r"[1-9][0-9]{0,4}", port)
+            or not (_HOST.fullmatch(host) or local) or (colon and not (allow_port and re.fullmatch(r"[1-9][0-9]{0,4}", port)
                                                                        and int(port) < 65536 and port != "443")):
         raise PregenError(f"not a provider URL: {url!r} (https://<domain>, lower case, no path, port, query or fragment)")
     return url

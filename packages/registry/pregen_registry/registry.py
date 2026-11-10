@@ -108,7 +108,8 @@ CREATE TABLE IF NOT EXISTS after_gen_requests (id TEXT PRIMARY KEY, requester TE
   decided_at INTEGER, record_id TEXT);
 CREATE TABLE IF NOT EXISTS after_gen_records (id TEXT PRIMARY KEY, request_id TEXT UNIQUE NOT NULL, subject_ref TEXT NOT NULL,
   media_hash TEXT NOT NULL, licence_id TEXT NOT NULL, envelope TEXT NOT NULL, issued_at INTEGER NOT NULL,
-  not_after INTEGER NOT NULL, withdrawn_at INTEGER, withdrawal TEXT, UNIQUE (media_hash, licence_id));
+  not_after INTEGER NOT NULL, withdrawn_at INTEGER, withdrawal TEXT, decision TEXT, UNIQUE (media_hash, licence_id));
+CREATE INDEX IF NOT EXISTS after_gen_pending ON after_gen_requests (state, created_at);
 CREATE TABLE IF NOT EXISTS mandates (id TEXT PRIMARY KEY, subject_ref TEXT NOT NULL, agent TEXT NOT NULL, powers TEXT NOT NULL,
   limits TEXT NOT NULL, not_after INTEGER NOT NULL, ended_at INTEGER, envelope TEXT NOT NULL);
 """
@@ -149,6 +150,9 @@ class Config:
         self.terms = self.terms and self.providers == "open"   # terms requires provider-identity: none could accept them
         if self.after_gen is None:
             self.after_gen = self.sandbox
+        if self.after_gen and self.providers != "open":
+            raise ValueError("after-gen needs providers known by their domain (--open-providers): a record names its "
+                             "holder by its party id")
 
 
 def fetch_party(provider_url: str) -> dict:
@@ -1100,19 +1104,21 @@ class Registry:
 
     @staticmethod
     def _ag_scope(scope) -> dict:
-        """The record's `scope`: exact members, purposes and categories in the profile's closed vocabulary, territories
-        two capital letters or ["*"], channels [a-z0-9-]{1,32} or ["*"], lists sorted without repeats, a project of
-        1-200 printable characters. ponytail: a territory is checked by its shape, not against the ISO 3166-1 list."""
-        def words(v, ok, empty=False):
-            return isinstance(v, list) and (empty or bool(v)) and all(isinstance(x, str) and ok(x) for x in v) \
-                and v == sorted(set(v))
+        """The record's `scope`: exact members, purposes and categories in the profile's closed vocabulary, at most 250
+        territories of two capital letters or ["*"], at most 64 channels of [a-z0-9-]{1,32} or ["*"], lists sorted
+        without repeats, a project of 1-200 printable characters. ponytail: a territory is checked by its shape, not
+        against the ISO 3166-1 list."""
+        def words(v, ok, empty=False, cap=64):
+            return isinstance(v, list) and (empty or bool(v)) and len(v) <= cap \
+                and all(isinstance(x, str) and ok(x) for x in v) and v == sorted(set(v))
 
-        def star(v, pattern):
-            return v == ["*"] or words(v, lambda x: re.fullmatch(pattern, x) is not None)
+        def star(v, pattern, cap):
+            return v == ["*"] or words(v, lambda x: re.fullmatch(pattern, x) is not None, cap=cap)
         p = scope.get("project") if isinstance(scope, dict) else None
         if not isinstance(scope, dict) or set(scope) != AG_SCOPE_MEMBERS or not words(scope["purposes"], PURPOSES.__contains__) \
-                or not words(scope["categories"], lambda x: True, empty=True) or not star(scope["territories"], r"[A-Z]{2}") \
-                or not star(scope["channels"], r"[a-z0-9-]{1,32}") or not _int(scope["not_after"], 1) \
+                or not words(scope["categories"], lambda x: True, empty=True) \
+                or not star(scope["territories"], r"[A-Z]{2}", 250) \
+                or not star(scope["channels"], r"[a-z0-9-]{1,32}", 64) or not _int(scope["not_after"], 1) \
                 or not (isinstance(p, str) and 1 <= len(p) <= 200 and p.isprintable()):
             raise ProtocolError("PG_MALFORMED", "scope is {purposes, categories, territories, channels, project, not_after} "
                                 "in the record's vocabulary, lists sorted without repeats (after-gen.md, The record)")
@@ -1134,16 +1140,17 @@ class Registry:
         holder, valid now, with a use left and at least as wide as the scope; the floor and the subject's refusals; no
         record yet for this file under this licence. Returns (grant row, uses taken). The licence is looked up first,
         so a party that holds none learns nothing about the subject; with `mask`, a provider known by its domain that
-        the registry has not vetted learns no more about an unpublished subject than provider-identity P-5 allows."""
+        the registry has not vetted gets one refusal about an unpublished subject whatever its state (step 2, P-5a)."""
         g = db.execute("SELECT * FROM grants WHERE id = ? AND subject_code = ? AND licensee_id IN ('', ?)",
                        (licence_id, subject_ref, requester)).fetchone()
         if g is None:
             raise ProtocolError("PG_NO_LICENSE", "no licence with this id for this subject and this holder", status=403)
+        if mask and g["licensee_id"] != requester and self._masked(db, {"provider_id": requester,
+                                                                        "subject_ref": subject_ref}, None):
+            raise ProtocolError("PG_PROVIDER_NOT_ACCEPTED", "this registry has not accepted this provider (P-5)",
+                                status=403)
 
         def refuse(code, detail, status=403):
-            if mask and g["licensee_id"] != requester and self._masked(db, {"provider_id": requester,
-                                                                            "subject_ref": subject_ref}, code):
-                code, detail = "PG_PROVIDER_NOT_ACCEPTED", "this registry has not accepted this provider (P-5)"
             raise ProtocolError(code, detail, status=status)
         s = db.execute("SELECT * FROM subjects WHERE code = ?", (subject_ref,)).fetchone()
         categories = set(scope["categories"])
@@ -1164,6 +1171,8 @@ class Registry:
         if not set(scope["purposes"]) <= set(json.loads(g["purposes"])) \
                 or not categories <= set(json.loads(g["categories"])) or scope["not_after"] > g["expires_at"]:
             refuse("PG_SCOPE_VIOLATION", "the scope is wider than the licence (purposes, categories, expires_at)")
+        if scope["not_after"] <= now:                                                    # step 4: as of now
+            refuse("PG_SCOPE_VIOLATION", "scope.not_after has passed")
         used = self._used(db, g)
         if g["max_uses"] is not None and used >= g["max_uses"]:
             refuse("PG_USAGE_LIMIT", "the licence has no use left")
@@ -1172,14 +1181,11 @@ class Registry:
         return g, used
 
     def _ag_request_body(self, provider_id: str, authorization: str | None, env) -> dict:
-        """A pg.after_gen_request.v1, authenticated as a provider's request is: signed by a requester known by its domain
-        (role requester), or with the registry's credential and no signature. One file, by its media/1 hash."""
-        if self.is_open(provider_id):
-            self._check_open(provider_id, authorization)
-            body = self._signed_by_provider(env, "pg.after_gen_request.v1", provider_id, role="requester")
-        else:
-            self.authenticate(provider_id, authorization)
-            body = check_envelope(env, "pg.after_gen_request.v1", (), lambda *_: None)
+        """A pg.after_gen_request.v1 signed by a requester known by its domain (role requester), never a registry
+        credential alone (_check_open refuses one): the record names the requester as the holder by its party id. One
+        file, by its media/1 hash."""
+        self._check_open(provider_id, authorization)
+        body = self._signed_by_provider(env, "pg.after_gen_request.v1", provider_id, role="requester")
         lic, content = body.get("licence"), body.get("content")
         if set(body) != AG_REQUEST_MEMBERS or not isinstance(body["requester"], str) \
                 or not isinstance(lic, dict) or set(lic) != {"format", "id"} or lic["format"] != "pg.grant.v1" \
@@ -1204,11 +1210,12 @@ class Registry:
     def _ag_expire(self):
         """Silence approves nothing (step 3): a request undecided within the review period expires, and its viewing
         link goes (vectors 1, 18). Run lazily, in its own transaction (a refusal after it never rolls it back), before
-        any after-gen read or decision; a decision checks the period again inside its own transaction."""
+        any after-gen read, the public lookup and status included, or decision; one indexed update. A decision checks
+        the period again inside its own transaction."""
         with self.tx() as db:
             db.execute("UPDATE after_gen_requests SET state = 'expired', decided_at = created_at + ?, preview_url = NULL, "
-                       "review_hash = NULL WHERE state = 'pending' AND created_at + ? <= ?",
-                       (AG_REVIEW, AG_REVIEW, self.clock()))
+                       "review_hash = NULL WHERE state = 'pending' AND created_at <= ?",
+                       (AG_REVIEW, self.clock() - AG_REVIEW))
 
     @staticmethod
     def _ag_pending(row, now: int) -> bool:
@@ -1266,12 +1273,22 @@ class Registry:
             raise ProtocolError("PG_NOT_FOUND", "no such request of yours", status=404)
         return self._ag_state(row)
 
+    @staticmethod
+    def _ag_mandates(db, subject_ref: str, agent: str, now: int) -> list:
+        """The active mandates of this subject to this agent that list after_gen."""
+        return [m for m in db.execute("SELECT * FROM mandates WHERE subject_ref = ? AND agent = ? AND ended_at IS NULL "
+                                      "AND not_after > ? ORDER BY rowid", (subject_ref, agent, now))
+                if "after_gen" in json.loads(m["powers"])]
+
+    @staticmethod
+    def _same_host(a: str, b: str) -> bool:
+        """A representative is never the holder of the same record: their hosts differ, whatever the port."""
+        return urlsplit(a).hostname == urlsplit(b).hostname
+
     def _ag_mandate(self, db, subject_ref: str, agent: str, purposes, now: int) -> str:
         """An active mandate of this subject to this agent that lists after_gen, with `purposes` inside its
         limits.purposes (vector 3). Returns its id."""
-        live = [m for m in db.execute("SELECT * FROM mandates WHERE subject_ref = ? AND agent = ? AND ended_at IS NULL "
-                                      "AND not_after > ? ORDER BY rowid", (subject_ref, agent, now))
-                if "after_gen" in json.loads(m["powers"])]
+        live = self._ag_mandates(db, subject_ref, agent, now)
         if not live:
             raise ProtocolError("PG_NO_MANDATE", "no active mandate of this subject gives this agent the power "
                                 "after_gen", status=403)
@@ -1283,7 +1300,9 @@ class Registry:
     def after_gen_decide(self, agent: str, env) -> dict:
         """POST /v2/after-gen/decisions: a pg.after_gen_decision.v1 {signers, request, outcome, scope (approve only),
         issued_at}, signed by the subject's own key (custody self; role subject) or by a representative's key from its
-        own domain (role agent; X-Provider-ID names it) under a mandate listing after_gen (vectors 2, 3, 5)."""
+        own domain (role agent; X-Provider-ID names it) under a mandate listing after_gen (vectors 2, 3, 5). An agent
+        learns nothing of a request, not even that it exists, unless it holds a live after_gen mandate of its subject:
+        an unknown request and one it may not decide are the same 404 (step 4)."""
         self._ag_on()
         body = env.get("body") if isinstance(env, dict) else None
         signers = body.get("signers") if isinstance(body, dict) else None
@@ -1294,8 +1313,17 @@ class Registry:
                 or body["outcome"] not in ("approve", "refuse") or not _hex64(body["request"]) or not _int(body["issued_at"]):
             raise ProtocolError("PG_MALFORMED", "pg.after_gen_decision.v1 is {signers: one, role subject or agent, "
                                 "request, outcome: approve|refuse, scope (approve only), issued_at}")
-        row = self._row("SELECT * FROM after_gen_requests WHERE id = ?", (body["request"],))
-        if row is None:
+        if role == "agent":
+            try:
+                check_provider_url(agent, allow_port=self.config.sandbox)
+            except PregenError as e:
+                raise ProtocolError("PG_NOT_AUTHENTICATED", f"X-Provider-ID names the agent: {e}", status=401) from None
+            self._signed_by_provider(env, "pg.after_gen_decision.v1", agent, role="agent")
+        with self.lock:
+            row = self.db.execute("SELECT * FROM after_gen_requests WHERE id = ?", (body["request"],)).fetchone()
+            hidden = row is None or role == "agent" and not self._ag_mandates(self.db, row["subject_ref"], agent,
+                                                                              self.clock())
+        if hidden:
             raise ProtocolError("PG_NOT_FOUND", "no such request", status=404)
         if role == "subject":
             s = self._row("SELECT * FROM subjects WHERE code = ?", (row["subject_ref"],))
@@ -1304,12 +1332,6 @@ class Registry:
                                     "only on the subject's authenticated instruction (assent registry)", status=403)
             check_envelope(env, "pg.after_gen_decision.v1", ("subject",),
                            lambda r, k: s["key_public"] if k == fingerprint(s["key_public"]) else None)
-        else:
-            try:
-                check_provider_url(agent, allow_port=self.config.sandbox)
-            except PregenError as e:
-                raise ProtocolError("PG_NOT_AUTHENTICATED", f"X-Provider-ID names the agent: {e}", status=401) from None
-            self._signed_by_provider(env, "pg.after_gen_decision.v1", agent, role="agent")
         now, did = self.clock(), message_id("pg.after_gen_decision.v1", body)
         if abs(now - body["issued_at"]) > AG_SKEW:
             raise ProtocolError("PG_MALFORMED", "issued_at is more than 300 seconds off")
@@ -1323,7 +1345,7 @@ class Registry:
                 raise ProtocolError("PG_SCOPE_VIOLATION", "a decision never approves a scope wider than the request's")
             approval = {"assent": "self", "decision": did}
             if role == "agent":
-                if agent == row["requester"]:                                            # vectors 2, 3
+                if self._same_host(agent, row["requester"]):                             # vectors 2, 3
                     raise ProtocolError("PG_NO_MANDATE", "a representative is never the holder of the same record",
                                         status=403)
                 approval = {"assent": "agent", "agent": agent, "decision": did, "factor": "signature",   # a refusal
@@ -1332,16 +1354,18 @@ class Registry:
             if body["outcome"] == "refuse":
                 self._ag_close(db, row["id"], "refused", now)
                 return {"request": row["id"], "state": "refused"}
-            return {"request": row["id"], "state": "approved", "record": self._sign_after_gen(db, row, scope, approval, now)}
+            return {"request": row["id"], "state": "approved",
+                    "record": self._sign_after_gen(db, row, scope, approval, now, decision=env)}
 
-    def _sign_after_gen(self, db, row, scope: dict, approval: dict, now: int) -> str:
-        """Step 4: every check of step 2 again as of now, one use of the licence counted, and pg.after_gen.v1 signed by
-        the registry. `approval` is exactly one of the three forms (vector 4). Returns the record id; its status is at
-        GET {api}/v2/after-gen/{id}, which the record cannot name (its id is the hash of its body)."""
+    def _sign_after_gen(self, db, row, scope: dict, approval: dict, now: int, decision=None) -> str:
+        """Step 4: every check of step 2 again as of now, one use of the licence counted, the decision envelope kept
+        with the record, and pg.after_gen.v1 signed by the registry. `approval` is exactly one of the three forms
+        (vector 4). Returns the record id; its status is at GET {api}/v2/after-gen/{id}, which the record cannot name
+        (its id is the hash of its body)."""
         a = approval
         if set(a) != AG_APPROVALS.get(a.get("assent"), set()) \
                 or a["assent"] == "registry" and (a["factor"] not in AG_FACTORS or not _hex64(a["instruction"])) \
-                or a["assent"] == "agent" and (a["factor"] != "signature" or a["agent"] == row["requester"]):
+                or a["assent"] == "agent" and (a["factor"] != "signature" or self._same_host(a["agent"], row["requester"])):
             raise ProtocolError("PG_MALFORMED", "approval is self {assent, decision}, registry {assent, instruction, "
                                 "factor} or agent {assent, agent, mandate, decision, factor: signature}")
         if a["assent"] == "self" and db.execute("SELECT custody FROM subjects WHERE code = ?",
@@ -1356,9 +1380,9 @@ class Registry:
             [("registry", self.key)])
         record = message_id(env["type"], env["body"])
         db.execute("INSERT INTO after_gen_records (id, request_id, subject_ref, media_hash, licence_id, envelope, "
-                   "issued_at, not_after) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (record, row["id"], row["subject_ref"],
-                                                                             row["media_hash"], g["id"], json.dumps(env),
-                                                                             now, scope["not_after"]))
+                   "issued_at, not_after, decision) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                   (record, row["id"], row["subject_ref"], row["media_hash"], g["id"], json.dumps(env), now,
+                    scope["not_after"], json.dumps(decision) if decision else None))
         self._ag_close(db, row["id"], "approved", now, record)
         return record
 
@@ -1424,8 +1448,8 @@ class Registry:
 
     def withdraw_after_gen(self, record_id: str, env=None, *, instruction: str | None = None) -> dict:
         """Step 5: the subject withdraws a record with their own key (a pg.after_gen_withdrawal.v1 {signers, record,
-        issued_at}, role subject, custody self), or by an authenticated instruction. It closes: no second factor."""
-        self._ag_on()
+        issued_at}, role subject, custody self), or by an authenticated instruction. It closes: no second factor, and
+        it keeps working for every record signed when the registry no longer takes new requests (step 5)."""
         row = self._row("SELECT r.*, s.custody, s.key_public FROM after_gen_records r JOIN subjects s ON "
                         "s.code = r.subject_ref WHERE r.id = ?", (record_id,))
         if row is None:
@@ -1453,17 +1477,17 @@ class Registry:
 
     def after_gen_lookup(self, media: str) -> dict:
         """GET /v2/after-gen?media=: approved records only, withdrawn and expired ones included (their status says so);
-        never a pending, refused or expired request (vector 17)."""
-        self._ag_on()
+        never a pending, refused or expired request (vector 17). Answered with after-gen off too (step 5)."""
         if not _hex64(media):
             raise ProtocolError("PG_MALFORMED", "media is a media/1 hash, 64 lowercase hex")
+        self._ag_expire()
         return {"records": [r["id"] for r in self._q("SELECT id FROM after_gen_records WHERE media_hash = ? "
                                                     "ORDER BY issued_at, id", (media,))]}
 
     def after_gen_status(self, rid: str) -> dict:
         """GET /v2/after-gen/{id}: the record, and a pg.after_gen_status.v1 the registry signs now that lives five
-        minutes. Withdrawn wins over expired, so a withdrawal is never hidden."""
-        self._ag_on()
+        minutes. Withdrawn wins over expired, so a withdrawal is never hidden. Answered with after-gen off too."""
+        self._ag_expire()
         row = self._row("SELECT * FROM after_gen_records WHERE id = ?", (rid,))
         if row is None:
             raise ProtocolError("PG_NOT_FOUND", "no such record", status=404)

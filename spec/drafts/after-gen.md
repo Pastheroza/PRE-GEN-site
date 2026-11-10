@@ -70,8 +70,8 @@ Signed by the registry alone. Its id is its message id (`PRE-GEN-CORE.md`, Messa
 | `request` | the message id of the request this record answers |
 | `holder` | who may publish the file: the requester's party id. It equals the licence's `licensee_id`, unless the licence is for any licensee (`""`) |
 | `licence` | the `pg.grant.v1` the use is counted against |
-| `use` | which use of the licence this record took: `n` from 1; `of` the licence's `max_uses`, or `null` for no limit |
-| `scope` | what the approver approved. `purposes` and `categories` in the profile's closed vocabulary (`categories` may be empty); `territories` ISO 3166-1 alpha-2 codes or `["*"]`; `channels` words of `[a-z0-9-]{1,32}` or `["*"]`; `project` printable text of 1–200 characters; `not_after` an integer time no later than the licence's `expires_at`. Lists are sorted, without repeats; `purposes`, `territories` and `channels` are never empty |
+| `use` | the licence's count of uses when this record was signed, this one included: `n` from 1; `of` the licence's `max_uses`, or `null` for no limit. A use given back by an allow that was not generated lowers the count, so two records may show the same `n` |
+| `scope` | what the approver approved. `purposes` and `categories` in the profile's closed vocabulary (`categories` may be empty); `territories` at most 250 ISO 3166-1 alpha-2 codes or `["*"]`; `channels` at most 64 words of `[a-z0-9-]{1,32}` or `["*"]`; `project` printable text of 1–200 characters; `not_after` an integer time later than `issued_at` and no later than the licence's `expires_at`. Lists are sorted, without repeats; `purposes`, `territories` and `channels` are never empty |
 | `approval` | who approved, and on what basis (below) |
 | `issued_at` | the registry's time when it signed |
 
@@ -90,7 +90,8 @@ permitted before. So it is the subject's own act, in one of three forms, and nob
 
 Never the holder, the requester, a provider, a platform, another registry, or a
 representative whose mandate does not list the power. `self` never names a factor;
-`registry` always does. A representative is never the holder of the same record.
+`registry` always does. A representative is never the holder of the same record: their hosts
+differ, whatever the port. `assent` is one of the three words, never a list or any other type.
 
 A verifier shows the approval as it is: "approved by the person", "approved on the person's
 instruction at the registry" or "approved by `agency.example` under mandate `…`".
@@ -135,8 +136,9 @@ leaves. The leaves, in order:
    elements `FRMT` = the ASCII bytes `isobmff`; and, from `mvhd`: `tmsc` = timescale, `rate` =
    rate, `volu` = volume, `mtrx` = the nine matrix values as a list, each as the integer the
    file stores.
-2. **Each track,** in increasing `track_ID`, leaving out tracks whose handler is `meta` or
-   `hint`. The track's first leaf is these elements:
+2. **Each track,** in increasing `track_ID`, every track whatever its handler: a player may
+   play a track whose handler says `meta` or `hint`, so none is left out. The track's first leaf
+   is these elements:
    - `hdlr` = the handler type (4 bytes);
    - `tref` = for each box inside `tref`, in file order, an element whose code is that box's
      type and whose value lists the positions (from 0, in this order of listed tracks) of the
@@ -161,9 +163,27 @@ Every track's leaves (its first leaf, then its samples) come before the next tra
 **One reading only.** A verifier refuses `media/1`, and says why, for a file with no `moov` or
 more than one; a fragmented file (`mvex` in `moov`, or any top-level `moof`); encrypted
 samples (an `encv`, `enca` or `encs` entry, or a `sinf` in any entry); `stz2`; a `tref` naming
-a track that is not listed; a box whose size runs past its parent; a table whose counts do not
-agree (more samples in `stsz` than `stts` describes, or the reverse); or sample ranges that fall
-outside the file or overlap.
+a track that is not listed; a box whose size runs past its parent, or a box shorter than its
+own fixed fields (a `uuid` box under 24 bytes, an `mvhd`, `tkhd`, `mdhd`, media header or table
+shorter than its version's layout); a table whose counts do not agree (more samples in `stsz`
+than `stts` describes, or the reverse), or that claims more bytes than the file holds; a value
+that does not fit a signed 64-bit integer; sample ranges that fall outside the file or overlap;
+a data reference that is not in the same file (a `dref` entry without the self-contained flag);
+or a box that `media/1` reads appearing anywhere but its one place.
+
+**Every box in its place.** A player may act on a sample table, an edit list or a track box
+wherever it finds one inside the movie box, for instance inside `udta`. So a verifier takes the
+bytes of `moov` that `media/1` did not read as a box it lists or as the payload of one (the
+payloads of the headers, tables and sample entries it hashes are skipped), and refuses the file
+if any of these four-character codes appears there at any position: `mvhd`, `trak`, `tkhd`,
+`tref`, `edts`, `elst`, `mdia`, `mdhd`, `minf`, `vmhd`, `smhd`, `sthd`, `hmhd`, `nmhd`, `dinf`,
+`dref`, `stbl`, `stsd`, `stts`, `ctts`, `stsc`, `stsz`, `stz2`, `stco`, `co64`, `avcC`, `hvcC`,
+`av1C`, `vpcC`, `esds`, `dOps`, `dfLa`, `colr`, `pasp`, `clap`. The code `hdlr` is refused there
+too, unless the four bytes twelve bytes after it (the handler type) are `mdir`, `mdta`, `ID32`,
+`alis`, `url `, `mp7t` or `mp7b`, the handlers of metadata and data references. A text in metadata that
+happens to spell one of these codes makes the file refused; the remedy is to remove that text.
+This rule is about what common players read (FFmpeg was the one tested); a player that reads a
+box from some other place is outside what `media/1` covers.
 
 **Final file first.** A remux may rewrite a listed parameter: a tool may change the movie
 timescale, and with it the edit list, or the bit rates a sample entry records. Moving the movie
@@ -179,17 +199,27 @@ never proof that two files are the same.
 
 The record is the same whatever carries it, and a verifier checks it the same way.
 - **In a C2PA manifest:** an assertion labelled `org.pregen.after_gen` whose data is the
-  envelope, stored as JSON or CBOR. The production adds it with its own C2PA tool and its own
+  envelope, stored as JSON (its bytes exactly the canonical JSON of the envelope) or CBOR
+  (integers within ±2^53−1; no floats, tags, byte strings or indefinite lengths). The production adds it with its own C2PA tool and its own
   signing certificate, as it adds any assertion; the libraries return the assertion to add.
   PRE-GEN issues no C2PA certificate. A reader takes the assertion from the active (last)
-  manifest of the store.
+  manifest of the store. Every superbox of the store must be well-formed; the active manifest
+  holds at most one such assertion, and the assertion holds exactly one content box and no
+  nested superbox.
 - **In XMP:** in an MP4 file, a top-level `uuid` box with the XMP identifier
   `BE7ACFCB-97A9-42E8-9C71-999491E3AFAC`, appended at the end of the file so that no offset
   moves. Namespace `https://pregen.org/ns/after-gen/1/`, prefix `pgag`: `pgag:Record` holds the
   envelope as canonical JSON text; `pgag:Id`, `pgag:Registry` (the prefix) and `pgag:Status`
   (the status address) are copies for people and tools, never read as the record. An existing XMP
   box keeps its properties: they move into the new box, and the old box becomes a `free` box of
-  the same size, so no offset moves.
+  the same size, so no offset moves. So that every reader finds the same record, the packet
+  is read by a fixed lexical rule, not by an XML library: it holds no `<!--`, `<![CDATA[`,
+  `<!DOCTYPE` or `<!ENTITY`; the declaration `xmlns:pgag="https://pregen.org/ns/after-gen/1/"`
+  appears exactly once and no other `xmlns:pgag=`; `<pgag:Record>` appears exactly once and
+  `pgag:Record=` never; its text runs to the first `</pgag:Record>`, holds no `<`, and uses no
+  `&` other than `&amp;`, `&lt;`, `&gt;`, `&quot;` and `&apos;`. Unescaped, it is the canonical
+  JSON of the envelope. A packet that breaks the rule carries no record; one that cannot keep
+  its existing properties under it is refused when embedding.
 - **Held apart:** the registry keeps every record it signed and answers by hash, so a file
   whose metadata was stripped still leads to its record:
   `GET {api}/v2/after-gen?media=<hash>` → `{"records": ["<id>", …]}`.
@@ -200,7 +230,8 @@ record copied into another file names a hash that file does not have.
 ## The procedure
 
 1. **The request — `pg.after_gen_request.v1`,** signed by the requester's key from its own
-   domain (`role: requester`), or sent with the requester's registry credentials:
+   domain (`role: requester`). The requester is a party known by its domain, because the
+   record names it as the holder:
    `{signers, requester, subject_ref, licence, content, scope, issued_at, nonce}`. One file per
    request. `scope` is what is asked for, in the record's vocabulary. A private viewing link
    may travel **beside** the signed body (`preview_url`, `https` only): the registry gives it
@@ -212,19 +243,24 @@ record copied into another file names a hash that file does not have.
    licence that names none allows only `[]`; `not_after` after `expires_at` or already past); whose categories
    name an intimate category, a word outside the closed vocabulary, or one the subject's terms
    exclude; about a subject who is a known minor, opted out, withdrawn from this holder or
-   unavailable; or about a file already approved under this licence.
+   unavailable; or about a file already approved under this licence. Where the registry masks
+   an unpublished subject from a party it has not vetted (`provider-identity`, P-5a), it gives
+   that party the same refusal whatever the subject's state, so a request learns nothing.
 3. **The approver decides,** after viewing the file: approve as asked, approve a narrower
    scope, or refuse. Silence approves nothing: a request undecided within the review period
    (the registry's policy; 14 days in the reference registry) expires.
-4. **The record.** On approval the registry checks everything in step 2 again, as of now,
-   counts one use of the licence, and signs the record. A refusal, a pending request and an
+4. **The record.** On approval the registry checks everything in step 2 again, as of now
+   (a `not_after` already past is refused), counts one use of the licence, keeps the decision
+   it received, and signs the record. Only the representative's mandate, never the state of a
+   request, is disclosed to a party deciding on it. A refusal, a pending request and an
    expired one are never published: a lookup by hash shows only approved records, so asking
    before publishing costs the asker nothing.
 5. **Withdrawal.** The subject withdraws a record with their own key, in a
    `pg.after_gen_withdrawal.v1` `{signers, record, issued_at}` (`role: subject`), or by an
    authenticated instruction at the registry, with no second factor: it closes. From then on the status says "approved at
    T, withdrawn at W". New uses stop. What was already published stays a matter of the licence
-   between the parties.
+   between the parties. A registry that stops taking new requests keeps answering status,
+   lookup and withdrawal for every record it signed.
 
 ## The status — `pg.after_gen_status.v1`
 

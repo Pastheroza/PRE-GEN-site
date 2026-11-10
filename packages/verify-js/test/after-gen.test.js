@@ -35,7 +35,7 @@ function rfc6962(hashes) {
 }
 
 // A small MP4: ftyp, mdat (every track's samples, one chunk per track), moov at the end. Each track:
-// {id, handler, samples, durations, ctts, edits, tref, entry, extraStbl, offset, stszCount, timescale}.
+// {id, handler, samples, durations, ctts, edits, tref, entry, extraStbl, extraMinf, extraTrak, offset, stszCount, timescale}.
 function mp4({ tracks = [], extraTop = [], moovExtra = [] } = {}) {
   const ftyp = box("ftyp", "isom", u32(0x200), "isom");
   let at = ftyp.length + 8;
@@ -58,11 +58,12 @@ function mp4({ tracks = [], extraTop = [], moovExtra = [] } = {}) {
     return box("trak",
       full("tkhd", 0, 3, u32(0), u32(0), u32(t.id), u32(0), u32(0), Buffer.alloc(8), i16(0), i16(0),
         i16(t.handler === "soun" ? 0x100 : 0), u16(0), ...MATRIX.map(i32), u32(64 << 16), u32(48 << 16)),
+      ...(t.extraTrak ?? []),
       ...(t.tref ? [box("tref", ...t.tref.map((r) => box(r.type, ...r.ids.map(u32))))] : []),
       ...(t.edits ? [box("edts", full("elst", 0, 0, u32(t.edits.length), ...t.edits.flatMap((e) => [u32(e[0]), i32(e[1]), i16(e[2]), i16(e[3])])))] : []),
       box("mdia", full("mdhd", 0, 0, u32(0), u32(0), u32(t.timescale ?? 90000), u32(0), u16(0), u16(0)),
         full("hdlr", 0, 0, u32(0), t.handler ?? "vide", Buffer.alloc(12), "\0"),
-        box("minf", mhd, stbl)));
+        box("minf", mhd, ...(t.extraMinf ?? []), stbl)));
   });
   return new Uint8Array(B(ftyp, mdat, box("moov", mvhd, ...traks, ...moovExtra), ...extraTop));
 }
@@ -71,7 +72,7 @@ function mp4({ tracks = [], extraTop = [], moovExtra = [] } = {}) {
 function expected(tracks) {
   const leaves = [B("PREGEN-MEDIA\0media/1\0", el("FRMT", B("isobmff")), el("tmsc", ints([1000])), el("rate", ints([0x10000])),
     el("volu", ints([0x100])), el("mtrx", ints(MATRIX)))];
-  const listed = tracks.filter((t) => !["meta", "hint"].includes(t.handler)).sort((a, b) => a.id - b.id);
+  const listed = [...tracks].sort((a, b) => a.id - b.id); // every track, whatever its handler
   for (const t of listed) {
     const soun = t.handler === "soun";
     const entry = t.entry ?? box(soun ? "mp4a" : "avc1", Buffer.alloc(6), u16(1), "entry-bytes");
@@ -106,11 +107,16 @@ test("media/1: 1, 2, 3 and 5 leaves match an independent RFC 6962 tree", async (
     .map((tracks) => mediaHash(mp4({ tracks }))))).map((r) => r.leaves), [1, 2, 3, 5]);
 });
 
-test("media/1: tracks in track_ID order, tref by position, meta and hint left out", async () => {
+test("media/1: tracks in track_ID order, tref by position, every track whatever its handler", async () => {
   const meta = { id: 3, handler: "meta", samples: [B("timed metadata")], tref: [{ type: "cdsc", ids: [1] }] };
   const tracks = [{ ...AUDIO, id: 7, tref: [{ type: "sync", ids: [1] }] }, meta, VIDEO];
   assert.deepEqual(await mediaHash(mp4({ tracks })), expected(tracks));
-  assert.equal((await mediaHash(mp4({ tracks }))).leaves, 1 + 4 + 3);
+  assert.equal((await mediaHash(mp4({ tracks }))).leaves, 1 + 4 + 2 + 3);
+  // a video track relabelled meta or hint still counts: other footage under it changes the hash
+  const relabelled = (handler, frame) => mediaHash(mp4({ tracks: [{ ...VIDEO, handler, samples: [frame, B("frame-two!"), B("f3")] }] }));
+  for (const h of ["meta", "hint"]) assert.notEqual((await relabelled(h, B("frame-one"))).hash, (await relabelled(h, B("frame-ONE"))).hash);
+  const hint = [VIDEO, { ...AUDIO, tref: [{ type: "hint", ids: [5] }] }, { id: 5, handler: "hint", samples: [] }];
+  assert.deepEqual(await mediaHash(mp4({ tracks: hint })), expected(hint));
 });
 
 test("media/1: the same from a Uint8Array, a Blob and a reader, without reading the whole file", async () => {
@@ -160,11 +166,62 @@ const REFUSED = [
   ["a top-level box past the file", bump(plain, "moov", 1), /past its parent/],
   ["a box past its parent", bump(plain, "stco", 1), /past its parent/],
   ["a tref to a track that is not listed", mp4({ tracks: [VIDEO, { ...AUDIO, tref: [{ type: "sync", ids: [9] }] }] }), /not listed/],
-  ["a tref to a hint track", mp4({ tracks: [VIDEO, { ...AUDIO, tref: [{ type: "hint", ids: [5] }] }, { id: 5, handler: "hint", samples: [] }] }), /not listed/],
   ["more samples in stsz than stts describes", mp4({ tracks: [{ ...VIDEO, stszCount: 4, samples: [...VIDEO.samples, B("4")], durations: [100, 200, 100] }] }), /stts, ctts and stsz count different samples/],
   ["more samples in stts than stsz", mp4({ tracks: [{ ...VIDEO, stszCount: 2, samples: VIDEO.samples.slice(0, 2), durations: [100, 200, 100], ctts: undefined }] }), /stts, ctts and stsz count different samples/],
   ["two tracks with one id", mp4({ tracks: [VIDEO, { ...AUDIO, id: 1, tref: undefined }] }), /one track_ID/],
+  ["a stco directly in trak", mp4({ tracks: [{ ...VIDEO, extraTrak: [full("stco", 0, 0, u32(1), u32(40))] }] }), /stco outside its place/],
+  ["an elst in trak/udta", mp4({ tracks: [{ ...VIDEO, extraTrak: [box("udta", full("elst", 0, 0, u32(1), u32(5), u32(0), i16(1), i16(0)))] }] }), /elst outside its place/],
+  ["a code in metadata text", mp4({ tracks: [VIDEO], moovExtra: [box("udta", box("\xa9nam", "Spring stco"))] }), /stco outside its place/],
+  ["a second media header", mp4({ tracks: [{ ...VIDEO, extraMinf: [full("smhd", 0, 0, u32(0))] }] }), /smhd outside its place/],
+  ["a metadata handler not in the list", mp4({ tracks: [VIDEO], moovExtra: [box("udta", full("meta", 0, 0, full("hdlr", 0, 0, u32(0), "vide", Buffer.alloc(13))))] }), /hdlr outside its place/],
+  ["a data reference elsewhere", mp4({ tracks: [{ ...VIDEO, extraMinf: [box("dinf", full("dref", 0, 0, u32(1), full("url ", 0, 0, "https://x.example/a\0")))] }] }), /not in the same file/],
+  ["a uuid box under 24 bytes", mp4({ tracks: [VIDEO], moovExtra: [box("uuid", Buffer.alloc(8))] }), /shorter than its header/],
+  ["an elst duration of 2^63", mp4({ tracks: [{ ...VIDEO, edits: undefined, extraTrak: [box("edts", full("elst", 1, 0, u32(1), u64(2n ** 63n), u64(0), i16(1), i16(0)))] }] }), /signed 64-bit/],
+  ["a meta track past the end of the file", mp4({ tracks: [VIDEO, { id: 2, handler: "meta", samples: [B("m")], offset: 1e6 }] }), /outside the file/],
 ];
+
+// A box media/1 reads is refused anywhere but its one place (Every box in its place); what it reads is skipped.
+const PLACED = "mvhd trak tkhd tref edts elst mdia mdhd minf vmhd smhd sthd hmhd nmhd dinf dref stbl stsd stts ctts stsc stsz stz2 stco co64 avcC hvcC av1C vpcC esds dOps dfLa colr pasp clap".split(" ");
+test("media/1: every box in its place", async () => {
+  for (const c of PLACED) {
+    for (const file of [mp4({ tracks: [VIDEO], moovExtra: [box("udta", box(c))] }),
+      mp4({ tracks: [{ ...VIDEO, extraMinf: [box("udta", "x", c, "y")] }] }),
+      mp4({ tracks: [{ ...VIDEO, extraStbl: [full("stss", 0, 0, u32(1), c)] }] })]) {
+      await assert.rejects(mediaHash(file), (e) => e instanceof PregenError && e.message === `media/1: ${c} outside its place in moov`, c);
+    }
+    await assert.rejects(mediaHash(mp4({ tracks: [{ ...VIDEO, extraTrak: [box(c, Buffer.alloc(8))] }] })), PregenError, c);
+  }
+  const want = await mediaHash(mp4({ tracks: [VIDEO] }));
+  const ilst = full("meta", 0, 0, full("hdlr", 0, 0, u32(0), "mdir", Buffer.alloc(13)), box("ilst", box("\xa9too", "Lavf")));
+  const dinf = box("dinf", full("dref", 0, 0, u32(1), full("url ", 0, 1)));
+  const qt = full("hdlr", 0, 0, "dhlr", "url ", Buffer.alloc(12), "\x0bDataHandler"); // a QuickTime minf hdlr
+  assert.deepEqual(await mediaHash(mp4({ tracks: [{ ...VIDEO, extraMinf: [dinf, qt] }], moovExtra: [box("udta", ilst)] })), want);
+  const entry = box("avc1", Buffer.alloc(6), u16(1), box("avcC", "stco"), box("colr", "nclx")); // inside a hashed entry
+  assert.equal((await mediaHash(mp4({ tracks: [{ ...VIDEO, entry }] }))).leaves, 5);
+});
+
+test("media/1: a header shorter than its version's layout is refused", async () => {
+  const cut = (file, type, size) => { // the box `type` cut to `size` bytes of content, its parents' sizes fixed
+    const b = Buffer.from(file), at = b.indexOf(type) - 4, gone = b.readUInt32BE(at) - 8 - size;
+    for (const parent of ["moov", "trak", "mdia", "minf"]) {
+      const p = b.indexOf(parent) - 4;
+      if (p < at) b.writeUInt32BE(b.readUInt32BE(p) - gone, p);
+    }
+    b.writeUInt32BE(8 + size, at);
+    return new Uint8Array(Buffer.concat([b.subarray(0, at + 8 + size), b.subarray(at + 8 + size + gone)]));
+  };
+  const file = mp4({ tracks: [VIDEO] });
+  for (const [type, size] of [["mvhd", 99], ["mvhd", 72], ["tkhd", 83], ["mdhd", 23], ["vmhd", 11], ["vmhd", 0]]) {
+    await assert.rejects(mediaHash(cut(file, type, size)), (e) => e instanceof PregenError && /short/.test(e.message), type);
+  }
+});
+
+test("media/1: tracks claiming billions of samples are refused at once", async () => {
+  const file = new Uint8Array(readFileSync(new URL("../../../spec/test-vectors/after-gen/attack-dos.mp4", import.meta.url)));
+  const start = performance.now();
+  await assert.rejects(mediaHash(file), /outside the file/);
+  assert.ok(performance.now() - start < 2000);
+});
 for (const [name, file, reason] of REFUSED) {
   test(`media/1 refuses ${name}`, async () => {
     await assert.rejects(mediaHash(file), (e) => e instanceof PregenError && e.message.startsWith("media/1: ") && reason.test(e.message));
@@ -235,17 +292,30 @@ test("XMP: embedded at the end, read back, and media/1 unchanged", async () => {
   assert.deepEqual(await readAfterGen(FILE), { c2pa: null, xmp: null });
 });
 
-test("XMP: the record under any prefix bound to the namespace; only canonical JSON of an envelope", async () => {
-  const packet = (inner, attrs = "") => new Uint8Array(B(FILE, uuidBox(XMP_UUID, '<x:xmpmeta xmlns:x="adobe:ns:meta/">'
+test("XMP: read by the fixed lexical rule only; a packet that breaks it carries no record", async () => {
+  const NSD = 'xmlns:pgag="https://pregen.org/ns/after-gen/1/"';
+  const packet = (inner, decl = NSD, extra = "") => new Uint8Array(B(FILE, uuidBox(XMP_UUID, Buffer.from('<x:xmpmeta xmlns:x="adobe:ns:meta/">'
     + '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">'
-    + `<rdf:Description rdf:about="" xmlns:pg="https://pregen.org/ns/after-gen/1/"${attrs}>${inner}</rdf:Description></rdf:RDF></x:xmpmeta>`)));
+    + `<rdf:Description rdf:about="" ${decl}>${inner}</rdf:Description>${extra}</rdf:RDF></x:xmpmeta>`))));
   const text = canonicalJson(RECORD).replace(/&/g, "&amp;").replace(/</g, "&lt;");
-  assert.deepEqual((await readAfterGen(packet(`<pg:Record>${text}</pg:Record>`))).xmp, RECORD);
-  assert.deepEqual((await readAfterGen(packet("", ` pg:Record="${text.replace(/"/g, "&quot;")}"`))).xmp, RECORD);
-  assert.equal((await readAfterGen(packet(`<pgag:Record>${text}</pgag:Record>`))).xmp, null); // pgag is not bound here
-  await assert.rejects(readAfterGen(packet(`<pg:Record>${JSON.stringify(RECORD, null, 1)}</pg:Record>`)), /canonical JSON/);
-  await assert.rejects(readAfterGen(packet("<pg:Record>[1]</pg:Record>")), /canonical JSON/);
-  await assert.rejects(readAfterGen(packet(`<pg:Record>${text}</pg:Record><pg:Record>${text}</pg:Record>`)), /more than one/);
+  const xmp = async (...args) => (await readAfterGen(packet(...args))).xmp;
+  assert.deepEqual(await xmp(`<pgag:Record>${text}</pgag:Record>`), RECORD);
+  assert.deepEqual(await xmp(`<pgag:Record>${text.replace('"', "&quot;")}</pgag:Record>`), RECORD);
+  for (const args of [
+    [`<pg:Record>${text}</pg:Record>`, 'xmlns:pg="https://pregen.org/ns/after-gen/1/"'], // only the prefix pgag
+    ["", `${NSD} pgag:Record="${text.replace(/"/g, "&quot;")}"`],                          // never an attribute
+    [`<pgag:Record>${text}</pgag:Record>`, `${NSD} xmlns:pgag="https://x.example/"`],       // pgag bound twice
+    [`<pgag:Record>${text}</pgag:Record>`, NSD.replace(/"/g, "'")],
+    [`<pgag:Record xmlns:pgag="https://x.example/">${text}</pgag:Record>`],
+    [`<Record xmlns="https://pregen.org/ns/after-gen/1/">${text}</Record>`],
+    [`<pgag:Record>${text}</pgag:Record>`, NSD, "<!-- a note -->"],
+    [`<pgag:Record><![CDATA[${canonicalJson(RECORD)}]]></pgag:Record>`],
+    [`<pgag:Record>${text}<pgag:x/></pgag:Record>`],
+    [`<pgag:Record>${text.replace('"', "&#34;")}</pgag:Record>`],
+    [`<pgag:Record>${JSON.stringify(RECORD, null, 1)}</pgag:Record>`],
+    ["<pgag:Record>[1]</pgag:Record>"],
+    [`<pgag:Record>${text}</pgag:Record><pgag:Record>${text}</pgag:Record>`],
+  ]) assert.equal(await xmp(...args), null, args[0].slice(0, 40));
 });
 
 test("XMP: an existing box keeps its properties and becomes free of the same size", async () => {
@@ -255,7 +325,7 @@ test("XMP: an existing box keeps its properties and becomes free of the same siz
     + '<rdf:Description rdf:about=""><dc:title><rdf:Alt><rdf:li xml:lang="x-default">A > B</rdf:li></rdf:Alt></dc:title></rdf:Description>'
     + '<rdf:Description rdf:about="" xmlns:pgag="https://pregen.org/ns/after-gen/1/"><pgag:Record>{"old":1}</pgag:Record></rdf:Description>'
     + '</rdf:RDF></x:xmpmeta><?xpacket end="w"?>';
-  const xmpBox = uuidBox(XMP_UUID, old);
+  const xmpBox = uuidBox(XMP_UUID, Buffer.from(old));
   const withXmp = new Uint8Array(B(FILE, xmpBox, box("free", "tail")));
   const out = await embedXmp(withXmp, RECORD);
   const start = FILE.length, freed = out.subarray(start, start + xmpBox.length);
@@ -282,6 +352,12 @@ test("XMP: a last box of size 0 gets its real size; two XMP boxes and a packet w
   await assert.rejects(embedXmp(new Uint8Array(B(FILE, uuidBox(XMP_UUID, "<a/>"), uuidBox(XMP_UUID, "<b/>"))), RECORD), /more than one XMP/);
   await assert.rejects(embedXmp(new Uint8Array(B(FILE, uuidBox(XMP_UUID, "<x:xmpmeta/>"))), RECORD), /rdf:RDF/);
   await assert.rejects(embedXmp(FILE, { type: "pg.answer.v1", body: {} }), PregenError);
+  // an existing packet it could not keep under the lexical rule
+  const old = (inner) => new Uint8Array(B(FILE, uuidBox(XMP_UUID, Buffer.from('<x:xmpmeta xmlns:x="adobe:ns:meta/">'
+    + `<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">${inner}</rdf:RDF></x:xmpmeta>`))));
+  await assert.rejects(embedXmp(old("<!-- kept? -->"), RECORD), /comment/);
+  await assert.rejects(embedXmp(old('<rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/" dc:x="pgag:Record=x"/>'), RECORD), /lexical rule/);
+  await assert.rejects(embedXmp(new Uint8Array(B(FILE, uuidBox(XMP_UUID, [0xff, 0xfe]))), RECORD), /UTF-8/);
 });
 
 // A C2PA manifest store, by hand: JUMBF superboxes with their descriptions.
@@ -334,6 +410,15 @@ test("C2PA: a malformed store or assertion is refused", async () => {
     c2paBox(manifest(assertion(label, jsonBox(RECORD)), assertion(label + "__1", jsonBox(RECORD)))),
     c2paBox(manifest(assertion(label, box("bidb", "x")))),
     uuidBox(C2PA_UUID, [0, 0, 0, 0], "manifest"),
+    c2paBox(box("jumb", box("free")), manifest(assertion(label, jsonBox(RECORD)))),         // a malformed older manifest
+    c2paBox(manifest(assertion(label, B(jsonBox(RECORD), jumb("json", "x"))))),           // a superbox in the assertion
+    c2paBox(manifest(assertion(label, box("json", JSON.stringify(RECORD, null, 1))))),     // not its canonical JSON
+    c2paBox(manifest(assertion(label, box("json", B([0xef, 0xbb, 0xbf]), canonicalJson(RECORD))))), // a BOM
+    c2paBox(manifest(assertion(label, box("json", Buffer.from(canonicalJson(RECORD), "utf16le"))))),
+    c2paBox(manifest(assertion(label, box("json", '{"a":1,"a":1}')))),
+    c2paBox(manifest(assertion(label, box("cbor", [0xa1, 0x61, 0x61, 0x1b, 0, 0x20, 0, 0, 0, 0, 0, 0])))), // 2^53
+    c2paBox(manifest(assertion(label, box("cbor", [0xa1, 0x61, 0x61, 0x3b, 0, 0x1f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff])))), // -2^53
+    c2paBox(Array.from({ length: 70 }).reduce((inner) => box("jumb", box("jumd", Buffer.alloc(16), [3], "x\0"), inner), box("free"))),
   ];
   for (const b of bad) await assert.rejects(readAfterGen(withC2pa(b)), PregenError);
   await assert.rejects(readAfterGen(withC2pa(B(c2paBox(manifest()), c2paBox(manifest())))), /more than one C2PA/);
@@ -416,7 +501,20 @@ const MUTATIONS = [ // vectors 9 and 13, the shape, and the approval forms
   ["a status_url member (the verifier builds the address)", { status_url: API + "/v2/after-gen/x" }],
   ["not_after 0", { "scope.not_after": 0 }],
   ["a holder with a path", { holder: "https://studio.example/x" }],
+  ["assent as a list", { "approval.assent": ["agent"] }],
+  ["assent as a nested list", { "approval.assent": [["agent"]] }],
+  ["territories nested", { "scope.territories": [["ES"]] }],
+  ["251 territories", { "scope.territories": Array.from({ length: 251 }, (_, i) => String.fromCharCode(65 + Math.floor(i / 26), 65 + (i % 26))) }],
+  ["65 channels", { "scope.channels": Array.from({ length: 65 }, (_, i) => `c${String(i).padStart(2, "0")}`) }],
+  ["not_after at issued_at", { "scope.not_after": 1794200000 }],
+  ["an agent on the holder's host, another port", { "approval.agent": "https://studio.example:8443" }],
+  ["a holder with an empty port", { holder: "https://studio.example:" }],
+  ["a holder with port 0", { holder: "https://studio.example:0" }],
 ];
+test("checkAfterGen takes 250 territories, 64 channels and a port", async () => {
+  await check(await record({ "scope.territories": Array.from({ length: 250 }, (_, i) => String.fromCharCode(65 + Math.floor(i / 26), 65 + (i % 26))),
+    "scope.channels": Array.from({ length: 64 }, (_, i) => `c${String(i).padStart(2, "0")}`), holder: "https://studio.example:8443" }));
+});
 for (const [name, changes] of MUTATIONS) {
   test(`checkAfterGen refuses ${name}`, async () => {
     await assert.rejects(check(await record(changes)), (e) => e instanceof PregenError && /^after-gen: /.test(e.message));
@@ -449,7 +547,7 @@ test("a current status checks out: active, and withdrawn with its time", async (
   assert.deepEqual(await checkStatus(await status()), { state: "active", approved_at: 1794200000, withdrawn_at: null, not_after: 1830000000 });
   const w = await checkStatus(await status({ state: "withdrawn", withdrawn_at: 1794200050 }));
   assert.deepEqual([w.state, w.withdrawn_at], ["withdrawn", 1794200050]);
-  const late = await record({ "scope.not_after": NOW - 100 });
+  const late = await record({ "scope.not_after": NOW - 50 });
   assert.equal((await checkStatus(await status({ state: "expired" }, { rec: late }), late)).state, "expired");
 });
 
@@ -466,12 +564,13 @@ const BAD_STATUS = [
   ["an approved_at other than the record's issued_at", () => status({ approved_at: 1794200001 }), /approved_at/],
   ["an unknown state", () => status({ state: "paused" }), /state/],
   ["an unknown member", () => status({ reason: "x" }), /member/],
-  ["active after not_after", async () => status({}, { rec: await record({ "scope.not_after": NOW - 100 }) }), /not_after|agree/],
+  ["active after not_after", async () => status({}, { rec: await record({ "scope.not_after": NOW - 50 }) }), /agree/],
+  ["whose signer has another member", () => status({ signers: [{ role: "registry", key_id: "pg-ed25519:" + "0".repeat(32), x: 1 }] }), /member/],
 ];
 for (const [name, make, reason] of BAD_STATUS) {
   test(`checkAfterGenStatus refuses a status ${name}`, async () => {
     const s = await make();
-    const rec = name === "active after not_after" ? await record({ "scope.not_after": NOW - 100 }) : RECORD;
+    const rec = name === "active after not_after" ? await record({ "scope.not_after": NOW - 50 }) : RECORD;
     await assert.rejects(checkStatus(s, rec), (e) => e instanceof PregenError && reason.test(e.message));
   });
 }
@@ -561,6 +660,10 @@ test("spec/test-vectors/after-gen/vectors.json: every file's media/1 or refusal,
     else assert.deepEqual(hashes[v.file] = await mediaHash(file(v.file)), v.media, v.file);
   }
   for (const v of V.read) {
+    if (v.refused) {
+      await assert.rejects(readAfterGen(file(v.file)), PregenError, v.file);
+      continue;
+    }
     const got = await readAfterGen(file(v.file));
     for (const via of ["c2pa", "xmp"]) {
       assert.equal(got[via] && await messageId(got[via].type, got[via].body), v[via], `${v.file} ${via}`);

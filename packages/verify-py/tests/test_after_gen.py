@@ -48,7 +48,7 @@ FTYP = box(b"ftyp", b"isom", U(512), b"isomiso2mp41")
 DATA_AT = len(FTYP) + 8                       # the first sample's offset: right after the mdat header
 
 
-def trak(tid=1, hdlr=b"vide", samples=(b"abc", b"de"), offset=DATA_AT, tref=b"", stbl=None, entry=None):
+def trak(tid=1, hdlr=b"vide", samples=(b"abc", b"de"), offset=DATA_AT, tref=b"", stbl=None, entry=None, minf=b""):
     sizes = [len(s) for s in samples]
     tables = {b"stsd": full(b"stsd", 0, 0, U(1), entry or box(b"avc1", bytes(78))),
               b"stts": full(b"stts", 0, 0, U(1, len(sizes), 10)),
@@ -56,7 +56,7 @@ def trak(tid=1, hdlr=b"vide", samples=(b"abc", b"de"), offset=DATA_AT, tref=b"",
               b"stsz": full(b"stsz", 0, 0, U(0, len(sizes), *sizes)),
               b"stco": full(b"stco", 0, 0, U(1, offset))}
     tables.update(stbl or {})
-    minf = box(b"minf", full(b"vmhd", 0, 1, bytes(8)), box(b"stbl", *(v for v in tables.values() if v is not None)))
+    minf = box(b"minf", full(b"vmhd", 0, 1, bytes(8)), minf, box(b"stbl", *(v for v in tables.values() if v is not None)))
     mdia = box(b"mdia", full(b"mdhd", 0, 0, U(0, 0, 1000, 10 * len(sizes)), bytes(4)),
                full(b"hdlr", 0, 0, U(0), hdlr, bytes(12), b"\x00"), minf)
     tkhd = full(b"tkhd", 0, 3, U(0, 0, tid, 0, 0), bytes(8), bytes(8), struct.pack(">9i", *MATRIX), U(64 << 16, 48 << 16))
@@ -247,6 +247,10 @@ FFMPEG_FILES = ("a.mp4", "a-remux.mp4", "a-remux-faststart.mp4", "b.mov", "b-rem
                 "c.mp4")
 
 
+HUGE = {b"stsz": full(b"stsz", 0, 0, U(1, 2**32 - 1)), b"stts": full(b"stts", 0, 0, U(1, 2**32 - 1, 1)),
+        b"stsc": full(b"stsc", 0, 0, U(1, 1, 2**32 - 1, 1))}
+
+
 def derived():
     """Every vector file made here from the ffmpeg ones, by name; deterministic (Ed25519 signs deterministically)."""
     a = (DIR / "a.mp4").read_bytes()
@@ -278,8 +282,27 @@ def derived():
                                         b"stco": full(b"stco", 0, 0, U(2, DATA_AT, DATA_AT + 1))}},)),
         "x-past-eof.mp4": mp4(({"stbl": {b"stco": full(b"stco", 0, 0, U(1, 10**6))}},)),
         "x-box-past-parent.mp4": mp4(moov_extra=struct.pack(">I4s", 100, b"free")),
-        "x-tref-unlisted.mp4": mp4(({"tref": box(b"tref", box(b"cdsc", U(2)))}, {"tid": 2, "hdlr": b"meta"})),
+        "x-tref-unlisted.mp4": mp4(({"tref": box(b"tref", box(b"cdsc", U(9)))},)),
         "x-stts-stsz.mp4": mp4(({"stbl": {b"stts": full(b"stts", 0, 0, U(1, 3, 10))}},)),
+        # the adversarial review's files, small: a track relabelled meta and an added meta track are hashed like any
+        # other; a box media/1 reads, out of its place, a short uuid, a data reference elsewhere and 20 tracks of 2^32
+        # samples each are refused (the last one at once); a record the lexical rule does not see, and a malformed store
+        "attack-meta-red.mp4": mp4(({"hdlr": b"meta", "samples": (b"red",)},)),
+        "attack-meta-blue.mp4": mp4(({"hdlr": b"meta", "samples": (b"blu",)},)),
+        "attack-hidden-track.mp4": mp4(({}, {"tid": 2, "hdlr": b"meta", "samples": (b"other footage",)})),
+        "attack-stray-stco.mp4": mp4(({"tref": full(b"stco", 0, 0, U(1, DATA_AT + 1))},)),
+        "attack-elst-in-udta.mp4": mp4(({"tref": box(b"udta", full(b"elst", 0, 0, U(1, 5, 0), struct.pack(">hh", 1, 0)))},)),
+        "attack-short-uuid.mp4": mp4(top=struct.pack(">I4s", 20, b"uuid") + bytes(12)),
+        "attack-dref-external.mp4": mp4(({"minf": box(b"dinf", full(b"dref", 0, 0, U(1), full(b"url ", 0, 0, b"https://x.example/a\0")))},)),
+        "attack-dos.mp4": mp4(tuple({"tid": j, "hdlr": b"meta", "stbl": HUGE} for j in range(1, 21))),
+        "attack-xmp-comment.mp4": mp4(top=xmp_box(ag._packet(None, rec).replace(b"</rdf:RDF>", b"<!-- a note --></rdf:RDF>"))),
+        "attack-xmp-rebound.mp4": mp4(top=xmp_box(ag._packet(None, rec).replace(b"<pgag:Record>",
+                                                                               b'<pgag:Record xmlns:pgag="https://x.example/">'))),
+        "attack-xmp-attribute.mp4": mp4(top=xmp_box(ag._packet(None, rec).replace(b"<pgag:Id>", b"<pgag:Id pgag:Record=\"x\">"))),
+        "attack-c2pa-nested.mp4": mp4(top=c2pa_box(manifest(1, jumb("org.pregen.after_gen", box(b"json", pregen.canonical_json(rec)),
+                                                                    jumb("x"))))),
+        "attack-c2pa-older-bad.mp4": mp4(top=c2pa_box(jumb("urn:old", box(b"jumb", box(b"free"))), manifest(2, assertion(rec)))),
+        "attack-c2pa-not-canonical.mp4": mp4(top=c2pa_box(manifest(1, jumb("org.pregen.after_gen", box(b"json", json.dumps(rec).encode()))))),
     }
     out["a-xmp-foreign-pg.mp4"] = out["a-xmp-foreign.mp4"][:-len(xmp_box(FOREIGN_XMP))] \
         + box(b"free", bytes(len(xmp_box(FOREIGN_XMP)) - 8)) + xmp_box(ag._packet(FOREIGN_XMP, rec))
@@ -295,8 +318,12 @@ def vectors():
             entries.append({"file": n, "media": pregen.media_hash(DIR / n)})
         except pregen.PregenError as e:
             entries.append({"file": n, "refused": str(e)})
-        if n.startswith(("a-xmp", "a-c2pa", "b-copied")):
-            got = pregen.read_after_gen(DIR / n)
+        if n.startswith(("a-xmp", "a-c2pa", "b-copied", "attack-xmp", "attack-c2pa")):
+            try:
+                got = pregen.read_after_gen(DIR / n)
+            except pregen.PregenError as e:
+                reads.append({"file": n, "refused": str(e)})
+                continue
             ids = {k: v and pregen.message_id(v["type"], v["body"]) for k, v in got.items()}
             res = {}
             for k, v in got.items():
@@ -381,10 +408,13 @@ def test_the_leaves_by_hand():
     samples = [el(b"sdsc", i64(1)) + el(b"dtim", i64(t)) + el(b"ctso", i64(0)) + el(b"sdur", i64(10)) + el(b"data", d)
                for t, d in ((0, b"abc"), (10, b"de"))]
     assert H(mp4()) == {"binding": "media/1", "hash": mth([movie, track, *samples]).hex(), "leaves": 4}
-    # tracks by track_ID, meta left out, tref by position among the listed tracks
-    a = mp4(({"tid": 5, "hdlr": b"soun", "tref": box(b"tref", box(b"sync", U(1)))}, {"tid": 2, "hdlr": b"meta"}, {}))
-    sound = el(b"hdlr", b"soun") + el(b"tref", el(b"sync", i64(0))) + track[len(el(b"hdlr", b"vide") + el(b"tref", b"")):]
-    assert H(a) == {"binding": "media/1", "hash": mth([movie, track, *samples, sound, *samples]).hex(), "leaves": 7}
+    # tracks by track_ID, every one whatever its handler (meta too), tref by position among them
+    a = mp4(({"tid": 5, "hdlr": b"soun", "tref": box(b"tref", box(b"sync", U(2)))}, {"tid": 2, "hdlr": b"meta"}, {}))
+    rest = track[len(el(b"hdlr", b"vide") + el(b"tref", b"")):]
+    sound = el(b"hdlr", b"soun") + el(b"tref", el(b"sync", i64(1))) + rest
+    meta = el(b"hdlr", b"meta") + el(b"tref", b"") + rest
+    assert H(a) == {"binding": "media/1", "hash": mth([movie, track, *samples, meta, *samples, sound, *samples]).hex(),
+                    "leaves": 10}
 
 
 @pytest.mark.parametrize("n", [1, 2, 3, 5, 8, 13])
@@ -413,13 +443,70 @@ REFUSALS = [
     ("x-no-moov.mp4", "no moov"), ("x-two-moov.mp4", "more than one moov"), ("x-moof.mp4", "fragmented"),
     ("x-mvex.mp4", "fragmented"), ("x-encv.mp4", "encrypted"), ("x-sinf.mp4", "encrypted"), ("x-stz2.mp4", "stz2"),
     ("x-overlap.mp4", "overlap"), ("x-past-eof.mp4", "outside the file"), ("x-box-past-parent.mp4", "past its parent"),
-    ("x-tref-unlisted.mp4", "not listed"), ("x-stts-stsz.mp4", "count different samples")]
+    ("x-tref-unlisted.mp4", "not listed"), ("x-stts-stsz.mp4", "count different samples"),
+    ("attack-stray-stco.mp4", "stco outside its place"), ("attack-elst-in-udta.mp4", "elst outside its place"),
+    ("attack-short-uuid.mp4", "shorter than its header"), ("attack-dref-external.mp4", "not in the same file"),
+    ("attack-dos.mp4", "outside the file")]
 
 
 @pytest.mark.parametrize("name,why", REFUSALS)
 def test_one_reading_only(name, why):
     msg = refused((DIR / name).read_bytes())
     assert msg.startswith("media/1: ") and why in msg
+
+
+def test_every_track_whatever_its_handler():
+    assert media("attack-meta-red.mp4")["hash"] != media("attack-meta-blue.mp4")["hash"]       # meta plays: it counts
+    assert media("attack-hidden-track.mp4")["leaves"] == media("tiny.mp4")["leaves"] + 2
+    assert media("tiny-tref.mp4")["leaves"] == 10
+
+
+PLACED = (b"mvhd trak tkhd tref edts elst mdia mdhd minf vmhd smhd sthd hmhd nmhd dinf dref stbl stsd stts ctts stsc stsz "
+          b"stz2 stco co64 avcC hvcC av1C vpcC esds dOps dfLa colr pasp clap").split()
+
+
+@pytest.mark.parametrize("code", PLACED)
+def test_every_box_in_its_place(code):
+    assert refused(mp4(({"tref": box(code, bytes(8))},))).startswith("media/1: ")         # directly in trak
+    for where in ({"moov_extra": box(b"udta", box(code))}, {"tracks": ({"minf": box(b"udta", b"x" + code + b"y")},)},
+                  {"tracks": ({"stbl": {b"stss": full(b"stss", 0, 0, U(1), code)}},)}):     # at any position
+        assert f"{code.decode()} outside its place" in refused(mp4(**where))
+
+
+def test_what_media_1_reads_is_skipped_and_metadata_handlers_pass():
+    plain = H(mp4())
+    entry = box(b"avc1", bytes(78), box(b"avcC", b"stco"), box(b"colr", b"nclx"))         # inside a hashed entry: read
+    assert H(mp4(({"entry": entry},)))["leaves"] == 4
+    ilst = full(b"meta", 0, 0, full(b"hdlr", 0, 0, U(0), b"mdir", bytes(13)), box(b"ilst", box(b"\xa9too", b"Lavf")))
+    assert H(mp4(moov_extra=box(b"udta", ilst))) == plain
+    dref = box(b"dinf", full(b"dref", 0, 0, U(1), full(b"url ", 0, 1)))                    # in its place, in the file
+    qt = full(b"hdlr", 0, 0, b"dhlr", b"url ", bytes(12), b"\x0bDataHandler")                  # a QuickTime minf hdlr
+    assert H(mp4(({"minf": dref + qt},))) == plain
+    for handler in (b"soun", b"vide"):
+        meta = full(b"meta", 0, 0, full(b"hdlr", 0, 0, U(0), handler, bytes(13)))
+        assert "hdlr outside its place" in refused(mp4(moov_extra=box(b"udta", meta)))
+    assert "stco outside" in refused(mp4(moov_extra=box(b"udta", box(b"\xa9nam", b"Spring stco"))))  # a text spelling one
+    assert "smhd outside" in refused(mp4(({"minf": full(b"smhd", 0, 0, bytes(4))},)))         # a second media header
+
+
+def test_short_fixed_layouts_and_values_beyond_64_bits():
+    def patched(code, size):
+        """mp4() with the box `code` cut to `size` bytes of content, its parents' sizes fixed."""
+        data = bytearray(mp4())
+        at = data.index(code) - 4
+        cut = struct.unpack_from(">I", data, at)[0] - 8 - size
+        del data[at + 8 + size:at + 8 + size + cut]
+        struct.pack_into(">I", data, at, 8 + size)
+        for parent in (b"moov", b"trak", b"mdia", b"minf"):
+            p = data.index(parent) - 4
+            if p < at:
+                struct.pack_into(">I", data, p, struct.unpack_from(">I", data, p)[0] - cut)
+        return bytes(data)
+    for code, size in ((b"mvhd", 99), (b"mvhd", 72), (b"tkhd", 83), (b"mdhd", 23), (b"vmhd", 11), (b"vmhd", 0)):
+        assert "short" in refused(patched(code, size)), code
+    assert "shorter than its header" in refused(mp4(moov_extra=box(b"uuid", bytes(8))))
+    elst = box(b"edts", full(b"elst", 1, 0, U(1), struct.pack(">Qqhh", 2**63, 0, 1, 0)))
+    assert "signed 64-bit" in refused(mp4(({"tref": elst},)))
 
 
 def test_more_refusals():
@@ -493,6 +580,12 @@ def test_embed_xmp_keeps_existing_properties(tmp_path):
 
 def test_embed_xmp_refusals(tmp_path):
     a = media("a.mp4")
+    for packet in (FOREIGN_XMP.replace(b"<rdf:Description", b"<!-- kept? --><rdf:Description"),
+                   FOREIGN_XMP.replace(b"Studio &amp; Co", b"pgag:Record=x")):          # it could not be kept under the rule
+        (tmp_path / "old.mp4").write_bytes((DIR / "a.mp4").read_bytes() + xmp_box(packet))
+        with pytest.raises(pregen.PregenError, match="^xmp: "):
+            pregen.embed_xmp(tmp_path / "old.mp4", tmp_path / "x.mp4", record(a))
+        assert not (tmp_path / "x.mp4").exists()
     with pytest.raises(pregen.PregenError, match="not for this file"):
         pregen.embed_xmp(DIR / "b.mov", tmp_path / "x.mov", record(a))
     assert not (tmp_path / "x.mov").exists()
@@ -550,7 +643,22 @@ MALFORMED_C2PA = [
     ("CBOR dup key", lambda r: c2pa_box(manifest(1, jumb("org.pregen.after_gen", box(b"cbor", b"\xa2\x61a\x01\x61a\x02"))))),
     ("CBOR deep", lambda r: c2pa_box(manifest(1, jumb("org.pregen.after_gen", box(b"cbor", b"\x81" * 100 + b"\xa0"))))),
     ("jumd past parent", lambda r: c2pa_box(box(b"jumb", struct.pack(">I4s", 99, b"jumd")))),
+    ("malformed older manifest", lambda r: c2pa_box(jumb("urn:old", box(b"jumb", box(b"free"))), manifest(2, assertion(r)))),
+    ("nested superbox", lambda r: c2pa_box(manifest(1, jumb("org.pregen.after_gen", box(b"json", pregen.canonical_json(r)),
+                                                            jumb("x"))))),
+    ("JUMBF 70 deep", lambda r: c2pa_box(deep_jumb(70))),
+    ("JSON with spaces", lambda r: c2pa_box(manifest(1, jumb("org.pregen.after_gen", box(b"json", json.dumps(r).encode()))))),
+    ("JSON with a BOM", lambda r: c2pa_box(manifest(1, jumb("org.pregen.after_gen", box(b"json", b"\xef\xbb\xbf" + pregen.canonical_json(r)))))),
+    ("JSON in UTF-16", lambda r: c2pa_box(manifest(1, jumb("org.pregen.after_gen", box(b"json", pregen.canonical_json(r).decode().encode("utf-16")))))),
+    ("JSON with NaN", lambda r: c2pa_box(manifest(1, jumb("org.pregen.after_gen", box(b"json", pregen.canonical_json(r)[:-1] + b',"x":NaN}'))))),
+    ("JSON key twice", lambda r: c2pa_box(manifest(1, jumb("org.pregen.after_gen", box(b"json", b'{"a":1,"a":1}'))))),
+    ("CBOR beyond 2^53", lambda r: c2pa_box(manifest(1, jumb("org.pregen.after_gen", box(b"cbor", cbor({**r, "x": 2**53})))))),
+    ("CBOR below -2^53", lambda r: c2pa_box(manifest(1, jumb("org.pregen.after_gen", box(b"cbor", cbor({**r, "x": -2**53})))))),
 ]
+
+
+def deep_jumb(n):
+    return jumb("c2pa") if n == 0 else box(b"jumb", jumd("x"), deep_jumb(n - 1))
 
 
 @pytest.mark.parametrize("name,make", MALFORMED_C2PA, ids=[m[0] for m in MALFORMED_C2PA])
@@ -559,15 +667,24 @@ def test_malformed_c2pa_is_refused(name, make):
         read((DIR / "a.mp4").read_bytes() + make(record(media("a.mp4"))))
 
 
-def test_malformed_xmp_is_refused():
+def test_xmp_by_the_lexical_rule_only():
     a, rec = (DIR / "a.mp4").read_bytes(), record(media("a.mp4"))
     good = ag._packet(None, rec)
-    for packet in (b"<x:xmpmeta", b'<!DOCTYPE x [<!ENTITY a "b">]><x/>', b"<x:xmpmeta xmlns:x='adobe:ns:meta/'/>",
-                   good.replace(b"<pgag:Record>", b"<pgag:Record> "),                       # not canonical
-                   good.replace(b"</rdf:Description>", b"</rdf:Description>" + good[good.index(b"<rdf:Description"):
-                                                                                     good.index(b"</rdf:RDF>")], 1)):
-        with pytest.raises(pregen.PregenError, match="^xmp: "):
-            read(a + xmp_box(packet))
+    text = good[good.index(b"<pgag:Record>") + 13:good.index(b"</pgag:Record>")]
+    assert read(a + xmp_box(good))["xmp"] == rec
+    assert read(a + xmp_box(good.replace(b"<rdf:RDF", b"<rdf:RDF\n")))["xmp"] == rec         # no XML is parsed
+    for packet in (good.replace(b"</rdf:RDF>", b"<!-- -->"), good.replace(text, b"<![CDATA[" + text + b"]]>"),
+                   b"<!DOCTYPE x>" + good, good.replace(b"<x:", b'<!ENTITY a "b"><x:', 1),
+                   good.replace(b"xmlns:pgag=", b'xmlns:pgag="https://x.example/" xmlns:pg2='),     # another pgag binding
+                   good.replace(b'xmlns:pgag="', b"xmlns:pgag='").replace(b'/1/"', b"/1/'"),       # the declaration as written
+                   good.replace(b"<pgag:Record>", b"<pgag:Record >").replace(b"</pgag:Record>", b"</pgag:Record >"),
+                   good.replace(b"</rdf:RDF>", b"<pgag:Record>x</pgag:Record></rdf:RDF>"),         # twice
+                   good.replace(b"<pgag:Id>", b'<pgag:Id pgag:Record="x">'),
+                   good.replace(b"</pgag:Record>", b"<x/></pgag:Record>"), good.replace(text, text.replace(b'"', b"&#34;", 1)),
+                   good.replace(text, b"&amp;" + text), good.replace(b"<pgag:Record>", b"<pgag:Record> "),  # not canonical
+                   good.replace(text, b"[1]"), good.replace(b"<pgag:Record>", b"<pg:Record>").replace(b"</pgag:R", b"</pg:R"),
+                   good.decode().encode("utf-16"), b"<x:xmpmeta"):
+        assert read(a + xmp_box(packet))["xmp"] is None, packet[:60]
     with pytest.raises(pregen.PregenError, match="more than one XMP"):
         read(a + xmp_box(good) + xmp_box(good))
 
@@ -651,7 +768,39 @@ MUTATIONS = [                                                 # vectors 7, 9, 13
     ("holder", {"holder": "studio.example"}, "provider URL"),
     ("request", {"request": "A" * 64}, "request"),
     ("status_url member", {"status_url": API + "a" * 64}, "member"),
+    ("assent as a list", {"approval": {**AGENT, "assent": ["agent"]}}, "self, registry or agent"),
+    ("territories nested", {"scope": {**SCOPE, "territories": [["ES"]]}}, "territories"),
+    ("channels nested", {"scope": {**SCOPE, "channels": [["social"]]}}, "channels"),
+    ("251 territories", {"scope": {**SCOPE, "territories": sorted(a + b for a in "ABCDEFGHIJ" for b in "ABCDEFGHIJKLMNOPQRSTUVWXYZ")[:251]}},
+     "territories"),
+    ("65 channels", {"scope": {**SCOPE, "channels": [f"c{j:02d}" for j in range(65)]}}, "channels"),
+    ("not_after at issued_at", {"scope": {**SCOPE, "not_after": NOW - 100}}, "later than issued_at"),
+    ("agent on the holder's host", {"approval": {**AGENT, "agent": "https://studio.example:8443"}}, "never the holder"),
+    ("holder with an empty port", {"holder": "https://studio.example:"}, "provider URL"),
+    ("holder with port 0", {"holder": "https://studio.example:0"}, "provider URL"),
 ]
+
+
+def test_caps_and_ports_that_hold():
+    assert check(record(a(), scope={**SCOPE, "territories": sorted(a + b for a in "ABCDEFGHIJ" for b in "ABCDEFGHIJKLMNOPQRSTUVWXYZ")[:250],
+                                     "channels": [f"c{j:02d}" for j in range(64)]}, holder="https://studio.example:8443"))
+
+
+def test_a_malformed_type_anywhere_is_a_pregen_error():
+    body = record(a())["body"]
+    paths = [(k,) for k in body] + [(k, j) for k in body if isinstance(body[k], dict) for j in body[k]]
+    for path in paths:
+        for odd in ([], {}, [[]], [{}], ["x"], ["agent"], None, True, "x", 0, 2**60):
+            b = json.loads(json.dumps(body))
+            (b if len(path) == 1 else b[path[0]])[path[-1]] = odd
+            try:
+                env = pregen.sign_envelope("pg.after_gen.v1", b, KEY)
+            except pregen.PregenError:
+                continue
+            try:
+                check(env, a())
+            except pregen.PregenError:
+                pass
 
 
 @pytest.mark.parametrize("name,change,why", MUTATIONS, ids=[m[0] for m in MUTATIONS])
@@ -745,6 +894,8 @@ STATUS_MUTATIONS = [
     ("not_after mismatch", {"not_after": NOW + 10**6 + 1}, "not_after"),
     ("approved_at mismatch", {"approved_at": NOW - 99}, "issued_at"),
     ("unknown member", {"reason": "x"}, "exactly the members"),
+    ("signer with another member", {"signers": [{**signer(KEY)[0], "x": 1}]}, "signer"),
+    ("approved_at not an integer", {"approved_at": True}, "integers"),
 ]
 
 
