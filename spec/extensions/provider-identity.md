@@ -83,9 +83,9 @@ The libraries build it: `pregen.party_document(url, name, key)` /
   personal signature required) comes back with its real reason to any provider. A person's "no"
   must hold everywhere (`identity` rule 2), and that rule works through anchors, which only
   published subjects have.
-- **P-5a Everything else is private until the registry vets the provider.** Subject serials
-  are sequential, so without a rule anyone with a domain could enumerate codes and learn who
-  registered privately. To a provider it has not vetted, a registry answers about: a subject it
+- **P-5a Everything else is private until the registry vets the provider.** Old subject serials
+  are sequential (new ones are random but still drawn from a known range), so without a rule anyone
+  with a domain could enumerate codes and learn who registered privately. To a provider it has not vetted, a registry answers about: a subject it
   publishes (`lookup` returns a name, its anchor list names it, or it has an offer (`catalog`),
   including while the catalog hides it because the subject is unavailable or opted out: whoever
   chose to be offered is already public, and a later refusal must be seen), refusals included

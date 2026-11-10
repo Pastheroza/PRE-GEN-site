@@ -68,7 +68,7 @@ var input = document.getElementById("pgInput");
 var out = document.getElementById("pgResult");
 var busy = false;
 
-/* { code } in its TOG spelling; { code, old: true } for an old licence number as typed (only its registry gives its
+/* { code } in its TOG spelling; { code, old: true } for an old licence number, folded (only its registry gives its
    TOG code, so it is never shown); or { error, hint }. */
 function read(raw) {
   if (!String(raw || "").trim()) return { error: "Enter a code to resolve.", hint: "" };
@@ -76,7 +76,7 @@ function read(raw) {
     return { code: normalizeTyped(String(raw)) };
   } catch (e) {
     if (!(e instanceof CodeError)) throw e;
-    if (e.reason === "ask_registry") return { code: String(raw).trim().toUpperCase(), old: true };
+    if (e.reason === "ask_registry") return { code: e.folded, old: true };
     if (e.hints) return { error: "Two codes match: " + e.hints.join(" or ") + ".", hint: "Type the one you mean." };
     if (e.reason === "mistyped") return { error: "Mistyped code.", hint: "The check character does not fit: compare the code with its source." };
     return { error: "Not a code.", hint: "A person: TOG-PRAM-000037J · a licence: TOG-LIC-…" };
@@ -110,7 +110,9 @@ function run(raw) {
       else if (res.status === 410) out.innerHTML = renderError("Revoked: the registry that issued " + named + " was revoked" + (d.at ? " on " + fmtDate(d.at) : "") + ".",
         "Its codes no longer count. Nothing it says about this code is shown.");
       else if (res.status === 429) out.innerHTML = renderError("Too many requests.", "Give it a minute and try again.");
-      else if (res.status === 400 || res.status === 422) out.innerHTML = renderError("The registry did not accept this code.", typeof d.detail === "string" ? d.detail : "");
+      else if (res.status === 400 || res.status === 422) out.innerHTML = renderError(   // the proxy's own refusals never reach a registry
+        (/^(missing_code|invalid_code|check_mismatch)$/.test(d.error || "") ? "The resolver" : "The registry") + " did not accept this code.",
+        typeof d.detail === "string" ? d.detail : "");
       else out.innerHTML = renderError("Registry is not reachable right now.", "Try again in a moment." + (d.error ? " (" + d.error + ")" : ""));
       if (tog && window.history && window.history.replaceState)
         window.history.replaceState(null, "", "/lookup?code=" + encodeURIComponent(d.code));

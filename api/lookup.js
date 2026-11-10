@@ -30,7 +30,8 @@ function classify(raw, { parseCode, codeKey, CodeError }) {
 }
 
 /* Every code in an answer in its TOG spelling (TOG-CODE.md §13); an old licence number its registry did not respell
-   is not shown. */
+   is not shown. Codes inside registry URLs (status_url, terms.url) are respelled too: such a link works only at a
+   registry that routes TOG paths. */
 function togOnly(v, { findCodes, codeKey }) {
   const key = (c) => { try { return codeKey(c); } catch { return "(an old licence number)"; } };
   if (typeof v === "string") return findCodes(v).reduce((s, c) => s.split(c).join(key(c)), v);

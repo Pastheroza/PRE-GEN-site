@@ -365,7 +365,7 @@ def normalize_typed(typed: str, licences: dict = None) -> str:
     look-alikes, case, a resolver URL, trailing punctuation, then O/0 and I/L/1 by slot, then the PG spelling.
     Raises NotACode when no reading is a code, or more than one is (their codes in `hints`), or the readings exceed
     4096; Mistyped when the string as typed has the shape but not the check; AskRegistry for an old licence id whose
-    record (`licences`, as for code_key) is not at hand."""
+    record (`licences`, as for code_key) is not at hand, with the folded old id as `folded`."""
     if not isinstance(typed, str):
         raise NotACode("a code is a string")
     s = unicodedata.normalize("NFKC", typed).translate(_DASHES).translate(_DROP).translate(_LOOKALIKE).strip()
@@ -397,7 +397,9 @@ def normalize_typed(typed: str, licences: dict = None) -> str:
         raise NotACode(f"not a code: {typed!r}")
     c = found.pop()
     if c.startswith("PG-"):
-        raise AskRegistry(f"ask its registry for the code of {c}")
+        e = AskRegistry(f"ask its registry for the code of {c}")
+        e.folded = c                     # the old id as folded here, for asking its registry (never for showing)
+        raise e
     return c
 
 

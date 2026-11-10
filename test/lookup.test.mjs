@@ -44,3 +44,11 @@ test("not a code, mistyped, or an unlisted prefix: nothing is asked", async () =
   assert.deepEqual([await lookup("tog-pram-000037j")].map((r) => [r.status, r.body.error, r.asked.length]), [[422, "invalid_code", 0]]);
   assert.deepEqual([await lookup("TOG-NWRD-900000042R")].map((r) => [r.status, r.body.error, r.asked.length]), [[404, "unknown_issuer", 0]]);
 });
+
+test("the page asks for an old licence number by its folded id, however it was typed", async () => {
+  const { normalizeTyped } = await import("../packages/verify-js/index.js");
+  for (const typed of ["PG–STD–000001–K7M2QX9", "PG-STD-000001-K7M2QX9.", "https://www.pregen.org/lookup/PG-STD-000001-K7M2QX9",
+    "РG-STD-000001-K7M2QX9", "PG-STD-OOOOO1-K7M2QX9", "pg-std-000001-k7m2qx9"]) {
+    assert.throws(() => normalizeTyped(typed), (e) => e.reason === "ask_registry" && e.folded === "PG-STD-000001-K7M2QX9", typed);
+  }
+});

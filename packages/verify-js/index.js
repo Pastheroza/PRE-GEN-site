@@ -480,7 +480,7 @@ function groupVariants(g, letters = true) {
  * spelling, for a "Did you mean …?" prompt. Folds width, dashes, invisibles, look-alikes, a resolver URL, trailing
  * punctuation, case and display spaces, then O/0 and I/L/1 by slot, then the PG spelling (codeKey). Throws CodeError:
  * "malformed" for none or (with `hints`) more than one valid reading, or over 4096 readings; "mistyped"; or
- * "ask_registry" for an old licence id whose record is not in `licences`. */
+ * "ask_registry" for an old licence id whose record is not in `licences`, with the folded old id as `folded`. */
 export function normalizeTyped(typed, licences = {}) {
   if (typeof typed !== "string") codeFail("malformed", "a code is a string");
   let s = typed.normalize("NFKC").replace(DASHES, "-").replace(DROP, "").replace(/./gsu, (c) => LOOKALIKE[c] ?? c)
@@ -512,7 +512,11 @@ export function normalizeTyped(typed, licences = {}) {
     codeFail("malformed", `not a code: ${JSON.stringify(typed)}`);
   }
   const [c] = found;
-  if (c.startsWith("PG-")) codeFail("ask_registry", `${c}: only its registry gives its TOG code`);
+  if (c.startsWith("PG-")) {   // `folded`: the old id as folded here, for asking its registry (never for showing)
+    const e = new CodeError("ask_registry", `${c}: only its registry gives its TOG code`);
+    e.folded = c;
+    throw e;
+  }
   return c;
 }
 
