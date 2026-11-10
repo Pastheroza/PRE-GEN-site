@@ -12,7 +12,6 @@ import re
 import shutil
 import struct
 import xml.etree.ElementTree as ET
-from urllib.parse import urlsplit
 from xml.sax.saxutils import escape, quoteattr
 
 from . import (CATEGORIES, INTIMATE, _HEX64, _MAX_INT, _PURPOSES, _count, _get_json, _printable, _registry_signed,
@@ -1020,8 +1019,7 @@ _MEMBERS = {"signers", "kind", "label", "notice", "not", "subject_ref", "content
             "scope", "approval", "issued_at"}
 _SCOPE = {"purposes", "categories", "territories", "channels", "project", "not_after"}
 _BASIS = {"licence": {"kind", "licence", "use"}, "terms": {"kind", "terms"}}
-_APPROVAL = {"self": {"assent", "decision"}, "registry": {"assent", "instruction", "factor"},
-             "agent": {"assent", "agent", "mandate", "decision", "factor"}}
+_APPROVAL = {"self": {"assent", "decision"}, "registry": {"assent", "instruction", "factor"}}  # a mandate never approves
 _STATUS_MEMBERS = {"signers", "record", "state", "approved_at", "withdrawn_at", "not_after", "issued_at", "expires_at"}
 
 
@@ -1061,34 +1059,24 @@ def _scope(s):
         raise PregenError("scope.not_after: an integer time")
 
 
-def _approval(a, holder):
+def _approval(a):
     form = a.get("assent") if isinstance(a, dict) else None
     if type(form) is not str or form not in _APPROVAL:                  # never a list or any other type
-        raise PregenError("approval.assent: self, registry or agent")
+        raise PregenError("approval.assent: self or registry; only the person approves, never under a mandate")
     _obj(a, _APPROVAL[form], f"approval ({form})")
     if form == "self" and not _hex(a["decision"]):
         raise PregenError("approval: the message id of the subject's decision")
     if form == "registry" and not (_hex(a["instruction"]) and a["factor"] in ("authenticator", "email")):
         raise PregenError("approval: the instruction's SHA-256 and the second factor (authenticator or email)")
-    if form == "agent":
-        check_provider_url(a["agent"], allow_port=True)     # a sandbox id may carry a port; a registry decides who is a party
-        if not (_hex(a["mandate"]) and _hex(a["decision"]) and a["factor"] == "signature"):
-            raise PregenError("approval: the mandate's and the decision's message ids, factor signature")
-        if urlsplit(a["agent"]).hostname == urlsplit(holder).hostname:  # whatever the port
-            raise PregenError("approval: a representative is never the holder of the same record")
 
 
 def _approved_by(a) -> str:
-    if a["assent"] == "self":
-        return "approved by the person"
-    if a["assent"] == "registry":
-        return "approved on the person's instruction at the registry"
-    return f"approved by {urlsplit(a['agent']).hostname} under mandate {a['mandate']}"
+    return "approved by the person" if a["assent"] == "self" else "approved on the person's own instruction at the registry"
 
 
 def check_after_gen(env: dict, directory=None, get_json=_get_json, media=None) -> dict:
     """Steps 3-4 of How a verifier checks a file: a pg.after_gen.v1 record in shape (exactly its members, in the body
-    and every object of it; the constants; the closed vocabularies; one of the three approval forms), signed by exactly
+    and every object of it; the constants; the closed vocabularies; one of the two approval forms), signed by exactly
     one registry key the directory lists for the subject's prefix at issued_at (a revoked registry's records fail),
     and, given `media` (a media_hash result or its hash), naming that file. Raises PregenError; returns a summary.
     It says nothing about whether the record still stands: check_after_gen_status."""
@@ -1128,7 +1116,7 @@ def check_after_gen(env: dict, directory=None, get_json=_get_json, media=None) -
     _scope(b["scope"])
     if b["scope"]["not_after"] <= b["issued_at"]:
         raise PregenError("scope.not_after: later than issued_at")
-    _approval(b["approval"], b["holder"])
+    _approval(b["approval"])
     rid = message_id(_TYPE, b)
     status_url = directory.registry_for(code)["api"].rstrip("/") + "/v2/after-gen/" + rid  # The status: never from the record
     match = None
@@ -1197,12 +1185,14 @@ def after_gen_request(requester: str, private_key_hex: str, subject_ref: str, li
 
 
 def after_gen_decision(request_id: str, outcome: str, scope, private_key_hex: str, role: str, now=None) -> dict:
-    """A pg.after_gen_decision.v1 (The decision): the subject's (role "subject") or the representative's (role
-    "agent") approval or refusal of one request. `scope` is the approved scope for "approve", None for "refuse"."""
+    """A pg.after_gen_decision.v1 (The decision): the subject's (role "subject") approval or refusal of one request,
+    or a representative's (role "agent") refusal only. `scope` is the approved scope for "approve", None for "refuse"."""
     import time
     if role not in ("subject", "agent") or outcome not in ("approve", "refuse") \
             or (scope is None) != (outcome == "refuse") or not _hex(request_id):
         raise PregenError("a decision: role subject or agent, outcome approve (with a scope) or refuse (without)")
+    if role == "agent" and outcome == "approve":
+        raise PregenError("a decision: a mandate never approves; a representative may only refuse")
     body = {"signers": [{"role": role, "key_id": fingerprint(public_key_hex(private_key_hex))}],
             "request": request_id, "outcome": outcome, "issued_at": int(time.time() if now is None else now)}
     if scope is not None:

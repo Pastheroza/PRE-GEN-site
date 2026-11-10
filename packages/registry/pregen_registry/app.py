@@ -258,7 +258,9 @@ def create_app(registry: Registry, policy_file=None) -> FastAPI:
                 f'{escape(row["preview_url"])}</a></p>' if row["preview_url"] else "<p>No preview link was sent.</p>")
         return review_page(
             f"<h1>Approve this file for {escape(row['requester'])}?</h1>"
-            f"<p>Subject: {escape(row['subject_ref'])}. Licence: {escape(row['licence_id'])}.</p>"
+            + ("<p>An agency acting under your mandate refused this request. That is the agency's refusal, not "
+               "yours: you may still approve or refuse it.</p>" if row["state"] == "agent_refused" else "")
+            + f"<p>Subject: {escape(row['subject_ref'])}. Licence: {escape(row['licence_id'])}.</p>"
             f"<p>File (media/1): {escape(row['media_hash'])}, {row['leaves']} leaves.</p>{link}"
             f"<p>Scope asked for:</p><ul>{items}</ul>"
             "<p>An approval is recorded after the content existed. It is not a PRE-GEN permission given before "

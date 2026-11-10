@@ -55,16 +55,14 @@
     "not_after": 1791000000
    },
    "approval": {
-    "assent": "agent",
-    "agent": "https://agency.example",
-    "mandate": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    "decision": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-    "factor": "signature"
+    "assent": "registry",
+    "instruction": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "factor": "authenticator"
    },
    "issued_at": 1789999900
   },
   "signatures": [
-   "9d83829cad7400be39f301dc518f9ef49d4908995f8ae6d7adc008d395518a92a31e94ec3e914ed6aad0d0c34b3a73534d9f1bf5b3baf4fe8f05ce09d7640005"
+   "c262136179156d90fb2a55d1aeeb1b179135b0ea2b1528ac3f8135396133623f1d4d853bbb01a69c4720ff6a148bb58fe0eecee0330f20df42b4e2e97e925709"
   ]
  },
  "files": [
@@ -628,10 +626,10 @@
  "read": [
   {
    "file": "a-c2pa-cbor.mp4",
-   "c2pa": "0b12343528b0eb26127b9bf9ef42ffe5e03211d905007fa77c3f65e0c6004d69",
+   "c2pa": "25024d9f7b6a016f3de09cde522360f3749c809cccd6c0f51a21fab17ff07de9",
    "xmp": null,
    "check": {
-    "c2pa": "0b12343528b0eb26127b9bf9ef42ffe5e03211d905007fa77c3f65e0c6004d69"
+    "c2pa": "25024d9f7b6a016f3de09cde522360f3749c809cccd6c0f51a21fab17ff07de9"
    }
   },
   {
@@ -642,18 +640,18 @@
   },
   {
    "file": "a-c2pa-json.mp4",
-   "c2pa": "0b12343528b0eb26127b9bf9ef42ffe5e03211d905007fa77c3f65e0c6004d69",
+   "c2pa": "25024d9f7b6a016f3de09cde522360f3749c809cccd6c0f51a21fab17ff07de9",
    "xmp": null,
    "check": {
-    "c2pa": "0b12343528b0eb26127b9bf9ef42ffe5e03211d905007fa77c3f65e0c6004d69"
+    "c2pa": "25024d9f7b6a016f3de09cde522360f3749c809cccd6c0f51a21fab17ff07de9"
    }
   },
   {
    "file": "a-xmp-foreign-pg.mp4",
    "c2pa": null,
-   "xmp": "0b12343528b0eb26127b9bf9ef42ffe5e03211d905007fa77c3f65e0c6004d69",
+   "xmp": "25024d9f7b6a016f3de09cde522360f3749c809cccd6c0f51a21fab17ff07de9",
    "check": {
-    "xmp": "0b12343528b0eb26127b9bf9ef42ffe5e03211d905007fa77c3f65e0c6004d69"
+    "xmp": "25024d9f7b6a016f3de09cde522360f3749c809cccd6c0f51a21fab17ff07de9"
    }
   },
   {
@@ -665,9 +663,9 @@
   {
    "file": "a-xmp.mp4",
    "c2pa": null,
-   "xmp": "0b12343528b0eb26127b9bf9ef42ffe5e03211d905007fa77c3f65e0c6004d69",
+   "xmp": "25024d9f7b6a016f3de09cde522360f3749c809cccd6c0f51a21fab17ff07de9",
    "check": {
-    "xmp": "0b12343528b0eb26127b9bf9ef42ffe5e03211d905007fa77c3f65e0c6004d69"
+    "xmp": "25024d9f7b6a016f3de09cde522360f3749c809cccd6c0f51a21fab17ff07de9"
    }
   },
   {
@@ -727,7 +725,7 @@
   {
    "file": "b-copied-record.mov",
    "c2pa": null,
-   "xmp": "0b12343528b0eb26127b9bf9ef42ffe5e03211d905007fa77c3f65e0c6004d69",
+   "xmp": "25024d9f7b6a016f3de09cde522360f3749c809cccd6c0f51a21fab17ff07de9",
    "check": {
     "xmp": "not for this file"
    }
@@ -781,21 +779,19 @@
      "not_after": 1791000000
     },
     "approval": {
-     "assent": "agent",
-     "agent": "https://agency.example",
-     "mandate": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-     "decision": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-     "factor": "signature"
+     "assent": "registry",
+     "instruction": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "factor": "authenticator"
     },
     "issued_at": 1789999900
    },
    "signatures": [
-    "b364a243e9bb87d67c551a6ba87507ee6d82845d88ca156e807ae62725ea5455864e9c5e28a2b98810b641f4faa07df0d8756cbc96905fabbaba8ad93bf13e07"
+    "608473bc0b97f5dd10ffe3c35671b51140a4b6d930b6ad408693712a1d1b1a308263499840cc59c1bc97a26626241a73d4334576497db3f983b17aeb52b9e30f"
    ]
   },
   "file": "a.mp4",
   "check": {
-   "id": "a61bde29a3c2b222097c08e5a64c60ee7d0fdde5d5a5b0e44947c4c28da32ab9",
+   "id": "ecbe58212f16a22dc4ae64038dad2c880e102c5f680aa8ed8ad069f8f88d4946",
    "basis": {
     "kind": "terms",
     "terms": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"

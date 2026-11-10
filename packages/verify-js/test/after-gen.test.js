@@ -317,7 +317,7 @@ async function baseBody(key = KEY) {
     request: "a".repeat(64), holder: "https://studio.example",
     basis: { kind: "licence", licence: { format: "pg.grant.v1", id: "b".repeat(64) }, use: { n: 3, of: 10 } }, scope: { purposes: ["commercial"], categories: ["advertising"], territories: ["ES", "IT"],
       channels: ["online-video", "social"], project: "Spring campaign 2027", not_after: 1830000000 },
-    approval: { assent: "agent", agent: "https://agency.example", mandate: "c".repeat(64), decision: "d".repeat(64), factor: "signature" },
+    approval: { assent: "registry", instruction: "c".repeat(64), factor: "authenticator" },
     issued_at: 1794200000 };
 }
 async function record(changes = {}, key = KEY) {
@@ -492,14 +492,14 @@ test("a valid record checks out, with the three statements and who approved", as
   assert.deepEqual([s.label, s.notice, s.not], [AFTER_GEN_LABEL, AFTER_GEN_NOTICE, [...AFTER_GEN_NOT]]);
   assert.equal(s.prefix, "TEST");
   assert.deepEqual(s.basis, RECORD.body.basis);
-  assert.equal(s.approvedBy, `approved by agency.example under mandate ${"c".repeat(64)}`);
+  assert.equal(s.approvedBy, "approved on the person's own instruction at the registry");
   assert.equal(s.fileMatch, true);
   assert.equal((await check(RECORD, { media: MEDIA.hash })).fileMatch, true);
   assert.equal((await checkAfterGen(RECORD, { directory, fetch })).fileMatch, null);
   const self = await check(await record({ approval: { assent: "self", decision: "d".repeat(64) } }));
   assert.equal(self.approvedBy, "approved by the person");
   const reg = await check(await record({ approval: { assent: "registry", instruction: "e".repeat(64), factor: "email" } }));
-  assert.equal(reg.approvedBy, "approved on the person's instruction at the registry");
+  assert.equal(reg.approvedBy, "approved on the person's own instruction at the registry");
   await check(await record({ "basis.use.of": null, "scope.categories": [], "scope.territories": ["*"], "scope.channels": ["*"] }));
   // the person's own terms: no licence, so not_after is bounded by issued_at only
   const terms = await check(await record({ basis: TERMS, "scope.not_after": 2800000000 }));
@@ -568,9 +568,10 @@ const MUTATIONS = [ // vectors 9 and 13, the shape, and the approval forms
   ["self naming a factor", { approval: { assent: "self", decision: "d".repeat(64), factor: "email" } }],
   ["registry without a factor", { approval: { assent: "registry", instruction: "e".repeat(64) } }],
   ["registry with factor signature", { approval: { assent: "registry", instruction: "e".repeat(64), factor: "signature" } }],
-  ["agent without a mandate", { "approval.mandate": DROP }],
-  ["agent with factor email", { "approval.factor": "email" }],
-  ["an agent that is the holder", { "approval.agent": "https://studio.example" }],
+  ["an approval under a mandate (the old agent form)", { approval: { assent: "agent", agent: "https://agency.example",
+    mandate: "c".repeat(64), decision: "d".repeat(64), factor: "signature" } }],
+  ["agent with registry's members", { "approval.assent": "agent" }],
+  ["agent with self's members", { approval: { assent: "agent", decision: "d".repeat(64) } }],
   ["an approval by the holder", { approval: { assent: "holder", decision: "d".repeat(64) } }],
   ["no approval", { approval: DROP }],
   ["a holder that is not a party id", { holder: "studio.example" }],
@@ -578,13 +579,12 @@ const MUTATIONS = [ // vectors 9 and 13, the shape, and the approval forms
   ["a status_url member (the verifier builds the address)", { status_url: API + "/v2/after-gen/x" }],
   ["not_after 0", { "scope.not_after": 0 }],
   ["a holder with a path", { holder: "https://studio.example/x" }],
-  ["assent as a list", { "approval.assent": ["agent"] }],
-  ["assent as a nested list", { "approval.assent": [["agent"]] }],
+  ["assent as a list", { "approval.assent": ["registry"] }],
+  ["assent as a nested list", { "approval.assent": [["registry"]] }],
   ["territories nested", { "scope.territories": [["ES"]] }],
   ["251 territories", { "scope.territories": Array.from({ length: 251 }, (_, i) => String.fromCharCode(65 + Math.floor(i / 26), 65 + (i % 26))) }],
   ["65 channels", { "scope.channels": Array.from({ length: 65 }, (_, i) => `c${String(i).padStart(2, "0")}`) }],
   ["not_after at issued_at", { "scope.not_after": 1794200000 }],
-  ["an agent on the holder's host, another port", { "approval.agent": "https://studio.example:8443" }],
   ["a holder with an empty port", { holder: "https://studio.example:" }],
   ["a holder with port 0", { holder: "https://studio.example:0" }],
 ];

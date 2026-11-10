@@ -211,8 +211,9 @@ KEY = seed("registry")
 API = "https://registry.test.example/v2/after-gen/"
 SCOPE = {"purposes": ["commercial"], "categories": ["advertising"], "territories": ["ES", "IT"],
          "channels": ["online-video", "social"], "project": "Spring campaign 2027", "not_after": NOW + 10**6}
+APPROVAL = {"assent": "registry", "instruction": "b" * 64, "factor": "authenticator"}
 AGENT = {"assent": "agent", "agent": "https://agency.example", "mandate": "b" * 64, "decision": "c" * 64,
-         "factor": "signature"}
+         "factor": "signature"}                                # the old form: a mandate never approves
 BASIS = {"kind": "licence", "licence": {"format": "pg.grant.v1", "id": "e" * 64}, "use": {"n": 3, "of": 10}}
 TERMS = {"kind": "terms", "terms": "f" * 64}
 
@@ -225,7 +226,7 @@ def record(media, key=KEY, **change):
     body = {"signers": signer(key), "kind": "ratification", "label": pregen.AFTER_GEN_LABEL,
             "notice": pregen.AFTER_GEN_NOTICE, "not": pregen.AFTER_GEN_NOT, "subject_ref": CODE,
             "content": {k: media[k] for k in ("binding", "hash", "leaves")}, "request": "a" * 64,
-            "holder": "https://studio.example", "basis": BASIS, "scope": SCOPE, "approval": AGENT,
+            "holder": "https://studio.example", "basis": BASIS, "scope": SCOPE, "approval": APPROVAL,
             "issued_at": NOW - 100}
     body.update(change)
     return pregen.sign_envelope("pg.after_gen.v1", {k: v for k, v in body.items() if v is not DROP}, key)
@@ -923,14 +924,14 @@ def test_a_valid_record():
     assert s == {"id": pregen.message_id("pg.after_gen.v1", rec["body"]), "subject_ref": CODE, "prefix": "TEST",
                  "label": pregen.AFTER_GEN_LABEL, "notice": pregen.AFTER_GEN_NOTICE, "not": pregen.AFTER_GEN_NOT,
                  "holder": "https://studio.example", "basis": BASIS, "scope": SCOPE,
-                 "approval": AGENT, "approved_by": f"approved by agency.example under mandate {'b' * 64}",
+                 "approval": APPROVAL, "approved_by": "approved on the person's own instruction at the registry",
                  "status_url": API + pregen.message_id("pg.after_gen.v1", rec["body"]), "issued_at": NOW - 100,
                  "content": rec["body"]["content"],
                  "file_match": True}
     assert check(rec)["file_match"] is None and check(rec, a()["hash"])["file_match"] is True
     assert check(record(a(), approval={"assent": "self", "decision": "c" * 64}))["approved_by"] == "approved by the person"
     assert check(record(a(), approval={"assent": "registry", "instruction": "c" * 64, "factor": "email"}))["approved_by"] \
-        == "approved on the person's instruction at the registry"
+        == "approved on the person's own instruction at the registry"
     assert check(record(a(), basis={**BASIS, "use": {"n": 1, "of": None}},
                         scope={**SCOPE, "categories": [], "territories": ["*"], "channels": ["*"]}))
     # the person's own terms: no licence, so not_after is bounded by issued_at only
@@ -950,7 +951,7 @@ MUTATIONS = [                                                 # vectors 7, 9, 13
     ("unknown top", {"origin": "ai"}, "exactly the members"),
     ("missing", {"request": DROP}, "exactly the members"),
     ("unknown in scope", {"scope": {**SCOPE, "x": 1}}, "scope: exactly"),
-    ("unknown in approval", {"approval": {**AGENT, "x": 1}}, "approval \\(agent\\): exactly"),
+    ("unknown in approval", {"approval": {**APPROVAL, "x": 1}}, "approval \\(registry\\): exactly"),
     ("unknown in content", {"content": "X"}, "content: exactly"),
     ("unknown in use", {"basis": {**BASIS, "use": {"n": 1, "of": 2, "x": 1}}}, "use: exactly"),
     ("unknown in licence", {"basis": {**BASIS, "licence": {**BASIS["licence"], "x": 1}}}, "licence: exactly"),
@@ -996,22 +997,20 @@ MUTATIONS = [                                                 # vectors 7, 9, 13
     ("self with factor", {"approval": {"assent": "self", "decision": "c" * 64, "factor": "email"}}, "approval \\(self\\)"),
     ("registry without factor", {"approval": {"assent": "registry", "instruction": "c" * 64}}, "approval \\(registry\\)"),
     ("registry factor", {"approval": {"assent": "registry", "instruction": "c" * 64, "factor": "sms"}}, "second factor"),
-    ("agent without mandate", {"approval": {k: v for k, v in AGENT.items() if k != "mandate"}}, "approval \\(agent\\)"),
-    ("agent factor", {"approval": {**AGENT, "factor": "email"}}, "factor signature"),
-    ("agent is holder", {"approval": {**AGENT, "agent": "https://studio.example"}}, "never the holder"),
-    ("agent url", {"approval": {**AGENT, "agent": "https://Agency.example"}}, "provider URL"),
-    ("unknown assent", {"approval": {"assent": "holder", "decision": "c" * 64}}, "self, registry or agent"),
+    ("an approval under a mandate", {"approval": AGENT}, "self or registry"),
+    ("agent with registry's members", {"approval": {**APPROVAL, "assent": "agent"}}, "self or registry"),
+    ("agent with self's members", {"approval": {"assent": "agent", "decision": "c" * 64}}, "self or registry"),
+    ("unknown assent", {"approval": {"assent": "holder", "decision": "c" * 64}}, "self or registry"),
     ("holder", {"holder": "studio.example"}, "provider URL"),
     ("request", {"request": "A" * 64}, "request"),
     ("status_url member", {"status_url": API + "a" * 64}, "member"),
-    ("assent as a list", {"approval": {**AGENT, "assent": ["agent"]}}, "self, registry or agent"),
+    ("assent as a list", {"approval": {**APPROVAL, "assent": ["registry"]}}, "self or registry"),
     ("territories nested", {"scope": {**SCOPE, "territories": [["ES"]]}}, "territories"),
     ("channels nested", {"scope": {**SCOPE, "channels": [["social"]]}}, "channels"),
     ("251 territories", {"scope": {**SCOPE, "territories": sorted(a + b for a in "ABCDEFGHIJ" for b in "ABCDEFGHIJKLMNOPQRSTUVWXYZ")[:251]}},
      "territories"),
     ("65 channels", {"scope": {**SCOPE, "channels": [f"c{j:02d}" for j in range(65)]}}, "channels"),
     ("not_after at issued_at", {"scope": {**SCOPE, "not_after": NOW - 100}}, "later than issued_at"),
-    ("agent on the holder's host", {"approval": {**AGENT, "agent": "https://studio.example:8443"}}, "never the holder"),
     ("holder with an empty port", {"holder": "https://studio.example:"}, "provider URL"),
     ("holder with port 0", {"holder": "https://studio.example:0"}, "provider URL"),
 ]
@@ -1169,12 +1168,13 @@ def test_request_and_decision():
                                pregen.signing_input(req["type"], req["body"]))
     assert len(pregen.after_gen_request("https://studio.example", key, CODE, "e" * 64, a(), SCOPE)["body"]["nonce"]) == 32
     rid = pregen.message_id(req["type"], req["body"])
-    dec = pregen.after_gen_decision(rid, "approve", SCOPE, key, "agent", now=NOW)
-    assert dec["body"] == {"signers": [{"role": "agent", "key_id": req["body"]["signers"][0]["key_id"]}], "request": rid,
+    dec = pregen.after_gen_decision(rid, "approve", SCOPE, key, "subject", now=NOW)
+    assert dec["body"] == {"signers": [{"role": "subject", "key_id": req["body"]["signers"][0]["key_id"]}], "request": rid,
                            "outcome": "approve", "scope": SCOPE, "issued_at": NOW}
     assert "scope" not in pregen.after_gen_decision(rid, "refuse", None, key, "subject")["body"]
+    assert pregen.after_gen_decision(rid, "refuse", None, key, "agent")["body"]["outcome"] == "refuse"
     for bad in (("approve", None, "subject"), ("refuse", SCOPE, "subject"), ("approve", SCOPE, "registry"),
-                ("maybe", SCOPE, "subject")):
+                ("maybe", SCOPE, "subject"), ("approve", SCOPE, "agent")):
         with pytest.raises(pregen.PregenError):
             pregen.after_gen_decision(rid, bad[0], bad[1], key, bad[2])
     with pytest.raises(pregen.PregenError):

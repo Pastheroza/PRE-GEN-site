@@ -13,8 +13,8 @@ AFTER-GEN fixes that without any change at the AI provider:
 1. a production makes the video with any tool;
 2. it asks the rights holder's registry to approve **that exact file**, under a licence the
    registry already holds;
-3. the rights holder, or a representative whose power to do this is written in the mandate
-   the person signed, looks at the file and approves it;
+3. the person looks at the file and approves it themself; an agency acting for them may only
+   turn it down, and the person's own later decision overrides that;
 4. the registry signs a record that names the file by its hash, and the record goes into the
    file's metadata;
 5. anyone holding the file checks it in a browser: whose likeness, which licence, which terms,
@@ -54,10 +54,8 @@ Signed by the registry alone. Its id is its message id (`PRE-GEN-CORE.md`, Messa
           "scope": {"purposes": ["commercial"], "categories": ["advertising"],
                     "territories": ["ES", "IT"], "channels": ["online-video", "social"],
                     "project": "Spring campaign 2027", "not_after": 1830000000},
-          "approval": {"assent": "agent", "agent": "https://agency.example",
-                       "mandate": "<message id of the pg.mandate.v1>",
-                       "decision": "<message id of the pg.after_gen_decision.v1>",
-                       "factor": "signature"},
+          "approval": {"assent": "registry", "instruction": "<sha-256 of the instruction's evidence>",
+                       "factor": "authenticator"},
           "issued_at": 1794200000},
  "signatures": ["<ed25519 hex>"]}
 ```
@@ -80,27 +78,27 @@ No other member is allowed, in the body or in any object of it.
 ### Who approved: `approval`
 
 The approval is an act that opens: after it, a publication is permitted that was not
-permitted before. So it is the subject's own act, in one of three forms, and nobody else's:
+permitted before. So it is only ever the subject's own act, in one of two forms:
 
 | `assent` | Who | Members, exactly these |
 |---|---|---|
 | `self` | the subject, with their own key (`custody: self` in the subject record) | `assent`, `decision`: the message id of the `pg.after_gen_decision.v1` the subject signed |
 | `registry` | the subject, by an authenticated instruction at their registry | `assent`, `instruction`: the SHA-256 of the instruction's evidence, `factor`: `authenticator` or `email`, the second factor the registry confirmed before signing |
-| `agent` | a representative under a mandate the subject signed that lists the power `after_gen` | `assent`, `agent`: the representative's party id, `mandate`: the mandate's message id, `decision`: the message id of the decision the representative signed with a key from its own domain, `factor`: `signature` |
 
-Never the holder, the requester, a provider, a platform, another registry, or a
-representative whose mandate does not list the power. `self` never names a factor;
-`registry` always does. A representative is never the holder of the same record: their hosts
-differ, whatever the port. `assent` is one of the three words, never a list or any other type.
+The instruction is the person's own, given at their registry and confirmed with their second
+factor, never an agency's. Never the holder, the requester, a provider, a platform, another
+registry, or a representative under any mandate: a mandate never carries the power to approve.
+`self` never names a factor; `registry` always does. `assent` is one of the two words, never a
+list or any other type. A record that names any other form is refused.
 
-A verifier shows the approval as it is: "approved by the person", "approved on the person's
-instruction at the registry" or "approved by `agency.example` under mandate `…`".
+A verifier shows the approval as it is: "approved by the person" or "approved on the person's
+own instruction at the registry".
 
 ### The decision — `pg.after_gen_decision.v1`
 
-Signed by the subject's own key (`role: subject`) or by the representative's key from its own
-domain (`role: agent`): `{signers, request, outcome, scope, issued_at}`, where `outcome` is
-`approve` or `refuse` and `scope` (for `approve` only) is the scope approved, never wider than
+Signed by the subject's own key (`role: subject`), or by a representative's key from its own
+domain (`role: agent`) for a refusal only: `{signers, request, outcome, scope, issued_at}`,
+where `outcome` is `approve` (the subject only) or `refuse`, and `scope` (for `approve` only) is the scope approved, never wider than
 the request's: the same `project`; purposes, categories, territories and channels a subset
 (`["*"]` covers any list); `not_after` no later. A decision names exactly one request, and is
 refused more than five minutes off the registry's clock.
@@ -109,9 +107,11 @@ refused more than five minutes off the registry's clock.
 
 Signed by the subject's key, or by the registry on the subject's instruction with a second
 factor (`assent`, `instruction`, `factor` as above): `{signers, subject_ref, agent, powers,
-limits, not_after, assent, …, issued_at}`. `powers` lists `after_gen` for this use;
-`limits.purposes` bounds what the representative may approve. Ending a mandate closes, and needs
-no second factor. A mandate that does not list `after_gen` gives no power to approve a file.
+limits, not_after, assent, …, issued_at}`. The power `after_gen` lets the representative
+**refuse** a request the subject has not yet decided, and nothing more: no mandate carries the
+power to approve a file. A refusal by a representative is labelled as the agency's, closes
+nothing for the subject, and is overridden by the subject's own later decision within the
+review period. Ending a mandate closes, and needs no second factor.
 
 ## Which bytes the hash covers: `media/1`
 
@@ -285,9 +285,9 @@ The record is the same whatever carries it, and a verifier checks it the same wa
   `BE7ACFCB-97A9-42E8-9C71-999491E3AFAC`, appended at the end of the file so that no offset
   moves. Namespace `https://pregen.org/ns/after-gen/1/`, prefix `pgag`: `pgag:Record` holds the
   envelope as canonical JSON text; `pgag:Id`, `pgag:Registry` (the prefix) and `pgag:Status`
-  (the status address) are copies for people and tools, never read as the record. The names
-  `pgag:Code` and `pgag:Licence` are reserved for readable codes of the approval and of its
-  licence, which a verifier will recompute from the signed record. An existing XMP
+  (the status address) are copies for people and tools, never read as the record. `pgag:Code`
+  and `pgag:Licence` are the readable codes (see "The readable codes" below); unlike the other
+  copies they are checked. An existing XMP
   box keeps its properties and is rewritten in place (see "What keeps the hash"). So that every reader finds the same record, the packet
   is read by a fixed lexical rule, not by an XML library: it holds no `<!--`, `<![CDATA[`,
   `<!DOCTYPE` or `<!ENTITY`, and no `<?` other than the packet's opening `<?xpacket begin=`
@@ -304,6 +304,30 @@ The record is the same whatever carries it, and a verifier checks it the same wa
 
 A record found in a file proves nothing by being there: it is checked like any other, and a
 record copied into another file names a hash that file does not have.
+
+### The readable codes
+
+Beside the record a file may carry two ToG codes a person can read and type: the code of this
+approval and, when its basis is a licence, the licence's code. They follow the ToG code design
+(its grammar, the TOG check table in which I, L, O and U take 32 to 35, and the five event
+kinds). In `after-gen/1` a record is signed by the person's own registry alone (no home
+countersignature), so each code has one prefix:
+- **The approval:** `TOG-AG-<prefix>-XXXX-XXXX-XXXX` under the person's terms,
+  `TOG-AG-LIC-<prefix>-XXXX-XXXX-XXXX` under a licence. `<prefix>` is the registry prefix of
+  `subject_ref`. The eleven tail symbols are the first 55 bits of the record's message id in
+  Crockford base32, most significant first. The last symbol is the check over the body: the
+  prefix's length, `0`, the kind digit (`AG` 3, `AG-LIC` 4), the prefix, the tail.
+- **The licence:** `TOG-LIC-<prefix>-XXXX-XXXX-XXXX`, the same construction over the message id
+  of the `pg.grant.v1` that `basis.licence` names, with kind digit 5.
+
+A registry never signs a record whose code would not exist: when the check would be one of
+`* ~ $ = !`, or the tail would begin `ZZZZ` (kept for examples), it signs again a second later.
+
+**Copies, never authority.** In XMP they are `pgag:Code` and `pgag:Licence`, each at most once,
+read by the same lexical rule as `pgag:Record`. A verifier recomputes both from the signed
+record and refuses the file when a copy differs from what it computes, when `pgag:Licence` is
+present under a terms basis, or when the licence's code cannot be formed. A missing copy is not
+a refusal: the record is enough. Like the record, the copies lie outside `media/1`.
 
 ## The procedure
 
@@ -324,8 +348,10 @@ record copied into another file names a hash that file does not have.
    unavailable; or about a file already approved under this licence. Where the registry masks
    an unpublished subject from a party it has not vetted (`provider-identity`, P-5a), it gives
    that party the same refusal whatever the subject's state, so a request learns nothing.
-3. **The approver decides,** after viewing the file: approve as asked, approve a narrower
-   scope, or refuse. Silence approves nothing: a request undecided within the review period
+3. **The person decides,** after viewing the file: approve as asked, approve a narrower
+   scope, or refuse. An agency with the person's mandate may refuse a request the person has
+   not decided; the refusal is labelled as the agency's, and the person may still approve it
+   within the review period. Silence approves nothing: a request undecided within the review period
    (the registry's policy; 14 days in the reference registry) expires.
 4. **The record.** On approval the registry checks everything in step 2 again, as of now
    (a `not_after` already past is refused), counts one use of the licence, keeps the decision
@@ -385,7 +411,7 @@ The libraries implement step 1 as `media_hash` / `mediaHash`, step 2 as `read_af
 | `basis` | the requester names the licence, or the registry the terms version in force | the registry's signature and its count; the terms record's own signature | a holder exceeding the number of uses, or claiming terms that do not allow it | counted once per record, at signing, against the licence; the terms version is checked as of signing |
 | `scope` | the requester asks; the approver approves | the approver's act; the registry checks it against the licence and the floor | a holder wanting a wider scope | only within the licence; never wider than asked |
 | `scope.categories` | the requester declares | no one, until a finding | a holder hiding an intimate category | the approver sees the file; an intimate category is refused even if declared; a false declaration stays the requester's statement on record |
-| `approval` | the subject, or a representative within its mandate | the subject's key; the registry with a second factor; the representative's key and the mandate | someone acting in the subject's name | three named forms only, and the record says which |
+| `approval` | the subject alone | the subject's key; or the registry, on the subject's own instruction, with a second factor | someone acting in the subject's name, an agency included | two named forms only, and the record says which; no mandate approves |
 | `issued_at` | the registry | the registry | a holder wanting the record to look earlier | the record is after the content by definition; an earlier date gains nothing it does not already state |
 | status `state` | the registry | the registry's signature, five-minute life | a holder hiding a withdrawal | a status is fetched live; an old one expires |
 
@@ -397,12 +423,12 @@ the reference registry or in both libraries.
 **Laundering**
 1. A record without an approval: from silence, an expired review period, or the request itself.
 2. An approval by the holder, the requester, a provider, a platform or another registry.
-3. An approval by a representative whose mandate does not list `after_gen`, has ended or
-   expired, is for another subject, or whose limits the scope exceeds.
+3. An approval by a representative, under any mandate; and a refusal by a representative
+   whose mandate does not list `after_gen`, has ended or expired, or is for another subject.
 4. An approval on instruction that names no second factor; `self` that names one; `self` for a
    subject whose key the registry holds.
-5. A decision signed by a key that is not the subject's (for `self`) or the representative's
-   (for `agent`), or that names another request.
+5. A decision signed by a key that is not the subject's (to approve) or a mandated
+   representative's (to refuse), or that names another request.
 
 **The file**
 

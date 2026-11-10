@@ -57,8 +57,8 @@ AG_CONSTANTS = {"kind": "ratification", "label": "approved after generation",
                 "not": ["pre_generation_permission", "statement_of_origin"]}
 AG_REQUEST_MEMBERS = {"signers", "requester", "subject_ref", "licence", "content", "scope", "issued_at", "nonce"}
 AG_SCOPE_MEMBERS = {"purposes", "categories", "territories", "channels", "project", "not_after"}
-AG_APPROVALS = {"self": {"assent", "decision"}, "registry": {"assent", "instruction", "factor"},
-                "agent": {"assent", "agent", "mandate", "decision", "factor"}}
+AG_APPROVALS = {"self": {"assent", "decision"}, "registry": {"assent", "instruction", "factor"}}  # a mandate never approves
+AG_OPEN = ("pending", "agent_refused")  # undecided by the person: an agency's refusal closes nothing for them
 SANDBOX_LEGAL = {"sha256": hashlib.sha256(b"PRE-GEN sandbox template 1: a test record for test subjects. It governs "
                                           b"nothing.\n").hexdigest(),
                  "url": "https://www.pregen.org/test/terms-template-1.txt"}
@@ -1214,12 +1214,13 @@ class Registry:
         the period again inside its own transaction."""
         with self.tx() as db:
             db.execute("UPDATE after_gen_requests SET state = 'expired', decided_at = created_at + ?, preview_url = NULL, "
-                       "review_hash = NULL WHERE state = 'pending' AND created_at <= ?",
-                       (AG_REVIEW, self.clock() - AG_REVIEW))
+                       "review_hash = NULL WHERE state IN (?, ?) AND created_at <= ?",
+                       (AG_REVIEW, *AG_OPEN, self.clock() - AG_REVIEW))
 
     @staticmethod
-    def _ag_pending(row, now: int) -> bool:
-        return row is not None and row["state"] == "pending" and now < row["created_at"] + AG_REVIEW
+    def _ag_open(row, now: int) -> bool:
+        """Undecided by the person (pending, or refused by an agency only) and within the review period."""
+        return row is not None and row["state"] in AG_OPEN and now < row["created_at"] + AG_REVIEW
 
     @staticmethod
     def _ag_close(db, rid: str, state: str, now: int, record: str | None = None):
@@ -1298,24 +1299,14 @@ class Registry:
         """A representative is never the holder of the same record: their hosts differ, whatever the port."""
         return urlsplit(a).hostname == urlsplit(b).hostname
 
-    def _ag_mandate(self, db, subject_ref: str, agent: str, purposes, now: int) -> str:
-        """An active mandate of this subject to this agent that lists after_gen, with `purposes` inside its
-        limits.purposes (vector 3). Returns its id."""
-        live = self._ag_mandates(db, subject_ref, agent, now)
-        if not live:
-            raise ProtocolError("PG_NO_MANDATE", "no active mandate of this subject gives this agent the power "
-                                "after_gen", status=403)
-        fit = next((m for m in live if set(purposes) <= set(json.loads(m["limits"])["purposes"])), None)
-        if fit is None:
-            raise ProtocolError("PG_SCOPE_VIOLATION", "the scope exceeds the mandate's limits.purposes", status=403)
-        return fit["id"]
-
     def after_gen_decide(self, agent: str, env) -> dict:
         """POST /v2/after-gen/decisions: a pg.after_gen_decision.v1 {signers, request, outcome, scope (approve only),
         issued_at}, signed by the subject's own key (custody self; role subject) or by a representative's key from its
         own domain (role agent; X-Provider-ID names it) under a mandate listing after_gen (vectors 2, 3, 5). An agent
         learns nothing of a request, not even that it exists, unless it holds a live after_gen mandate of its subject:
-        an unknown request and one it may not decide are the same 404 (step 4)."""
+        an unknown request and one it may not decide are the same 404 (step 4). A mandate never approves: an agent may
+        only refuse a pending request, which becomes agent_refused and stays open for the subject's own decision until
+        the review period ends (The mandate; step 3)."""
         self._ag_on()
         body = env.get("body") if isinstance(env, dict) else None
         signers = body.get("signers") if isinstance(body, dict) else None
@@ -1339,42 +1330,45 @@ class Registry:
                                                                               self.clock())
         if hidden or role == "subject" and self._own_key_body(env, "pg.after_gen_decision.v1", s) is None:   # vector 4
             raise ProtocolError("PG_NOT_FOUND", "no such request", status=404)
+        if role == "agent" and body["outcome"] == "approve":                             # vectors 3, 5
+            raise ProtocolError("PG_NO_MANDATE", "a mandate never approves: only the person approves", status=403)
         now, did = self.clock(), message_id("pg.after_gen_decision.v1", body)
         if abs(now - body["issued_at"]) > AG_SKEW:
             raise ProtocolError("PG_MALFORMED", "issued_at is more than 300 seconds off")
         self._ag_expire()
         with self.tx() as db:
             row = db.execute("SELECT * FROM after_gen_requests WHERE id = ?", (row["id"],)).fetchone()
-            if not self._ag_pending(row, now):                                           # vector 1: never after expiry
+            if not self._ag_open(row, now) or role == "agent" and row["state"] != "pending":   # vector 1
                 raise ProtocolError("PG_REQUEST_CLOSED", f"this request is {row['state']}", status=409)
-            scope = self._ag_scope(body["scope"]) if body["outcome"] == "approve" else json.loads(row["scope"])
-            if not self._ag_within(scope, json.loads(row["scope"])):
-                raise ProtocolError("PG_SCOPE_VIOLATION", "a decision never approves a scope wider than the request's")
-            approval = {"assent": "self", "decision": did}
-            if role == "agent":
+            if role == "agent":                                     # a refusal only; it keeps the request open
                 if self._same_host(agent, row["requester"]):                             # vectors 2, 3
                     raise ProtocolError("PG_NO_MANDATE", "a representative is never the holder of the same record",
                                         status=403)
-                approval = {"assent": "agent", "agent": agent, "decision": did, "factor": "signature",   # a refusal
-                            "mandate": self._ag_mandate(db, row["subject_ref"], agent, scope["purposes"]   # closes
-                                                        if body["outcome"] == "approve" else [], now)}
+                if not self._ag_mandates(db, row["subject_ref"], agent, now):            # ended since the check above
+                    raise ProtocolError("PG_NO_MANDATE", "no active mandate of this subject gives this agent the "
+                                        "power after_gen", status=403)
+                db.execute("UPDATE after_gen_requests SET state = 'agent_refused' WHERE id = ?", (row["id"],))
+                return self._ag_state({**dict(row), "state": "agent_refused"})
             if body["outcome"] == "refuse":
                 self._ag_close(db, row["id"], "refused", now)
                 return {"request": row["id"], "state": "refused"}
+            scope = self._ag_scope(body["scope"])
+            if not self._ag_within(scope, json.loads(row["scope"])):
+                raise ProtocolError("PG_SCOPE_VIOLATION", "a decision never approves a scope wider than the request's")
             return {"request": row["id"], "state": "approved",
-                    "record": self._sign_after_gen(db, row, scope, approval, now, decision=env)}
+                    "record": self._sign_after_gen(db, row, scope, {"assent": "self", "decision": did}, now,
+                                                   decision=env)}
 
     def _sign_after_gen(self, db, row, scope: dict, approval: dict, now: int, decision=None) -> str:
         """Step 4: every check of step 2 again as of now, one use of the licence counted, the decision envelope kept
-        with the record, and pg.after_gen.v1 signed by the registry. `approval` is exactly one of the three forms
-        (vector 4). Returns the record id; its status is at GET {api}/v2/after-gen/{id}, which the record cannot name
-        (its id is the hash of its body)."""
+        with the record, and pg.after_gen.v1 signed by the registry. `approval` is exactly one of the two forms, the
+        person's own act; a mandate never approves (vectors 3, 4). Returns the record id; its status is at
+        GET {api}/v2/after-gen/{id}, which the record cannot name (its id is the hash of its body)."""
         a = approval
         if set(a) != AG_APPROVALS.get(a.get("assent"), set()) \
-                or a["assent"] == "registry" and (a["factor"] not in AG_FACTORS or not _hex64(a["instruction"])) \
-                or a["assent"] == "agent" and (a["factor"] != "signature" or self._same_host(a["agent"], row["requester"])):
-            raise ProtocolError("PG_MALFORMED", "approval is self {assent, decision}, registry {assent, instruction, "
-                                "factor} or agent {assent, agent, mandate, decision, factor: signature}")
+                or a["assent"] == "registry" and (a["factor"] not in AG_FACTORS or not _hex64(a["instruction"])):
+            raise ProtocolError("PG_MALFORMED", "approval is self {assent, decision} or registry {assent, instruction, "
+                                "factor}: only the person approves, never under a mandate")
         if a["assent"] == "self" and db.execute("SELECT custody FROM subjects WHERE code = ?",
                                                 (row["subject_ref"],)).fetchone()["custody"] != "self":
             raise ProtocolError("PG_PERSONAL_SIGNATURE_REQUIRED", "self is the subject's own key", status=403)
@@ -1405,7 +1399,7 @@ class Registry:
         with self.tx() as db:
             now = self.clock()
             row = db.execute("SELECT * FROM after_gen_requests WHERE id = ?", (rid,)).fetchone()
-            if not self._ag_pending(row, now):
+            if not self._ag_open(row, now):
                 raise ValueError(f"no pending request {rid}" + (f": it is {row['state']}" if row else ""))
             asked = json.loads(row["scope"])
             scope = self._ag_scope({**asked, "purposes": sorted(set(purposes))} if purposes else asked)
@@ -1420,17 +1414,17 @@ class Registry:
         self._ag_expire()
         with self.tx() as db:
             now = self.clock()
-            if not self._ag_pending(db.execute("SELECT * FROM after_gen_requests WHERE id = ?", (rid,)).fetchone(), now):
+            if not self._ag_open(db.execute("SELECT * FROM after_gen_requests WHERE id = ?", (rid,)).fetchone(), now):
                 raise ValueError(f"no pending request {rid}")
             self._ag_close(db, rid, "refused", now)
 
     def after_gen_request_info(self, rid: str | None = None, token: str | None = None):
-        """A pending request for its approver, with its viewing link: by id (the operator), or by a sandbox review
-        token. None when there is none."""
+        """A request the person has not decided (pending, or refused by an agency only) for its approver, with its
+        viewing link: by id (the operator), or by a sandbox review token. None when there is none."""
         self._ag_on()
         self._ag_expire()
-        row = self._row("SELECT * FROM after_gen_requests WHERE state = 'pending' AND (id = ? OR review_hash = ?)",
-                        (rid or "", _hash_token(token) if token else ""))
+        row = self._row("SELECT * FROM after_gen_requests WHERE state IN (?, ?) AND (id = ? OR review_hash = ?)",
+                        (*AG_OPEN, rid or "", _hash_token(token) if token else ""))
         return dict(row) if row else None
 
     def after_gen_review(self, token: str, decision: str, evidence: str) -> str | None:
@@ -1445,7 +1439,7 @@ class Registry:
             now = self.clock()
             row = db.execute("SELECT * FROM after_gen_requests WHERE id = ? AND review_hash = ?",
                              (row["id"], _hash_token(token))).fetchone()
-            if not self._ag_pending(row, now):
+            if not self._ag_open(row, now):
                 raise ProtocolError("PG_NOT_FOUND", "this page was answered already", status=404)
             if decision == "refuse":
                 self._ag_close(db, row["id"], "refused", now)
@@ -1482,7 +1476,7 @@ class Registry:
 
     def after_gen_lookup(self, media: str) -> dict:
         """GET /v2/after-gen?media=: approved records only, withdrawn and expired ones included (their status says so);
-        never a pending, refused or expired request (vector 17). Answered with after-gen off too (step 5)."""
+        never a pending, agency-refused, refused or expired request (vector 17). Answered with after-gen off too (step 5)."""
         if not _hex64(media):
             raise ProtocolError("PG_MALFORMED", "media is a media/1 hash, 64 lowercase hex")
         self._ag_expire()
@@ -1505,8 +1499,9 @@ class Registry:
 
     def add_mandate(self, subject_ref: str, agent: str, *, powers, purposes, not_after: int, instruction: str,
                     factor: str | None) -> str:
-        """pg.mandate.v1 signed by the registry on the subject's instruction; a mandate opens, so it names its second
-        factor. Returns its id."""
+        """pg.mandate.v1 signed by the registry on the subject's instruction, with its second factor. The power
+        after_gen lets the agent refuse a request the subject has not decided, and nothing more: a mandate never
+        approves. Returns its id."""
         if factor not in AG_FACTORS or not _hex64(instruction):
             raise ValueError("a mandate opens: it needs --instruction-sha256 (64 hex) and --factor authenticator|email")
         return self._store_mandate(seal("pg.mandate.v1", {

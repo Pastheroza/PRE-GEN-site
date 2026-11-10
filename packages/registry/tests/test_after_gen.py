@@ -1,5 +1,6 @@
-"""AFTER-GEN (spec/drafts/after-gen.md, working draft): requests, the three approval forms, the record, its status, the
-lookup by hash, and every must-reject vector a registry enforces. Times come from the registry's clock, never sleeps."""
+"""AFTER-GEN (spec/drafts/after-gen.md, working draft): requests, the two approval forms (a mandate refuses only), the
+record, its status, the lookup by hash, and every must-reject vector a registry enforces. Times come from the registry's
+clock, never sleeps."""
 import json
 import re
 import secrets
@@ -115,7 +116,7 @@ def record_body(w, rid, **kw):
     return w.status(r.json()["record"])[0]
 
 
-# ── the three forms of approval, and the sandbox's page ─────────────────
+# ── the two forms of approval, an agency's refusal, and the sandbox's page ──
 
 def test_the_subject_approves_with_their_own_key_and_the_record_stands():
     w = World()
@@ -150,16 +151,72 @@ def test_the_subject_approves_with_their_own_key_and_the_record_stands():
     assert status["state"] == "active"
 
 
-def test_an_agent_approves_a_narrower_scope_under_a_mandate():
+def test_an_agent_approve_is_refused_even_under_a_live_mandate():
     w = World(max_uses=5)
-    mandate = w.mandate()
+    w.mandate()
     rid = w.pending()
-    narrow = w.scope(channels=["social"], territories=["ES"])
-    d = w.decision(rid, role="agent", scope=narrow)
-    body = record_body(w, rid, agent=AGENCY, env=d)
-    assert body["approval"] == {"assent": "agent", "agent": AGENCY, "mandate": mandate, "factor": "signature",
-                                "decision": message_id(d["type"], d["body"])}
-    assert body["scope"] == narrow and body["basis"]["use"] == {"n": 1, "of": 5} and body["holder"] == w.p.id
+    r = w.decide(rid, role="agent", agent=AGENCY, scope=w.scope(channels=["social"], territories=["ES"]))
+    refused(r, "PG_NO_MANDATE", 403)                                             # vectors 3, 5: a mandate never approves
+    assert "never approves" in r.json()["error_description"]
+    assert w.state(rid).json()["state"] == "pending"                             # nothing changed for the person
+    assert w.reg.db.execute("SELECT COUNT(*) FROM after_gen_records").fetchone()[0] == 0
+
+
+def test_an_agent_refuses_and_the_person_later_approves():
+    w = World()
+    w.mandate(subject=w.me)
+    rid = w.pending(subject=w.me)
+    w.clock.t += 3600
+    r = w.decide(rid, role="agent", agent=AGENCY, outcome="refuse")
+    assert r.status_code == 200 and r.json() == {"request": rid, "state": "agent_refused",
+                                                 "review_until": w.clock.t - 3600 + AG_REVIEW}, r.text
+    assert w.state(rid).json()["state"] == "agent_refused"                       # labelled as the agency's
+    assert w.row(rid)["preview_url"] == "https://preview.example/v/1"            # the person may still view it
+    refused(w.decide(rid, role="agent", agent=AGENCY, outcome="refuse"), "PG_REQUEST_CLOSED", 409)   # once
+    d = w.decision(rid)
+    body = record_body(w, rid, env=d)                                            # the person's own decision wins
+    assert body["approval"] == {"assent": "self", "decision": message_id(d["type"], d["body"])}
+    assert w.row(rid)["preview_url"] is None and w.state(rid).json()["state"] == "approved"
+    maya = w.pending(media="cd" * 32)                                            # on instruction at the registry
+    w.mandate()
+    assert w.decide(maya, role="agent", agent=AGENCY, outcome="refuse").json()["state"] == "agent_refused"
+    assert w.reg.after_gen_request_info(rid=maya)["state"] == "agent_refused"   # `after-gen show` finds it
+    rec = w.reg.approve_after_gen(maya, instruction=INSTRUCTION, factor="email")
+    assert w.status(rec)[0]["approval"]["assent"] == "registry"
+    no = w.pending(subject=w.me, media="ef" * 32)                                # or the person refuses it themself
+    w.decide(no, role="agent", agent=AGENCY, outcome="refuse")
+    assert w.decide(no, outcome="refuse").json()["state"] == "refused" and w.row(no)["preview_url"] is None
+    page = w.ask(media="11" * 32)                                                # and on the sandbox's page
+    w.decide(page.json()["request"], role="agent", agent=AGENCY, outcome="refuse")
+    path = page.json()["review_url"].removeprefix("https://test.example")
+    assert "An agency acting under your mandate refused this request" in w.c.get(path).text
+    assert "Approved" in w.c.post(path, data={"decision": "approve"}).text
+
+
+def test_an_agent_refusal_the_person_never_decides_expires():
+    w = World()
+    w.mandate()
+    rid = w.pending()
+    w.decide(rid, role="agent", agent=AGENCY, outcome="refuse")
+    w.clock.t += AG_REVIEW
+    assert w.state(rid).json()["state"] == "expired"
+    assert (w.row(rid)["preview_url"], w.row(rid)["review_hash"]) == (None, None)
+    refused(w.decide(rid, role="agent", agent=AGENCY, outcome="refuse"), "PG_REQUEST_CLOSED", 409)
+    with pytest.raises(ValueError, match="no pending request"):
+        w.reg.approve_after_gen(rid, instruction=INSTRUCTION, factor="email")
+    assert w.reg.after_gen_request_info(rid=rid) is None
+
+
+def test_an_agent_refusal_is_not_public():
+    w = World()
+    w.mandate()
+    rid = w.pending()
+    w.decide(rid, role="agent", agent=AGENCY, outcome="refuse")
+    unknown = w.c.get(f"/v2/after-gen?media={'44' * 32}")
+    r = w.c.get(f"/v2/after-gen?media={MEDIA}")
+    assert (r.status_code, r.content, r.headers) == (unknown.status_code, unknown.content, unknown.headers)
+    assert w.c.get(f"/v2/after-gen/{rid}").json() == w.c.get(f"/v2/after-gen/{'e' * 64}").json()
+    assert w.reg.db.execute("SELECT COUNT(*) FROM after_gen_records").fetchone()[0] == 0
 
 
 def test_the_sandbox_review_page_is_the_test_creators_with_a_simulated_factor():
@@ -261,9 +318,9 @@ def test_mandate_signed_by_the_subjects_own_key():
     w = World()
     body = {"subject_ref": w.me, "agent": AGENCY, "powers": ["after_gen"], "limits": {"purposes": ["commercial"]},
             "not_after": w.clock.t + 86400, "assent": "self", "issued_at": w.clock.t}
-    mid = w.reg.add_mandate_envelope(sign(w.own, "subject", "pg.mandate.v1", body))
-    record = record_body(w, w.pending(subject=w.me), role="agent", agent=AGENCY)
-    assert record["approval"]["mandate"] == mid
+    w.reg.add_mandate_envelope(sign(w.own, "subject", "pg.mandate.v1", body))
+    rid = w.pending(subject=w.me)
+    assert w.decide(rid, role="agent", agent=AGENCY, outcome="refuse").json()["state"] == "agent_refused"
     with pytest.raises(ProtocolError):                                          # another key
         w.reg.add_mandate_envelope(sign(lib.new_private_key_hex(), "subject", "pg.mandate.v1", body))
     with pytest.raises(ValueError, match="custody self"):                       # the registry holds Maya's key
@@ -293,11 +350,12 @@ def test_2_never_the_requester_another_party_or_a_key_the_registry_holds():
     rid = w.pending(subject=w.me)
     refused(w.decide(rid, key=w.p.key), "PG_NOT_FOUND", 404)                     # the requester's key as the subject
     w.mandate(subject=w.me, agent=w.p.id)                                       # even with a mandate of its own
-    refused(w.decide(rid, role="agent", key=w.p.key, agent=w.p.id), "PG_NO_MANDATE", 403)
+    refused(w.decide(rid, role="agent", key=w.p.key, agent=w.p.id, outcome="refuse"), "PG_NO_MANDATE", 403)
     port = OpenProvider(w.reg, w.c, url=w.p.id + ":8443")                        # the holder's host on another port
     w.c.post("/v2/sandbox/party", json=port.doc)
     w.mandate(subject=w.me, agent=port.id)
-    refused(w.decide(rid, role="agent", key=port.key, agent=port.id), "PG_NO_MANDATE", 403)
+    refused(w.decide(rid, role="agent", key=port.key, agent=port.id, outcome="refuse"), "PG_NO_MANDATE", 403)
+    assert w.row(rid)["state"] == "pending"
     refused(w.decide(rid, role="agent", agent=AGENCY), "PG_NOT_FOUND", 404)      # another party, no mandate
     managed = w.pending()                                                       # Maya: the registry holds her key
     held = w.reg.db.execute("SELECT key_private FROM subjects WHERE code = ?", (w.s,)).fetchone()[0]
@@ -306,10 +364,10 @@ def test_2_never_the_requester_another_party_or_a_key_the_registry_holds():
     assert w.reg.db.execute("SELECT COUNT(*) FROM after_gen_records").fetchone()[0] == 0
 
 
-def test_3_a_mandate_must_list_after_gen_be_live_be_for_this_subject_and_cover_the_scope():
+def test_3_a_mandate_never_approves_and_refuses_only_when_it_lists_after_gen_is_live_and_for_this_subject():
     w = World()
     rid = w.pending()
-    agent = {"role": "agent", "agent": AGENCY}
+    agent = {"role": "agent", "agent": AGENCY, "outcome": "refuse"}
     w.mandate(powers=("sign_contracts",))                                       # without a live after_gen mandate
     refused(w.decide(rid, **agent), "PG_NOT_FOUND", 404)                         # of this subject, the request is
     w.reg.end_mandate(w.mandate())                                              # as unknown as one that is not there
@@ -319,10 +377,9 @@ def test_3_a_mandate_must_list_after_gen_be_live_be_for_this_subject_and_cover_t
     refused(w.decide(rid, **agent), "PG_NOT_FOUND", 404)                         # expired
     w.mandate(subject=w.me)
     refused(w.decide(rid, **agent), "PG_NOT_FOUND", 404)                         # another subject's
-    w.mandate(purposes=("editorial",))
-    refused(w.decide(rid, **agent), "PG_SCOPE_VIOLATION", 403)                   # beyond limits.purposes
-    w.mandate(purposes=("commercial", "editorial"))
-    assert w.decide(rid, **agent).json()["state"] == "approved"
+    w.mandate()
+    refused(w.decide(rid, **{**agent, "outcome": "approve"}), "PG_NO_MANDATE", 403)   # live: still never approves
+    assert w.decide(rid, **agent).json()["state"] == "agent_refused"
 
 
 def test_4_registry_names_a_factor_and_self_never_does():
@@ -335,8 +392,8 @@ def test_4_registry_names_a_factor_and_self_never_does():
                      {"assent": "registry", "instruction": INSTRUCTION},                 # registry naming none
                      {"assent": "registry", "instruction": INSTRUCTION, "factor": "sms"},
                      {"assent": "holder", "decision": "d" * 64},
-                     {"assent": "agent", "agent": w.p.id + ":8443", "mandate": "e" * 64, "decision": "d" * 64,
-                      "factor": "signature"}):                                    # the holder's host, another port
+                     {"assent": "agent", "agent": AGENCY, "mandate": "e" * 64, "decision": "d" * 64,
+                      "factor": "signature"}):                                    # a mandate never approves
         with pytest.raises(ProtocolError, match="PG_MALFORMED"), w.reg.tx() as db:
             w.reg._sign_after_gen(db, row, scope, approval, w.clock.t)
     managed = w.row(w.pending())
@@ -445,11 +502,9 @@ def test_15_the_licence_is_for_this_subject_and_holder_valid_with_a_use_left_and
     for scope in (w.scope(purposes=["research"]), w.scope(categories=["alcohol"]),
                   w.scope(not_after=w.clock.t + 366 * 86400)):
         refused(w.ask(scope=scope), "PG_SCOPE_VIOLATION", 403)                   # wider than the licence
-    rid = w.pending()
-    refused(w.decide(rid, role="agent", agent=AGENCY, scope=w.scope(channels=["*"])), "PG_NOT_FOUND", 404)
-    w.mandate()
-    refused(w.decide(rid, role="agent", agent=AGENCY, scope=w.scope(channels=["*"])), "PG_SCOPE_VIOLATION")  # wider
-    assert w.decide(rid, role="agent", agent=AGENCY).json()["state"] == "approved"   # than the request
+    rid = w.pending(subject=w.me)
+    refused(w.decide(rid, scope=w.scope(channels=["*"])), "PG_SCOPE_VIOLATION")    # wider than the request
+    assert w.decide(rid).json()["state"] == "approved"
 
 
 def test_15_uses_are_one_counter_with_the_allows_of_the_limits_extension():
@@ -541,7 +596,7 @@ def test_18_the_viewing_link_goes_to_the_approver_only_and_is_gone_after_a_decis
 
 def test_the_library_accepts_every_record_and_status_the_registry_signs():
     """pregen.check_after_gen and check_after_gen_status, against a directory that lists this registry, on records of
-    each approval form; requests and decisions built by the library's own helpers."""
+    each approval form (one after an agency's refusal); requests and decisions built by the library's own helpers."""
     w = World()
     steward = Key()
     d = {"schema": "pregen.registries.v2", "sequence": 1, "steward_key_id": steward.id, "registries": [
@@ -561,12 +616,12 @@ def test_the_library_accepts_every_record_and_status_the_registry_signs():
     w.mandate()
     own = ask(w.me, w.mine, "11" * 32)
     agent = ask(w.s, w.g, "22" * 32)
+    assert w.c.post("/v2/after-gen/decisions", headers={"X-Provider-ID": AGENCY}, json=lib.after_gen_decision(
+        agent, "refuse", None, w.agency_key, "agent", now=w.clock.t)).json()["state"] == "agent_refused"
     records = [w.c.post("/v2/after-gen/decisions", json=lib.after_gen_decision(
         own, "approve", w.scope(not_after=w.clock.t + 86400), w.own, "subject", now=w.clock.t)).json()["record"],
-        w.c.post("/v2/after-gen/decisions", headers={"X-Provider-ID": AGENCY}, json=lib.after_gen_decision(
-            agent, "approve", w.scope(not_after=w.clock.t + 86400), w.agency_key, "agent", now=w.clock.t)).json()["record"],
-        w.reg.approve_after_gen(ask(w.s, w.g, "33" * 32), instruction=INSTRUCTION, factor="authenticator")]
-    for rec, assent in zip(records, ("self", "agent", "registry")):
+        w.reg.approve_after_gen(agent, instruction=INSTRUCTION, factor="authenticator")]
+    for rec, assent in zip(records, ("self", "registry")):
         out = w.c.get(f"/v2/after-gen/{rec}").json()
         checked = lib.check_after_gen(out["record"], directory, get_json)
         assert (checked["id"], checked["approval"]["assent"]) == (rec, assent)
@@ -574,8 +629,8 @@ def test_the_library_accepts_every_record_and_status_the_registry_signs():
         assert checked["status_url"] == f"https://test.example/v2/after-gen/{rec}"
         assert lib.check_after_gen_status(out["status"], out["record"], directory, get_json, now=w.clock.t)["state"] == "active"
     w.clock.t += 60
-    w.reg.withdraw_after_gen(records[2], instruction=INSTRUCTION)
-    out = w.c.get(f"/v2/after-gen/{records[2]}").json()
+    w.reg.withdraw_after_gen(records[1], instruction=INSTRUCTION)
+    out = w.c.get(f"/v2/after-gen/{records[1]}").json()
     assert lib.check_after_gen_status(out["status"], out["record"], directory, get_json, now=w.clock.t) == {
         "state": "withdrawn", "approved_at": w.clock.t - 60, "withdrawn_at": w.clock.t, "not_after": w.clock.t - 60 + 86400}
     w.clock.t += 86400                                                            # a directory a day old is loaded again
@@ -711,12 +766,10 @@ def test_use_n_is_the_licences_count_when_signed_so_a_give_back_can_repeat_it():
 def test_the_registry_keeps_the_decision_it_received_and_an_agent_without_a_mandate_learns_nothing():
     w = World()
     d = w.decision(own := w.pending(subject=w.me))
-    w.mandate()
-    a = w.decision(agent := w.pending(), role="agent")
-    records = [w.decide(own, env=d).json()["record"], w.decide(agent, agent=AGENCY, env=a).json()["record"],
+    records =[w.decide(own, env=d).json()["record"],
                w.reg.approve_after_gen(w.pending(media="cd" * 32), instruction=INSTRUCTION, factor="email")]
     kept = [w.reg.db.execute("SELECT decision FROM after_gen_records WHERE id = ?", (r,)).fetchone()[0] for r in records]
-    assert [json.loads(k) if k else None for k in kept] == [d, a, None]
+    assert [json.loads(k) if k else None for k in kept] == [d, None]
     assert set(w.c.get(f"/v2/after-gen/{records[0]}").json()) == {"record", "status"}         # kept, not published
     intruder = OpenProvider(w.reg, w.c, url="https://intruder.example")
     w.c.post("/v2/sandbox/party", json=intruder.doc)

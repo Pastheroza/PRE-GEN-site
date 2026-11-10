@@ -840,8 +840,7 @@ const wordsOrAll = (v, re, most) => sortedUnique(v) && v.length > 0
 const BODY = ["signers", "kind", "label", "notice", "not", "subject_ref", "content", "request", "holder", "basis",
   "scope", "approval", "issued_at"]; // no status_url: the id hashes the body, so a verifier builds {api}/v2/after-gen/{id}
 const BASIS = { licence: ["kind", "licence", "use"], terms: ["kind", "terms"] };
-const APPROVAL = { self: ["assent", "decision"], registry: ["assent", "instruction", "factor"],
-  agent: ["assent", "agent", "mandate", "decision", "factor"] };
+const APPROVAL = { self: ["assent", "decision"], registry: ["assent", "instruction", "factor"] }; // a mandate never approves
 
 function partyId(v, what) {
   try { return checkProviderUrl(v, { allowPort: true }); } catch { A(`${what} is not a party id (https://<domain>)`); }
@@ -891,25 +890,19 @@ function recordShape(b) {
   if (!wordsOrAll(s.channels, /^[a-z0-9-]{1,32}$/, 64)) A('scope.channels: at most 64 sorted words of [a-z0-9-]{1,32}, or ["*"]');
   if (typeof s.project !== "string" || [...s.project].length < 1 || [...s.project].length > 200) A("scope.project: 1 to 200 printable characters");
   if (!time(s.not_after)) A("scope.not_after is an integer time");
-  const a = b.approval; // assent is one of the three words, never a list (which Object.hasOwn would read as a string)
+  const a = b.approval; // assent is one of the two words, never a list (which Object.hasOwn would read as a string)
   const form = isObject(a) && typeof a.assent === "string" && Object.hasOwn(APPROVAL, a.assent) ? APPROVAL[a.assent] : null;
-  if (!form || !members(a, form)) A("approval is exactly one of its three forms: self, registry or agent");
+  if (!form || !members(a, form)) A("approval is exactly one of its two forms: self or registry; only the person approves, never under a mandate");
   if (a.assent === "self" && !hex64(a.decision)) A("approval self names the subject's decision");
   if (a.assent === "registry" && (!hex64(a.instruction) || !["authenticator", "email"].includes(a.factor))) {
     A("approval registry names the instruction and its second factor: authenticator or email");
-  }
-  if (a.assent === "agent") {
-    if (!hex64(a.mandate) || !hex64(a.decision) || a.factor !== "signature") A("approval agent names the mandate, the decision and factor signature");
-    partyId(a.agent, "approval.agent");
-    if (new URL(a.agent).hostname === new URL(b.holder).hostname) A("a representative is never the holder of the same record");
   }
   if (!time(b.issued_at)) A("issued_at is an integer time");
   if (s.not_after <= b.issued_at) A("scope.not_after is later than issued_at");
 }
 
 const approvedBy = (a) => (a.assent === "self" ? "approved by the person"
-  : a.assent === "registry" ? "approved on the person's instruction at the registry"
-  : `approved by ${new URL(a.agent).hostname} under mandate ${a.mandate}`);
+  : "approved on the person's own instruction at the registry");
 
 /** Steps 3 and 4 of "How a verifier checks a file": the record's shape and constants, its signature by exactly one
  * registry key the directory lists for the subject's prefix at issued_at (a revoked registry's records fail), the

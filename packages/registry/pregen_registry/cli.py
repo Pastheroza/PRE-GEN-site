@@ -19,11 +19,12 @@
   pregen-registry subject opt-out --dir DATA --code PG-…  (the person opted out or withdrew: refused from the next answer)
   pregen-registry subject level --dir DATA --code PG-… --level verified   (after you checked identity and authority)
   pregen-registry subject publish --dir DATA --code PG-… [--off]   (name and level public at /v2/codes, by the person's choice)
-  pregen-registry after-gen show --dir DATA REQUEST_ID        (a pending request and its viewing link, for the approver)
+  pregen-registry after-gen show --dir DATA REQUEST_ID        (a request the person has not decided and its viewing link)
   pregen-registry after-gen approve --dir DATA REQUEST_ID --instruction-sha256 HEX --factor authenticator|email [--purposes …]
   pregen-registry after-gen refuse --dir DATA REQUEST_ID
   pregen-registry after-gen withdraw --dir DATA RECORD_ID --instruction-sha256 HEX   (closing: no factor)
   pregen-registry mandate add --dir DATA SUBJECT AGENT --powers after_gen --purposes … --not-after T --instruction-sha256 HEX --factor …
+                                                              (after_gen: the agent may refuse an undecided request; a mandate never approves)
   pregen-registry mandate add --dir DATA --envelope FILE      (a pg.mandate.v1 the subject signed with their own key)
   pregen-registry mandate end --dir DATA MANDATE_ID
   pregen-registry check --api https://registry.example [--directory URL --steward HEX] [--provider-id ID --token T --subject PG-… [--purpose P] [--licensee ID]]
