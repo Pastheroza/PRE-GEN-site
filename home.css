@@ -10,7 +10,13 @@
 /* The house made of words: ToG the foundation, PRE-GEN and AFTER-GEN the walls, registries and platforms the
    ceiling, providers and marketplaces the roof, the people it protects inside. One SVG, so it scales as one;
    each word's place and size are in the SVG itself. */
-.house-wrap { position: relative; width: min(100%, calc((100svh - 61px - 124px - 72px) * 773 / 920)); margin: 0 auto; }
+.house-wrap { position: relative; margin: 0 auto; }
+/* On a wide screen the hero is exactly one screen tall: the buttons take what they need, the house the rest. */
+@media (min-width: 641px) {
+  .hero { height: calc(100svh - 61px); }
+  .word { min-height: 0; }
+  .house-wrap { height: 100%; max-width: 100%; aspect-ratio: 773 / 920; }
+}
 .house { display: block; width: 100%; height: auto; overflow: visible; }
 .house text { font-family: var(--sans); }
 
