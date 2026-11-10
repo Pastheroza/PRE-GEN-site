@@ -106,6 +106,8 @@ th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom
 th { font-weight: 600; border-bottom-color: var(--rule); white-space: nowrap; }
 tr:last-child td { border-bottom: 0; }
 td.mono, td code { white-space: nowrap; }
+/* A code on a line of its own: never broken at a dash; on a narrow screen it scrolls inside its line. */
+.codeline { display: inline-block; max-width: 100%; overflow-x: auto; white-space: nowrap; vertical-align: bottom; font-size: 0.85em; }
 
 .steps { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 0; border: 1px solid var(--rule); }
 .steps li { margin: 0; padding: 16px; border-right: 1px solid var(--soft); }
