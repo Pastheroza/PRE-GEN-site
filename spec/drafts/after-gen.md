@@ -117,9 +117,11 @@ no second factor. A mandate that does not list `after_gen` gives no power to app
 
 Putting a record into a file changes the file's bytes, so a plain hash of the file could not
 both be in the record and stay true. `media/1` hashes only what plays: the coded samples and
-the parameters that change how they decode or are shown. Adding, removing or rewriting
-metadata, an XMP packet or a C2PA manifest, or moving the movie box, leaves it unchanged.
-Changing one coded byte changes it. `after-gen/1` defines `media/1` for ISO base media files
+the parameters that change how they decode or are shown, and keeps every other box a player
+could read. Adding, removing or rewriting the record's carriers (the top-level XMP and C2PA
+boxes) or padding, or moving the movie box, leaves it unchanged. Changing one coded byte, or
+any other box, changes it: metadata inside the movie box, such as a title, is hashed, so it is
+edited before asking. `after-gen/1` defines `media/1` for ISO base media files
 (MP4, MOV, M4V).
 
 **Elements.** An element is written as a four-byte ASCII code, its value's length as an
@@ -133,26 +135,31 @@ two smaller than the count), as 64 lowercase hex characters. `leaves` is the num
 leaves. The leaves, in order:
 
 1. **The movie.** The ASCII bytes `PREGEN-MEDIA`, `0x00`, `media/1`, `0x00`, then the
-   elements `FRMT` = the ASCII bytes `isobmff`; and, from `mvhd`: `tmsc` = timescale, `rate` =
+   elements `FRMT` = the ASCII bytes `isobmff`; from `mvhd`: `tmsc` = timescale, `rate` =
    rate, `volu` = volume, `mtrx` = the nine matrix values as a list, each as the integer the
-   file stores.
+   file stores; then each child of `moov` other than `mvhd` and `trak`, kept as is (below), in
+   file order; then each top-level box other than `ftyp`, `moov`, `mdat`, `free`, `skip`,
+   `wide` and the two carrier boxes (the C2PA and XMP `uuid` boxes of "Carrying the record"),
+   kept as is, in file order.
 2. **Each track,** in increasing `track_ID`, every track whatever its handler: a player may
    play a track whose handler says `meta` or `hint`, so none is left out. The track's first leaf
    is these elements:
-   - `hdlr` = the handler type (4 bytes);
+   - `hdlr` = the handler type of `mdia`'s `hdlr` (4 bytes);
    - `tref` = for each box inside `tref`, in file order, an element whose code is that box's
-     type and whose value lists the positions (from 0, in this order of listed tracks) of the
-     tracks it names; `tref` with an empty value when the track has none;
-   - the first media header box inside `minf` (`vmhd`, `smhd`, `sthd`, `hmhd` or `nmhd`), as an
-     element of its own code whose value is its bytes after its four bytes of version and
-     flags;
+     type and whose value lists the positions (from 0, in this order of tracks) of the tracks
+     it names; `tref` with an empty value when the track has none;
+   - the first media header box inside `minf` (`vmhd`, `smhd`, `sthd`, `hmhd`, `nmhd` or
+     `gmhd`), as an element of its own code whose value is its bytes after its four bytes of
+     version and flags (all of its bytes for `gmhd`, which has none);
    - `mdts` = the timescale of `mdhd`;
    - for each sample entry of `stsd`, in order, `sent` whose value is one element: the entry's
      own code, holding the entry's bytes after its eight-byte box header;
    - `tkhd` = a list: the enabled flag (bit 0 of the flags, 0 or 1), layer, alternate group,
      volume, the nine matrix values, width, height;
    - `elst` = a list: for each edit, segment duration, media time, media rate integer and
-     media rate fraction (empty when there is no edit list).
+     media rate fraction (empty when there is no edit list);
+   - then every other box inside `trak`, `edts`, `mdia`, `minf` and `stbl`, kept as is, parent
+     by parent in that order and in file order within each.
 3. **Each sample of that track,** in decoding order, one leaf each, these elements:
    `sdsc` = sample description index, `dtim` = decoding time (the sum of earlier durations),
    `ctso` = composition offset (signed in version 1 of `ctts`, unsigned in version 0; 0 with no
@@ -160,35 +167,37 @@ leaves. The leaves, in order:
 
 Every track's leaves (its first leaf, then its samples) come before the next track's.
 
+**Read, or kept as is.** `media/1` reads these boxes and nothing else: in `moov`, `mvhd` and
+`trak`; in `trak`, `tkhd`, `tref`, `edts` and `mdia`; in `edts`, `elst`; in `mdia`, `mdhd`,
+`hdlr` and `minf`; in `minf`, the media header, `dinf` and `stbl`; in `dinf`, `dref`; in
+`stbl`, `stsd`, `stts`, `ctts`, `stsc`, `stsz`, `stco` and `co64`. Every other box in those
+places, whatever it is (`udta`, `meta`, `stss`, `sgpd`, a second `hdlr` in `minf`, a box no one
+has named yet), and every box at the top level other than those listed in leaf 1, is **kept as
+is**: an element `xbox` whose value is one element, the box's own type as its code holding the
+box's bytes after its size and type fields (after the 64-bit size too, where it has one; a
+`uuid` box's value begins with its 16-byte user type). A player may act on a box wherever it
+finds one, so nothing a player could read is left out: adding, removing or changing any box
+other than `free`, `skip`, `wide`, `mdat` and the two carriers changes the hash. What
+`media/1` reads is normalised, so that moving the movie box, which rewrites chunk offsets, and
+rewriting creation times leave the hash unchanged.
+
 **One reading only.** A verifier refuses `media/1`, and says why, for a file with no `moov` or
-more than one; a fragmented file (`mvex` in `moov`, or any top-level `moof`); encrypted
-samples (an `encv`, `enca` or `encs` entry, or a `sinf` in any entry); `stz2`; a `tref` naming
-a track that is not listed; a box whose size runs past its parent, or a box shorter than its
-own fixed fields (a `uuid` box under 24 bytes, an `mvhd`, `tkhd`, `mdhd`, media header or table
-shorter than its version's layout); a table whose counts do not agree (more samples in `stsz`
-than `stts` describes, or the reverse), or that claims more bytes than the file holds; a value
-that does not fit a signed 64-bit integer; sample ranges that fall outside the file or overlap;
-a data reference that is not in the same file (a `dref` entry without the self-contained flag);
-or a box that `media/1` reads appearing anywhere but its one place.
+more than one; a fragmented file (`mvex` in `moov`, or a `moof` at the top level); a compressed
+movie (`cmov` in `moov`); encrypted samples (an `encv`, `enca` or `encs` entry, or a `sinf` in
+any entry); `stz2`; two of a box it reads in one parent; a `tref` naming a track that is not in
+the file; a box whose size runs past its parent, or a box shorter than its own fixed fields (a
+`uuid` box under 24 bytes, an `mvhd`, `tkhd`, `mdhd`, media header or table shorter than its
+version's layout); a table whose counts do not agree (more samples in `stsz` than `stts`
+describes, or the reverse), or that claims more bytes than the file holds; a value that does
+not fit a signed 64-bit integer; sample ranges that fall outside the file or overlap; a `dinf`
+holding anything but one `dref`, or a `dref` entry that is not a self-contained `url ` or
+`urn ` (its data is in another file).
 
-**Every box in its place.** A player may act on a sample table, an edit list or a track box
-wherever it finds one inside the movie box, for instance inside `udta`. So a verifier takes the
-bytes of `moov` that `media/1` did not read as a box it lists or as the payload of one (the
-payloads of the headers, tables and sample entries it hashes are skipped), and refuses the file
-if any of these four-character codes appears there at any position: `mvhd`, `trak`, `tkhd`,
-`tref`, `edts`, `elst`, `mdia`, `mdhd`, `minf`, `vmhd`, `smhd`, `sthd`, `hmhd`, `nmhd`, `dinf`,
-`dref`, `stbl`, `stsd`, `stts`, `ctts`, `stsc`, `stsz`, `stz2`, `stco`, `co64`, `avcC`, `hvcC`,
-`av1C`, `vpcC`, `esds`, `dOps`, `dfLa`, `colr`, `pasp`, `clap`. The code `hdlr` is refused there
-too, unless the four bytes twelve bytes after it (the handler type) are `mdir`, `mdta`, `ID32`,
-`alis`, `url `, `mp7t` or `mp7b`, the handlers of metadata and data references. A text in metadata that
-happens to spell one of these codes makes the file refused; the remedy is to remove that text.
-This rule is about what common players read (FFmpeg was the one tested); a player that reads a
-box from some other place is outside what `media/1` covers.
-
-**Final file first.** A remux may rewrite a listed parameter: a tool may change the movie
-timescale, and with it the edit list, or the bit rates a sample entry records. Moving the movie
-box alone changes nothing, but a production asks for approval of the file it will publish, after
-its last remux.
+**Final file first.** A remux may rewrite a hashed part: a tool may change the movie
+timescale, and with it the edit list, the bit rates a sample entry records, or the tag naming
+the tool and its version that it writes into `udta`; adding a title or chapters changes the
+hash too. Moving the movie box alone changes nothing. So a production asks for approval of the
+file it will publish, after its last remux and metadata edit.
 
 **Re-encoded copies.** A transcoded copy has other coded samples and does not match. A later
 version may carry soft bindings (C2PA soft-binding algorithm names with opaque values) for a
@@ -214,8 +223,10 @@ The record is the same whatever carries it, and a verifier checks it the same wa
   box keeps its properties: they move into the new box, and the old box becomes a `free` box of
   the same size, so no offset moves. So that every reader finds the same record, the packet
   is read by a fixed lexical rule, not by an XML library: it holds no `<!--`, `<![CDATA[`,
-  `<!DOCTYPE` or `<!ENTITY`; the declaration `xmlns:pgag="https://pregen.org/ns/after-gen/1/"`
-  appears exactly once and no other `xmlns:pgag=`; `<pgag:Record>` appears exactly once and
+  `<!DOCTYPE` or `<!ENTITY`, and no `<?` other than the packet's opening `<?xpacket begin=`
+  and closing `<?xpacket end=`; the namespace `https://pregen.org/ns/after-gen/1/` appears
+  exactly once in the packet, in the declaration
+  `xmlns:pgag="https://pregen.org/ns/after-gen/1/"`, and no other `xmlns:pgag=` appears; `<pgag:Record>` appears exactly once and
   `pgag:Record=` never; its text runs to the first `</pgag:Record>`, holds no `<`, and uses no
   `&` other than `&amp;`, `&lt;`, `&gt;`, `&quot;` and `&apos;`. Unescaped, it is the canonical
   JSON of the envelope. A packet that breaks the rule carries no record; one that cannot keep
@@ -251,8 +262,8 @@ record copied into another file names a hash that file does not have.
    (the registry's policy; 14 days in the reference registry) expires.
 4. **The record.** On approval the registry checks everything in step 2 again, as of now
    (a `not_after` already past is refused), counts one use of the licence, keeps the decision
-   it received, and signs the record. Only the representative's mandate, never the state of a
-   request, is disclosed to a party deciding on it. A refusal, a pending request and an
+   it received, and signs the record. A party that may not decide on a request learns
+   nothing about it: whether it exists, its state or its scope. A refusal, a pending request and an
    expired one are never published: a lookup by hash shows only approved records, so asking
    before publishing costs the asker nothing.
 5. **Withdrawal.** The subject withdraws a record with their own key, in a

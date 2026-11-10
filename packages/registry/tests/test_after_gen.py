@@ -290,7 +290,7 @@ def test_1_silence_and_an_expired_review_period_approve_nothing():
 def test_2_never_the_requester_another_party_or_a_key_the_registry_holds():
     w = World()
     rid = w.pending(subject=w.me)
-    refused(w.decide(rid, key=w.p.key), "PG_NOT_AUTHENTICATED", 401)             # the requester's key as the subject
+    refused(w.decide(rid, key=w.p.key), "PG_NOT_FOUND", 404)                     # the requester's key as the subject
     w.mandate(subject=w.me, agent=w.p.id)                                       # even with a mandate of its own
     refused(w.decide(rid, role="agent", key=w.p.key, agent=w.p.id), "PG_NO_MANDATE", 403)
     port = OpenProvider(w.reg, w.c, url=w.p.id + ":8443")                        # the holder's host on another port
@@ -300,9 +300,8 @@ def test_2_never_the_requester_another_party_or_a_key_the_registry_holds():
     refused(w.decide(rid, role="agent", agent=AGENCY), "PG_NOT_FOUND", 404)      # another party, no mandate
     managed = w.pending()                                                       # Maya: the registry holds her key
     held = w.reg.db.execute("SELECT key_private FROM subjects WHERE code = ?", (w.s,)).fetchone()[0]
-    r = w.decide(managed, key=Key(held).private_hex)
-    refused(r, "PG_PERSONAL_SIGNATURE_REQUIRED", 403)        # refused on intake; _sign_after_gen checks again (test 4)
-    assert "authenticated instruction" in r.json()["error_description"]
+    r = w.decide(managed, key=Key(held).private_hex)       # refused on intake, as an unknown request would be;
+    refused(r, "PG_NOT_FOUND", 404)                         # _sign_after_gen checks again (test 4)
     assert w.reg.db.execute("SELECT COUNT(*) FROM after_gen_records").fetchone()[0] == 0
 
 
@@ -349,12 +348,14 @@ def test_5_a_decision_names_exactly_its_request_and_is_signed_by_the_right_key()
     other = lib.new_private_key_hex()
     her = w.reg.add_subject("Ana", level="verified", holder_public=lib.public_key_hex(other))
     mine, hers = w.pending(subject=w.me), w.pending(subject=her, licence=w.licence(her, holder_key=Key(other)))
-    refused(w.decide(hers), "PG_NOT_AUTHENTICATED", 401)                         # Theo's key, Ana's request
-    refused(w.decide(mine, key=lib.new_private_key_hex()), "PG_NOT_AUTHENTICATED", 401)   # a key that is no one's
     d = w.decision(mine)
-    moved = {**d, "body": {**d["body"], "request": hers}}                       # Theo's decision moved to another
-    refused(w.decide(hers, env=moved), "PG_NOT_AUTHENTICATED", 401)
-    refused(w.decide("f" * 64, scope=w.scope()), "PG_NOT_FOUND", 404)
+    unknown = w.decide("f" * 64, scope=w.scope())
+    for r in (w.decide(hers),                                                    # Theo's key, Ana's request
+              w.decide(mine, key=lib.new_private_key_hex()),                    # a key that is no one's
+              w.decide(hers, env={**d, "body": {**d["body"], "request": hers}}),   # Theo's decision moved to Ana's
+              w.decide(w.pending(), key=lib.new_private_key_hex())):            # Maya: the registry holds her key
+        assert (r.status_code, r.json()) == (unknown.status_code, unknown.json()) == (404, {
+            "error": "PG_NOT_FOUND", "error_description": "no such request"})  # a stranger learns nothing (step 4)
     refused(w.decide(mine, outcome="approve", env={**d, "body": {**d["body"], "extra": 1}}), "PG_MALFORMED", 422)
     refuse = w.decision(mine, outcome="refuse")
     refused(w.decide(mine, env=sign(w.own, "subject", "pg.after_gen_decision.v1",
@@ -481,10 +482,16 @@ def test_16_status_says_active_withdrawn_with_both_times_or_expired():
     w.clock.t += 600
     refused(w.c.post(f"/v2/after-gen/{rec}/withdraw", json=sign(w.own, "subject", "pg.after_gen_withdrawal.v1", {
         "record": "f" * 64, "issued_at": w.clock.t})), "PG_MALFORMED", 422)      # a withdrawal of another record
-    refused(w.c.post(f"/v2/after-gen/{rec}/withdraw", json=sign(lib.new_private_key_hex(), "subject",
-                                                               "pg.after_gen_withdrawal.v1",
-                                                               {"record": rec, "issued_at": w.clock.t})),
-            "PG_NOT_AUTHENTICATED", 401)
+    def withdraw(record, key):
+        r = w.c.post(f"/v2/after-gen/{record}/withdraw", json=sign(key, "subject", "pg.after_gen_withdrawal.v1",
+                                                                    {"record": record, "issued_at": w.clock.t}))
+        return r.status_code, r.json()
+    unknown = withdraw("f" * 64, w.own)
+    managed = w.reg.approve_after_gen(w.pending(media="ef" * 32), instruction=INSTRUCTION, factor="email")
+    held = Key(w.reg.db.execute("SELECT key_private FROM subjects WHERE code = ?", (w.s,)).fetchone()[0]).private_hex
+    assert withdraw(rec, lib.new_private_key_hex()) == withdraw(managed, w.own) == withdraw(managed, held) == unknown \
+        == (404, {"error": "PG_NOT_FOUND", "error_description": "no such record"})   # another key; a key the registry
+    assert w.status(managed)[1]["state"] == "active"                                 # holds signs no withdrawal
     r = w.c.post(f"/v2/after-gen/{rec}/withdraw", json=sign(w.own, "subject", "pg.after_gen_withdrawal.v1",
                                                             {"record": rec, "issued_at": w.clock.t}))
     assert r.json() == {"record": rec, "state": "withdrawn", "withdrawn_at": w.clock.t}, r.text
@@ -495,10 +502,6 @@ def test_16_status_says_active_withdrawn_with_both_times_or_expired():
     other = w.decide(w.pending(subject=w.me, media="cd" * 32, scope=w.scope(not_after=w.clock.t + 10))).json()["record"]
     w.clock.t += 10
     assert w.status(other)[1]["state"] == "expired" and w.status(other)[1]["withdrawn_at"] is None
-    managed = w.reg.approve_after_gen(w.pending(), instruction=INSTRUCTION, factor="email")
-    refused(w.c.post(f"/v2/after-gen/{managed}/withdraw", json=sign(w.own, "subject", "pg.after_gen_withdrawal.v1",
-                                                                    {"record": managed, "issued_at": w.clock.t})),
-            "PG_PERSONAL_SIGNATURE_REQUIRED", 403)
 
 
 def test_17_the_lookup_by_hash_shows_approved_records_only_and_tells_nothing_else():

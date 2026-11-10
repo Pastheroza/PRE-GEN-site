@@ -134,7 +134,8 @@ async function root(stack) {
   return h;
 }
 
-const MEDIA_HEADERS = { vmhd: 12, smhd: 8, sthd: 4, hmhd: 20, nmhd: 4 }; // each with its layout's length
+const MEDIA_HEADERS = { vmhd: 12, smhd: 8, sthd: 4, hmhd: 20, nmhd: 4, gmhd: 0 }; // each with its layout's length
+const NOT_KEPT = ["ftyp", "moov", "mdat", "free", "skip", "wide"]; // top-level boxes, besides the two carriers
 const READ_LIMIT = 8 * 1024 * 1024; // a chunk larger than this is read sample by sample
 
 // A full box of version 0 or 1; `layout` (version 0, version 1) is the length of its fixed fields.
@@ -151,19 +152,27 @@ function table(box, header, entry, where) {
   return { v, n };
 }
 
+// The children of a box that media/1 reads, and every other one kept as is, in file order (Read, or kept as is): an
+// element xbox holding an element of the box's type, its value the bytes after its size and type.
+function parts(data, read) {
+  const kids = boxesIn(data);
+  return { kids: kids.filter((k) => read.includes(k.type)),
+    kept: concat(kids.filter((k) => !read.includes(k.type)).map((k) => el("xbox", el(k.type, k.data)))) };
+}
+
 // A track's boxes, its id and its handler.
 function trackHead(trak) {
-  const kids = boxesIn(trak.data);
+  const { kids, kept } = parts(trak.data, ["tkhd", "tref", "edts", "mdia"]);
   const tkhd = one(kids, "tkhd", "trak"), mdia = one(kids, "mdia", "trak");
   const { v, version, flags } = fullBox(tkhd, [84, 96]);
-  const mk = boxesIn(mdia.data), hdlr = one(mk, "hdlr", "mdia");
+  const { kids: mk, kept: keptMdia } = parts(mdia.data, ["mdhd", "hdlr", "minf"]), hdlr = one(mk, "hdlr", "mdia");
   need(hdlr, 12);
   const tref = one(kids, "tref", "trak", true);
   const refs = tref ? boxesIn(tref.data).map((b) => {
     if (b.data.length % 4) M(`tref ${b.type} is not a list of track ids`);
     return { type: b.type, ids: Array.from({ length: b.data.length / 4 }, (_, i) => view(b.data).getUint32(4 * i)) };
   }) : [];
-  return { kids, mk, tkhd: { v, version, flags }, id: v.getUint32(version ? 20 : 12),
+  return { kids, mk, kept, keptMdia, tkhd: { v, version, flags }, id: v.getUint32(version ? 20 : 12),
     hdlrBytes: hdlr.data.subarray(8, 12), refs, edts: one(kids, "edts", "trak", true) };
 }
 
@@ -172,16 +181,21 @@ function trackBody(t, position, ranges, fileSize) {
   const where = `track ${t.id}`;
   const mdhd = fullBox(one(t.mk, "mdhd", "mdia"), [24, 36]);
   const timescale = mdhd.v.getUint32(mdhd.version ? 20 : 12);
-  const nk = boxesIn(one(t.mk, "minf", "mdia").data);
-  const mhd = nk.find((b) => Object.hasOwn(MEDIA_HEADERS, b.type));
-  if (mhd) need(mhd, MEDIA_HEADERS[mhd.type]);
-  const dinf = one(nk, "dinf", "minf", true), dref = dinf && one(boxesIn(dinf.data), "dref", "dinf", true);
-  if (dref) {
-    const n = need(dref, 8).getUint32(4), refs = boxesIn(dref.data.subarray(8));
+  const { kids: nk, kept: keptMinf } = parts(one(t.mk, "minf", "mdia").data, [...Object.keys(MEDIA_HEADERS), "dinf", "stbl"]);
+  const heads = nk.filter((b) => Object.hasOwn(MEDIA_HEADERS, b.type)), mhd = heads[0];
+  if (heads.length > 1) M("two media headers in minf");
+  if (mhd && mhd.data.length < MEDIA_HEADERS[mhd.type]) M(`${mhd.type} is too short`);
+  const dinf = one(nk, "dinf", "minf", true), refsIn = dinf && boxesIn(dinf.data);
+  if (dinf) {
+    if (refsIn.length !== 1 || refsIn[0].type !== "dref") M("a dinf holding anything but one dref");
+    const dref = refsIn[0], n = need(dref, 8).getUint32(4), refs = boxesIn(dref.data.subarray(8));
     if (refs.length !== n) M(`the dref count in ${where} does not agree with its entries`);
-    if (refs.some((x) => !(need(x, 4) && x.data[3] & 1))) M("a data reference that is not in the same file");
+    if (refs.some((x) => !["url ", "urn "].includes(x.type) || !(need(x, 4) && x.data[3] & 1))) {
+      M("a data reference that is not a self-contained url or urn");
+    }
   }
-  const sk = boxesIn(one(nk, "stbl", "minf").data);
+  const { kids: sk, kept: keptStbl } = parts(one(nk, "stbl", "minf").data,
+    ["stsd", "stts", "ctts", "stsc", "stsz", "stz2", "stco", "co64"]);
   if (sk.some((b) => b.type === "stz2")) M("stz2 is not read");
 
   const stsd = one(sk, "stsd", "stbl"), sv = need(stsd, 8);
@@ -199,9 +213,9 @@ function trackBody(t, position, ranges, fileSize) {
   const tk = [t.tkhd.flags & 1, tv.getInt16(base), tv.getInt16(base + 2), tv.getInt16(base + 4),
     ...Array.from({ length: 9 }, (_, i) => tv.getInt32(base + 8 + 4 * i)), tv.getUint32(base + 44), tv.getUint32(base + 48)];
 
-  const edits = [];
+  const edits = [], edts = t.edts ? parts(t.edts.data, ["elst"]) : { kids: [], kept: new Uint8Array(0) };
   if (t.edts) {
-    const elst = one(boxesIn(t.edts.data), "elst", "edts", true);
+    const elst = one(edts.kids, "elst", "edts", true);
     if (elst) {
       const { version } = fullBox(elst), size = version ? 20 : 12, { v, n } = table(elst, 8, size, where);
       for (let i = 0, at = 8; i < n; i++, at += size) {
@@ -214,11 +228,12 @@ function trackBody(t, position, ranges, fileSize) {
   const leaf = concat([
     el("hdlr", t.hdlrBytes),
     el("tref", concat(t.refs.map((r) => el(r.type, ints(r.ids.map((id) => position.get(id))))))),
-    ...(mhd ? [el(mhd.type, mhd.data.subarray(4))] : []),
+    ...(mhd ? [el(mhd.type, mhd.data.subarray(mhd.type === "gmhd" ? 0 : 4))] : []), // gmhd has no version and flags
     el("mdts", ints([timescale])),
     ...entries.map((e) => el("sent", el(e.type, e.whole.subarray(8)))),
     el("tkhd", ints(tk)),
     el("elst", ints(edits)),
+    t.kept, edts.kept, t.keptMdia, keptMinf, keptStbl,
   ]);
 
   // Sample tables. Counts must agree everywhere: one reading only.
@@ -275,41 +290,11 @@ function runs(t, signed) {
   };
 }
 
-// Every box in its place: the boxes media/1 reads, by the listed box that holds them (the others are read whole).
-const LISTED = { moov: ["mvhd", "trak"], trak: ["tkhd", "tref", "edts", "mdia"], edts: ["elst"],
-  mdia: ["mdhd", "hdlr", "minf"], minf: ["dinf", "stbl"], dinf: ["dref"],
-  stbl: ["stsd", "stts", "ctts", "stsc", "stsz", "stco", "co64"] };
-const PLACED = /(?=(mvhd|trak|tkhd|tref|edts|elst|mdia|mdhd|minf|vmhd|smhd|sthd|hmhd|nmhd|dinf|dref|stbl|stsd|stts|ctts|stsc|stsz|stz2|stco|co64|avcC|hvcC|av1C|vpcC|esds|dOps|dfLa|colr|pasp|clap|hdlr))/g;
-const DATA_HANDLERS = ["mdir", "mdta", "ID32", "alis", "url ", "mp7t", "mp7b"];
 const bytesText = (b) => { // one character per byte
   let s = "";
   for (let i = 0; i < b.length; i += 8192) s += String.fromCharCode(...b.subarray(i, i + 8192));
   return s;
 };
-
-// The ranges [start, end) of `b`, the content of a listed box of this type, that media/1 does not read: every box there
-// that it does not list, whole, adjacent ones joined. The first media header of minf is listed.
-function unread(b, type, at = 0, out = []) {
-  let header = type === "minf";
-  for (const k of boxesIn(b)) {
-    if (LISTED[type].includes(k.type) || (header && Object.hasOwn(MEDIA_HEADERS, k.type))) {
-      header &&= !Object.hasOwn(MEDIA_HEADERS, k.type);
-      if (Object.hasOwn(LISTED, k.type)) unread(k.data, k.type, at + k.start + k.hdr, out);
-    } else if (out.at(-1)?.[1] === at + k.start) out.at(-1)[1] = at + k.start + k.size;
-    else out.push([at + k.start, at + k.start + k.size]);
-  }
-  return out;
-}
-
-// A player may act on a table, an edit list or a track box wherever it finds one in moov: refuse any such code in the
-// bytes media/1 did not read, except hdlr of a metadata or data-reference handler.
-function misplaced(moov) {
-  for (const [s, e] of unread(moov, "moov")) {
-    for (const x of bytesText(moov.subarray(s, e)).matchAll(PLACED)) {
-      if (x[1] !== "hdlr" || !DATA_HANDLERS.includes(latin1(moov, s + x.index + 12, 4))) M(`${x[1]} outside its place in moov`);
-    }
-  }
-}
 
 /** media/1 of an ISO base media file (MP4, MOV, M4V): {binding: "media/1", hash, leaves}. `source` is a Uint8Array, a
  * Blob or File, or {size, read(offset, length) -> Promise<Uint8Array>}; boxes and samples are read in ranges, never the
@@ -321,14 +306,21 @@ export async function mediaHash(source) {
   const moovs = top.filter((b) => b.type === "moov");
   if (moovs.length !== 1) M(moovs.length ? "more than one moov box" : "no moov box");
   const moovBox = moovs[0], moovBytes = await r.read(moovBox.start, moovBox.size);
-  const moov = boxesIn(moovBytes.subarray(moovBox.hdr));
+  const { kids: moov, kept } = parts(moovBytes.subarray(moovBox.hdr), ["mvhd", "trak", "mvex", "cmov"]);
   if (moov.some((b) => b.type === "mvex")) M("a fragmented file (mvex)");
+  if (moov.some((b) => b.type === "cmov")) M("a compressed movie (cmov)");
+  const outer = []; // every other top-level box a player could read, kept as is
+  for (const b of top) {
+    if (!NOT_KEPT.includes(b.type) && b.uuid !== XMP_UUID && b.uuid !== C2PA_UUID) {
+      outer.push(el("xbox", el(b.type, await r.read(b.start + b.hdr, b.size - b.hdr))));
+    }
+  }
 
   const mvhd = fullBox(one(moov, "mvhd", "moov"), [100, 112]);
   const mv = mvhd.v, ts = mvhd.version ? 20 : 12, rate = ts + (mvhd.version ? 12 : 8);
   const movie = concat([utf8.encode("PREGEN-MEDIA\0media/1\0"), el("FRMT", utf8.encode("isobmff")),
     el("tmsc", ints([mv.getUint32(ts)])), el("rate", ints([mv.getInt32(rate)])), el("volu", ints([mv.getInt16(rate + 4)])),
-    el("mtrx", ints(Array.from({ length: 9 }, (_, i) => mv.getInt32(rate + 16 + 4 * i))))]);
+    el("mtrx", ints(Array.from({ length: 9 }, (_, i) => mv.getInt32(rate + 16 + 4 * i)))), kept, ...outer]);
 
   // Every track, whatever its handler: a player may play a track whose handler says meta or hint.
   const tracks = moov.filter((b) => b.type === "trak").map(trackHead);
@@ -336,10 +328,9 @@ export async function mediaHash(source) {
   const listed = [...tracks].sort((a, b) => a.id - b.id);
   const position = new Map(listed.map((t, i) => [t.id, i]));
   for (const t of listed) {
-    for (const ref of t.refs) if (ref.ids.some((id) => !position.has(id))) M("a tref names a track that is not listed");
+    for (const ref of t.refs) if (ref.ids.some((id) => !position.has(id))) M("a tref names a track that is not in the file");
   }
   const ranges = [], bodies = listed.map((t) => trackBody(t, position, ranges, r.size));
-  misplaced(moovBytes.subarray(moovBox.hdr));
 
   // Every sample inside the file, none sharing a byte with another (a chunk's samples are contiguous). An empty sample
   // has no byte to place or share.
@@ -489,9 +480,10 @@ function exactEnvelope(bytes) {
 // pgag:Record by the fixed lexical rule (Carrying the record), never by an XML parser, so that every reader finds the
 // same record: the envelope, or null for a packet that breaks the rule and so carries no record.
 function fromXmp(packet) {
-  const p = bytesText(packet), n = (x) => p.split(x).length - 1;
-  if (["<!--", "<![CDATA[", "<!DOCTYPE", "<!ENTITY"].some((x) => p.includes(x)) || n(`xmlns:pgag="${NS}"`) !== 1
-      || n("xmlns:pgag=") !== 1 || n("<pgag:Record>") !== 1 || p.includes("pgag:Record=")) return null;
+  const p = bytesText(packet), n = (x) => p.split(x).length - 1, pis = [n("<?xpacket begin="), n("<?xpacket end=")];
+  if (["<!--", "<![CDATA[", "<!DOCTYPE", "<!ENTITY"].some((x) => p.includes(x)) || Math.max(...pis) > 1
+      || n("<?") !== pis[0] + pis[1] || n(NS) !== 1 || n(`xmlns:pgag="${NS}"`) !== 1 || n("xmlns:pgag=") !== 1
+      || n("<pgag:Record>") !== 1 || p.includes("pgag:Record=")) return null;
   const start = p.indexOf("<pgag:Record>") + 13, end = p.indexOf("</pgag:Record>", start), text = p.slice(start, end);
   if (end < 0 || text.includes("<") || /&(?!(?:amp|lt|gt|quot|apos);)/.test(text)) return null;
   const XML = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };

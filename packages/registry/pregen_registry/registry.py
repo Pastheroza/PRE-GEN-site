@@ -1281,6 +1281,19 @@ class Registry:
                 if "after_gen" in json.loads(m["powers"])]
 
     @staticmethod
+    def _own_key_body(env, type_: str, s):
+        """The body if the subject `s` holds their own key (custody self) and signed `env` with it; None otherwise. No
+        subject, a key the registry holds and another key look the same, so a caller who may not act learns nothing
+        (step 4). A malformed envelope is refused as such: that depends on the envelope alone."""
+        pub = s["key_public"] if s is not None and s["custody"] == "self" else None
+        try:
+            return check_envelope(env, type_, ("subject",), lambda r, k: pub if pub and k == fingerprint(pub) else None)
+        except ProtocolError as e:
+            if e.code != "PG_NOT_AUTHENTICATED":
+                raise
+            return None
+
+    @staticmethod
     def _same_host(a: str, b: str) -> bool:
         """A representative is never the holder of the same record: their hosts differ, whatever the port."""
         return urlsplit(a).hostname == urlsplit(b).hostname
@@ -1321,17 +1334,11 @@ class Registry:
             self._signed_by_provider(env, "pg.after_gen_decision.v1", agent, role="agent")
         with self.lock:
             row = self.db.execute("SELECT * FROM after_gen_requests WHERE id = ?", (body["request"],)).fetchone()
+            s = row and self.db.execute("SELECT * FROM subjects WHERE code = ?", (row["subject_ref"],)).fetchone()
             hidden = row is None or role == "agent" and not self._ag_mandates(self.db, row["subject_ref"], agent,
                                                                               self.clock())
-        if hidden:
+        if hidden or role == "subject" and self._own_key_body(env, "pg.after_gen_decision.v1", s) is None:   # vector 4
             raise ProtocolError("PG_NOT_FOUND", "no such request", status=404)
-        if role == "subject":
-            s = self._row("SELECT * FROM subjects WHERE code = ?", (row["subject_ref"],))
-            if s["custody"] != "self":                                                   # vector 4
-                raise ProtocolError("PG_PERSONAL_SIGNATURE_REQUIRED", "this registry holds the subject's key: it approves "
-                                    "only on the subject's authenticated instruction (assent registry)", status=403)
-            check_envelope(env, "pg.after_gen_decision.v1", ("subject",),
-                           lambda r, k: s["key_public"] if k == fingerprint(s["key_public"]) else None)
         now, did = self.clock(), message_id("pg.after_gen_decision.v1", body)
         if abs(now - body["issued_at"]) > AG_SKEW:
             raise ProtocolError("PG_MALFORMED", "issued_at is more than 300 seconds off")
@@ -1449,21 +1456,18 @@ class Registry:
     def withdraw_after_gen(self, record_id: str, env=None, *, instruction: str | None = None) -> dict:
         """Step 5: the subject withdraws a record with their own key (a pg.after_gen_withdrawal.v1 {signers, record,
         issued_at}, role subject, custody self), or by an authenticated instruction. It closes: no second factor, and
-        it keeps working for every record signed when the registry no longer takes new requests (step 5)."""
+        it keeps working for every record signed when the registry no longer takes new requests (step 5). A signed
+        withdrawal not by the subject's own key gets the answer an unknown record gets."""
         row = self._row("SELECT r.*, s.custody, s.key_public FROM after_gen_records r JOIN subjects s ON "
                         "s.code = r.subject_ref WHERE r.id = ?", (record_id,))
-        if row is None:
+        body = None if env is None else self._own_key_body(env, "pg.after_gen_withdrawal.v1", row)
+        if row is None or env is not None and body is None:
             raise ProtocolError("PG_NOT_FOUND", "no such record", status=404)
         if env is None:
             if not _hex64(instruction):
                 raise ValueError("a withdrawal on instruction names --instruction-sha256 (64 hex)")
             how = {"assent": "registry", "instruction": instruction}
         else:
-            if row["custody"] != "self":
-                raise ProtocolError("PG_PERSONAL_SIGNATURE_REQUIRED", "this registry holds the subject's key: it withdraws "
-                                    "on the subject's authenticated instruction", status=403)
-            body = check_envelope(env, "pg.after_gen_withdrawal.v1", ("subject",), lambda r, k: row["key_public"]
-                                  if k == fingerprint(row["key_public"]) else None)
             if set(body) != {"signers", "record", "issued_at"} or body["record"] != record_id \
                     or not _int(body["issued_at"]) or abs(self.clock() - body["issued_at"]) > AG_SKEW:
                 raise ProtocolError("PG_MALFORMED", "pg.after_gen_withdrawal.v1 is {signers, record: this record, "

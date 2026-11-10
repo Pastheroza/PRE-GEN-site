@@ -131,14 +131,16 @@ test("media/1: the same from a Uint8Array, a Blob and a reader, without reading 
   await assert.rejects(mediaHash("not a file"), PregenError);
 });
 
-test("media/1: one changed coded byte changes it; metadata does not", async () => {
+test("media/1: one changed coded byte changes it; padding and the carriers do not", async () => {
   const file = mp4({ tracks: [VIDEO, AUDIO] }), want = await mediaHash(file);
   const flipped = Uint8Array.from(file);
   flipped[file.indexOf(0x2d, 30)] ^= 1; // a byte of "frame-one" in mdat
   assert.notEqual((await mediaHash(flipped)).hash, want.hash);
-  const more = mp4({ tracks: [VIDEO, AUDIO], extraTop: [box("free", "padding"), uuidBox(XMP_UUID, "<x/>")],
-    moovExtra: [box("udta", box("name", "a title"))] });
+  const more = mp4({ tracks: [VIDEO, AUDIO], extraTop: [box("free", "padding"), box("skip"), box("wide"), uuidBox(XMP_UUID, "<x/>"),
+    uuidBox(C2PA_UUID, Buffer.alloc(4), "other\0")] });
   assert.deepEqual(await mediaHash(more), want);
+  const titled = mp4({ tracks: [VIDEO, AUDIO], moovExtra: [box("udta", box("name", "a title"))] }); // metadata in moov is hashed
+  assert.notEqual((await mediaHash(titled)).hash, want.hash);
 });
 
 // Every refusal of "One reading only", each with its reason.
@@ -165,39 +167,38 @@ const REFUSED = [
   ["a sample past the end of the file", mp4({ tracks: [{ ...VIDEO, offset: 1e6 }] }), /outside the file/],
   ["a top-level box past the file", bump(plain, "moov", 1), /past its parent/],
   ["a box past its parent", bump(plain, "stco", 1), /past its parent/],
-  ["a tref to a track that is not listed", mp4({ tracks: [VIDEO, { ...AUDIO, tref: [{ type: "sync", ids: [9] }] }] }), /not listed/],
+  ["a tref to a track that is not in the file", mp4({ tracks: [VIDEO, { ...AUDIO, tref: [{ type: "sync", ids: [9] }] }] }), /not in the file/],
   ["more samples in stsz than stts describes", mp4({ tracks: [{ ...VIDEO, stszCount: 4, samples: [...VIDEO.samples, B("4")], durations: [100, 200, 100] }] }), /stts, ctts and stsz count different samples/],
   ["more samples in stts than stsz", mp4({ tracks: [{ ...VIDEO, stszCount: 2, samples: VIDEO.samples.slice(0, 2), durations: [100, 200, 100], ctts: undefined }] }), /stts, ctts and stsz count different samples/],
   ["two tracks with one id", mp4({ tracks: [VIDEO, { ...AUDIO, id: 1, tref: undefined }] }), /one track_ID/],
-  ["a stco directly in trak", mp4({ tracks: [{ ...VIDEO, extraTrak: [full("stco", 0, 0, u32(1), u32(40))] }] }), /stco outside its place/],
-  ["an elst in trak/udta", mp4({ tracks: [{ ...VIDEO, extraTrak: [box("udta", full("elst", 0, 0, u32(1), u32(5), u32(0), i16(1), i16(0)))] }] }), /elst outside its place/],
-  ["a code in metadata text", mp4({ tracks: [VIDEO], moovExtra: [box("udta", box("\xa9nam", "Spring stco"))] }), /stco outside its place/],
-  ["a second media header", mp4({ tracks: [{ ...VIDEO, extraMinf: [full("smhd", 0, 0, u32(0))] }] }), /smhd outside its place/],
-  ["a metadata handler not in the list", mp4({ tracks: [VIDEO], moovExtra: [box("udta", full("meta", 0, 0, full("hdlr", 0, 0, u32(0), "vide", Buffer.alloc(13))))] }), /hdlr outside its place/],
-  ["a data reference elsewhere", mp4({ tracks: [{ ...VIDEO, extraMinf: [box("dinf", full("dref", 0, 0, u32(1), full("url ", 0, 0, "https://x.example/a\0")))] }] }), /not in the same file/],
+  ["a cmov in moov", mp4({ tracks: [VIDEO], moovExtra: [box("cmov", box("dcom", "zlib"), box("cmvd", u32(0)))] }), /compressed movie/],
+  ["two stco in one stbl", mp4({ tracks: [{ ...VIDEO, extraStbl: [full("stco", 0, 0, u32(1), u32(40))] }] }), /two stco/],
+  ["two tkhd in one trak", mp4({ tracks: [{ ...VIDEO, extraTrak: [full("tkhd", 0, 3, Buffer.alloc(80))] }] }), /two tkhd/],
+  ["two media headers", mp4({ tracks: [{ ...VIDEO, extraMinf: [full("smhd", 0, 0, u32(0))] }] }), /two media headers/],
+  ["a dinf holding more than its dref", mp4({ tracks: [{ ...VIDEO, extraMinf: [box("dinf", full("dref", 0, 0, u32(1), full("url ", 0, 1)), box("udta"))] }] }), /one dref/],
+  ["an alis data reference", mp4({ tracks: [{ ...VIDEO, extraMinf: [box("dinf", full("dref", 0, 0, u32(1), full("alis", 0, 1)))] }] }), /self-contained/],
+  ["a data reference elsewhere", mp4({ tracks: [{ ...VIDEO, extraMinf: [box("dinf", full("dref", 0, 0, u32(1), full("url ", 0, 0, "https://x.example/a\0")))] }] }), /self-contained/],
   ["a uuid box under 24 bytes", mp4({ tracks: [VIDEO], moovExtra: [box("uuid", Buffer.alloc(8))] }), /shorter than its header/],
   ["an elst duration of 2^63", mp4({ tracks: [{ ...VIDEO, edits: undefined, extraTrak: [box("edts", full("elst", 1, 0, u32(1), u64(2n ** 63n), u64(0), i16(1), i16(0)))] }] }), /signed 64-bit/],
   ["a meta track past the end of the file", mp4({ tracks: [VIDEO, { id: 2, handler: "meta", samples: [B("m")], offset: 1e6 }] }), /outside the file/],
 ];
 
 // A box media/1 reads is refused anywhere but its one place (Every box in its place); what it reads is skipped.
-const PLACED = "mvhd trak tkhd tref edts elst mdia mdhd minf vmhd smhd sthd hmhd nmhd dinf dref stbl stsd stts ctts stsc stsz stz2 stco co64 avcC hvcC av1C vpcC esds dOps dfLa colr pasp clap".split(" ");
-test("media/1: every box in its place", async () => {
-  for (const c of PLACED) {
-    for (const file of [mp4({ tracks: [VIDEO], moovExtra: [box("udta", box(c))] }),
-      mp4({ tracks: [{ ...VIDEO, extraMinf: [box("udta", "x", c, "y")] }] }),
-      mp4({ tracks: [{ ...VIDEO, extraStbl: [full("stss", 0, 0, u32(1), c)] }] })]) {
-      await assert.rejects(mediaHash(file), (e) => e instanceof PregenError && e.message === `media/1: ${c} outside its place in moov`, c);
-    }
-    await assert.rejects(mediaHash(mp4({ tracks: [{ ...VIDEO, extraTrak: [box(c, Buffer.alloc(8))] }] })), PregenError, c);
-  }
+// Read, or kept as is: a box media/1 does not read is hashed whole, wherever a player could find it.
+test("media/1: every other box is kept as is", async () => {
   const want = await mediaHash(mp4({ tracks: [VIDEO] }));
-  const ilst = full("meta", 0, 0, full("hdlr", 0, 0, u32(0), "mdir", Buffer.alloc(13)), box("ilst", box("\xa9too", "Lavf")));
-  const dinf = box("dinf", full("dref", 0, 0, u32(1), full("url ", 0, 1)));
-  const qt = full("hdlr", 0, 0, "dhlr", "url ", Buffer.alloc(12), "\x0bDataHandler"); // a QuickTime minf hdlr
-  assert.deepEqual(await mediaHash(mp4({ tracks: [{ ...VIDEO, extraMinf: [dinf, qt] }], moovExtra: [box("udta", ilst)] })), want);
-  const entry = box("avc1", Buffer.alloc(6), u16(1), box("avcC", "stco"), box("colr", "nclx")); // inside a hashed entry
-  assert.equal((await mediaHash(mp4({ tracks: [{ ...VIDEO, entry }] }))).leaves, 5);
+  for (const file of [mp4({ tracks: [VIDEO], moovExtra: [box("udta", box("\xa9nam", "Spring"))] }),
+    mp4({ tracks: [VIDEO], extraTop: [box("udta", "x")] }), mp4({ tracks: [VIDEO], extraTop: [box("trak", "x")] }),
+    mp4({ tracks: [VIDEO], extraTop: [uuidBox("00".repeat(16), "x")] }),
+    mp4({ tracks: [VIDEO], moovExtra: [box("udta", box("cmov", "x"), box("mvex", "y"), box("moof", "z"))] }),
+    mp4({ tracks: [{ ...VIDEO, extraTrak: [box("udta"), full("stco", 0, 0, u32(0))] }] }),
+    mp4({ tracks: [{ ...VIDEO, extraMinf: [full("hdlr", 0, 0, "dhlr", "url ", Buffer.alloc(12), "\x0bDataHandler")] }] }),
+    mp4({ tracks: [{ ...VIDEO, extraStbl: [full("stss", 0, 0, u32(1), u32(1)), box("glbl", "x"), full("st3d", 0, 0, [1])] }] }),
+    mp4({ tracks: [{ ...VIDEO, entry: box("avc1", Buffer.alloc(6), u16(1), box("avcC", "x")) }] })]) {
+    assert.notEqual((await mediaHash(file)).hash, want.hash);
+  }
+  const dinf = box("dinf", full("dref", 0, 0, u32(2), full("url ", 0, 1), full("urn ", 0, 1)));
+  assert.deepEqual(await mediaHash(mp4({ tracks: [{ ...VIDEO, extraMinf: [dinf] }], extraTop: [box("mdat", "y")] })), want);
 });
 
 test("media/1: a header shorter than its version's layout is refused", async () => {
@@ -315,6 +316,8 @@ test("XMP: read by the fixed lexical rule only; a packet that breaks it carries 
     [`<pgag:Record>${JSON.stringify(RECORD, null, 1)}</pgag:Record>`],
     ["<pgag:Record>[1]</pgag:Record>"],
     [`<pgag:Record>${text}</pgag:Record><pgag:Record>${text}</pgag:Record>`],
+    [`<pgag:Record>${text}</pgag:Record>`, NSD, "<?note ?>"],                                // no <? but the xpacket ones
+    [`<pgag:Record>${text}</pgag:Record>`, NSD, '<rdf:Description xmlns:p2="https://pregen.org/ns/after-gen/1/"/>'], // the URI twice
   ]) assert.equal(await xmp(...args), null, args[0].slice(0, 40));
 });
 

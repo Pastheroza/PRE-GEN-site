@@ -62,11 +62,17 @@ def _boxes(f, start, end, top=False, who="media/1"):
         pos += size
 
 
-def _kids(m, s, e):
-    out = {}
-    for t, _, cs, ce in _boxes(m, s, e):
-        out.setdefault(t, []).append((cs, ce))
-    return out
+def _parts(m, box, read):
+    """The children of `box` that media/1 reads, by type, and every other one kept as is, in file order (Read, or kept
+    as is): an element xbox holding an element of the box's type, its value the bytes after its size and type."""
+    kids, kept = {}, []
+    for t, _, cs, ce in _boxes(m, *box):
+        if t in read:
+            kids.setdefault(t, []).append((cs, ce))
+        else:
+            m.seek(cs)
+            kept.append(_el(b"xbox", _el(t, m.read(ce - cs))))
+    return kids, b"".join(kept)
 
 
 def _one(kids, t, where):
@@ -118,7 +124,7 @@ def _table(m, box, entry, where):
 
 def _track(m, trak, file_size):
     """One trak: (track_ID, handler, the fields of its first leaf except tref, tref ids, samples)."""
-    k = _kids(m, *trak)
+    k, kept = _parts(m, trak, (b"tkhd", b"tref", b"edts", b"mdia"))
     v, tkhd = _full(m, _one(k, b"tkhd", "trak"), (84, 96))
     tid = struct.unpack_from(">I", tkhd, 20 if v else 12)[0]
     layer, alt, vol, _, *rest = struct.unpack_from(">hhhH9iII", tkhd, 44 if v else 32)
@@ -126,7 +132,9 @@ def _track(m, trak, file_size):
     edits = []
     edts = _opt(k, b"edts", "trak")
     if edts:
-        elst = _opt(_kids(m, *edts), b"elst", "edts")
+        ek, more = _parts(m, edts, (b"elst",))
+        kept += more
+        elst = _opt(ek, b"elst", "edts")
         if elst:
             if _full(m, elst)[0] not in (0, 1):
                 raise PregenError("media/1: unknown elst version")
@@ -141,33 +149,41 @@ def _track(m, trak, file_size):
             if len(b) % 4:
                 raise PregenError("media/1: a tref box is not a list of track ids")
             tref.append((t, [x for (x,) in struct.iter_unpack(">I", b)]))
-    mk = _kids(m, *_one(k, b"mdia", "trak"))
+    mk, more = _parts(m, _one(k, b"mdia", "trak"), (b"mdhd", b"hdlr", b"minf"))
+    kept += more
     v, mdhd = _full(m, _one(mk, b"mdhd", "mdia"), (24, 36))
     mdts = struct.unpack_from(">I", mdhd, 20 if v else 12)[0]
     hdlr = _full(m, _one(mk, b"hdlr", "mdia"))[1][8:12]
     if len(hdlr) != 4:
         raise PregenError("media/1: a box is too short")
-    minf = _one(mk, b"minf", "mdia")
+    nk, more = _parts(m, _one(mk, b"minf", "mdia"), (*_MEDIA_HEADERS, b"dinf", b"stbl"))
+    kept += more
+    heads = [(t, box) for t in _MEDIA_HEADERS for box in nk.get(t, ())]
+    if len(heads) > 1:
+        raise PregenError("media/1: two media headers in minf")
     head = b""
-    for t, _, cs, ce in _boxes(m, *minf):
-        if t in _MEDIA_HEADERS:
-            b = _full(m, (cs, ce))[1]
-            if len(b) < _MEDIA_HEADERS[t]:
-                raise PregenError("media/1: a media header shorter than its layout")
-            head = _el(t, b[4:])
-            break
-    nk = _kids(m, *minf)
+    for t, (cs, ce) in heads:
+        m.seek(cs)
+        b = m.read(ce - cs)
+        if len(b) < _MEDIA_HEADERS[t]:
+            raise PregenError("media/1: a media header shorter than its layout")
+        head = _el(t, b if t == b"gmhd" else b[4:])         # gmhd has no version and flags
     dinf = _opt(nk, b"dinf", "minf")
-    dref = dinf and _opt(_kids(m, *dinf), b"dref", "dinf")
-    if dref:
+    if dinf:
+        refs = list(_boxes(m, *dinf))
+        if [t for t, *_ in refs] != [b"dref"]:
+            raise PregenError("media/1: a dinf holding anything but one dref")
+        dref = refs[0][2:]
         (n,) = struct.unpack_from(">I", _full(m, dref)[1], 4)
         refs = list(_boxes(m, dref[0] + 8, dref[1]))
         if len(refs) != n:
             raise PregenError("media/1: the dref count does not agree with its entries")
-        for _, _, cs, ce in refs:
-            if not _full(m, (cs, ce))[1][3] & 1:
-                raise PregenError("media/1: a data reference that is not in the same file")
-    sk = _kids(m, *_one(nk, b"stbl", "minf"))
+        for t, _, cs, ce in refs:
+            if t not in (b"url ", b"urn ") or not _full(m, (cs, ce))[1][3] & 1:
+                raise PregenError("media/1: a data reference that is not a self-contained url or urn")
+    sk, more = _parts(m, _one(nk, b"stbl", "minf"), (b"stsd", b"stts", b"ctts", b"stsc", b"stsz", b"stz2", b"stco",
+                                                     b"co64"))
+    kept += more
     stsd = _one(sk, b"stsd", "stbl")
     _, b = _full(m, stsd)
     (n,) = struct.unpack_from(">I", b, 4)
@@ -226,33 +242,12 @@ def _track(m, trak, file_size):
     for j in range(count):
         samples.append((sdis[j], t, offs[j], durs[j], pos[j], sizes[j]))
         t += durs[j]
-    first = head + _el(b"mdts", _i(mdts)) + sents + tkhd_el + _el(b"elst", _i(*edits))
+    first = head + _el(b"mdts", _i(mdts)) + sents + tkhd_el + _el(b"elst", _i(*edits)) + kept
     return tid, hdlr, first, tref, samples
 
 
-_MEDIA_HEADERS = {b"vmhd": 12, b"smhd": 8, b"sthd": 4, b"hmhd": 20, b"nmhd": 4}     # each with its layout's length
-# Every box in its place: the boxes media/1 reads, by the listed box that holds them (the others are read whole)
-_LISTED = {b"moov": (b"mvhd", b"trak"), b"trak": (b"tkhd", b"tref", b"edts", b"mdia"), b"edts": (b"elst",),
-           b"mdia": (b"mdhd", b"hdlr", b"minf"), b"minf": (b"dinf", b"stbl"), b"dinf": (b"dref",),
-           b"stbl": (b"stsd", b"stts", b"ctts", b"stsc", b"stsz", b"stco", b"co64")}
-_PLACED = re.compile(rb"(?=(mvhd|trak|tkhd|tref|edts|elst|mdia|mdhd|minf|vmhd|smhd|sthd|hmhd|nmhd|dinf|dref|stbl|stsd"
-                     rb"|stts|ctts|stsc|stsz|stz2|stco|co64|avcC|hvcC|av1C|vpcC|esds|dOps|dfLa|colr|pasp|clap|hdlr))")
-_DATA_HANDLERS = {b"mdir", b"mdta", b"ID32", b"alis", b"url ", b"mp7t", b"mp7b"}
-
-
-def _unread(m, s, e, t, out):
-    """Appends to `out` the ranges [start, end) of the content [s, e) of the listed box `t` that media/1 does not read:
-    every box there that it does not list, whole, adjacent ones joined. The first media header of minf is listed."""
-    header = t == b"minf"
-    for k, ks, cs, ke in _boxes(m, s, e):
-        if k in _LISTED[t] or header and k in _MEDIA_HEADERS:
-            header = header and k not in _MEDIA_HEADERS
-            if k in _LISTED:
-                _unread(m, cs, ke, k, out)
-        elif out and out[-1][1] == ks:
-            out[-1][1] = ke
-        else:
-            out.append([ks, ke])
+_MEDIA_HEADERS = {b"vmhd": 12, b"smhd": 8, b"sthd": 4, b"hmhd": 20, b"nmhd": 4, b"gmhd": 0}  # each: its layout's length
+_NOT_KEPT = (b"ftyp", b"moov", b"mdat", b"free", b"skip", b"wide")     # top-level boxes, besides the two carriers
 
 
 def _root(f):
@@ -297,22 +292,22 @@ def media_hash(f) -> dict:
     f.seek(cs)
     m = io.BytesIO(f.read(ce - cs))
     try:
-        mk = _kids(m, 0, ce - cs)
+        mk, kept = _parts(m, (0, ce - cs), (b"mvhd", b"trak", b"mvex", b"cmov"))
         if b"mvex" in mk:
             raise PregenError("media/1: a fragmented file (mvex)")
+        if b"cmov" in mk:
+            raise PregenError("media/1: a compressed movie (cmov)")
         v, mvhd = _full(m, _one(mk, b"mvhd", "moov"), (100, 112))
         tmsc = struct.unpack_from(">I", mvhd, 20 if v else 12)[0]
         rate, volu, *mtrx = struct.unpack_from(">ih10x9i", mvhd, 32 if v else 20)
         tracks = [_track(m, t, size) for t in mk.get(b"trak", [])]
-        unread = []
-        _unread(m, 0, ce - cs, b"moov", unread)
     except struct.error:
         raise PregenError("media/1: a box is too short") from None
-    moov = m.getvalue()
-    for s, e in unread:
-        for x in _PLACED.finditer(moov, s, e):
-            if x[1] != b"hdlr" or moov[x.start() + 12:x.start() + 16] not in _DATA_HANDLERS:
-                raise PregenError(f"media/1: {x[1].decode()} outside its place in moov")
+    for t, _, bs, be in top:                    # every other top-level box a player could read, kept as is
+        f.seek(bs)
+        if t not in _NOT_KEPT and not (t == b"uuid" and f.read(16) in (_XMP_UUID, _C2PA_UUID)):
+            f.seek(bs)
+            kept += _el(b"xbox", _el(t, f.read(be - bs)))
     if len({t[0] for t in tracks}) != len(tracks):
         raise PregenError("media/1: two tracks with one track_ID")
     tracks = sorted(tracks, key=lambda t: t[0])                     # every track, whatever its handler
@@ -324,11 +319,11 @@ def media_hash(f) -> dict:
         if j and a < ranges[j - 1][1]:
             raise PregenError("media/1: sample ranges overlap")
     movie = b"PREGEN-MEDIA\x00media/1\x00" + _el(b"FRMT", b"isobmff") + _el(b"tmsc", _i(tmsc)) \
-        + _el(b"rate", _i(rate)) + _el(b"volu", _i(volu)) + _el(b"mtrx", _i(*mtrx))
+        + _el(b"rate", _i(rate)) + _el(b"volu", _i(volu)) + _el(b"mtrx", _i(*mtrx)) + kept
     trefs = []
     for tid, hdlr, first, tref, _ in tracks:
         if any(x not in where for _, ids in tref for x in ids):
-            raise PregenError("media/1: a tref names a track that is not listed")
+            raise PregenError("media/1: a tref names a track that is not in the file")
         trefs.append(_el(b"hdlr", hdlr) + _el(b"tref", b"".join(_el(t, _i(*(where[x] for x in ids))) for t, ids in tref))
                      + first)
 
@@ -495,8 +490,10 @@ _XMP_ESC = {b"amp": b"&", b"lt": b"<", b"gt": b">", b"quot": b'"', b"apos": b"'"
 def _xmp_record(p: bytes):
     """pgag:Record by the fixed lexical rule (Carrying the record), never by an XML library, so that every reader finds
     the same record: the envelope, or None for a packet that breaks the rule and so carries no record."""
-    if any(x in p for x in _XMP_NOT) or p.count(_XMP_DECL) != 1 or p.count(b"xmlns:pgag=") != 1 \
-            or p.count(b"<pgag:Record>") != 1 or b"pgag:Record=" in p:
+    pis = (p.count(b"<?xpacket begin="), p.count(b"<?xpacket end="))
+    if any(x in p for x in _XMP_NOT) or max(pis) > 1 or p.count(b"<?") != sum(pis) or p.count(_PGAG.encode()) != 1 \
+            or p.count(_XMP_DECL) != 1 or p.count(b"xmlns:pgag=") != 1 or p.count(b"<pgag:Record>") != 1 \
+            or b"pgag:Record=" in p:
         return None
     start = p.index(b"<pgag:Record>") + 13
     end = p.find(b"</pgag:Record>", start)

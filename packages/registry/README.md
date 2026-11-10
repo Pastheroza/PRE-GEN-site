@@ -112,9 +112,9 @@ approval, and keeps answering status, lookup and withdrawal for every record it 
 |---|---|
 | `POST /v2/after-gen/requests` | `{"request": <pg.after_gen_request.v1>, "preview_url"?: "https://…"}`, signed by the requester's key from its own domain (role `requester`, no credential). Returns `{request, state: "pending", review_until}`; a sandbox adds `review_url`, its test approval page |
 | `GET /v2/after-gen/requests/{id}` | the requester only (`PG-Access`): `{request, state, review_until, record?}` |
-| `POST /v2/after-gen/decisions` | a `pg.after_gen_decision.v1` signed by the subject's own key (custody self, role `subject`), or by an agent's key (role `agent`, `X-Provider-ID` naming the agent) under a mandate that lists `after_gen`; to an agent without such a live mandate of the subject, every request is an unknown one (404). The registry keeps the decision with the record |
+| `POST /v2/after-gen/decisions` | a `pg.after_gen_decision.v1` signed by the subject's own key (custody self, role `subject`), or by an agent's key (role `agent`, `X-Provider-ID` naming the agent) under a mandate that lists `after_gen`; to anyone else (another key, a key the registry holds, an agent without a live mandate of the subject) every request is an unknown one (404). The registry keeps the decision with the record |
 | `GET`, `POST /v2/after-gen/review/{token}` | sandbox only: the approval page of the sandbox's test creator, with a simulated second factor |
-| `POST /v2/after-gen/{record}/withdraw` | a `pg.after_gen_withdrawal.v1` `{signers, record, issued_at}` signed by the subject's own key |
+| `POST /v2/after-gen/{record}/withdraw` | a `pg.after_gen_withdrawal.v1` `{signers, record, issued_at}` signed by the subject's own key; any other signature gets the answer an unknown record gets (404) |
 | `GET /v2/after-gen?media={64 hex}` | `{"records": [ids]}`, approved records only; readable from any origin |
 | `GET /v2/after-gen/{id}` | `{"record", "status"}`, the status signed now and valid for 300 seconds; readable from any origin |
 
