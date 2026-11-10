@@ -14,9 +14,9 @@ const REGISTRIES = require("../registries.json");
 const LIB = import("../packages/verify-js/index.js");
 
 /* Returns { code, wire, kind, issuer } or { error, detail, status }: `code` the TOG key (cache, false claims), `wire`
-   the spelling sent to the registry. The code exactly as sent: the page folds typed input. */
+   the spelling sent to the registry. Trimmed and case-folded as before; the page folds the rest of typed input. */
 function classify(raw, { parseCode, codeKey, CodeError }) {
-  const code = String(raw || "");
+  const code = String(raw || "").trim().toUpperCase().replace(/\s+/g, "");
   if (!code) return { error: "missing_code", detail: "Provide ?code=TOG-…", status: 400 };
   if (code.length > 64) return { error: "invalid_code", detail: "Not a code.", status: 422 };
   let p;
@@ -63,12 +63,20 @@ async function resolverTemplate(api, signal) {
 }
 
 /* Both answer shapes read as extensions/lookup.md's: /v1 answers ({kind, found, status}, a subject record) gain the
-   code asked; a registry's "not found" is lookup.md's "unknown". */
-function asLookup(status, body, wire) {
+   code asked; a registry's "not found" is lookup.md's "unknown". A subject record (`record`) gives only what the
+   site's card always showed: lookup.md's fields, and the registry's own words about owner, type and authority. */
+function asLookup(status, body, wire, record) {
   if (status === 404 && (body?.error === "not_found" || /^(Subject|License) not found$/.test(body?.detail))) {
     return [200, { code: wire, status: "unknown" }];
   }
   if (status !== 200 || !body || typeof body !== "object" || Array.isArray(body)) return [status, body];
+  if (record) {
+    const d = body;
+    return [200, { code: wire, kind: "subject", status: d.status, visibility: d.visibility, aliases: d.aliases,
+      owner_verified: d.owner_verified, subject_type: d.subject_type, lifecycle_status: d.lifecycle_status,
+      authority_status: d.authority_status, subject_key: { public_key_hex: d.public_key_hex, custody: d.key_custody },
+      rules_text: d.rules_text, registered_at: d.registered_at }];
+  }
   const { found, ...rest } = body;
   return [200, { code: wire, ...rest }];
 }
@@ -173,18 +181,19 @@ module.exports = async (req, res) => {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 5000);
   try {
-    let url;
+    let url, record = false;
     if (!c.issuer) {
       /* A bare code at the origin registry, as before: a licence through its public proof, which hides confidential
          terms; never the private licence record. */
       url = (process.env.PRAMPTA_API_URL || registry.api)
         + (c.kind === "license" ? "/v1/licenses/" + wire + "/proof" : "/v1/subjects/" + wire);
+      record = c.kind !== "license";
       if (process.env.PRAMPTA_TOKEN) headers.Authorization = "Bearer " + process.env.PRAMPTA_TOKEN;
     } else {
       url = (await resolverTemplate(registry.api, ctrl.signal)).replace("{code}", wire);
     }
     const upstream = await fetch(url, { headers, signal: ctrl.signal });
-    const [status, raw] = asLookup(upstream.status, await upstream.json().catch(() => ({})), c.wire);
+    const [status, raw] = asLookup(upstream.status, await upstream.json().catch(() => ({})), c.wire, record);
     const body = togOnly(raw, lib);
     if (status < 500) cacheSet(c.code, status, body);
     res.status(status).json(body);
