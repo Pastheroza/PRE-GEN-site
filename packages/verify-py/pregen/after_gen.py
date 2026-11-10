@@ -1011,9 +1011,10 @@ def c2pa_assertion(envelope: dict) -> dict:
 
 # ── the record and its status ──────────────────────────────────────────────────────────────────
 
-_MEMBERS = {"signers", "kind", "label", "notice", "not", "subject_ref", "content", "request", "holder", "licence",
-            "use", "scope", "approval", "issued_at"}
+_MEMBERS = {"signers", "kind", "label", "notice", "not", "subject_ref", "content", "request", "holder", "basis",
+            "scope", "approval", "issued_at"}
 _SCOPE = {"purposes", "categories", "territories", "channels", "project", "not_after"}
+_BASIS = {"licence": {"kind", "licence", "use"}, "terms": {"kind", "terms"}}
 _APPROVAL = {"self": {"assent", "decision"}, "registry": {"assent", "instruction", "factor"},
              "agent": {"assent", "agent", "mandate", "decision", "factor"}}
 _STATUS_MEMBERS = {"signers", "record", "state", "approved_at", "withdrawn_at", "not_after", "issued_at", "expires_at"}
@@ -1102,12 +1103,20 @@ def check_after_gen(env: dict, directory=None, get_json=_get_json, media=None) -
     c = _obj(b["content"], {"binding", "hash", "leaves"}, "content")
     if c["binding"] != "media/1" or not _hex(c["hash"]) or not _count(c["leaves"]):
         raise PregenError("content: one file by its media/1 hash and number of leaves")
-    lic = _obj(b["licence"], {"format", "id"}, "licence")
-    if lic["format"] != "pg.grant.v1" or not _hex(lic["id"]):
-        raise PregenError("licence: a pg.grant.v1 by its message id")
-    use = _obj(b["use"], {"n", "of"}, "use")
-    if not _count(use["n"]) or not (use["of"] is None or _count(use["of"]) and use["n"] <= use["of"]):
-        raise PregenError("use: n from 1, of the licence's max_uses or null")
+    basis = b["basis"]
+    kind = basis.get("kind") if isinstance(basis, dict) else None
+    if type(kind) is not str or kind not in _BASIS:
+        raise PregenError("basis.kind: licence or terms")
+    _obj(basis, _BASIS[kind], f"basis ({kind})")
+    if kind == "terms" and not _hex(basis["terms"]):
+        raise PregenError("basis.terms: the message id of the pg.terms.v1 version in force")
+    if kind == "licence":
+        lic = _obj(basis["licence"], {"format", "id"}, "licence")
+        if lic["format"] != "pg.grant.v1" or not _hex(lic["id"]):
+            raise PregenError("licence: a pg.grant.v1 by its message id")
+        use = _obj(basis["use"], {"n", "of"}, "use")
+        if not _count(use["n"]) or not (use["of"] is None or _count(use["of"]) and use["n"] <= use["of"]):
+            raise PregenError("use: n from 1, of the licence's max_uses or null")
     if not _hex(b["request"]) or not _count(b["issued_at"]):
         raise PregenError("request is a message id and issued_at an integer time")
     check_provider_url(b["holder"], allow_port=True)
@@ -1125,7 +1134,7 @@ def check_after_gen(env: dict, directory=None, get_json=_get_json, media=None) -
             raise PregenError("not for this file")
         match = True
     return {"id": rid, "subject_ref": code, "prefix": issuer_of(code), "label": b["label"],
-            "notice": b["notice"], "not": b["not"], "holder": b["holder"], "licence_id": lic["id"], "use": b["use"],
+            "notice": b["notice"], "not": b["not"], "holder": b["holder"], "basis": basis,
             "scope": b["scope"], "approval": b["approval"], "approved_by": _approved_by(b["approval"]),
             "status_url": status_url, "issued_at": b["issued_at"], "content": c, "file_match": match}
 

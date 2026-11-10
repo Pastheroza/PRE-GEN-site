@@ -138,10 +138,11 @@ def test_the_subject_approves_with_their_own_key_and_the_record_stands():
     assert body["approval"] == {"assent": "self", "decision": message_id(d["type"], d["body"])}
     assert (body["subject_ref"], body["holder"], body["request"], body["issued_at"]) == (w.me, w.p.id, rid, w.clock.t)
     assert body["content"] == {"binding": "media/1", "hash": MEDIA, "leaves": 1843}
-    assert body["licence"] == {"format": "pg.grant.v1", "id": w.mine} and body["use"] == {"n": 1, "of": None}
+    assert body["basis"] == {"kind": "licence", "licence": {"format": "pg.grant.v1", "id": w.mine},
+                             "use": {"n": 1, "of": None}}                         # the reference issues the licence kind only
     assert body["scope"] == w.scope(not_after=body["scope"]["not_after"])
     assert set(body) == {"signers", "kind", "label", "notice", "not", "subject_ref", "content", "request", "holder",
-                         "licence", "use", "scope", "approval", "issued_at"}       # no status_url: it would name itself
+                         "basis", "scope", "approval", "issued_at"}       # no status_url: it would name itself
     assert w.c.get(f"/v2/after-gen/{rid}").status_code == 404                     # the status is by the record's id
     assert w.c.get(f"/v2/after-gen?media={MEDIA}").json() == {"records": [rec_id]}
     assert w.state(rid).json() == {"request": rid, "state": "approved", "review_until": w.clock.t - 3600 + AG_REVIEW,
@@ -158,7 +159,7 @@ def test_an_agent_approves_a_narrower_scope_under_a_mandate():
     body = record_body(w, rid, agent=AGENCY, env=d)
     assert body["approval"] == {"assent": "agent", "agent": AGENCY, "mandate": mandate, "factor": "signature",
                                 "decision": message_id(d["type"], d["body"])}
-    assert body["scope"] == narrow and body["use"] == {"n": 1, "of": 5} and body["holder"] == w.p.id
+    assert body["scope"] == narrow and body["basis"]["use"] == {"n": 1, "of": 5} and body["holder"] == w.p.id
 
 
 def test_the_sandbox_review_page_is_the_test_creators_with_a_simulated_factor():
@@ -221,7 +222,7 @@ def test_the_operator_approves_on_the_subjects_instruction_with_a_second_factor(
     rec_id = capsys.readouterr().out.strip()
     out = reg.after_gen_status(rec_id)
     assert out["record"]["body"]["approval"] == {"assent": "registry", "instruction": INSTRUCTION, "factor": "authenticator"}
-    assert out["record"]["body"]["use"] == {"n": 1, "of": 3} and out["status"]["body"]["state"] == "active"
+    assert out["record"]["body"]["basis"]["use"] == {"n": 1, "of": 3} and out["status"]["body"]["state"] == "active"
     assert reg._row("SELECT preview_url FROM after_gen_requests WHERE id = ?", (rid,))[0] is None
     cfg = tmp_path / "registry.json"                                            # after-gen turned off: no new request,
     cfg.write_text(json.dumps({**json.loads(cfg.read_text()), "after_gen": False}))   # but its records still answer
@@ -569,6 +570,7 @@ def test_the_library_accepts_every_record_and_status_the_registry_signs():
         out = w.c.get(f"/v2/after-gen/{rec}").json()
         checked = lib.check_after_gen(out["record"], directory, get_json)
         assert (checked["id"], checked["approval"]["assent"]) == (rec, assent)
+        assert checked["basis"] == out["record"]["body"]["basis"] and checked["basis"]["kind"] == "licence"
         assert checked["status_url"] == f"https://test.example/v2/after-gen/{rec}"
         assert lib.check_after_gen_status(out["status"], out["record"], directory, get_json, now=w.clock.t)["state"] == "active"
     w.clock.t += 60
@@ -691,7 +693,7 @@ def test_a_not_after_already_past_is_never_signed_and_takes_no_use():
     refused(w.decide(w.pending(subject=w.me, media="cd" * 32), scope=w.scope(not_after=w.clock.t)),
             "PG_SCOPE_VIOLATION", 403)                                          # a decision narrowing it to now
     assert w.reg.db.execute("SELECT COUNT(*) FROM after_gen_records").fetchone()[0] == 0
-    assert record_body(w, w.pending(subject=w.me, media="ef" * 32))["use"] == {"n": 1, "of": 3}   # none was counted
+    assert record_body(w, w.pending(subject=w.me, media="ef" * 32))["basis"]["use"] == {"n": 1, "of": 3}   # none was counted
 
 
 def test_use_n_is_the_licences_count_when_signed_so_a_give_back_can_repeat_it():
@@ -703,7 +705,7 @@ def test_use_n_is_the_licences_count_when_signed_so_a_give_back_can_repeat_it():
     first = w.reg.approve_after_gen(w.pending(licence=g, media="11" * 32), instruction=INSTRUCTION, factor="email")
     assert w.p.report(allow, outcome="not_generated").status_code == 200        # the allow's use is given back
     second = w.reg.approve_after_gen(w.pending(licence=g, media="22" * 32), instruction=INSTRUCTION, factor="email")
-    assert [w.status(r)[0]["use"] for r in (first, second)] == [{"n": 2, "of": 3}] * 2
+    assert [w.status(r)[0]["basis"]["use"] for r in (first, second)] == [{"n": 2, "of": 3}] * 2
 
 
 def test_the_registry_keeps_the_decision_it_received_and_an_agent_without_a_mandate_learns_nothing():

@@ -314,8 +314,8 @@ function change(obj, path, value) { // a copy of obj with obj[path] set, or dele
 async function baseBody(key = KEY) {
   return { signers: [{ role: "registry", key_id: await kid(key) }], kind: "ratification", label: AFTER_GEN_LABEL,
     notice: AFTER_GEN_NOTICE, not: [...AFTER_GEN_NOT], subject_ref: "PG-TEST-000001N", content: { ...MEDIA },
-    request: "a".repeat(64), holder: "https://studio.example", licence: { format: "pg.grant.v1", id: "b".repeat(64) },
-    use: { n: 3, of: 10 }, scope: { purposes: ["commercial"], categories: ["advertising"], territories: ["ES", "IT"],
+    request: "a".repeat(64), holder: "https://studio.example",
+    basis: { kind: "licence", licence: { format: "pg.grant.v1", id: "b".repeat(64) }, use: { n: 3, of: 10 } }, scope: { purposes: ["commercial"], categories: ["advertising"], territories: ["ES", "IT"],
       channels: ["online-video", "social"], project: "Spring campaign 2027", not_after: 1830000000 },
     approval: { assent: "agent", agent: "https://agency.example", mandate: "c".repeat(64), decision: "d".repeat(64), factor: "signature" },
     issued_at: 1794200000 };
@@ -326,6 +326,7 @@ async function record(changes = {}, key = KEY) {
   return signEnvelope("pg.after_gen.v1", body, key);
 }
 const RECORD = await record();
+const TERMS = { kind: "terms", terms: "f".repeat(64) };
 
 test("XMP: embedded at the end, read back, and media/1 unchanged", async () => {
   const out = await embedXmp(FILE, RECORD);
@@ -395,8 +396,8 @@ test("XMP: an existing box keeps its properties and is rewritten in place, padde
   assert.deepEqual((await readAfterGen(grown)).xmp, RECORD);
   assert.deepEqual(await mediaHash(grown), MEDIA);
   // embedding again replaces the record, keeps the rest
-  const again = await embedXmp(out, await record({ "use.n": 4 }));
-  assert.equal((await readAfterGen(again)).xmp.body.use.n, 4);
+  const again = await embedXmp(out, await record({ "basis.use.n": 4 }));
+  assert.equal((await readAfterGen(again)).xmp.body.basis.use.n, 4);
   assert.ok(Buffer.from(again).toString().includes('xmp:CreatorTool="Editor &amp; Co"'));
 });
 
@@ -445,7 +446,7 @@ test("C2PA: the assertion from the active manifest, as JSON or CBOR", async () =
   assert.deepEqual((await readAfterGen(withC2pa(c2paBox(manifest(assertion(label, jsonBox(RECORD))))))).c2pa, RECORD);
   assert.deepEqual((await readAfterGen(withC2pa(c2paBox(manifest(assertion(label, cborBox(RECORD))))))).c2pa, RECORD);
   assert.deepEqual((await readAfterGen(withC2pa(c2paBox(manifest(assertion("org.pregen.after_gen__1", cborBox(RECORD))))))).c2pa, RECORD);
-  const older = await record({ "use.n": 1 });
+  const older = await record({ "basis.use.n": 1 });
   const two = c2paBox(manifest(assertion(label, jsonBox(older))), manifest(assertion(label, cborBox(RECORD))));
   assert.deepEqual((await readAfterGen(withC2pa(two))).c2pa, RECORD); // the last manifest is the active one
   const none = c2paBox(manifest(assertion(label, jsonBox(RECORD))), manifest(assertion("c2pa.actions", jsonBox({ a: 1 }))));
@@ -490,7 +491,7 @@ test("a valid record checks out, with the three statements and who approved", as
   assert.equal(s.id, await messageId("pg.after_gen.v1", RECORD.body));
   assert.deepEqual([s.label, s.notice, s.not], [AFTER_GEN_LABEL, AFTER_GEN_NOTICE, [...AFTER_GEN_NOT]]);
   assert.equal(s.prefix, "TEST");
-  assert.equal(s.licence, "b".repeat(64));
+  assert.deepEqual(s.basis, RECORD.body.basis);
   assert.equal(s.approvedBy, `approved by agency.example under mandate ${"c".repeat(64)}`);
   assert.equal(s.fileMatch, true);
   assert.equal((await check(RECORD, { media: MEDIA.hash })).fileMatch, true);
@@ -499,7 +500,10 @@ test("a valid record checks out, with the three statements and who approved", as
   assert.equal(self.approvedBy, "approved by the person");
   const reg = await check(await record({ approval: { assent: "registry", instruction: "e".repeat(64), factor: "email" } }));
   assert.equal(reg.approvedBy, "approved on the person's instruction at the registry");
-  await check(await record({ "use.of": null, "scope.categories": [], "scope.territories": ["*"], "scope.channels": ["*"] }));
+  await check(await record({ "basis.use.of": null, "scope.categories": [], "scope.territories": ["*"], "scope.channels": ["*"] }));
+  // the person's own terms: no licence, so not_after is bounded by issued_at only
+  const terms = await check(await record({ basis: TERMS, "scope.not_after": 2800000000 }));
+  assert.deepEqual(terms.basis, TERMS);
 });
 
 test("vector 6: a record checked against another file is not for this file", async () => {
@@ -517,8 +521,24 @@ const MUTATIONS = [ // vectors 9 and 13, the shape, and the approval forms
   ["an unknown body member", { origin: "ai" }],
   ["a missing member", { request: DROP }],
   ["an unknown member in content", { "content.extra": 1 }],
-  ["an unknown member in licence", { "licence.license_id": "PG-TEST-000001N" }],
-  ["an unknown member in use", { "use.left": 7 }],
+  ["an unknown member in licence", { "basis.licence.license_id": "PG-TEST-000001N" }],
+  ["an unknown member in use", { "basis.use.left": 7 }],
+  ["an unknown basis kind", { basis: { ...TERMS, kind: "grant" } }],
+  ["basis kind as a list", { basis: { ...TERMS, kind: ["terms"] } }],
+  ["a basis without kind", { "basis.kind": DROP }],
+  ["a basis that is a string", { basis: "f".repeat(64) }],
+  ["no basis", { basis: DROP }],
+  ["an extra member in the licence basis", { "basis.extra": 1 }],
+  ["an extra member in the terms basis", { basis: { ...TERMS, extra: 1 } }],
+  ["a licence basis without use", { "basis.use": DROP }],
+  ["a licence basis without licence", { "basis.licence": DROP }],
+  ["a terms basis without terms", { basis: { kind: "terms" } }],
+  ["a licence basis with a terms member", { "basis.terms": "f".repeat(64) }],
+  ["a terms basis with licence and use", { basis: { ...TERMS, licence: { format: "pg.grant.v1", id: "b".repeat(64) }, use: { n: 3, of: 10 } } }],
+  ["terms not hex", { basis: { ...TERMS, terms: "F".repeat(64) } }],
+  ["terms too short", { basis: { ...TERMS, terms: "f".repeat(63) } }],
+  ["terms an object", { basis: { ...TERMS, terms: { format: "pg.grant.v1", id: "b".repeat(64) } } }],
+  ["licence and use at the top", { basis: DROP, licence: { format: "pg.grant.v1", id: "b".repeat(64) }, use: { n: 3, of: 10 } }],
   ["an unknown member in scope", { "scope.media": ["video"] }],
   ["an unknown member in approval", { "approval.note": "x" }],
   ["an unknown member in signers", { signers: [{ role: "registry", key_id: "pg-ed25519:" + "0".repeat(32), name: "x" }] }],
@@ -543,8 +563,8 @@ const MUTATIONS = [ // vectors 9 and 13, the shape, and the approval forms
   ["a project of 201 characters", { "scope.project": "x".repeat(201) }],
   ["a project with a newline", { "scope.project": "Spring\ncampaign" }],
   ["not_after not an integer", { "scope.not_after": "2028" }],
-  ["use n 0", { "use.n": 0 }],
-  ["use n beyond of", { "use.n": 11 }],
+  ["use n 0", { "basis.use.n": 0 }],
+  ["use n beyond of", { "basis.use.n": 11 }],
   ["self naming a factor", { approval: { assent: "self", decision: "d".repeat(64), factor: "email" } }],
   ["registry without a factor", { approval: { assent: "registry", instruction: "e".repeat(64) } }],
   ["registry with factor signature", { approval: { assent: "registry", instruction: "e".repeat(64), factor: "signature" } }],
@@ -554,7 +574,7 @@ const MUTATIONS = [ // vectors 9 and 13, the shape, and the approval forms
   ["an approval by the holder", { approval: { assent: "holder", decision: "d".repeat(64) } }],
   ["no approval", { approval: DROP }],
   ["a holder that is not a party id", { holder: "studio.example" }],
-  ["a licence of another format", { "licence.format": "pg.terms.v1" }],
+  ["a licence of another format", { "basis.licence.format": "pg.terms.v1" }],
   ["a status_url member (the verifier builds the address)", { status_url: API + "/v2/after-gen/x" }],
   ["not_after 0", { "scope.not_after": 0 }],
   ["a holder with a path", { holder: "https://studio.example/x" }],
@@ -731,4 +751,6 @@ test("spec/test-vectors/after-gen/vectors.json: every file's media/1 or refusal,
       else assert.doesNotMatch(said, /^[0-9a-f]{64}$/, `${v.file} ${via}: refused`);
     }
   }
+  const t = V.terms_record, ts = await checkAfterGen(t.record, { directory: dir, getJson: keys, media: hashes[t.file] });
+  assert.deepEqual({ id: ts.id, basis: ts.basis }, t.check);
 });

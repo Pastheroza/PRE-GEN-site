@@ -48,8 +48,9 @@ Signed by the registry alone. Its id is its message id (`PRE-GEN-CORE.md`, Messa
           "content": {"binding": "media/1", "hash": "<64 hex>", "leaves": 1843},
           "request": "<message id of the pg.after_gen_request.v1>",
           "holder": "https://studio.example",
-          "licence": {"format": "pg.grant.v1", "id": "<message id of the grant>"},
-          "use": {"n": 3, "of": 10},
+          "basis": {"kind": "licence",
+                    "licence": {"format": "pg.grant.v1", "id": "<message id of the grant>"},
+                    "use": {"n": 3, "of": 10}},
           "scope": {"purposes": ["commercial"], "categories": ["advertising"],
                     "territories": ["ES", "IT"], "channels": ["online-video", "social"],
                     "project": "Spring campaign 2027", "not_after": 1830000000},
@@ -68,10 +69,9 @@ Signed by the registry alone. Its id is its message id (`PRE-GEN-CORE.md`, Messa
 | `subject_ref` | the subject's PG code |
 | `content` | the file, by its hash under a binding (below). `after-gen/1` knows `media/1` only, with `leaves` the number of leaves of its tree. One record names one file, never a class of files or future files |
 | `request` | the message id of the request this record answers |
-| `holder` | who may publish the file: the requester's party id. It equals the licence's `licensee_id`, unless the licence is for any licensee (`""`) |
-| `licence` | the `pg.grant.v1` the use is counted against |
-| `use` | the licence's count of uses when this record was signed, this one included: `n` from 1; `of` the licence's `max_uses`, or `null` for no limit. A use given back by an allow that was not generated lowers the count, so two records may show the same `n` |
-| `scope` | what the approver approved. `purposes` and `categories` in the profile's closed vocabulary (`categories` may be empty); `territories` at most 250 ISO 3166-1 alpha-2 codes or `["*"]`; `channels` at most 64 words of `[a-z0-9-]{1,32}` or `["*"]`; `project` printable text of 1–200 characters; `not_after` an integer time later than `issued_at` and no later than the licence's `expires_at`. Lists are sorted, without repeats; `purposes`, `territories` and `channels` are never empty |
+| `holder` | who may publish the file: the requester's party id. Under a licence it equals the licence's `licensee_id`, unless the licence is for any licensee (`""`) |
+| `basis` | on what the approval rests, one of two kinds. `{"kind": "licence", "licence", "use"}`: a deal. `licence` is the `pg.grant.v1` the use is counted against; `use` is the licence's count of uses when this record was signed, this one included: `n` from 1, `of` the licence's `max_uses` or `null` for no limit (a use given back by an allow that was not generated lowers the count, so two records may show the same `n`). `{"kind": "terms", "terms"}`: no deal, the person's own standing terms, which allow approval after generation for this purpose; `terms` is the message id of the `pg.terms.v1` version in force. The reference registry issues only the licence kind in `after-gen/1`; verifiers accept both |
+| `scope` | what the approver approved. `purposes` and `categories` in the profile's closed vocabulary (`categories` may be empty); `territories` at most 250 ISO 3166-1 alpha-2 codes or `["*"]`; `channels` at most 64 words of `[a-z0-9-]{1,32}` or `["*"]`; `project` printable text of 1–200 characters; `not_after` an integer time later than `issued_at` and, under a licence, no later than its `expires_at`. Lists are sorted, without repeats; `purposes`, `territories` and `channels` are never empty |
 | `approval` | who approved, and on what basis (below) |
 | `issued_at` | the registry's time when it signed |
 
@@ -334,8 +334,10 @@ record copied into another file names a hash that file does not have.
 5. **Withdrawal.** The subject withdraws a record with their own key, in a
    `pg.after_gen_withdrawal.v1` `{signers, record, issued_at}` (`role: subject`), or by an
    authenticated instruction at the registry, with no second factor: it closes. From then on the status says "approved at
-   T, withdrawn at W". New uses stop. What was already published stays a matter of the licence
-   between the parties. A registry that stops taking new requests keeps answering status,
+   T, withdrawn at W". An approval is final for what it covered; a withdrawal only stops what
+   comes next. Under a licence, new uses stop, and what was already published stays a matter of
+   the licence between the parties. Under the person's terms, the file is no longer approved for
+   anyone new. A registry that stops taking new requests keeps answering status,
    lookup and withdrawal for every record it signed.
 
 ## The status — `pg.after_gen_status.v1`
@@ -378,7 +380,7 @@ The libraries implement step 1 as `media_hash` / `mediaHash`, step 2 as `read_af
 | `content` | the requester computes it; the approver approves that file | the hash: a record moved to another file does not match | a holder wanting cover for other files | one file per record; the verifier recomputes the hash itself |
 | `subject_ref` | the requester | the registry's signature | a holder naming the wrong person | the registry holds the subject and the licence for that subject |
 | `holder` | the registry, from the requester's authentication | the registry | someone using another's licence | must be the licence's licensee |
-| `licence`, `use` | the requester names the licence; the registry counts | the registry's signature and its count | a holder exceeding the number of uses | counted once per record, at signing, against the licence |
+| `basis` | the requester names the licence, or the registry the terms version in force | the registry's signature and its count; the terms record's own signature | a holder exceeding the number of uses, or claiming terms that do not allow it | counted once per record, at signing, against the licence; the terms version is checked as of signing |
 | `scope` | the requester asks; the approver approves | the approver's act; the registry checks it against the licence and the floor | a holder wanting a wider scope | only within the licence; never wider than asked |
 | `scope.categories` | the requester declares | no one, until a finding | a holder hiding an intimate category | the approver sees the file; an intimate category is refused even if declared; a false declaration stays the requester's statement on record |
 | `approval` | the subject, or a representative within its mandate | the subject's key; the registry with a second factor; the representative's key and the mandate | someone acting in the subject's name | three named forms only, and the record says which |

@@ -174,7 +174,8 @@ export function embedXmp(bytes: Uint8Array, envelope: Envelope, options?: { dire
 export function c2paAssertion(envelope: Envelope): { label: "org.pregen.after_gen"; data: Envelope };
 export interface AfterGenSummary {
   id: string; subject_ref: string; prefix: string; label: string; notice: string; not: string[]; holder: string;
-  licence: string; use: { n: number; of: number | null };
+  basis: { kind: "licence"; licence: { format: "pg.grant.v1"; id: string }; use: { n: number; of: number | null } }
+    | { kind: "terms"; terms: string };
   scope: { purposes: string[]; categories: string[]; territories: string[]; channels: string[]; project: string; not_after: number };
   approval: Record<string, string>; approvedBy: string; issued_at: number; content: MediaHash;
   /** true when `media` was given and matched; null when no file was given. */

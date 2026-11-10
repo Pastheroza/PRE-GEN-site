@@ -834,8 +834,9 @@ const sortedUnique = (v) => Array.isArray(v) && v.every((x) => typeof x === "str
   && canonicalJson(v) === canonicalJson([...new Set(v)].sort());
 const wordsOrAll = (v, re, most) => sortedUnique(v) && v.length > 0
   && (canonicalJson(v) === '["*"]' || (v.length <= most && v.every((x) => re.test(x))));
-const BODY = ["signers", "kind", "label", "notice", "not", "subject_ref", "content", "request", "holder", "licence", "use",
+const BODY = ["signers", "kind", "label", "notice", "not", "subject_ref", "content", "request", "holder", "basis",
   "scope", "approval", "issued_at"]; // no status_url: the id hashes the body, so a verifier builds {api}/v2/after-gen/{id}
+const BASIS = { licence: ["kind", "licence", "use"], terms: ["kind", "terms"] };
 const APPROVAL = { self: ["assent", "decision"], registry: ["assent", "instruction", "factor"],
   agent: ["assent", "agent", "mandate", "decision", "factor"] };
 
@@ -862,12 +863,19 @@ function recordShape(b) {
       || c.leaves < 1) A("content names one file by its media/1 hash and its leaves");
   if (!hex64(b.request)) A("request is a message id");
   partyId(b.holder, "holder");
-  if (!members(b.licence, ["format", "id"]) || b.licence.format !== "pg.grant.v1" || !hex64(b.licence.id)) {
-    A("licence is {format: pg.grant.v1, id}");
+  const k = b.basis; // kind is one of the two words, never a list (which Object.hasOwn would read as a string)
+  if (!isObject(k) || typeof k.kind !== "string" || !Object.hasOwn(BASIS, k.kind) || !members(k, BASIS[k.kind])) {
+    A("basis is exactly one of its two kinds: licence or terms");
   }
-  const u = b.use;
-  if (!members(u, ["n", "of"]) || !Number.isSafeInteger(u.n) || u.n < 1
-      || !(u.of === null || (Number.isSafeInteger(u.of) && u.of >= u.n))) A("use is {n from 1, of: max_uses or null}");
+  if (k.kind === "terms" && !hex64(k.terms)) A("basis.terms is the message id of the pg.terms.v1 version in force");
+  if (k.kind === "licence") {
+    if (!members(k.licence, ["format", "id"]) || k.licence.format !== "pg.grant.v1" || !hex64(k.licence.id)) {
+      A("licence is {format: pg.grant.v1, id}");
+    }
+    const u = k.use;
+    if (!members(u, ["n", "of"]) || !Number.isSafeInteger(u.n) || u.n < 1
+        || !(u.of === null || (Number.isSafeInteger(u.of) && u.of >= u.n))) A("use is {n from 1, of: max_uses or null}");
+  }
   const s = b.scope;
   if (!members(s, ["purposes", "categories", "territories", "channels", "project", "not_after"])) A("scope has exactly its six members");
   if (!sortedUnique(s.purposes) || !s.purposes.length || !s.purposes.every((p) => PURPOSES.includes(p))) {
@@ -919,7 +927,7 @@ export async function checkAfterGen(env, { directory, getJson, fetch: fetchFn, m
     fileMatch = true;
   }
   return { id: await messageId(RECORD, b), subject_ref: b.subject_ref, prefix: issuerOf(b.subject_ref), label: b.label,
-    notice: b.notice, not: [...b.not], holder: b.holder, licence: b.licence.id, use: b.use, scope: b.scope,
+    notice: b.notice, not: [...b.not], holder: b.holder, basis: b.basis, scope: b.scope,
     approval: b.approval, approvedBy: approvedBy(b.approval), issued_at: b.issued_at,
     content: b.content, fileMatch };
 }

@@ -79,8 +79,10 @@ function show(summary, status, error) {
     ["Person", summary.subject_ref],
     ["Registry", summary.prefix],
     ["Who may publish it", summary.holder],
-    ["Licence", summary.licence],
-    ["Use of the licence", summary.use.of == null ? `use ${summary.use.n}` : `use ${summary.use.n} of ${summary.use.of}`],
+    ...(summary.basis.kind === "terms" ? [["Basis: the person's terms", summary.basis.terms]] : [
+      ["Licence", summary.basis.licence.id],
+      ["Use of the licence", summary.basis.use.of == null ? `use ${summary.basis.use.n}` : `use ${summary.basis.use.n} of ${summary.basis.use.of}`],
+    ]),
     ["Project", s.project],
     ["Purposes", s.purposes.join(", ")],
     ["Content categories declared", s.categories.length ? s.categories.join(", ") : "none"],

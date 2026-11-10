@@ -1,5 +1,5 @@
 {
- "description": "after-gen/1 (spec/drafts/after-gen.md): media/1 of each file, or its refusal; for files carrying a record, the message id read from C2PA and XMP and what check_after_gen says against the file's own media/1. The directory and key sets are those of answers.json.",
+ "description": "after-gen/1 (spec/drafts/after-gen.md): media/1 of each file, or its refusal; for files carrying a record, the message id read from C2PA and XMP and what check_after_gen says against the file's own media/1; a record of the terms kind for a.mp4 and its summary's id and basis. The directory and key sets are those of answers.json.",
  "now": 1790000000,
  "record": {
   "type": "pg.after_gen.v1",
@@ -25,13 +25,16 @@
    },
    "request": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
    "holder": "https://studio.example",
-   "licence": {
-    "format": "pg.grant.v1",
-    "id": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
-   },
-   "use": {
-    "n": 3,
-    "of": 10
+   "basis": {
+    "kind": "licence",
+    "licence": {
+     "format": "pg.grant.v1",
+     "id": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    "use": {
+     "n": 3,
+     "of": 10
+    }
    },
    "scope": {
     "purposes": [
@@ -61,7 +64,7 @@
    "issued_at": 1789999900
   },
   "signatures": [
-   "d2705277acee5827b65f6eac6c619d1b11a678790a057ec6f2de132fa1a95b08a19d8d0efb985c423c21a8a26bdca4c86d42985790fd4bd531528be421ef9c03"
+   "9d83829cad7400be39f301dc518f9ef49d4908995f8ae6d7adc008d395518a92a31e94ec3e914ed6aad0d0c34b3a73534d9f1bf5b3baf4fe8f05ce09d7640005"
   ]
  },
  "files": [
@@ -621,10 +624,10 @@
  "read": [
   {
    "file": "a-c2pa-cbor.mp4",
-   "c2pa": "3bc41012cefbd4a1210526376f2cc26d699dfb25f39bd23664a6b117d7c73982",
+   "c2pa": "0b12343528b0eb26127b9bf9ef42ffe5e03211d905007fa77c3f65e0c6004d69",
    "xmp": null,
    "check": {
-    "c2pa": "3bc41012cefbd4a1210526376f2cc26d699dfb25f39bd23664a6b117d7c73982"
+    "c2pa": "0b12343528b0eb26127b9bf9ef42ffe5e03211d905007fa77c3f65e0c6004d69"
    }
   },
   {
@@ -635,18 +638,18 @@
   },
   {
    "file": "a-c2pa-json.mp4",
-   "c2pa": "3bc41012cefbd4a1210526376f2cc26d699dfb25f39bd23664a6b117d7c73982",
+   "c2pa": "0b12343528b0eb26127b9bf9ef42ffe5e03211d905007fa77c3f65e0c6004d69",
    "xmp": null,
    "check": {
-    "c2pa": "3bc41012cefbd4a1210526376f2cc26d699dfb25f39bd23664a6b117d7c73982"
+    "c2pa": "0b12343528b0eb26127b9bf9ef42ffe5e03211d905007fa77c3f65e0c6004d69"
    }
   },
   {
    "file": "a-xmp-foreign-pg.mp4",
    "c2pa": null,
-   "xmp": "3bc41012cefbd4a1210526376f2cc26d699dfb25f39bd23664a6b117d7c73982",
+   "xmp": "0b12343528b0eb26127b9bf9ef42ffe5e03211d905007fa77c3f65e0c6004d69",
    "check": {
-    "xmp": "3bc41012cefbd4a1210526376f2cc26d699dfb25f39bd23664a6b117d7c73982"
+    "xmp": "0b12343528b0eb26127b9bf9ef42ffe5e03211d905007fa77c3f65e0c6004d69"
    }
   },
   {
@@ -658,9 +661,9 @@
   {
    "file": "a-xmp.mp4",
    "c2pa": null,
-   "xmp": "3bc41012cefbd4a1210526376f2cc26d699dfb25f39bd23664a6b117d7c73982",
+   "xmp": "0b12343528b0eb26127b9bf9ef42ffe5e03211d905007fa77c3f65e0c6004d69",
    "check": {
-    "xmp": "3bc41012cefbd4a1210526376f2cc26d699dfb25f39bd23664a6b117d7c73982"
+    "xmp": "0b12343528b0eb26127b9bf9ef42ffe5e03211d905007fa77c3f65e0c6004d69"
    }
   },
   {
@@ -720,10 +723,79 @@
   {
    "file": "b-copied-record.mov",
    "c2pa": null,
-   "xmp": "3bc41012cefbd4a1210526376f2cc26d699dfb25f39bd23664a6b117d7c73982",
+   "xmp": "0b12343528b0eb26127b9bf9ef42ffe5e03211d905007fa77c3f65e0c6004d69",
    "check": {
     "xmp": "not for this file"
    }
   }
- ]
+ ],
+ "terms_record": {
+  "record": {
+   "type": "pg.after_gen.v1",
+   "body": {
+    "signers": [
+     {
+      "role": "registry",
+      "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+     }
+    ],
+    "kind": "ratification",
+    "label": "approved after generation",
+    "notice": "Recorded after the content existed. Not a PRE-GEN permission given before generation. Says nothing about whether the content is AI-generated.",
+    "not": [
+     "pre_generation_permission",
+     "statement_of_origin"
+    ],
+    "subject_ref": "PG-TEST-000001N",
+    "content": {
+     "binding": "media/1",
+     "hash": "30a395600665973aee7f69e64c97bf160642e651aede46400a690e9c6e8f6c26",
+     "leaves": 1
+    },
+    "request": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "holder": "https://studio.example",
+    "basis": {
+     "kind": "terms",
+     "terms": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    },
+    "scope": {
+     "purposes": [
+      "commercial"
+     ],
+     "categories": [
+      "advertising"
+     ],
+     "territories": [
+      "ES",
+      "IT"
+     ],
+     "channels": [
+      "online-video",
+      "social"
+     ],
+     "project": "Spring campaign 2027",
+     "not_after": 1791000000
+    },
+    "approval": {
+     "assent": "agent",
+     "agent": "https://agency.example",
+     "mandate": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "decision": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "factor": "signature"
+    },
+    "issued_at": 1789999900
+   },
+   "signatures": [
+    "b364a243e9bb87d67c551a6ba87507ee6d82845d88ca156e807ae62725ea5455864e9c5e28a2b98810b641f4faa07df0d8756cbc96905fabbaba8ad93bf13e07"
+   ]
+  },
+  "file": "a.mp4",
+  "check": {
+   "id": "a61bde29a3c2b222097c08e5a64c60ee7d0fdde5d5a5b0e44947c4c28da32ab9",
+   "basis": {
+    "kind": "terms",
+    "terms": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+   }
+  }
+ }
 }

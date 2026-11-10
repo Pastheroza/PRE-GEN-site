@@ -213,6 +213,8 @@ SCOPE = {"purposes": ["commercial"], "categories": ["advertising"], "territories
          "channels": ["online-video", "social"], "project": "Spring campaign 2027", "not_after": NOW + 10**6}
 AGENT = {"assent": "agent", "agent": "https://agency.example", "mandate": "b" * 64, "decision": "c" * 64,
          "factor": "signature"}
+BASIS = {"kind": "licence", "licence": {"format": "pg.grant.v1", "id": "e" * 64}, "use": {"n": 3, "of": 10}}
+TERMS = {"kind": "terms", "terms": "f" * 64}
 
 
 def signer(key):
@@ -223,8 +225,8 @@ def record(media, key=KEY, **change):
     body = {"signers": signer(key), "kind": "ratification", "label": pregen.AFTER_GEN_LABEL,
             "notice": pregen.AFTER_GEN_NOTICE, "not": pregen.AFTER_GEN_NOT, "subject_ref": CODE,
             "content": {k: media[k] for k in ("binding", "hash", "leaves")}, "request": "a" * 64,
-            "holder": "https://studio.example", "licence": {"format": "pg.grant.v1", "id": "e" * 64},
-            "use": {"n": 3, "of": 10}, "scope": SCOPE, "approval": AGENT, "issued_at": NOW - 100}
+            "holder": "https://studio.example", "basis": BASIS, "scope": SCOPE, "approval": AGENT,
+            "issued_at": NOW - 100}
     body.update(change)
     return pregen.sign_envelope("pg.after_gen.v1", {k: v for k, v in body.items() if v is not DROP}, key)
 
@@ -426,10 +428,14 @@ def vectors():
                     except pregen.PregenError as e:
                         res[k] = str(e)
             reads.append({"file": n, **ids, "check": res})
+    terms = record(H((DIR / "a.mp4").read_bytes()), basis=TERMS)
     return {"description": "after-gen/1 (spec/drafts/after-gen.md): media/1 of each file, or its refusal; for files "
                            "carrying a record, the message id read from C2PA and XMP and what check_after_gen says "
-                           "against the file's own media/1. The directory and key sets are those of answers.json.",
-            "now": NOW, "record": rec, "files": entries, "read": reads}
+                           "against the file's own media/1; a record of the terms kind for a.mp4 and its summary's id "
+                           "and basis. The directory and key sets are those of answers.json.",
+            "now": NOW, "record": rec, "files": entries, "read": reads,
+            "terms_record": {"record": terms, "file": "a.mp4",
+                             "check": {k: check(terms, pregen.media_hash(DIR / "a.mp4"))[k] for k in ("id", "basis")}}}
 
 
 def write_vectors():
@@ -913,7 +919,7 @@ def test_a_valid_record():
     s = check(rec, a())
     assert s == {"id": pregen.message_id("pg.after_gen.v1", rec["body"]), "subject_ref": CODE, "prefix": "TEST",
                  "label": pregen.AFTER_GEN_LABEL, "notice": pregen.AFTER_GEN_NOTICE, "not": pregen.AFTER_GEN_NOT,
-                 "holder": "https://studio.example", "licence_id": "e" * 64, "use": {"n": 3, "of": 10}, "scope": SCOPE,
+                 "holder": "https://studio.example", "basis": BASIS, "scope": SCOPE,
                  "approval": AGENT, "approved_by": f"approved by agency.example under mandate {'b' * 64}",
                  "status_url": API + pregen.message_id("pg.after_gen.v1", rec["body"]), "issued_at": NOW - 100,
                  "content": rec["body"]["content"],
@@ -922,8 +928,10 @@ def test_a_valid_record():
     assert check(record(a(), approval={"assent": "self", "decision": "c" * 64}))["approved_by"] == "approved by the person"
     assert check(record(a(), approval={"assent": "registry", "instruction": "c" * 64, "factor": "email"}))["approved_by"] \
         == "approved on the person's instruction at the registry"
-    assert check(record(a(), use={"n": 1, "of": None}, scope={**SCOPE, "categories": [], "territories": ["*"],
-                                                              "channels": ["*"]}))
+    assert check(record(a(), basis={**BASIS, "use": {"n": 1, "of": None}},
+                        scope={**SCOPE, "categories": [], "territories": ["*"], "channels": ["*"]}))
+    # the person's own terms: no licence, so not_after is bounded by issued_at only
+    assert check(record(a(), basis=TERMS, scope={**SCOPE, "not_after": NOW + 10**9}))["basis"] == TERMS
 
 
 def nested(member, **extra):
@@ -941,14 +949,31 @@ MUTATIONS = [                                                 # vectors 7, 9, 13
     ("unknown in scope", {"scope": {**SCOPE, "x": 1}}, "scope: exactly"),
     ("unknown in approval", {"approval": {**AGENT, "x": 1}}, "approval \\(agent\\): exactly"),
     ("unknown in content", {"content": "X"}, "content: exactly"),
-    ("unknown in use", {"use": {"n": 1, "of": 2, "x": 1}}, "use: exactly"),
-    ("unknown in licence", {"licence": {"format": "pg.grant.v1", "id": "e" * 64, "x": 1}}, "licence: exactly"),
+    ("unknown in use", {"basis": {**BASIS, "use": {"n": 1, "of": 2, "x": 1}}}, "use: exactly"),
+    ("unknown in licence", {"basis": {**BASIS, "licence": {**BASIS["licence"], "x": 1}}}, "licence: exactly"),
+    ("unknown basis kind", {"basis": {**TERMS, "kind": "grant"}}, "basis.kind"),
+    ("basis kind as a list", {"basis": {**TERMS, "kind": ["terms"]}}, "basis.kind"),
+    ("basis without kind", {"basis": {k: v for k, v in BASIS.items() if k != "kind"}}, "basis.kind"),
+    ("basis a string", {"basis": "f" * 64}, "basis.kind"),
+    ("extra member in licence basis", {"basis": {**BASIS, "x": 1}}, "basis \\(licence\\): exactly"),
+    ("extra member in terms basis", {"basis": {**TERMS, "x": 1}}, "basis \\(terms\\): exactly"),
+    ("licence basis without use", {"basis": {k: v for k, v in BASIS.items() if k != "use"}}, "basis \\(licence\\)"),
+    ("licence basis without licence", {"basis": {k: v for k, v in BASIS.items() if k != "licence"}}, "basis \\(licence\\)"),
+    ("terms basis without terms", {"basis": {"kind": "terms"}}, "basis \\(terms\\)"),
+    ("licence basis with a terms member", {"basis": {**BASIS, "terms": "f" * 64}}, "basis \\(licence\\)"),
+    ("terms basis with licence and use", {"basis": {**TERMS, "licence": BASIS["licence"], "use": BASIS["use"]}},
+     "basis \\(terms\\)"),
+    ("terms not hex", {"basis": {**TERMS, "terms": "F" * 64}}, "basis.terms"),
+    ("terms short", {"basis": {**TERMS, "terms": "f" * 63}}, "basis.terms"),
+    ("terms an object", {"basis": {**TERMS, "terms": BASIS["licence"]}}, "basis.terms"),
+    ("licence and use at the top", {"basis": DROP, "licence": BASIS["licence"], "use": BASIS["use"]},
+     "exactly the members"),
     ("unknown in signer", {"signers": [{**signer(KEY)[0], "x": 1}]}, "signer"),
     ("binding", {"content": "sha256"}, "media/1"),
     ("hash", {"content": "upper"}, "media/1"),
-    ("licence format", {"licence": {"format": "pg.licence.v1", "id": "e" * 64}}, "pg.grant.v1"),
-    ("use n", {"use": {"n": 0, "of": 10}}, "use: n"),
-    ("use over", {"use": {"n": 11, "of": 10}}, "use: n"),
+    ("licence format", {"basis": {**BASIS, "licence": {"format": "pg.terms.v1", "id": "e" * 64}}}, "pg.grant.v1"),
+    ("use n", {"basis": {**BASIS, "use": {"n": 0, "of": 10}}}, "use: n"),
+    ("use over", {"basis": {**BASIS, "use": {"n": 11, "of": 10}}}, "use: n"),
     ("intimate", {"scope": {**SCOPE, "categories": ["advertising", "sexual"]}}, "intimate"),
     ("adult", {"scope": {**SCOPE, "categories": ["adult"]}}, "intimate"),
     ("outside vocabulary", {"scope": {**SCOPE, "categories": ["Advertising"]}}, "closed vocabulary"),
@@ -1025,7 +1050,7 @@ def test_each_mutation_is_refused(name, change, why):
 def test_signatures_and_the_directory():                     # vector 10
     rec = record(a())
     with pytest.raises(pregen.PregenError, match="bad signature"):
-        check({**rec, "body": {**rec["body"], "use": {"n": 4, "of": 10}}})
+        check({**rec, "body": {**rec["body"], "basis": {**BASIS, "use": {"n": 4, "of": 10}}}})
     with pytest.raises(pregen.PregenError, match="issuer_mismatch"):
         check(record(a(), key=seed("other_registry")))
     with pytest.raises(pregen.PregenError, match="exactly one registry key"):

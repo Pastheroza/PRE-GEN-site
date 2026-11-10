@@ -1382,8 +1382,9 @@ class Registry:
         env = seal("pg.after_gen.v1", {
             **AG_CONSTANTS, "subject_ref": row["subject_ref"],
             "content": {"binding": "media/1", "hash": row["media_hash"], "leaves": row["leaves"]},
-            "request": row["id"], "holder": row["requester"], "licence": {"format": "pg.grant.v1", "id": g["id"]},
-            "use": {"n": used + 1, "of": g["max_uses"]}, "scope": scope, "approval": a, "issued_at": now},
+            "request": row["id"], "holder": row["requester"],
+            "basis": {"kind": "licence", "licence": {"format": "pg.grant.v1", "id": g["id"]},
+                      "use": {"n": used + 1, "of": g["max_uses"]}}, "scope": scope, "approval": a, "issued_at": now},
             [("registry", self.key)])
         record = message_id(env["type"], env["body"])
         db.execute("INSERT INTO after_gen_records (id, request_id, subject_ref, media_hash, licence_id, envelope, "
