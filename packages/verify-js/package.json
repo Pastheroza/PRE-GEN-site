@@ -1,6 +1,6 @@
 {
   "name": "@pregen/verify",
-  "version": "0.13.0",
+  "version": "0.13.1",
   "description": "PRE-GEN client: sign requests and reports as a provider known by its domain (no account), and verify answers, proofs and the signed registry directory",
   "type": "module",
   "exports": {

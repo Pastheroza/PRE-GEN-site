@@ -13,6 +13,7 @@ import pregen
 HERE = Path(__file__).resolve().parent
 CASES = json.loads((HERE / "identity_cases.json").read_text())
 V = json.loads((HERE.parents[2] / "spec/test-vectors/answers.json").read_text())
+ANCHOR_LISTS = json.loads((HERE.parents[2] / "spec/test-vectors/anchors.json").read_text())
 NOW, KEY = V["now"], hashlib.sha256(b"pregen-answer-vector-registry").hexdigest()
 D = pregen.verify_directory(V["directory"], V["steward_public_key_hex"], now=NOW)
 
@@ -107,9 +108,14 @@ def entry(code, anchor="wikidata:Q11571"):
     return {"anchor": anchor, "code": code, "level": "verified", "proof_url": "", "status": "active"}
 
 
-def test_an_anchor_list_keeps_its_own_codes_and_drops_foreign_ones():
-    own, foreign, junk = entry("PG-TEST-000001N"), entry("PG-ABCD-000001V"), entry("pg-test-000003x")
-    assert anchors([own, foreign, junk]) == [own]
+@pytest.mark.parametrize("case", ANCHOR_LISTS["cases"], ids=lambda c: c["name"])
+def test_anchor_list_vectors(case):
+    """spec/test-vectors/anchors.json: foreign codes are dropped; an entry of unknown shape fails the whole list."""
+    if "error" in case:
+        with pytest.raises(pregen.PregenError, match=case["error"]):
+            anchors([entry(c) for c in case["codes"]])
+    else:
+        assert anchors([entry(c) for c in case["codes"]]) == [entry(c) for c in case["keep"]]
 
 
 def test_an_anchor_list_naming_a_code_twice_is_refused():

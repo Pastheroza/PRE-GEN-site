@@ -18,6 +18,15 @@ Text only: no message format, required schema member or vector changes.
 - **`licensee`:** a licensee not bound to a provider URL gets 403 `PG_NOT_BOUND` (`bind` B-5), not 401.
 - **Conformance:** two profiles for the message interface (`PRE-GEN-SPEC.md` §8.1).
 
+## pregen 0.13.1, @pregen/verify 0.13.1 (unreleased)
+
+A patch that changes published behaviour (ToG code design, decision 14, approved):
+- **`identity`:** an anchor-list entry of unknown shape fails the whole list. 0.13.0 dropped it silently, so a
+  refusal written in a code shape it cannot read (a `TOG-` code) was lost. Now `verify_anchors` / `verifyAnchors`
+  refuse the list, and that registry's people get no decision until a list verifies. Another registry's code of a
+  known shape is still dropped. Vectors: `test-vectors/anchors.json`. This patch ships before any registry writes
+  `TOG-` codes.
+
 ## pregen 0.13.0, @pregen/verify 0.13.0, pregen-registry 0.4.0 (unreleased)
 
 Four clarifications of existing extensions (approved 2026-11-07), no new extension:

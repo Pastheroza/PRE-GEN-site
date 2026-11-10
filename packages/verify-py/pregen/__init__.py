@@ -13,7 +13,7 @@ from urllib.parse import urlsplit
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-__version__ = "0.13.0"
+__version__ = "0.13.1"
 __all__ = [
     "STEWARD_PUBLIC_KEY_HEX", "DIRECTORY_URL", "PregenError", "Directory", "canonical_json",
     "fingerprint", "check_public_key", "verify_bytes", "verify_signed", "verify_license", "issuer_of", "normalize_code",
@@ -784,7 +784,8 @@ def verify_anchors(envelope: dict, prefix: str, directory: Directory, get_json=_
     """A registry's signed anchor list (pg.anchors.v1), checked through the directory and at most a day old, so
     an old copy cannot hide a new opt-out. Returns its entries, without those the steward found false under their own
     anchor (a false claim under another anchor silences no one). An entry
-    naming another registry's code is dropped, not the whole list: one foreign line must not make the list fail. A
+    naming another registry's code is dropped, not the whole list: one foreign line must not make the list fail. An
+    entry of unknown shape (a TOG- code, say) fails the whole list: dropping it could lose a refusal. A
     list naming one of its codes twice is refused: its anchor would depend on which line a client read last."""
     import time
     now = int(time.time()) if now is None else now
@@ -796,7 +797,9 @@ def verify_anchors(envelope: dict, prefix: str, directory: Directory, get_json=_
         raise PregenError("the anchor list is more than 24 hours old")
     if not all(isinstance(e, dict) and isinstance(e.get("code"), str) for e in entries):
         raise PregenError("an anchor list entry is {anchor, code, level, proof_url, status}")
-    own = [e for e in entries if _CANONICAL_CODE.fullmatch(e["code"]) and issuer_of(e["code"]) == prefix]
+    if not all(_CANONICAL_CODE.fullmatch(e["code"]) for e in entries):
+        raise PregenError("an anchor list entry of unknown shape fails the whole list")
+    own = [e for e in entries if issuer_of(e["code"]) == prefix]
     if len({e["code"] for e in own}) != len(own):
         raise PregenError("an anchor list names each code once")
     return [e for e in own if not directory.is_false_claim(e["code"], e.get("anchor"))]

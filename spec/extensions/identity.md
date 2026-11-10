@@ -25,7 +25,10 @@ Schema: `schemas/anchors.json`. A client collects every listed registry's list, 
 daily, and for a public person asks **every** code its anchor names.
 
 A client drops a list entry that names another registry's code (the rest of the list stands),
-and refuses a list that names one code twice.
+and refuses a list that names one code twice. **An entry of unknown shape fails the whole list.**
+A client refuses the list when one entry's `code` is not a code shape it knows: it cannot tell
+whose code it is, and the entry may be a refusal. It never drops such an entry. Vectors:
+`test-vectors/anchors.json`.
 
 **A list that fails blocks only that registry's people.** While a registry's list has not
 verified within the last 24 hours, a client generates none of that registry's own codes, and

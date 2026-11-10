@@ -9,6 +9,7 @@ import { checkChannelProof, wikidataOfficialUrls, decideIdentity, verifyAnchors,
 
 const CASES = JSON.parse(readFileSync(new URL("../../verify-py/tests/identity_cases.json", import.meta.url)));
 const V = JSON.parse(readFileSync(new URL("../../../spec/test-vectors/answers.json", import.meta.url)));
+const ANCHOR_LISTS = JSON.parse(readFileSync(new URL("../../../spec/test-vectors/anchors.json", import.meta.url)));
 const NOW = V.now, KEY = await sha256Hex("pregen-answer-vector-registry");
 const directory = await verifyDirectory(V.directory, { stewardPublicKeyHex: V.steward_public_key_hex, now: NOW });
 const keys = async (url) => (url in V.key_sets ? { ok: true, status: 200, json: async () => V.key_sets[url] }
@@ -87,10 +88,14 @@ async function anchors(entries, issuedAt = NOW - 10) {
 }
 const entry = (code, anchor = "wikidata:Q11571") => ({ anchor, code, level: "verified", proof_url: "", status: "active" });
 
-test("verifyAnchors keeps its own codes and drops foreign ones", async () => {
-  const own = entry("PG-TEST-000001N");
-  assert.deepEqual(await anchors([own, entry("PG-ABCD-000001V"), entry("pg-test-000003x")]), [own]);
-});
+// spec/test-vectors/anchors.json: foreign codes are dropped; an entry of unknown shape fails the whole list.
+for (const c of ANCHOR_LISTS.cases) {
+  test(`anchor list vector: ${c.name}`, async () => {
+    const run = anchors(c.codes.map((code) => entry(code)));
+    if (c.error) await assert.rejects(run, (e) => e instanceof PregenError && e.message.includes(c.error));
+    else assert.deepEqual(await run, c.keep.map((code) => entry(code)));
+  });
+}
 
 test("verifyAnchors refuses a list naming a code twice", async () => {
   await assert.rejects(anchors([entry("PG-TEST-000001N"), entry("PG-TEST-000001N", "wikidata:Q1")]), /each code once/);

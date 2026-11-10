@@ -1,0 +1,24 @@
+{
+  "description": "extensions/identity.md, anchor lists: an entry of unknown shape fails the whole list (0.13.1). Each case is one pg.anchors.v1 list from registry TEST, signed at test time with the registry key of answers.json (sha256 of 'pregen-answer-vector-registry'), checked against its directory at its `now`. Each code becomes an entry {anchor: 'wikidata:Q11571', code, level: 'verified', proof_url: '', status: 'active'}. `keep` lists the codes a client keeps; `error` is a substring of the refusal.",
+  "registry": "TEST",
+  "cases": [
+    {"name": "known shapes: own kept, other registries' codes dropped",
+     "codes": ["PG-TEST-000001N", "PG-ABCD-000001V", "PG-000042*", "PG-STD-000123"], "keep": ["PG-TEST-000001N"]},
+    {"name": "the TOG spelling of an own code fails the list",
+     "codes": ["PG-TEST-000001N", "TOG-TEST-000001N"], "error": "unknown shape"},
+    {"name": "a new TOG person of this registry fails the list",
+     "codes": ["PG-TEST-000001N", "TOG-TEST-123456780T"], "error": "unknown shape"},
+    {"name": "a TOG person of another registry fails the list, it is not dropped",
+     "codes": ["PG-TEST-000001N", "TOG-PRAM-900000037K"], "error": "unknown shape"},
+    {"name": "a TOG event code fails the list",
+     "codes": ["PG-TEST-000001N", "TOG-PG-LIC-PRAM-ZZZZ-8RD8-3EQ9"], "error": "unknown shape"},
+    {"name": "a list of TOG codes only fails",
+     "codes": ["TOG-000042*"], "error": "unknown shape"},
+    {"name": "lower case fails the list",
+     "codes": ["PG-TEST-000001N", "pg-test-000003x"], "error": "unknown shape"},
+    {"name": "a code with a space fails the list",
+     "codes": [" PG-TEST-000001N"], "error": "unknown shape"},
+    {"name": "an empty code fails the list",
+     "codes": ["PG-TEST-000001N", ""], "error": "unknown shape"}
+  ]
+}

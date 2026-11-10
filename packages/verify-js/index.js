@@ -662,7 +662,8 @@ export const FLOOR_REASONS = Object.freeze(["PG_SUBJECT_OPTED_OUT", "PG_SUBJECT_
 /** A registry's signed anchor list (pg.anchors.v1), checked through the directory and at most a day old, so an
  * old copy cannot hide a new opt-out. Returns its entries, without those the steward found false under their own anchor
  * (a false claim under another anchor silences no one). An entry naming
- * another registry's code is dropped, not the whole list: one foreign line must not make the list fail. A list naming
+ * another registry's code is dropped, not the whole list: one foreign line must not make the list fail. An entry of
+ * unknown shape (a TOG- code, say) fails the whole list: dropping it could lose a refusal. A list naming
  * one of its codes twice is refused: its anchor would depend on which line a client read last. */
 export async function verifyAnchors(envelope, prefix, { directory, fetch: fetchFn = globalThis.fetch,
   now = Math.floor(Date.now() / 1000) } = {}) {
@@ -674,7 +675,8 @@ export async function verifyAnchors(envelope, prefix, { directory, fetch: fetchF
   if (!body.anchors.every((e) => e && typeof e === "object" && !Array.isArray(e) && typeof e.code === "string")) {
     fail("an anchor list entry is {anchor, code, level, proof_url, status}");
   }
-  const own = body.anchors.filter((e) => CANONICAL_CODE.test(e.code) && issuerOf(e.code) === prefix);
+  if (!body.anchors.every((e) => CANONICAL_CODE.test(e.code))) fail("an anchor list entry of unknown shape fails the whole list");
+  const own = body.anchors.filter((e) => issuerOf(e.code) === prefix);
   if (new Set(own.map((e) => e.code)).size !== own.length) fail("an anchor list names each code once");
   return own.filter((e) => !directory.isFalseClaim(e.code, e.anchor));
 }

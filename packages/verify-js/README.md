@@ -43,7 +43,7 @@ Also exported: `checkProviderUrl`, `signingInput`, `publicKeyHex`, `messageId`, 
 
 - `verifyAnchors(list, prefix, { directory })` — a registry's signed anchor list (`extensions/identity.md`). Another
   registry's codes are dropped, and so is an entry the steward found false under its own anchor; a list naming a code
-  twice is refused.
+  twice, or an entry of unknown shape (a `TOG-` code, say), is refused.
 - `wikidataOfficialUrls(anchor, { fetch })` — the channels Wikidata lists as current: not deprecated, not ended,
   started, each value in its property's own form. A website counts by its host alone. With
   `at: now - SETTLED_AFTER`, the channels of the item as it stood 7 days earlier (its last revision then).
