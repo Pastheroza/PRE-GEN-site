@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pregen"
-version = "0.13.1"
+version = "0.14.0"
 description = "PRE-GEN client: sign requests and reports as a provider known by its domain (no account), and verify answers, proofs and the signed registry directory"
 readme = "README.md"
 license = "Apache-2.0"

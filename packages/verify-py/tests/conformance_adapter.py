@@ -52,6 +52,13 @@ elif op == "check_answer":
         out = {"ok": True}
     except (KeyError, pregen.PregenError) as e:
         out = {"ok": False, "error": str(e)}
+elif op == "pg_check_char":           # PG-CODE §4.1 on a PG body: the frozen table (TOG-CODE §4.1)
+    out = {"check_char": pregen.check_char(req["body"], pregen.CROCKFORD)}
+elif op == "pg_verify_check_char":
+    try:
+        out = {"valid": pregen.check_char(req["body"], pregen.CROCKFORD) == req["check_char"]}
+    except pregen.NotACode:
+        out = {"valid": False}
 else:
     out = {"unsupported": True}
 print(json.dumps(out))

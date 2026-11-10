@@ -2,7 +2,7 @@
 
 The PRE-GEN client for Python. Ask a registry before you generate, as a provider known by its
 domain (no account), and check what comes back against the signed registry directory at
-[pregen.org](https://www.pregen.org/registries.json). The PRE-GEN steward key is built in.
+[pregen.org](https://www.pregen.org/registries.v3.json). The PRE-GEN steward key is built in.
 Same API as the npm package `@pregen/verify`.
 
 Ask with a signed `pg.request.v1` (`POST {api}/v2/requests`), check the answer with
@@ -81,7 +81,29 @@ Also exported: `check_provider_url`, `signing_input`, `public_key_hex`, `message
 - `floor(use, minor)`, `forbids(rules, use)`, `terms_opens(old, new)`; `CATEGORIES` (the closed vocabulary of
   likeness/1, which a request carrying `terms` must keep to), `PROHIBITED_FOR_MINORS`, `INTIMATE`.
 
+## ToG codes (`TOG-CODE.md`)
+
+Every code is written `TOG-`: a person `TOG-PRAM-900000037K`, a licence `TOG-LIC-…`, an output made under a
+yes `TOG-PG-…` or `TOG-PG-LIC-…`, one approved after it was made `TOG-AG-…`. A `PG-` string is legacy input only.
+
+- `parse_code(code)` reads a code exactly as it stands: shape, kind, basis, the registry to ask (`issuer`), and
+  `key`, its TOG spelling. No network. `kind_of(code)` gives the kind alone. Raises `NotACode` or `Mistyped`.
+- `code_key(code, licences=None)` is the one TOG spelling: compare, hash and look up codes only by it. An old PG
+  licence id needs its signed record, else `AskRegistry`.
+- `normalize_typed(typed)` only where a person types, pastes or scans: the one code meant, for "Did you mean …?".
+  Ambiguous input raises `NotACode` with both codes in `hints`.
+- `code_for(act)` computes an act's code from its record; `metadata_ok(meta, act, licence)` checks readable copies
+  against it, and `check_proof` refuses a bundle whose `code` or `licence` copy differs. A code is never proof.
+- `code_verdict(file_hash, act, caption, ingredient)` is what a verifier may say before signatures.
+- `find_codes(text)`, `check_char(body)`, `admission_refusal(prefix, entity, government, listed)` (the steward's
+  prefix check), `check_parties(code, entries, at, provider)` and `Directory.parties(code)` (directory v3).
+
+Errors are `CodeError` subclasses with `reason`: `malformed`, `mistyped`, `ask_registry`, `no_code`.
+
 ## The registry directory
+
+`load_directory()` reads directory v3 (`DIRECTORY_URL`, prefixes of 4 to 8 letters, dated roles). The frozen v2
+file stays at `DIRECTORY_V2_URL` for clients before 0.14; both verify. A v2 directory after a v3 one is refused.
 
 The directory check refuses an older directory, a newer one that removes
 a registry or key, undoes a revocation or drops a false claim, a reversal or a freeze, and a different one with the same sequence. No registry is pinned by default: every registry, the first one included,
@@ -157,8 +179,8 @@ real directory.
 `verify_decision` (signatures only), `verify_directory`,
 `Directory.check_signer` / `registry_for` / `public_key`, `verify_license`
 (subject signature plus operator countersignature), `verify_signed`,
-`canonical_json`, `fingerprint`, `check_public_key` (refuses keys no one can be held to), `issuer_of` (canonical
-codes only) and `normalize_code` (for what a person types, never for a code in a message).
+`canonical_json`, `fingerprint`, `check_public_key` (refuses keys no one can be held to), `issuer_of` (the registry
+to ask, from the shape only) and `normalize_code` (deprecated: use `normalize_typed`).
 
 Tests: `pytest packages/verify-py/tests`, and the PRE-GEN Level 1 vectors with
 `python3 spec/conformance/level1/run_conformance.py --adapter "python3 packages/verify-py/tests/conformance_adapter.py"`.

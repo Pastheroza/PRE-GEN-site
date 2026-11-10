@@ -35,7 +35,11 @@ FORBIDDEN_MEMBER = re.compile(
 
 
 def _without_earlier_interface_list(text):
-    """Drop the earlier interface's list of recognised decision members (one literal in each library)."""
+    """Drop the earlier interface's list of recognised decision members, the words no prefix may hold and the role
+    names directory v3 may list (TOG-CODE.md §9.1, §9.2: "wallet" is a word and a role a registry may hold, not a
+    mechanism of the library); one literal of each in each library."""
+    text = re.sub(r"(_RESERVED_WORDS = \(|const RESERVED_WORDS = \[|_ROLES = \(|const ROLES = \[).*?(\)|\];)", "", text,
+                  flags=re.S)
     return re.sub(r"(_UNDERSTOOD = frozenset\(\{|const UNDERSTOOD = new Set\(\[).*?(\}\)|\]\);)", "", text, flags=re.S)
 
 
