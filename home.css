@@ -113,8 +113,14 @@
 }
 @media (max-width: 640px) {
   .home .wrap { padding: 0 16px; }
-  .hero { min-height: 0; padding: 18px 0 16px; }   /* the house and four stacked buttons never fit one phone screen */
-  .house-wrap { width: 100%; }
+  /* A phone's first screen is the house and the two main buttons, whole; the two "Ask" buttons start just below it.
+     --fixed: header, the hero's top padding, the word's paddings, two main buttons and the gap between them.
+     --h: the house's height: as tall as that leaves (with 24px to breathe), or as wide as the screen allows. */
+  .hero { min-height: 0; padding: 18px 0 16px;
+    --fixed: calc(57px + 18px + 2vh + 10px + 96px * 2 + 8px);
+    --h: min((100vw - 32px) * 920 / 773, 100svh - var(--fixed) - 24px); }
+  .house-wrap { width: calc(var(--h) * 773 / 920); }
+  .acts > .act.out:nth-child(3) { margin-top: max(16px, calc(100svh - var(--fixed) - var(--h))); }
   /* open on a phone: the explanation takes the house's place in the flow, from the top, as tall as its text */
   .house-wrap.open .house { position: absolute; top: 0; left: 0; }
   .explain { position: relative; inset: auto; justify-content: flex-start; padding: 0; overflow: visible; }
