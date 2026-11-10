@@ -1,64 +1,43 @@
-/* PRE-GEN registry lookup proxy — pregen.org/api/lookup?code=PG-...
+/* PRE-GEN registry lookup proxy — pregen.org/api/lookup?code=TOG-...
    Read-only, hardened:
    - GET only, strict code validation (no proxy abuse)
    - per-IP sliding-window rate limit (per serverless instance)
    - in-memory response cache (absorbs replay floods, cuts upstream load)
    - 5s upstream timeout (no slow-loris cost amplification)
-   - no secrets in responses; registry token stays in env */
+   - no secrets in responses
+   Codes are read with @pregen/verify (TOG-CODE.md): a PG- code is legacy input and is asked and answered in its TOG
+   spelling; every code in an answer is shown in its TOG spelling. */
 
-const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const REGISTRIES = require("../registries.json");
-/* Another registry's prefix: exactly four letters (PG-CODE.md §9). */
-const ISSUER = "([ABCDEFGHJKMNPQRSTVWXYZ]{4})";
-const CHECK = ALPHABET + "*~$=!";
+const LIB = import("../packages/verify-js/index.js");
 
-function checkChar(body) {
-  let sum = 0;
-  for (let i = 0; i < body.length; i++) sum += CHECK.indexOf(body[i]) * (i + 1);
-  return CHECK[sum % 37];
+/* Returns { code, issuer } or { error, detail, status }. The code exactly as sent: the page folds typed input. */
+function classify(raw, { parseCode, codeKey, CodeError }) {
+  const code = String(raw || "");
+  if (!code) return { error: "missing_code", detail: "Provide ?code=TOG-…", status: 400 };
+  if (code.length > 64) return { error: "invalid_code", detail: "Not a code.", status: 422 };
+  let p;
+  try { p = parseCode(code); } catch (e) {
+    if (!(e instanceof CodeError)) throw e;
+    return e.reason === "mistyped"
+      ? { error: "check_mismatch", detail: "Mistyped code: the check character does not fit.", status: 422 }
+      : { error: "invalid_code", detail: "Not a code.", status: 422 };
+  }
+  try { return { code: codeKey(code), issuer: p.issuer }; } catch (e) {
+    if (!(e instanceof CodeError)) throw e;
+    return { code, issuer: p.issuer };   // an old licence number: only its registry gives its TOG code
+  }
 }
 
-/* Returns { kind, code } or { error, detail, status } */
-function classify(raw) {
-  const code = String(raw || "").trim().toUpperCase().replace(/\s+/g, "");
-  if (!code) return { error: "missing_code", detail: "Provide ?code=PG-…", status: 400 };
-  // PG-CODE.md §4.2: at most 36 body characters plus the check character, counted
-  // without "PG-" and dashes — the same rule as the browser (lookup.js).
-  if (code.length > 64 || code.slice(3).replace(/-/g, "").length > 37 || !/^PG-[0-9A-Z*~$=!-]+$/.test(code))
-    return { error: "invalid_code", detail: "Not a PG code shape: at most 36 characters plus the check character.", status: 422 };
-  const rest = code.slice(3);
-  if (/[ILOU]/.test(rest))
-    return { error: "invalid_code", detail: "I, L, O, U are excluded from the PG alphabet (Crockford base32).", status: 422 };
-  let m;
-  m = new RegExp("^" + ISSUER + "-([A-Z]{3})-([0-9]{6,})-([0-9A-Z]{6})([0-9A-Z*~$=!])$").exec(rest);
-  if (m) {
-    if (checkChar(m[1] + m[2] + m[3] + m[4]) !== m[5])
-      return { error: "check_mismatch", detail: "License check character invalid.", status: 422 };
-    return { kind: "license", code: "PG-" + rest, issuer: m[1] };
-  }
-  m = new RegExp("^" + ISSUER + "-([0-9]{6,})([0-9A-Z*~$=!])$").exec(rest);
-  if (m) {
-    if (checkChar(m[1] + m[2]) !== m[3])
-      return { error: "check_mismatch", detail: "Subject check character invalid.", status: 422 };
-    return { kind: "subject", code: "PG-" + rest, issuer: m[1] };
-  }
-  m = /^([A-Z]{3})-([0-9]{6,})-([0-9A-Z]{6})([0-9A-Z*~$=!])$/.exec(rest);
-  if (m) {
-    if (checkChar(m[1] + m[2] + m[3]) !== m[4])
-      return { error: "check_mismatch", detail: "License check character invalid.", status: 422 };
-    return { kind: "license", code: "PG-" + rest };
-  }
-  m = /^(STD|SUB|PRM|RND)-([0-9]{4,})$/.exec(rest);
-  if (m) return { kind: "subject", code: "PG-" + rest };
-  m = /^([0-9]{4,})$/.exec(rest);
-  if (m) return { kind: "subject", code: "PG-" + rest };
-  m = /^([0-9A-Z]{6,})([0-9A-Z*~$=!])$/.exec(rest);
-  if (m) {
-    if (checkChar(m[1]) !== m[2])
-      return { error: "check_mismatch", detail: "Subject check character invalid.", status: 422 };
-    return { kind: "subject", code: "PG-" + rest };
-  }
-  return { error: "invalid_code", detail: "Not a PG code shape.", status: 422 };
+/* Every code in an answer in its TOG spelling (TOG-CODE.md §13); an old licence number its registry did not respell
+   is not shown. Codes inside registry URLs (status_url, terms.url) are respelled too: such a link works only at a
+   registry that routes TOG paths. */
+function togOnly(v, { findCodes, codeKey }) {
+  const key = (c) => { try { return codeKey(c); } catch { return "(an old licence number)"; } };
+  if (typeof v === "string") return findCodes(v).reduce((s, c) => s.split(c).join(key(c)), v);
+  if (Array.isArray(v)) return v.map((x) => togOnly(x, { findCodes, codeKey }));
+  if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, togOnly(x, { findCodes, codeKey })]));
+  return v;
 }
 
 /* ── Rate limit: sliding window, per IP, per instance ────── */
@@ -121,29 +100,31 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const c = classify(req.query && req.query.code);
+  const lib = await LIB;
+  const c = classify(req.query && req.query.code, lib);
   if (c.error) {
     res.status(c.status).json({ error: c.error, detail: c.detail });
     return;
   }
 
-  /* The steward's word beats the registry's: a false claim or a revoked registry is never asked (PG-CODE.md §9.1). */
-  const falseClaim = (REGISTRIES.false_claims || []).find((f) => f.code === c.code);
+  /* The steward's word beats the registry's: a false claim or a revoked registry is never asked (PG-CODE.md §9.1).
+     One code under two spellings is one code. */
+  const same = (a) => { try { return lib.codeKey(a) === c.code; } catch { return a === c.code; } };
+  const falseClaim = (REGISTRIES.false_claims || []).find((f) => same(f.code));
   if (falseClaim) {
     res.status(410).json({ error: "false_claim", at: falseClaim.at,
       detail: "The steward recorded this code as a false claim." });
     return;
   }
 
-  const cacheKey = c.kind + ":" + c.code;
-  const cached = cacheGet(cacheKey);
+  const cached = cacheGet(c.code);
   if (cached) {
     res.status(cached.status).json(cached.body);
     return;
   }
 
-  /* The issuer names the registry; bare codes belong to the origin registry. */
-  const registry = REGISTRIES.registries.find((r) => (r.prefix || "") === (c.issuer || ""));
+  /* The first prefix names the registry; bare codes belong to the origin registry. */
+  const registry = REGISTRIES.registries.find((r) => (r.prefix || "") === c.issuer);
   if (!registry) {
     res.status(404).json({ error: "unknown_issuer", issuer: c.issuer,
       detail: "No listed registry holds the prefix " + c.issuer + "." });
@@ -154,23 +135,16 @@ module.exports = async (req, res) => {
       detail: "The registry that issued this code was revoked." });
     return;
   }
-  const origin = !c.issuer;
-  const base = origin ? (process.env.PRAMPTA_API_URL || registry.api) : registry.api;
-  /* Other registries answer through the standard resolver (PRE-GEN §12). */
-  const path = origin
-    /* A licence through its public proof, which hides confidential terms; never the private licence record. */
-    ? (c.kind === "license" ? "/v1/licenses/" + encodeURIComponent(c.code) + "/proof" : "/v1/subjects/" + encodeURIComponent(c.code))
-    : "/v1/pg/" + encodeURIComponent(c.code);
-  const headers = { Accept: "application/json" };
-  const token = process.env.PRAMPTA_TOKEN;
-  if (token && origin) headers["Authorization"] = "Bearer " + token;
+  const base = (!c.issuer && process.env.PRAMPTA_API_URL) || registry.api;
+  /* Every registry answers through the public lookup (extensions/lookup.md, TOG-CODE.md §12). */
+  const path = "/v2/codes/" + encodeURIComponent(c.code);
 
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 5000);
   try {
-    const upstream = await fetch(base + path, { headers, signal: ctrl.signal });
-    const body = await upstream.json().catch(() => ({}));
-    if (upstream.status < 500) cacheSet(cacheKey, upstream.status, body);
+    const upstream = await fetch(base + path, { headers: { Accept: "application/json" }, signal: ctrl.signal });
+    const body = togOnly(await upstream.json().catch(() => ({})), lib);
+    if (upstream.status < 500) cacheSet(c.code, upstream.status, body);
     res.status(upstream.status).json(body);
   } catch (e) {
     res.status(502).json({ error: "registry_unreachable" });

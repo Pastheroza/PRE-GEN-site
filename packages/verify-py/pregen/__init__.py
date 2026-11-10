@@ -368,7 +368,7 @@ def normalize_typed(typed: str, licences: dict = None) -> str:
     look-alikes, case, a resolver URL, trailing punctuation, then O/0 and I/L/1 by slot, then the PG spelling.
     Raises NotACode when no reading is a code, or more than one is (their codes in `hints`), or the readings exceed
     4096; Mistyped when the string as typed has the shape but not the check; AskRegistry for an old licence id whose
-    record (`licences`, as for code_key) is not at hand."""
+    record (`licences`, as for code_key) is not at hand, with the folded old id as `folded`."""
     if not isinstance(typed, str):
         raise NotACode("a code is a string")
     s = unicodedata.normalize("NFKC", typed).translate(_DASHES).translate(_DROP).translate(_LOOKALIKE).strip()
@@ -400,7 +400,9 @@ def normalize_typed(typed: str, licences: dict = None) -> str:
         raise NotACode(f"not a code: {typed!r}")
     c = found.pop()
     if c.startswith("PG-"):
-        raise AskRegistry(f"ask its registry for the code of {c}")
+        e = AskRegistry(f"ask its registry for the code of {c}")
+        e.folded = c                     # the old id as folded here, for asking its registry (never for showing)
+        raise e
     return c
 
 
@@ -1726,11 +1728,11 @@ class Simulator:
         self._operator_id = fingerprint(self.operator_public_key_hex)
         steward_pub = pub(self._steward)
         body = {"schema": SCHEMA, "sequence": 1, "steward_key_id": fingerprint(steward_pub), "simulator": True,
-                "registries": [{"name": "PRE-GEN simulator (not a registry)", "prefix": "", "api": base_url,
+                "registries": [{"name": "PRE-GEN simulator (not a registry)", "prefix": "TEST", "api": base_url,
                                 "keys": base_url + "/keys", "key_fingerprints": [self._operator_id]}]}
         body["signature"] = self._steward.sign(canonical_json(body)).hex()
         self.directory = verify_directory(body, steward_pub, successor_public_key_hex=None,
-                                          pinned_keys={"": [self._operator_id]})
+                                          pinned_keys={"TEST": [self._operator_id]})
         self._decisions, self._receipts, self._n = {}, {}, 0
 
     def get_json(self, url: str) -> dict:
@@ -1750,7 +1752,7 @@ class Simulator:
                 "allowed": disposition == "allow", "disposition": disposition, "reason": reason,
                 "is_hard_refusal": reason == "PG_SUBJECT_OPTED_OUT",
                 "subject_id": request.get("subject_id", ""), "provider_id": provider_id, "licensee_id": licensee_id,
-                "license_id": "PG-RND-000001-SMVTRXK" if disposition == "allow" else None,
+                "license_id": "TOG-LIC-TEST-ZZZZ-0000-001K" if disposition == "allow" else None,
                 "prompt_hash": request.get("prompt_hash", ""), "model": request.get("model", ""),
                 "modality": request.get("modality", ""), "intended_use": request.get("intended_use", {}),
                 "generation_id": request.get("generation_id", ""),

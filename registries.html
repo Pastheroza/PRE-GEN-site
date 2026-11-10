@@ -38,7 +38,7 @@
 <tr><td>Registry in production</td><td>Yes: PRAMPTA</td></tr>
 <tr><td>Open reference registry</td><td>Yes: <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/packages/registry">pregen-registry</a>, Apache-2.0, with a sandbox</td></tr>
 <tr><td>Signed directory</td><td>Yes: <a href="/registries.json">registries.json</a>, signed by the steward key; verifiers load it again at least every 24 hours</td></tr>
-<tr><td>Public test network</td><td>Yes: <a href="/test/registries.json">test directory</a> and the test registry at sandbox.pregen.org (codes PG-TEST-000001N to PG-TEST-0000123: refusals, a test purchase, a person's terms, a minor, a creator's licence through bind; <a href="/docs/provider.md">what each tests</a>)</td></tr>
+<tr><td>Public test network</td><td>Yes: <a href="/test/registries.json">test directory</a> and the test registry at sandbox.pregen.org (codes TOG-TEST-000001N to TOG-TEST-0000123: refusals, a test purchase, a person's terms, a minor, a creator's licence through bind; <a href="/docs/provider.md">what each tests</a>)</td></tr>
 <tr><td>PRAMPTA answers apps by their domain, no account</td><td>Yes</td></tr>
 <tr><td>Second registry</td><td>None yet</td></tr>
 <tr><td>Independent implementation passing the tests</td><td>None yet. <a href="/docs/implement">Build one</a></td></tr>
@@ -61,7 +61,7 @@
 
 <h2>Getting listed</h2>
 <p>The directory is what keeps fake registries out: verification accepts a registry's signatures only for the prefix the signed directory gives it. <strong>A listing says the registry met the conditions below. It does not certify that everyone the registry represents is genuine.</strong> That stays the registry's responsibility.</p>
-<p><b>Registries</b> open a <a href="https://github.com/Pastheroza/PRE-GEN-site/issues/new?template=registry-application.md">registry application</a> and receive a prefix for their <a href="/docs/pg-code">PG codes</a>. Bring:</p>
+<p><b>Registries</b> open a <a href="https://github.com/Pastheroza/PRE-GEN-site/issues/new?template=registry-application.md">registry application</a> and receive a prefix for their <a href="/spec/TOG-CODE.md">ToG codes</a>. Bring:</p>
 <ol>
 <li>a named operator, a company or a person, with a public address and a contact for complaints;</li>
 <li>a published policy: how you check that someone is who they say and may license the subject, your own refusal rules, answer lifetime, opt-out waiting period, and a public identifier (Wikidata, ISNI or a domain) for every public person you register;</li>
@@ -76,7 +76,7 @@
 <p>The steward can remove a registry that licenses people or works it has no right to, ignores proven complaints, breaks the core rules, or is compromised. A removed registry stays in the directory forever, its prefix is never reused, and <strong>nothing signed by its keys permits a generation again</strong>. A single stolen key can be removed the same way while the registry keeps its other keys. A removal is never undone, and each one is announced here with its reason. Verifiers see it the next time they load a current directory, at least daily.</p>
 
 <h2>Working together</h2>
-<p><strong>Every code belongs to exactly one registry.</strong> Each registry issues codes under its own prefix, so codes never collide. Bare <code>PG-…</code> codes issued before version 5 keep their meaning; no registry issues new ones. A registry asked about another registry's code points here.</p>
+<p><strong>Every code belongs to exactly one registry.</strong> Each registry issues codes under its own prefix, so codes never collide. Bare codes issued before version 5 (now written <code>TOG-000042*</code>) keep their meaning; no registry issues new ones. A registry asked about another registry's code points here.</p>
 <ul>
 <li><strong>Who proved it, not who came first.</strong> When several registries claim the same public person, a claim the person confirmed on their own official channel wins. Among claims the person confirmed on their own official channel, a refusal of the person in any registry holds in all of them. With no confirmed claim PRE-GEN says nothing: the result is <code>not_blocked</code> (<code>PG_IDENTITY_UNCONFIRMED</code>), which permits nothing and refuses nothing. An impostor can neither permit nor freeze a person. A matching name is never evidence.</li>
 <li><strong>Complaints.</strong> A registry answers within seven days: a first response and protective steps such as a freeze, not necessarily a final decision. The steward can record a proven false claim in the directory. Repeated false claims are grounds for removal.</li>

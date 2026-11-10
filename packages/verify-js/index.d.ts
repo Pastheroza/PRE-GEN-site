@@ -73,6 +73,8 @@ export const FIXTURE_PREFIXES: readonly string[];
 export class CodeError extends PregenError {
   reason: "malformed" | "mistyped" | "ask_registry" | "no_code";
   hints?: string[];
+  /** ask_registry from normalizeTyped: the old licence id as folded, for asking its registry (never for showing). */
+  folded?: string;
 }
 export interface ParsedCode {
   shape: "person" | "event" | "old_person" | "old_bare_person" | "old_no_check" | "pg_person" | "pg_licence"

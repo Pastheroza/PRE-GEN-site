@@ -134,3 +134,11 @@ def test_admission(case):
 @pytest.mark.parametrize("case", V["find_codes"], ids=lambda c: c["text"])
 def test_find_codes(case):
     assert pregen.find_codes(case["text"]) == case["codes"]
+
+
+@pytest.mark.parametrize("typed", ["PG–STD–000001–K7M2QX9", "PG-STD-000001-K7M2QX9.", "РG-STD-000001-K7M2QX9",
+                                   "https://www.pregen.org/lookup/PG-STD-000001-K7M2QX9", "PG-STD-OOOOO1-K7M2QX9"])
+def test_ask_registry_carries_the_folded_old_id(typed):
+    with pytest.raises(pregen.AskRegistry) as e:
+        pregen.normalize_typed(typed)
+    assert e.value.folded == "PG-STD-000001-K7M2QX9"

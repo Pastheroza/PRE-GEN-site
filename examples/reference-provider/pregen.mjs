@@ -18,12 +18,12 @@ export const sha256 = (data) => createHash("sha256").update(data).digest("hex");
 const b64url = (buf) => Buffer.from(buf).toString("base64url");
 const now = () => Math.floor(Date.now() / 1000);
 
-// PG-CODE.md §4: the check character. The JS library validates a code's shape (normalizeCode) but does not mint one.
+// TOG-CODE.md §4: the check character of a sandbox's six-digit test codes. The JS library reads codes but does not mint one.
 const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ", CHECK = ALPHABET + "*~$=!";
 export function mintCode(prefix, serial) {
   const digits = String(serial).padStart(6, "0");
   const sum = [...prefix + digits].reduce((s, c, i) => s + ALPHABET.indexOf(c) * (i + 1), 0);
-  return `PG-${prefix}-${digits}${CHECK[sum % 37]}`;
+  return `TOG-${prefix}-${digits}${CHECK[sum % 37]}`;
 }
 
 /** Flags shared by the app and the self-check adapter. Production is the default; --sandbox is explicit. */

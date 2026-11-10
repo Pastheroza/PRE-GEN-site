@@ -11,8 +11,8 @@ added or changes its keys.
   python3 steward.py add ~/PRE-GEN-steward.pem registries.json --name "Example" --prefix ABCD --api https://registry.example KEY_ID...
   python3 steward.py revoke-key ~/PRE-GEN-steward.pem registries.json KEY_ID --reason "..."
   python3 steward.py revoke-registry ~/PRE-GEN-steward.pem registries.json ABCD --reason "..."
-  python3 steward.py false-claim ~/PRE-GEN-steward.pem registries.json --anchor wikidata:Q42 --code PG-ABCD-... --reason "..."
-  python3 steward.py reverse-false-claim ~/PRE-GEN-steward.pem registries.json --anchor wikidata:Q42 --code PG-ABCD-... --reason "..."
+  python3 steward.py false-claim ~/PRE-GEN-steward.pem registries.json --anchor wikidata:Q42 --code TOG-ABCD-... --reason "..."
+  python3 steward.py reverse-false-claim ~/PRE-GEN-steward.pem registries.json --anchor wikidata:Q42 --code TOG-ABCD-... --reason "..."
   python3 steward.py freeze ~/PRE-GEN-steward.pem registries.json --anchor wikidata:Q42 --days 7 --reason "..."
   python3 steward.py sign ~/PRE-GEN-steward.pem registries.json          # after a hand edit; checked against the published one
   python3 steward.py sign --handover ~/PRE-GEN-steward-successor.pem registries.json   # only if the steward key is lost or stolen
@@ -155,7 +155,7 @@ def _sign_and_write(key, path: Path, d: dict, previous, old_pub: str, handover=F
 
 def _print_listing(d: dict) -> None:
     for r in d["registries"]:
-        print(f"  {r.get('name')}: {('PG-' + r['prefix'] + '-…') if r['prefix'] else 'bare PG-… codes'}"
+        print(f"  {r.get('name')}: {('TOG-' + r['prefix'] + '-…') if r['prefix'] else 'bare TOG-… codes'}"
               f" — {len(r['key_fingerprints'])} key(s){'  REVOKED ' + r['revoked']['at'] if r.get('revoked') else ''}")
     for k in d.get("revoked_keys") or []:
         print(f"  revoked key {k['key_id']} at {k['at']}")
@@ -331,12 +331,19 @@ def cmd_revoke_registry(args) -> None:
     _edit(args, change)
 
 
+def _key(code: str) -> str:
+    """The one TOG spelling to write into the signed directory (TOG-CODE §7.3): a PG- string is input only."""
+    try:
+        return pregen.code_key(code)
+    except pregen.PregenError as e:
+        sys.exit(f"{code!r}: {e}")
+
+
 def cmd_false_claim(args) -> None:
+    args.code = _key(args.code)
+
     def change(d):
-        try:
-            issuer = pregen.issuer_of(args.code)
-        except pregen.PregenError as e:
-            sys.exit(f"{args.code!r}: {e}")
+        issuer = pregen.issuer_of(args.code)
         if not any(r["prefix"] == issuer for r in d["registries"]):
             sys.exit(f"No listed registry holds the namespace of {args.code}.")
         if _false_claim(d, args.code, args.anchor):
@@ -347,6 +354,8 @@ def cmd_false_claim(args) -> None:
 
 
 def cmd_reverse_false_claim(args) -> None:
+    args.code = _key(args.code)
+
     def change(d):
         if not _false_claim(d, args.code, args.anchor):
             sys.exit(f"{args.code} is not a false claim under {args.anchor}: nothing to reverse.")

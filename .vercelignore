@@ -1,6 +1,8 @@
 packages/*
-!packages/verify-js
+!packages/verify-js/
 packages/verify-js/*
 !packages/verify-js/index.js
 !packages/verify-js/after-gen.js
+!packages/verify-js/package.json
 .github/
+test/*.test.mjs

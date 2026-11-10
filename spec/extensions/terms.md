@@ -19,7 +19,7 @@ Signed by the registry alone (`schemas/terms.json`):
 ```json
 {"type": "pg.terms.v1",
  "body": {"signers": [{"role": "registry", "key_id": "pg-ed25519:…"}],
-          "subject_ref": "PG-TEST-000001N", "profile": "likeness/1",
+          "subject_ref": "TOG-TEST-000001N", "profile": "likeness/1",
           "version": 2, "amends": "<message id of version 1>",
           "template": {"id": "example-likeness", "version": 1, "jurisdiction": "US"},
           "legal": {"sha256": "<sha-256 of the legal text>", "url": "https://registry.test.example/terms-template-1.txt"},

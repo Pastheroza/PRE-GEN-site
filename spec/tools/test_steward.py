@@ -45,11 +45,11 @@ def test_commands_sign_a_directory_verifiers_accept(env):
     assert d["sequence"] == 1 and d["registries"][0]["key_fingerprints"] == [env.op_id]
     steward.cmd_revoke_key(Namespace(keyfile=env.pem, directory=str(env.d), key_id=env.op_id, reason="stolen"))
     steward.cmd_false_claim(Namespace(keyfile=env.pem, directory=str(env.d), anchor="wikidata:Q1",
-                                      code="PG-ABCD-000001N", reason="no proof"))
+                                      code="PG-ABCD-000001K", reason="no proof"))
     steward.cmd_revoke_registry(Namespace(keyfile=env.pem, directory=str(env.d), prefix="ABCD", reason="test"))
     d = json.loads(env.d.read_text())
     assert d["sequence"] == 4 and d["revoked_keys"][0]["key_id"] == env.op_id
-    assert d["false_claims"][0]["code"] == "PG-ABCD-000001N" and d["registries"][0]["revoked"]["reason"] == "test"
+    assert d["false_claims"][0]["code"] == "TOG-ABCD-000001K" and d["registries"][0]["revoked"]["reason"] == "test"
     steward.pregen.verify_directory(d, public_hex(env.key), successor_public_key_hex=None)
 
 
@@ -57,7 +57,7 @@ def test_commands_sign_a_directory_verifiers_accept(env):
 def test_sign_refuses_a_hand_edit_that_drops_history(env, drop):
     add(env)
     steward.cmd_false_claim(Namespace(keyfile=env.pem, directory=str(env.d), anchor="wikidata:Q1",
-                                      code="PG-ABCD-000001N", reason="no proof"))
+                                      code="PG-ABCD-000001K", reason="no proof"))
     steward.cmd_revoke_key(Namespace(keyfile=env.pem, directory=str(env.d), key_id=env.op_id, reason="stolen"))
     published = env.tmp / "published.json"
     published.write_text(env.d.read_text())
@@ -79,7 +79,7 @@ def test_sign_refuses_a_broken_false_claims_shape(env):
     published = env.tmp / "published.json"
     published.write_text(env.d.read_text())
     d = json.loads(env.d.read_text())
-    d["false_claims"] = [{"code": "PG-ABCD-000001N"}]
+    d["false_claims"] = [{"code": "PG-ABCD-000001K"}]
     env.d.write_text(json.dumps(d))
     with pytest.raises(SystemExit, match="false_claims"):
         sign(env, published)
@@ -138,7 +138,7 @@ def test_an_edit_command_refuses_a_missing_file_and_a_copy_behind_the_published_
     add(env)
     old = env.d.read_text()
     steward.cmd_false_claim(Namespace(keyfile=env.pem, directory=str(env.d), anchor="wikidata:Q1",
-                                      code="PG-ABCD-000001N", reason="no proof"))
+                                      code="PG-ABCD-000001K", reason="no proof"))
     git = ["git", "-C", str(env.tmp), "-c", "user.name=t", "-c", "user.email=t@t"]
     subprocess.run(git[:3] + ["init", "-q"], check=True)
     subprocess.run(git + ["add", "registries.json"], check=True)
@@ -170,7 +170,7 @@ def test_the_test_passphrase_variable_never_opens_the_real_steward_key(env, monk
         steward._load(env.pem)
 
 
-def fc(e, cmd, anchor="wikidata:Q1", code="PG-ABCD-000001N"):
+def fc(e, cmd, anchor="wikidata:Q1", code="PG-ABCD-000001K"):
     getattr(steward, cmd)(Namespace(keyfile=e.pem, directory=str(e.d), anchor=anchor, code=code, reason="r"))
     return steward.pregen.verify_directory(json.loads(e.d.read_text()), public_hex(e.key), successor_public_key_hex=None)
 
@@ -179,15 +179,29 @@ def test_a_false_claim_is_reversed_and_recorded_again_under_its_own_anchor(env, 
     add(env)
     clock = iter(range(60))                                                   # one second per reading
     monkeypatch.setattr(steward, "_now", lambda: f"2026-11-06T00:00:{next(clock):02d}Z")
-    assert fc(env, "cmd_false_claim").is_false_claim("PG-ABCD-000001N", "wikidata:Q1")
-    assert fc(env, "cmd_false_claim", anchor="wikidata:Q2").is_false_claim("PG-ABCD-000001N", "wikidata:Q2")
+    assert fc(env, "cmd_false_claim").is_false_claim("PG-ABCD-000001K", "wikidata:Q1")
+    assert fc(env, "cmd_false_claim", anchor="wikidata:Q2").is_false_claim("PG-ABCD-000001K", "wikidata:Q2")
     d = fc(env, "cmd_reverse_false_claim")
-    assert not d.is_false_claim("PG-ABCD-000001N", "wikidata:Q1") and d.is_false_claim("PG-ABCD-000001N")
+    assert not d.is_false_claim("PG-ABCD-000001K", "wikidata:Q1") and d.is_false_claim("PG-ABCD-000001K")
     with pytest.raises(SystemExit, match="nothing to reverse"):
         fc(env, "cmd_reverse_false_claim")
-    assert fc(env, "cmd_false_claim").is_false_claim("PG-ABCD-000001N", "wikidata:Q1")
+    assert fc(env, "cmd_false_claim").is_false_claim("PG-ABCD-000001K", "wikidata:Q1")
     with pytest.raises(SystemExit, match="already a false claim"):
         fc(env, "cmd_false_claim")
+
+
+def test_a_false_claim_writes_the_tog_spelling_and_refuses_an_old_licence_id(env, monkeypatch):
+    add(env)
+    clock = iter(range(60))
+    monkeypatch.setattr(steward, "_now", lambda: f"2026-11-06T00:00:{next(clock):02d}Z")
+    fc(env, "cmd_false_claim")
+    fc(env, "cmd_reverse_false_claim")
+    d = json.loads(env.d.read_text())
+    assert [c["code"] for c in d["false_claims"] + d["false_claim_reversals"]] == ["TOG-ABCD-000001K"] * 2
+    with pytest.raises(SystemExit, match="ask its registry"):
+        fc(env, "cmd_false_claim", code="PG-STD-000001-K7M2QX9")
+    with pytest.raises(SystemExit, match="mistyped"):
+        fc(env, "cmd_false_claim", code="PG-ABCD-000001N")
 
 
 def test_a_reversal_in_the_same_second_is_refused(env, monkeypatch):

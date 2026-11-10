@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
-"""ToG code, revised design: the reference model. PRIVATE DRAFT, 2026-11-10 (revision 6: the hard switch).
+"""ToG code: the reference model of spec/TOG-CODE.md.
 
-Design: DESIGN.md (same folder). Changes: CHANGES.md. Run: python3 -I tog_code.py   (no dependencies, a few seconds)
+Spec: TOG-CODE.md. Vectors: tog_vectors.py writes test-vectors/tog-code.json from this model.
+Run: python3 -I spec/tools/tog_code.py   (no dependencies, a few seconds)
 
 The code layer only: grammar, check character, kinds, the TOG spelling (code_key), codes computed from records, the
 verdict a verifier may give, offline party checks against a dated directory, prefix admission, the private person's
-secret. Signatures and the home chain (home.md V-H) are out of scope: a code is never proof (agreed item 7).
+secret. Signatures and the home chain are out of scope: a code is never proof (TOG-CODE.md section 1).
 
-Event codes put the kind first (founder, 2026-11-10): TOG-<KIND>-<ISSUER>[-<HOME>]-XXXX-XXXX-XXXX, KIND = PG, AG
-or LIC; PG and AG carry a second marker LIC when made under a licence («Да согласен TOG-PG-LIC-PRAM»).
+Event codes put the kind first: TOG-<KIND>-<ISSUER>[-<HOME>]-XXXX-XXXX-XXXX, KIND = PG, AG or LIC; PG and AG carry a
+second marker LIC when made under a licence (TOG-PG-LIC-...).
 
-Hard switch (founder, 2026-11-10: «Мы переходим на hard switch to tog code, pg code not using»): every code is written
-TOG- only. A PG-born person is respelled by its marker, PG-<P>-<serial><check> -> TOG-<P>-<serial><check>, same check.
-An old licence's code is TOG-LIC, computed from its signed object's message id like a new one. A PG- string is legacy
-input only: code_key() folds it to its one TOG spelling, and nothing here ever returns a PG- string.
+Hard switch (TOG-CODE.md section 1): every code is written TOG- only. A PG-born person is respelled by its marker,
+PG-<P>-<serial><check> -> TOG-<P>-<serial><check>, same check. An old licence's code is TOG-LIC, computed from its
+signed object's message id like a new one. A PG- string is legacy input only: code_key() folds it to its one TOG
+spelling, and nothing here ever returns a PG- string.
+
+Optional cross-check: set PG_CODE_PY to the path of a registry's pg_code.py (with compute_check_char and
+format_subject_code) and the self-check compares the check character with it byte for byte.
 
 Software may read from a code: its marker, its kind, and its prefixes with their slot. The first prefix is always the
 registry to ask. The tail is never decoded; it is recomputed from a record and compared. Everything else is resolved,
@@ -33,7 +37,7 @@ import unicodedata
 
 # ── Alphabets and limits ───────────────────────────────────────────────────────────────────────────────────────────
 CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"   # PG-CODE section 3, frozen: serials, tails, secrets
-VALUES = CROCKFORD + "ILOU"                      # I L O U take 32-35, in TOG prefixes only (founder 2026-10-27)
+VALUES = CROCKFORD + "ILOU"                      # I L O U take 32-35, in TOG bodies only (TOG-CODE.md section 3)
 CHECK = CROCKFORD + "*~$=!"                      # PG-CODE section 3.1, frozen; new shapes use CROCKFORD only
 MAX_BODY = 36                                    # PG-CODE section 4.2, frozen
 MAX_NEW_BODY = 35          # new shapes: at body length 36 the last body character swapped with the check always passes
@@ -467,7 +471,7 @@ def verdict(file_hash: str, act: dict = None, caption: str = None, ingredient: s
 
 
 def metadata_ok(meta: dict, act: dict, licence: dict = None) -> bool:
-    """The readable copies beside the signed record in a file (founder, 2026-11-10): pgag:Code and pgag:Licence in
+    """The readable copies beside the signed record in a file (TOG-CODE.md section 14): pgag:Code and pgag:Licence in
     the AFTER-GEN XMP, the same two values in the proof's C2PA assertion org.pregen.proof. meta = {"Code", "Licence"},
     either may be absent. Copies, never authority: both are recomputed from the signed record, and any mismatch
     refuses the file. act["grant"] stands for basis {kind: licence, licence, use}, no grant for basis {kind: terms,
@@ -582,7 +586,7 @@ def admission_refusal(new: str, entity: str, government: bool, directory: dict, 
     return ""
 
 
-# ── Fixtures and examples (every code printed in DESIGN.md) ────────────────────────────────────────────────────────
+# ── Fixtures and examples (every code printed in TOG-CODE.md) ────────────────────────────────────────────────────
 def _ex_person(prefix: str, start: int) -> str:
     s = start
     while check_char(prefix + str(s)) not in CROCKFORD:
@@ -600,7 +604,7 @@ def _ex(kind, issuer, home=None, label=""):
 
 
 ALWAYS = (0, None)
-DIRECTORY = {  # test fixtures except PRAM; roles from home.md W-1 with "branch" renamed "market"; spans (from, until)
+DIRECTORY = {  # test fixtures except PRAM; roles as in TOG-CODE.md section 9.2; spans (from, until)
     "PRAM": {"roles": {"home": ALWAYS, "market": ALWAYS}, "entity": "PRAMPTA Inc.", "group": "g1"},
     "NWRD": {"roles": {"market": ALWAYS}, "entity": "Newroad", "group": "g2"},
     "HLWD": {"roles": {"market": ALWAYS}, "entity": "Hollywood market", "group": "g3"},
@@ -648,10 +652,10 @@ def examples() -> dict:
     }
 
 
-_SB = "ZZZZSABR24PA3EYWN7RHYG5G07"        # revision 3's example secret body, kept as printed
+_SB = "ZZZZSABR24PA3EYWN7RHYG5G07"        # an earlier example secret body, kept as printed
 EXAMPLE_SECRET = _SB + check_char(_SB)   # an example secret: starts ZZZZ, never minted (mint_secret is random)
 
-# Pinned: the strings printed in DESIGN.md. A change here is a change of the design.
+# Pinned: the example strings of TOG-CODE.md. A change here is a change of the specification.
 PINNED = {
     "home only": [
         "TOG-PRAM-900000037K", "TOG-LIC-PRAM-ZZZZ-QH28-TDQ8", "TOG-PG-LIC-PRAM-ZZZZ-8RD8-3EQ9"],
@@ -689,7 +693,7 @@ PINNED = {
     "respelled": [
         "TOG-ZYXW-1234567R", "TOG-000042*", "TOG-STD-000123"],
 }
-# Published PG strings shown in DESIGN.md as legacy input: the persons fold by marker, the licences through a record.
+# Published PG strings used as legacy input: the persons fold by marker, the licences through a record.
 LEGACY_INPUT = ["PG-ZYXW-1234567R", "PG-000042*", "PG-STD-000123", "PG-NWRD-RND-000042-ZZZZZZJ", "PG-STD-000001-K7M2QX9"]
 NEW_SHAPES = ("person", "event")         # minted from now on; the respelled shapes are frozen and closed
 
@@ -743,8 +747,8 @@ def must_reject() -> list:
         (one.replace("-LIC-ABCDE-", "-LICABCDE-"), NotACode, "the marker's dash dropped"),
         (w("PG", "LICX"), NotACode, "a prefix beginning with LIC"),
         (w("PG", "ACMELIC"), NotACode, "a prefix ending with LIC"),
-        # One letter inserted into the marker of TOG-PG-LIC-PRAM-ZZZZ-8RD8-3EQ9: each passes the check, so before
-        # rev. 5 each read as a PG code (issuer NLIC, LGIC or LIZC; home PRAM): the kind and basis changed.
+        # One letter inserted into the marker of TOG-PG-LIC-PRAM-ZZZZ-8RD8-3EQ9: each passes the check, so in an earlier
+        # draft each read as a PG code (issuer NLIC, LGIC or LIZC; home PRAM): the kind and basis changed.
         ("TOG-PG-NLIC-PRAM-ZZZZ-8RD8-3EQ9", NotACode, "a letter inserted before the marker LIC"),
         ("TOG-PG-LGIC-PRAM-ZZZZ-8RD8-3EQ9", NotACode, "a letter inserted into the marker LIC"),
         ("TOG-PG-LIZC-PRAM-ZZZZ-8RD8-3EQ9", NotACode, "a letter inserted into the marker LIC"),
@@ -799,7 +803,7 @@ def _self_check() -> dict:
                  "PG-STD-000001-K7M2QX9", "PG-RND-000042-ZZZZZZ1", "PG-PRM-999999-0000000", "PG-NWRD-000042=",
                  "PG-NWRD-RND-000042-ZZZZZZJ", "PG-PRAM-000037J", "PG-ZYXW-1234567R", "PG-ABCD-PRM-1234567-A1B2C3A",
                  "PG-STD-000123", "PG-SUB-000123"]
-    vec = os.path.expanduser("~/Desktop/PRE-GEN-website/spec/test-vectors/vectors.json")
+    vec = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "test-vectors", "vectors.json")
     if os.path.exists(vec):
         v = json.load(open(vec))["pg_code"]
         published += [x["code"] for x in v["subject_code"] + v["issuer_subject_code"]]
@@ -812,8 +816,8 @@ def _self_check() -> dict:
             assert not _verifies(x["body"], x["check_char"], CROCKFORD), x
     rng = random.Random(2026_11_09)
     bodies = ["".join(rng.choice(CROCKFORD) for _ in range(rng.randint(1, MAX_BODY))) for _ in range(5000)]
-    prod = os.path.expanduser("~/Desktop/PPlicence/backend/app/core/pg_code.py")
-    if os.path.exists(prod):
+    prod = os.environ.get("PG_CODE_PY")   # optional: a registry's pg_code.py to compare with byte for byte
+    if prod:
         spec = importlib.util.spec_from_file_location("pg_code_prod", prod)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
@@ -1006,7 +1010,7 @@ def _self_check() -> dict:
     #    over every pinned example and the edge codes. In the kind and prefix part, an indel that passes (counters
     #    prefix_indels_passing_check of prefix_indels_tried) is asserted to keep the kind and the basis, to change
     #    exactly one prefix by one letter inserted or deleted, and to be refused by admission next to the listed
-    #    prefix it came from: the directory catches it. Before rev. 5 a letter inserted into or before the marker LIC
+    #    prefix it came from: the directory catches it. In an earlier draft a letter inserted into or before the marker LIC
     #    also passed (TOG-PG-NLIC-PRAM-...: a PG code, issuer NLIC): no prefix may hold LIC that way now.
     edge = [_ex_person("ZZZZZZZZ", 899999990), _ex_person("TILU", 142000000), _ex_person("GOVTEST", 123456789),
             _ex("PG-LIC", "ABCDEFGH", "JKMNPQRS"), _ex("LIC", "PRAL", "OSLU"), _ex("AG-LIC", "TILU", "UOLI"),
@@ -1262,7 +1266,7 @@ def _self_check() -> dict:
     url = recovery_qr("https://resolver.example", minted[0], s)
     assert url.split("#")[0] == card_qr("https://resolver.example", minted[0]) and "?" not in url
 
-    # 12. Found while reading: fixtures in other drafts that fail the check.
+    # 12. Known fixtures that fail the check, with their correct spelling.
     found = {}
     for c in ("PG-PRAM-000123K", "PG-PRAM-000130M", "PG-PRAM-000456Q", "PG-PRAM-000789D", "PG-TEST-000001N"):
         try:
@@ -1278,5 +1282,5 @@ if __name__ == "__main__":
     for mix, codes in examples().items():
         print(f"{mix:44} " + "  ".join(codes))
     print("secret example:", EXAMPLE_SECRET)
-    print("fixtures in other drafts that fail the check -> correct spelling:", st.pop("broken_fixtures"))
+    print("fixtures that fail the check -> correct spelling:", st.pop("broken_fixtures"))
     print("self-check passed:", st)

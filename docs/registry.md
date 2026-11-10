@@ -21,8 +21,8 @@ Any company or person can run a registry on the same terms.
    private channel.
 4. **HTTPS only.** The directory lists only `https://` addresses, with no credentials,
    query or fragment.
-5. **Quote PG codes.** A code ends with a check character that may be `*`, `~`, `$`, `=` or
-   `!`. In a shell, put codes in single quotes (`'PG-ABCD-000001$'`); in a URL path, encode
+5. **Quote codes.** An older code may end with a check character `*`, `~`, `$`, `=` or
+   `!`. In a shell, put codes in single quotes (`'TOG-TEST-000006$'`); in a URL path, encode
    them (`$` is `%24`, `*` is `%2A`). Always copy codes, never retype them.
 
 **Order on a first run:** steps 1–3, 5, 7–8, 9 for the sandbox, then 6, the step 3 backup, `key next` (step 4), 8, 9 for production,
@@ -44,7 +44,7 @@ conformance Level 1 with your signing library (step 8), and serve the same HTTP 
 ## 2. Choose your prefix and your address
 
 **Your prefix** is four letters from `ABCDEFGHJKMNPQRSTVWXYZ` (no digits, no I, L, O, U).
-It starts every code you issue (`PG-ABCD-…`) and is never given to anyone else, so choose it
+It starts every code you issue (`TOG-ABCD-…`) and is never given to anyone else, so choose it
 first. List the prefixes already taken, from the directory checked against the steward's
 signature:
 
@@ -274,8 +274,8 @@ Add a person you have verified:
 pregen-registry subject add --dir ./data --name "Maya Cole" --level verified
 ```
 
-It prints the person's code, for example `PG-ABCD-000001K`. Codes can be computed by anyone (serials
-count from 1; the last character is a checksum), so `GET {api}/v2/codes/<code>` shows the person's
+It prints the person's code, for example `TOG-ABCD-418207365E`. Codes can be guessed (a 9-digit number
+and a checksum), so `GET {api}/v2/codes/<code>` shows the person's
 name and level only if you add `--publish`, which you do only when the person chose to be
 public (`subject publish --code … [--off]` changes it later). Anchoring publishes the code,
 its level and its anchor (so who the person is) at `/v2/anchors`, whatever `--publish` says:
@@ -298,7 +298,7 @@ person has one:** clients today confirm only `wikidata:` anchors, so a person an
 `PG_IDENTITY_UNCONFIRMED`), grant or not, until confirmed. An anchor that cannot be confirmed
 means nobody can generate that person.
 
-Add the place where the person posted the line `PRE-GEN: PG-ABCD-000001K`. Only two places
+Add the place where the person posted the line `PRE-GEN: TOG-ABCD-418207365E`. Only two places
 count (`spec/extensions/identity.md`), on a channel that a **current** statement of their
 Wikidata item lists (not deprecated, not ended):
 - **their official website** (use it: social posts are mostly scripts a plain fetch cannot read):
@@ -320,7 +320,7 @@ account it always prints `False`, because a page's text cannot say who wrote it.
 confirmed, and blocks the person for one that did. The check (it follows no redirect):
 
 ```bash
-CODE='PG-ABCD-000001K' URL='https://mayacole.example/.well-known/pregen' ANCHOR='wikidata:Q42' python3 -c "
+CODE='TOG-ABCD-418207365E' URL='https://mayacole.example/.well-known/pregen' ANCHOR='wikidata:Q42' python3 -c "
 import os, pregen, urllib.request as u
 ua = {'User-Agent': 'Example Registry (https://registry.example/contact)'}
 class Stay(u.HTTPRedirectHandler):
@@ -334,12 +334,12 @@ If it prints `False`, the page answers 404, or it raises (page unreadable, Wikid
 the line is gone, anchor again without `--proof-url`.
 
 ```bash
-pregen-registry subject anchor --dir ./data --code 'PG-ABCD-000001K' \
+pregen-registry subject anchor --dir ./data --code 'TOG-ABCD-418207365E' \
   --anchor wikidata:Q42 --proof-url https://mayacole.example/.well-known/pregen
 ```
 
 ```
-PG-ABCD-000001K anchored to wikidata:Q42; GET /v2/anchors lists it
+TOG-ABCD-418207365E anchored to wikidata:Q42; GET /v2/anchors lists it
 ```
 
 When several registries claim the same person, a client counts only a record whose anchor
@@ -352,7 +352,7 @@ refuse the person anywhere else.
 **Grant a use** the person agreed to. It prints the grant id (64 hex):
 
 ```bash
-pregen-registry grant add --dir ./data --subject 'PG-ABCD-000001K' --any-provider \
+pregen-registry grant add --dir ./data --subject 'TOG-ABCD-418207365E' --any-provider \
   --purposes commercial,editorial --days 30 --max-uses 10
 ```
 
@@ -436,7 +436,7 @@ the id as `licensee_id` only for those codes, and rests on its own grant for the
 what they were:
 
 ```bash
-pregen-registry subject opt-out --dir ./data --code 'PG-ABCD-000001K'   # the person opted out or withdrew
+pregen-registry subject opt-out --dir ./data --code 'TOG-ABCD-418207365E'   # the person opted out or withdrew
 pregen-registry grant revoke --dir ./data --id <grant id>                # the grant ends now
 pregen-registry provider remove --dir ./data --id frame-ai               # a leaked token: see below
 ```
@@ -466,14 +466,14 @@ After the key and policy lines it prints the standard test codes:
 
 ```
 Sandbox test subjects (copy them; the last character is a check character):
-  PG-ABCE-000001…  Test subject 1 (allow)
+  TOG-ABCE-000001…  Test subject 1 (allow)
   …
-  PG-ABCE-000007…  Test subject 7 (not blocked)
-  PG-ABCE-000009…  Test subject 9 (buy first)
-  PG-ABCE-000010…  Test subject 10 (the person's terms)
-  PG-ABCE-000011…  Test subject 11 (a minor)
-  PG-ABCE-000012…  Test subject 12 (a creator's licence, through bind)
-  PG-ABCE-000008…  Test subject 8 (not registered: PG_UNKNOWN_SUBJECT)
+  TOG-ABCE-000007…  Test subject 7 (not blocked)
+  TOG-ABCE-000009…  Test subject 9 (buy first)
+  TOG-ABCE-000010…  Test subject 10 (the person's terms)
+  TOG-ABCE-000011…  Test subject 11 (a minor)
+  TOG-ABCE-000012…  Test subject 12 (a creator's licence, through bind)
+  TOG-ABCE-000008…  Test subject 8 (not registered: PG_UNKNOWN_SUBJECT)
 ```
 
 Save this output: code 8 is never stored, so `subject list` shows only 1–7, 9–12 and your own.
@@ -537,7 +537,7 @@ pregen-registry check --api https://sandbox.registry.example \
   --provider-id sbx-… --token '<sandbox token>' --subject '<sandbox code 1>' --purpose commercial
 ```
 
-The extra line reads `PASS POST /v2/requests for PG-ABCE-000001…, purpose commercial: HTTP
+The extra line reads `PASS POST /v2/requests for TOG-ABCE-000001…, purpose commercial: HTTP
 200, allow`; with test code 2 it reads `… deny PG_NO_LICENSE`. To try a grant of your own
 (purposes, a licensee), add a test person and that grant to the sandbox (`subject add
 --dir ./sandbox --level verified --publish --name "Test subject 12 (allow, licensee test:t1, commercial)"`, named by what it
