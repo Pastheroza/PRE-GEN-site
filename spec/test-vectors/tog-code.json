@@ -1387,6 +1387,328 @@
    }
   }
  ],
+ "describe": [
+  {
+   "code": "TOG-PRAM-900000037K",
+   "result": "claims subject · issued by PRAM · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-LIC-PRAM-ZZZZ-QH28-TDQ8",
+   "result": "claims license · issued by PRAM · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-PG-LIC-PRAM-ZZZZ-8RD8-3EQ9",
+   "result": "claims generated under a licence · issued by PRAM · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-PG-PRAM-ZZZZ-K6X4-RZJB",
+   "result": "claims generated under the person's terms · issued by PRAM · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-LIC-NWRD-PRAM-ZZZZ-84RN-RT04",
+   "result": "claims license · issued by NWRD · home PRAM · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-PG-LIC-NWRD-PRAM-ZZZZ-VGDY-WCWV",
+   "result": "claims generated under a licence · issued by NWRD · home PRAM · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-PG-LIC-NWRD-ZZZZ-WNJB-820Q",
+   "result": "claims generated under a licence · issued by NWRD · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-LIC-HLWD-PRAM-ZZZZ-FN2C-3M5V",
+   "result": "claims license · issued by HLWD · home PRAM · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-LIC-USAD-PRAM-ZZZZ-M1BM-P1DE",
+   "result": "claims license · issued by USAD · home PRAM · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-LIC-NWRD-PRAM-ZZZZ-TXHN-9P2X",
+   "result": "claims license · issued by NWRD · home PRAM · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-LIC-KOBEMK-PRAM-ZZZZ-BYAV-K2AQ",
+   "result": "claims license · issued by KOBEMK · home PRAM · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-PG-LIC-VELR-ZZZZ-Q4VE-P7E4",
+   "result": "claims generated under a licence · issued by VELR · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-LIC-HYBR-PRAM-ZZZZ-F7CJ-E8TX",
+   "result": "claims license · issued by HYBR · home PRAM · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-PG-LIC-HYBR-PRAM-ZZZZ-VGQ3-ZGQH",
+   "result": "claims generated under a licence · issued by HYBR · home PRAM · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-OMNI-9000000055",
+   "result": "claims subject · issued by OMNI · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-LIC-OMNI-ZZZZ-EKC0-Z18T",
+   "result": "claims license · issued by OMNI · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-PG-LIC-OMNI-ZZZZ-7387-XZBA",
+   "result": "claims generated under a licence · issued by OMNI · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-KAST-9000000125",
+   "result": "claims subject · issued by KAST · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-LIC-KAST-ZZZZ-FJ4Y-SM2N",
+   "result": "claims license · issued by KAST · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-LIC-NWRD-ZZZZ-134C-2NDD",
+   "result": "claims license · issued by NWRD · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-LIC-KAST-PRAM-ZZZZ-3NX4-F2GH",
+   "result": "claims license · issued by KAST · home PRAM · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-TGOV-9000001014",
+   "result": "claims subject · issued by TGOV · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-LIC-KOBEMK-TGOV-ZZZZ-8TZ3-VGMV",
+   "result": "claims license · issued by KOBEMK · home TGOV · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-LIC-LYONMK-TGOV-ZZZZ-QGK5-QC4C",
+   "result": "claims license · issued by LYONMK · home TGOV · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-LIC-RIOMKT-TGOV-ZZZZ-XMNA-3NP7",
+   "result": "claims license · issued by RIOMKT · home TGOV · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-LIC-PUNEMK-TGOV-ZZZZ-VQ6V-KQWF",
+   "result": "claims license · issued by PUNEMK · home TGOV · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-LIC-OSLOMK-TGOV-ZZZZ-C6DZ-WS45",
+   "result": "claims license · issued by OSLOMK · home TGOV · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-PG-TGOV-ZZZZ-DHMW-8C2S",
+   "result": "claims generated under the person's terms · issued by TGOV · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-PRAM-900000041V",
+   "result": "claims subject · issued by PRAM · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-LIC-NWRD-PRAM-ZZZZ-82V2-YJHT",
+   "result": "claims license · issued by NWRD · home PRAM · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-LIC-NWRD-SKAN-ZZZZ-37NF-0EAS",
+   "result": "claims license · issued by NWRD · home SKAN · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-PG-LIC-NWRD-SKAN-ZZZZ-X9RS-BBKX",
+   "result": "claims generated under a licence · issued by NWRD · home SKAN · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-PRAM-900000052F",
+   "result": "claims subject · issued by PRAM · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-KINO-900000007B",
+   "result": "claims subject · issued by KINO · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-PRAM-9000000633",
+   "result": "claims subject · issued by PRAM · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-AG-PRAM-ZZZZ-T8JE-WDJX",
+   "result": "claims approved_after under the person's terms · issued by PRAM · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-AG-LIC-NWRD-PRAM-ZZZZ-ZJGH-HQH3",
+   "result": "claims approved_after under a licence · issued by NWRD · home PRAM · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-PG-LIC-NWRD-PRAM-ZZZZ-PE6X-E06A",
+   "result": "claims generated under a licence · issued by NWRD · home PRAM · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-PG-LIC-HLWD-SKAN-ZZZZ-M0PE-BKHE",
+   "result": "claims generated under a licence · issued by HLWD · home SKAN · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-ZYXW-1234567R",
+   "result": "claims subject · issued by ZYXW · not checked"
+  },
+  {
+   "code": "TOG-000042*",
+   "result": "claims subject · issued by the bare legacy namespace · not checked"
+  },
+  {
+   "code": "TOG-STD-000123",
+   "result": "claims subject · issued by the bare legacy namespace · not checked"
+  },
+  {
+   "code": "TOG-ZZZZZZZZ-8999999909",
+   "result": "claims subject · issued by ZZZZZZZZ · not checked"
+  },
+  {
+   "code": "TOG-TILU-1420000002",
+   "result": "claims subject · issued by TILU · not checked"
+  },
+  {
+   "code": "TOG-GOVTEST-123456789D",
+   "result": "claims subject · issued by GOVTEST · not checked"
+  },
+  {
+   "code": "TOG-PG-LIC-ABCDEFGH-JKMNPQRS-ZZZZ-P074-J6SX",
+   "result": "claims generated under a licence · issued by ABCDEFGH · home JKMNPQRS · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-LIC-PRAL-OSLU-ZZZZ-2171-A926",
+   "result": "claims license · issued by PRAL · home OSLU · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-AG-LIC-TILU-UOLI-ZZZZ-7DMZ-PQBF",
+   "result": "claims approved_after under a licence · issued by TILU · home UOLI · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-PG-PRAMU-ZZZZ-1GX4-61BX",
+   "result": "claims generated under the person's terms · issued by PRAMU · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-AG-ABCD-EFGH-ZZZZ-Q9B0-ZMY8",
+   "result": "claims approved_after under the person's terms · issued by ABCD · home EFGH · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-PG-LIC-ABCDE-ZZZZ-8MGB-J51C",
+   "result": "claims generated under a licence · issued by ABCDE · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-PRAM-9000000003",
+   "result": "claims subject · issued by PRAM · not checked · EXAMPLE, never issued"
+  },
+  {
+   "code": "TOG-PRAM-899999000S",
+   "result": "claims subject · issued by PRAM · not checked"
+  },
+  {
+   "code": "TOG-NWRD-000042=",
+   "result": "claims subject · issued by NWRD · not checked"
+  },
+  {
+   "code": "TOG-SUB-000123",
+   "result": "claims subject · issued by the bare legacy namespace · not checked"
+  },
+  {
+   "code": "PG-0000016",
+   "result": "claims subject · issued by the bare legacy namespace · not checked · old spelling of TOG-0000016"
+  },
+  {
+   "code": "PG-000042*",
+   "result": "claims subject · issued by the bare legacy namespace · not checked · old spelling of TOG-000042*"
+  },
+  {
+   "code": "PG-099999*",
+   "result": "claims subject · issued by the bare legacy namespace · not checked · old spelling of TOG-099999*"
+  },
+  {
+   "code": "PG-9999994",
+   "result": "claims subject · issued by the bare legacy namespace · not checked · old spelling of TOG-9999994"
+  },
+  {
+   "code": "PG-10000001",
+   "result": "claims subject · issued by the bare legacy namespace · not checked · old spelling of TOG-10000001"
+  },
+  {
+   "code": "PG-12345678K",
+   "result": "claims subject · issued by the bare legacy namespace · not checked · old spelling of TOG-12345678K"
+  },
+  {
+   "code": "PG-STD-000001-K7M2QX9",
+   "result": "claims license · issued by the bare legacy namespace · not checked · old licence number: its registry gives its TOG code"
+  },
+  {
+   "code": "PG-RND-000042-ZZZZZZ1",
+   "result": "claims license · issued by the bare legacy namespace · not checked · old licence number: its registry gives its TOG code"
+  },
+  {
+   "code": "PG-PRM-999999-0000000",
+   "result": "claims license · issued by the bare legacy namespace · not checked · old licence number: its registry gives its TOG code"
+  },
+  {
+   "code": "PG-NWRD-000042=",
+   "result": "claims subject · issued by NWRD · not checked · old spelling of TOG-NWRD-000042="
+  },
+  {
+   "code": "PG-NWRD-RND-000042-ZZZZZZJ",
+   "result": "claims license · issued by NWRD · not checked · old licence number: its registry gives its TOG code"
+  },
+  {
+   "code": "PG-PRAM-000037J",
+   "result": "claims subject · issued by PRAM · not checked · old spelling of TOG-PRAM-000037J"
+  },
+  {
+   "code": "PG-ZYXW-1234567R",
+   "result": "claims subject · issued by ZYXW · not checked · old spelling of TOG-ZYXW-1234567R"
+  },
+  {
+   "code": "PG-ABCD-PRM-1234567-A1B2C3A",
+   "result": "claims license · issued by ABCD · not checked · old licence number: its registry gives its TOG code"
+  },
+  {
+   "code": "PG-STD-000123",
+   "result": "claims subject · issued by the bare legacy namespace · not checked · old spelling of TOG-STD-000123"
+  },
+  {
+   "code": "PG-SUB-000123",
+   "result": "claims subject · issued by the bare legacy namespace · not checked · old spelling of TOG-SUB-000123"
+  },
+  {
+   "code": "PG-TEST-000001N",
+   "result": "claims subject · issued by TEST · not checked · old spelling of TOG-TEST-000001N"
+  },
+  {
+   "code": "PG-000002C",
+   "result": "claims subject · issued by the bare legacy namespace · not checked · old spelling of TOG-000002C"
+  },
+  {
+   "code": "PG-1000001",
+   "result": "claims subject · issued by the bare legacy namespace · not checked · old spelling of TOG-1000001"
+  },
+  {
+   "code": "PG-NWRD-000001T",
+   "result": "claims subject · issued by NWRD · not checked · old spelling of TOG-NWRD-000001T"
+  },
+  {
+   "code": "PG-ABCD-9999997",
+   "result": "claims subject · issued by ABCD · not checked · old spelling of TOG-ABCD-9999997"
+  },
+  {
+   "code": "PG-PRM-1234567-A1B2C3R",
+   "result": "claims license · issued by the bare legacy namespace · not checked · old licence number: its registry gives its TOG code"
+  },
+  {
+   "code": "TOG-PG-PRAM-PRAM-ZZZZ-7QX2-M9K*",
+   "error": "malformed"
+  },
+  {
+   "code": "TOG-ABCD-PRM-1234567-A1B2C3A",
+   "error": "malformed"
+  },
+  {
+   "code": "TOG-00042T",
+   "error": "malformed"
+  }
+ ],
  "must_reject": [
   {
    "string": "TOG-PG-PRAM-PRAM-ZZZZ-7QX2-M9K*",

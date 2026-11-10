@@ -33,6 +33,10 @@ off a caption:
 - **One allow, one code.** Every output reported under one allow shows the same code.
 - A registry does not issue an `allow` whose code would end in a symbol or whose tail would start
   `ZZZZ`: it signs it again with a changed body. It refuses a code it has already issued.
+- **The reply may carry the code.** `POST {api}/v2/requests` may answer an allow with
+  `{"answer", "code"}`. That `code` is a readable copy, not part of the signed answer: a provider
+  recomputes it from the answer and refuses it on any mismatch (`TOG-CODE.md` §14). A client that
+  does not know the member ignores it.
 
 A file approved after it was made gets an `AG` or `AG-LIC` code the same way, from its AFTER-GEN
 record. A caption shows the code; a verifier checks the caption against the record, never the

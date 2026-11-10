@@ -110,12 +110,14 @@ def entry(code, anchor="wikidata:Q11571"):
 
 @pytest.mark.parametrize("case", ANCHOR_LISTS["cases"], ids=lambda c: c["name"])
 def test_anchor_list_vectors(case):
-    """spec/test-vectors/anchors.json: foreign codes are dropped; an entry of unknown shape fails the whole list."""
+    """spec/test-vectors/anchors.json: TOG lines kept, PG lines folded, foreign codes dropped; an entry that is not a
+    person code fails the whole list."""
+    a = case.get("anchor", "wikidata:Q11571")
     if "error" in case:
         with pytest.raises(pregen.PregenError, match=case["error"]):
-            anchors([entry(c) for c in case["codes"]])
+            anchors([entry(c, a) for c in case["codes"]])
     else:
-        assert anchors([entry(c) for c in case["codes"]]) == [entry(c) for c in case["keep"]]
+        assert anchors([entry(c, a) for c in case["codes"]]) == [entry(c, a) for c in case["keep"]]
 
 
 def test_an_anchor_list_naming_a_code_twice_is_refused():
@@ -136,8 +138,8 @@ def test_an_old_anchor_list_is_refused():
 
 def test_an_anchor_list_drops_a_false_claim_only_under_its_own_anchor():
     false = "PG-TEST-000002Z"               # the vector directory: a false claim under wikidata:Q42
-    assert anchors([entry(false, "wikidata:Q42"), entry("PG-TEST-000001N")]) == [entry("PG-TEST-000001N")]
-    assert anchors([entry(false)]) == [entry(false)]
+    assert anchors([entry(false, "wikidata:Q42"), entry("PG-TEST-000001N")]) == [entry("TOG-TEST-000001N")]
+    assert anchors([entry(false)]) == [entry("TOG-TEST-000002Z")]
 
 
 def test_a_false_claim_is_weighed_under_another_anchor_but_never_generated_alone():

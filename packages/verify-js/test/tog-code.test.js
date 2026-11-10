@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { CROCKFORD, TOG_VALUES, FIXTURE_PREFIXES, CodeError, PregenError, checkChar, parseCode, codeKey, normalizeTyped, codeFor,
-  metadataOk, codeVerdict, checkParties, admissionRefusal, findCodes, issuerOf } from "../index.js";
+  metadataOk, codeVerdict, checkParties, admissionRefusal, findCodes, issuerOf, kindOf, describe } from "../index.js";
 
 const V = JSON.parse(readFileSync(new URL("../../../spec/test-vectors/tog-code.json", import.meta.url)));
 
@@ -49,7 +49,12 @@ test("parse: one reading per string", () => {
   for (const c of V.parse) {
     const got = run(() => parseCode(c.code));
     assert.deepEqual(got, c.parsed ? { result: c.parsed } : expected(c), c.code);
+    if (c.parsed) assert.equal(kindOf(c.code), c.parsed.kind, c.code);
   }
+});
+
+test("describe: what a string claims", () => {
+  for (const c of V.describe) assert.deepEqual(run(() => describe(c.code)), expected(c), c.code);
 });
 
 test("must_reject: each string fails with its class", () => {

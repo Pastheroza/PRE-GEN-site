@@ -33,10 +33,12 @@ claim, a reversal or a confirmation line. So `PG-ZYXW-1234567R` and `TOG-ZYXW-12
 code: listed twice, the list is refused; a false claim under one spelling drops the other.
 
 A client drops a list entry that names another registry's code (the rest of the list stands),
-and refuses a list that names one code twice. **An entry of unknown shape fails the whole list.**
-A client refuses the list when one entry's `code` is not a code shape it knows: it cannot tell
-whose code it is, and the entry may be a refusal. It never drops such an entry. Vectors:
-`test-vectors/anchors.json`.
+and refuses a list that names one code twice. **An entry that is not a person code fails the
+whole list.** A client refuses the list when one entry's `code` is not a code, is mistyped, or is
+a licence or event code: it cannot tell whose person it is, and the entry may be a refusal. It
+never drops such an entry. A client returns the entries it keeps with their codes in the TOG
+spelling. Vectors: `test-vectors/anchors.json`. (0.13.1 refused any `TOG-` line; 0.14 reads
+them.)
 
 **A list that fails blocks only that registry's people.** While a registry's list has not
 verified within the last 24 hours, a client generates none of that registry's own codes, and

@@ -41,8 +41,9 @@ Also exported: `check_provider_url`, `signing_input`, `public_key_hex`, `message
 ## One person in several registries, and proof in a video
 
 - `verify_anchors(list, prefix, directory)` — a registry's signed anchor list (`extensions/identity.md`). Another
-  registry's codes are dropped, and so is an entry the steward found false under its own anchor; a list naming a code
-  twice, or an entry of unknown shape (a `TOG-` code, say), is refused.
+  registry's codes are dropped, and so is an entry the steward found false under its own anchor. Kept entries come back
+  in their TOG spelling (a `PG-` line folds by its code key). A list naming a code twice, in either spelling, or an
+  entry that is not a person code, is refused.
 - `wikidata_official_urls(anchor)` — the channels Wikidata lists as current: not deprecated, not ended, started, each
   value in its property's own form. A website counts by its host alone. With `at=now - pregen.SETTLED_AFTER`, the
   channels of the item as it stood 7 days earlier (its last revision then).
@@ -87,7 +88,8 @@ Every code is written `TOG-`: a person `TOG-PRAM-900000037K`, a licence `TOG-LIC
 yes `TOG-PG-…` or `TOG-PG-LIC-…`, one approved after it was made `TOG-AG-…`. A `PG-` string is legacy input only.
 
 - `parse_code(code)` reads a code exactly as it stands: shape, kind, basis, the registry to ask (`issuer`), and
-  `key`, its TOG spelling. No network. `kind_of(code)` gives the kind alone. Raises `NotACode` or `Mistyped`.
+  `key`, its TOG spelling. No network. `kind_of(code)` gives the kind alone; `describe(code)` what
+  the string claims, for support tools, never beside a video. Raises `NotACode` or `Mistyped`.
 - `code_key(code, licences=None)` is the one TOG spelling: compare, hash and look up codes only by it. An old PG
   licence id needs its signed record, else `AskRegistry`.
 - `normalize_typed(typed)` only where a person types, pastes or scans: the one code meant, for "Did you mean …?".

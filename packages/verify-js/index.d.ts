@@ -106,6 +106,10 @@ export function checkChar(body: string, values?: string): string;
 export function parseCode(code: string, options?: { check?: boolean }): ParsedCode;
 /** The one TOG spelling, used by every comparison. Old PG licence ids need their pg.license.v2 record. */
 export function codeKey(code: string, licences?: Record<string, CodeAct>): string;
+/** "subject", "license", "generated" or "approved_after", from the string alone (no network). */
+export function kindOf(code: string): string;
+/** What the string claims, for support tools; never shown beside a video. */
+export function describe(code: string): string;
 /** Where a person types: the one code meant, in its TOG spelling, for "Did you mean …?". Throws CodeError. */
 export function normalizeTyped(typed: string, licences?: Record<string, CodeAct>): string;
 /** The code of an act, computed from its record. Throws CodeError ("no_code" when the record gives none). */

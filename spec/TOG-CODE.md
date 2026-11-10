@@ -286,8 +286,9 @@ and refusal check uses it**, so one person never has two chains and a refusal ca
   `pg.license.v2` whose `license_id` is that id (§6.2). With no record at hand the answer is "ask its
   registry".
 - **`code_key` never returns a `PG-` string.**
-- **`PG-` is a closed namespace.** Only prefixes in the frozen v2 directory ever issued PG codes. A `PG-` code
-  of any other prefix names no registry and fails closed.
+- **Only prefixes in the frozen v2 directory ever issued PG codes.** A `PG-` code of any other prefix folds
+  like any other and goes to that prefix's registry, which has no such person: not found. A client does not
+  check the v2 directory for this; directory v3 does not say which prefixes are PG-era.
 
 Vectors: `code_key`, `code_key_with_record`.
 
@@ -335,7 +336,7 @@ cannot tell that the act happened, or name any party as a fact.
 - **One prefix per legal entity.** Entities with common owners share a `group` id.
 - **GOV both ways.** A government's prefix contains `GOV`; no other prefix does.
 - **A prefix is never reassigned**, even when its registry closes or is revoked.
-- **`PG-` is closed:** only prefixes of the frozen v2 directory ever issued PG codes.
+- **No new PG codes:** only prefixes of the frozen v2 directory ever issued them (§7.3).
 
 ### 9.1 Admission
 
@@ -412,6 +413,7 @@ An implementation conforms if it reproduces every case of [`test-vectors/tog-cod
 | `examples` | every example code of this document, by chain mix |
 | `check_char` | bodies with their check under the TOG table and the PG table (null: outside the table, never verifies) |
 | `parse` | the one reading of each string: shape, kind, basis, issuer, home, example flag, key |
+| `describe` | what a string claims, for support tools (never beside a video, §15) |
 | `must_reject` | strings that fail, each `malformed` or `mistyped` (§16) |
 | `refused_by_0_13` | strings the 0.13 grammar must refuse: every TOG code, every TOG event code with `TOG-` dropped |
 | `code_key`, `code_key_with_record` | the TOG spelling of every published string; old licences through their record |
@@ -547,7 +549,7 @@ leading space, U+200B, `L1C`, a Cyrillic `А` in a message; a QR fragment; a bar
   generate (fail closed). Vectors: `refused_by_0_13`.
 - **One path failed open:** 0.13.0's `verify_anchors` dropped lines of a shape it did not know, so a refusal
   listed as `TOG-` was lost. The 0.13.1 patch refuses the whole list instead (`extensions/identity.md`). It
-  ships before any registry writes `TOG-`.
+  ships before any registry writes `TOG-`. 0.14 reads `TOG-` lines and folds `PG-` lines by `code_key`.
 - **Order.** 1. The 0.13.1 patch. 2. Libraries learn this document and directory v3 (0.14.0). 3. The steward
   signs v2 (old URL, frozen entries) and v3 (new URL) together; v3 states `min_library`. 4. After a notice
   period, the switch in one release: registries write `TOG-` everywhere (persons respelled, licences by their

@@ -15,9 +15,6 @@ const ROLES = ["home", "market", "wallet", "log_operator", "witness"];
 const MAX_INT = 2 ** 53 - 1;
 const PREFIX = /^[ABCDEFGHJKMNPQRSTVWXYZ]{4}$/;
 const FINGERPRINT = /^pg-ed25519:[0-9a-f]{32}$/;
-// The 0.13 grammar (PG-CODE.md §7). Only verifyAnchors still uses it: an anchor list with a TOG line fails whole, as in
-// 0.13.1, until spec/test-vectors/anchors.json is revised for TOG-CODE.md (identity.md).
-const CANONICAL_CODE = /^(?:PG-(?:([ABCDEFGHJKMNPQRSTVWXYZ]{4})-)?(?:[0-9]{6,}[0-9A-HJKMNP-TV-Z*~$=!]|[A-Z]{3}-[0-9]{6,}-[0-9A-HJKMNP-TV-Z]{6}[0-9A-HJKMNP-TV-Z*~$=!])|PG-[A-Z]{3}-[0-9]{6,})$/;
 
 export class PregenError extends Error {
   constructor(message) { super(message); this.name = "PregenError"; }
@@ -232,6 +229,20 @@ export function parseCode(code, { check = true } = {}) {
   return { ...out, issuer: prefix, cls: "", serial, example: BigInt(serial) >= RESERVED_SERIAL };
 }
 const isCode = (s) => { try { parseCode(s); return true; } catch { return false; } };
+
+/** "subject", "license", "generated" or "approved_after", from the string alone (no network). */
+export function kindOf(code) { return parseCode(code).kind; }
+
+/** What the string claims, for support tools (§15): never shown beside a video, where party names come only from a
+ * record that fits the file. Throws CodeError "malformed" or "mistyped". */
+export function describe(code) {
+  const p = parseCode(code);
+  const home = p.home ? ` · home ${p.home}` : "";
+  const basis = { licence: " under a licence", terms: " under the person's terms" }[p.basis] ?? "";
+  let ex = p.example ? " · EXAMPLE, never issued" : "";
+  if (p.marker === "PG") ex += p.key ? ` · old spelling of ${p.key}` : " · old licence number: its registry gives its TOG code";
+  return `claims ${p.kind}${basis} · issued by ${p.issuer || "the bare legacy namespace"}${home} · not checked${ex}`;
+}
 
 /** The one TOG spelling of a code (§7.3). Every comparison, hash key and refusal check uses it. A TOG code is its own
  * key; a PG person folds by its marker; an old PG licence id folds through its signed pg.license.v2 record, from
@@ -1064,14 +1075,16 @@ export const FLOOR_REASONS = Object.freeze(["PG_SUBJECT_OPTED_OUT", "PG_SUBJECT_
   "PG_IMMUTABLE_DENIAL", "PG_PERSONAL_SIGNATURE_REQUIRED"]);
 
 /** A registry's signed anchor list (pg.anchors.v1), checked through the directory and at most a day old, so an
- * old copy cannot hide a new opt-out. Returns its entries, without those the steward found false under their own anchor
- * (a false claim under another anchor silences no one). An entry naming
- * another registry's code is dropped, not the whole list: one foreign line must not make the list fail. An entry of
- * unknown shape (a TOG- code, say) fails the whole list: dropping it could lose a refusal. A list naming
- * one of its codes twice is refused: its anchor would depend on which line a client read last. */
+ * old copy cannot hide a new opt-out. Returns its entries, each code in its TOG spelling (a PG- line of an older list
+ * folds by codeKey), without those the steward found false under their own anchor (a false claim under another anchor
+ * silences no one). An entry naming another registry's code is dropped, not the whole list: one foreign line must not
+ * make the list fail. An entry that is not a person code (unknown shape, mistyped, a licence or an event) fails the
+ * whole list: dropping it could lose a refusal. A list naming one of its codes twice, in either spelling, is refused:
+ * its anchor would depend on which line a client read last. */
 export async function verifyAnchors(envelope, prefix, { directory, fetch: fetchFn = globalThis.fetch,
   now = Math.floor(Date.now() / 1000) } = {}) {
-  const body = await registrySigned(envelope, "pg.anchors.v1", `PG-${prefix}-0000000`, directory, fetchFn); // names the prefix
+  // The code only names the prefix, so the directory finds the registry's keys (any prefix length).
+  const body = await registrySigned(envelope, "pg.anchors.v1", `TOG-${prefix}-1000000000`, directory, fetchFn);
   if (body.registry !== prefix || !Array.isArray(body.anchors) || !Number.isSafeInteger(body.issued_at)) {
     fail("not an anchor list of this registry");
   }
@@ -1079,8 +1092,12 @@ export async function verifyAnchors(envelope, prefix, { directory, fetch: fetchF
   if (!body.anchors.every((e) => e && typeof e === "object" && !Array.isArray(e) && typeof e.code === "string")) {
     fail("an anchor list entry is {anchor, code, level, proof_url, status}");
   }
-  if (!body.anchors.every((e) => CANONICAL_CODE.test(e.code))) fail("an anchor list entry of unknown shape fails the whole list");
-  const own = body.anchors.filter((e) => issuerOf(e.code) === prefix);
+  let parsed;
+  try { parsed = body.anchors.map((e) => parseCode(e.code)); } catch { parsed = null; }
+  if (!parsed || parsed.some((p) => p.kind !== "subject")) {
+    fail("an anchor list entry of unknown shape fails the whole list: not a person code");
+  }
+  const own = body.anchors.flatMap((e, i) => (parsed[i].issuer === prefix ? [{ ...e, code: parsed[i].key }] : []));
   if (new Set(own.map((e) => e.code)).size !== own.length) fail("an anchor list names each code once");
   return own.filter((e) => !directory.isFalseClaim(e.code, e.anchor));
 }

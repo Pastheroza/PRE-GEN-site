@@ -39,7 +39,8 @@ Every code this registry writes is a ToG code ([`TOG-CODE.md`](https://www.prege
 was, and the old spelling is still read, as legacy input for the same person, in requests, lookups and commands.
 Every licence has a `TOG-LIC-…` code and every allow a `TOG-PG-LIC-…` code, computed from the signed record; an
 allow or licence whose code would end in a symbol, or that was issued already, is signed again a second shorter.
-Records signed before 0.5 get their codes by the same computation when the registry starts. Needs `pregen` 0.14.
+Records signed before 0.5 get their codes by the same computation when the registry starts; about 1 in 7 would end
+in a symbol or start `ZZZZ`, and those keep no code until the home model exists. Needs `pregen` 0.14.
 
 A sandbox also offers `bind` ([`extensions/bind.md`](https://www.pregen.org/spec/extensions/bind.md)): an app sends
 the person to `/v2/bind/authorize`, where the sandbox's test creator, signed in with no password, approves; the

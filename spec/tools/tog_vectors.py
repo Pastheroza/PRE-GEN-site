@@ -181,6 +181,10 @@ def main():
     out["parse"] = [dict({"code": c}, **(lambda r: {"parsed": r["result"]} if "result" in r else r)(run(t.parse, c)))
                     for c in dict.fromkeys(pinned + edge + pub)]
 
+    # describe(): what a string claims, for support tools; never shown beside a video.
+    out["describe"] = [dict({"code": c}, **run(t.describe, c))
+                       for c in dict.fromkeys(pinned + edge + pub + [s for s, *_ in t.must_reject()[:3]])]
+
     out["must_reject"] = [{"string": s, "error": ERR[e], "why": why} for s, e, why in t.must_reject()]
 
     # 0.13 clients (the published regex) refuse every TOG code, and every TOG event code with TOG- dropped.

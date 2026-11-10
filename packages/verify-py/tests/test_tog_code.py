@@ -1,6 +1,7 @@
 """TOG-CODE.md: spec/test-vectors/tog-code.json, every section a verifier implements. verify-js runs the same file.
 The `lookup` section is a registry's answer and runs in the registry package, not here."""
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -50,6 +51,13 @@ def test_check_char(case):
 def test_parse(case):
     r = run(pregen.parse_code, case["code"])
     assert ({"parsed": r["result"]} if "result" in r else r) == without_name(case)
+    if "result" in r:
+        assert pregen.kind_of(case["code"]) == r["result"]["kind"]
+
+
+@pytest.mark.parametrize("case", V["describe"], ids=lambda c: c["code"])
+def test_describe(case):
+    assert run(pregen.describe, case["code"]) == without_name(case)
 
 
 @pytest.mark.parametrize("case", V["must_reject"], ids=lambda c: c["why"])
@@ -57,9 +65,14 @@ def test_must_reject(case):
     assert run(pregen.parse_code, case["string"]) == {"error": case["error"]}
 
 
+# The grammar pregen 0.13 published (PG-CODE.md §7), verbatim.
+_0_13 = re.compile(r"PG-(?:([ABCDEFGHJKMNPQRSTVWXYZ]{4})-)?(?:[0-9]{6,}[0-9A-HJKMNP-TV-Z*~$=!]"
+                   r"|[A-Z]{3}-[0-9]{6,}-[0-9A-HJKMNP-TV-Z]{6}[0-9A-HJKMNP-TV-Z*~$=!])|PG-[A-Z]{3}-[0-9]{6,}")
+
+
 @pytest.mark.parametrize("code", V["refused_by_0_13"])
 def test_the_0_13_grammar_refuses_every_tog_code(code):
-    assert not pregen._CANONICAL_CODE.fullmatch(code)
+    assert not _0_13.fullmatch(code)
 
 
 @pytest.mark.parametrize("case", V["code_key"], ids=lambda c: c["code"])

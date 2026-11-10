@@ -26,7 +26,7 @@ __all__ = [
     "check_provider_url", "sandbox_provider_url", "party_document", "pg_access",
     "CATEGORIES", "PROHIBITED_FOR_MINORS", "INTIMATE", "floor", "forbids", "terms_opens", "check_terms",
     "NotACode", "Mistyped", "AskRegistry", "CROCKFORD", "TOG_VALUES", "BARE_ISSUER", "FIXTURE_PREFIXES", "check_char",
-    "parse_code", "kind_of", "code_key", "normalize_typed", "find_codes", "code_for", "metadata_ok", "code_verdict",
+    "parse_code", "kind_of", "describe", "code_key", "normalize_typed", "find_codes", "code_for", "metadata_ok", "code_verdict",
     "check_parties", "admission_refusal", "DIRECTORY_V2_URL", "CodeError",
 ]
 
@@ -45,11 +45,6 @@ _ROLES = ("home", "market", "wallet", "log_operator", "witness")
 _MAX_INT = 2**53 - 1
 _PREFIX = re.compile(r"[ABCDEFGHJKMNPQRSTVWXYZ]{4}")
 _FINGERPRINT = re.compile(r"pg-ed25519:[0-9a-f]{32}")
-# The 0.13 grammar (PG-CODE.md §7). Only verify_anchors still uses it: an anchor list with a TOG line fails whole, as
-# in 0.13.1, until spec/test-vectors/anchors.json is revised for TOG-CODE.md (identity.md).
-_CHECK = r"[0-9A-HJKMNP-TV-Z*~$=!]"
-_CANONICAL_CODE = re.compile(rf"PG-(?:([ABCDEFGHJKMNPQRSTVWXYZ]{{4}})-)?(?:[0-9]{{6,}}{_CHECK}"
-                             rf"|[A-Z]{{3}}-[0-9]{{6,}}-[0-9A-HJKMNP-TV-Z]{{6}}{_CHECK})|PG-[A-Z]{{3}}-[0-9]{{6,}}")
 # The curve's 8 small-order points, sign bit cleared; y = p and p + 1 are 0 and 1 again (as libsodium lists them).
 # Under such a key a signature checks out for any message with no private key behind it, and OpenSSL takes it
 # (stress test C1, 2026-10-28). The same list as PRAMPTA's verify_ed25519.
@@ -298,6 +293,18 @@ def _valid(s) -> bool:
 def kind_of(code: str) -> str:
     """"subject", "license", "generated" or "approved_after", from the string alone (no network)."""
     return parse_code(code)["kind"]
+
+
+def describe(code: str) -> str:
+    """What the string claims, for support tools (TOG-CODE §15): never shown beside a video, where party names come
+    only from a record that fits the file. Raises NotACode or Mistyped."""
+    p = parse_code(code)
+    home = f" · home {p['home']}" if p["home"] else ""
+    basis = {"licence": " under a licence", "terms": " under the person's terms"}.get(p.get("basis"), "")
+    ex = " · EXAMPLE, never issued" if p["example"] else ""
+    if p["marker"] == "PG":
+        ex += f" · old spelling of {p['key']}" if p["key"] else " · old licence number: its registry gives its TOG code"
+    return f"claims {p['kind']}{basis} · issued by {p['issuer'] or 'the bare legacy namespace'}{home} · not checked{ex}"
 
 
 def code_key(code: str, licences: dict = None) -> str:
@@ -1288,14 +1295,16 @@ FLOOR_REASONS = frozenset({"PG_SUBJECT_OPTED_OUT", "PG_SUBJECT_UNAVAILABLE", "PG
 
 def verify_anchors(envelope: dict, prefix: str, directory: Directory, get_json=_get_json, now=None) -> list:
     """A registry's signed anchor list (pg.anchors.v1), checked through the directory and at most a day old, so
-    an old copy cannot hide a new opt-out. Returns its entries, without those the steward found false under their own
-    anchor (a false claim under another anchor silences no one). An entry
-    naming another registry's code is dropped, not the whole list: one foreign line must not make the list fail. An
-    entry of unknown shape (a TOG- code, say) fails the whole list: dropping it could lose a refusal. A
-    list naming one of its codes twice is refused: its anchor would depend on which line a client read last."""
+    an old copy cannot hide a new opt-out. Returns its entries, each code in its TOG spelling (a PG- line of an older
+    list folds by code_key), without those the steward found false under their own anchor (a false claim under
+    another anchor silences no one). An entry naming another registry's code is dropped, not the whole list: one
+    foreign line must not make the list fail. An entry that is not a person code (unknown shape, mistyped, a licence
+    or an event) fails the whole list: dropping it could lose a refusal. A list naming one of its codes twice, in
+    either spelling, is refused: its anchor would depend on which line a client read last."""
     import time
     now = int(time.time()) if now is None else now
-    body = _registry_signed(envelope, "pg.anchors.v1", f"PG-{prefix}-0000000", directory, get_json)  # names the prefix
+    # The code only names the prefix, so the directory finds the registry's keys (any prefix length).
+    body = _registry_signed(envelope, "pg.anchors.v1", f"TOG-{prefix}-1000000000", directory, get_json)
     entries = body.get("anchors")
     if body.get("registry") != prefix or not isinstance(entries, list) or type(body.get("issued_at")) is not int:
         raise PregenError("not an anchor list of this registry")
@@ -1303,9 +1312,13 @@ def verify_anchors(envelope: dict, prefix: str, directory: Directory, get_json=_
         raise PregenError("the anchor list is more than 24 hours old")
     if not all(isinstance(e, dict) and isinstance(e.get("code"), str) for e in entries):
         raise PregenError("an anchor list entry is {anchor, code, level, proof_url, status}")
-    if not all(_CANONICAL_CODE.fullmatch(e["code"]) for e in entries):
-        raise PregenError("an anchor list entry of unknown shape fails the whole list")
-    own = [e for e in entries if issuer_of(e["code"]) == prefix]
+    try:
+        parsed = [parse_code(e["code"]) for e in entries]
+    except PregenError:
+        parsed = None
+    if parsed is None or any(p["kind"] != "subject" for p in parsed):
+        raise PregenError("an anchor list entry of unknown shape fails the whole list: not a person code")
+    own = [dict(e, code=p["key"]) for e, p in zip(entries, parsed) if p["issuer"] == prefix]
     if len({e["code"] for e in own}) != len(own):
         raise PregenError("an anchor list names each code once")
     return [e for e in own if not directory.is_false_claim(e["code"], e.get("anchor"))]

@@ -42,8 +42,9 @@ Also exported: `checkProviderUrl`, `signingInput`, `publicKeyHex`, `messageId`, 
 ## One person in several registries, and proof in a video
 
 - `verifyAnchors(list, prefix, { directory })` — a registry's signed anchor list (`extensions/identity.md`). Another
-  registry's codes are dropped, and so is an entry the steward found false under its own anchor; a list naming a code
-  twice, or an entry of unknown shape (a `TOG-` code, say), is refused.
+  registry's codes are dropped, and so is an entry the steward found false under its own anchor. Kept entries come back
+  in their TOG spelling (a `PG-` line folds by its code key). A list naming a code twice, in either spelling, or an
+  entry that is not a person code, is refused.
 - `wikidataOfficialUrls(anchor, { fetch })` — the channels Wikidata lists as current: not deprecated, not ended,
   started, each value in its property's own form. A website counts by its host alone. With
   `at: now - SETTLED_AFTER`, the channels of the item as it stood 7 days earlier (its last revision then).
@@ -90,7 +91,8 @@ only: it folds to its one TOG spelling and is never written.
 
 - `parseCode(code)` — the one reading of a code exactly as it stands in a message: shape, kind,
   basis, issuer, home, example flag and `key`. Never repaired. Throws `CodeError` with `reason`
-  `malformed` or `mistyped`.
+  `malformed` or `mistyped`. `kindOf(code)` gives the kind alone; `describe(code)` what the string
+  claims, for support tools, never beside a video.
 - `codeKey(code, licences)` — the one TOG spelling; every comparison uses it (the library compares
   false claims and terms this way). An old PG licence id needs its `pg.license.v2` record, else
   `ask_registry`.
