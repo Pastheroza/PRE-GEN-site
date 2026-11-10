@@ -1,7 +1,7 @@
 // Check a file: AFTER-GEN draft (spec/drafts/after-gen.md, "How a verifier checks a file").
 // Everything runs here. The file never leaves the device; when it carries no record, only its
 // media/1 hash goes to the registries of the signed directory.
-import { loadDirectory, mediaHash, readAfterGen, checkAfterGen, checkAfterGenStatus, afterGenCodes } from "/packages/verify-js/index.js";
+import { loadDirectory, mediaHash, readAfterGen, checkAfterGen, checkAfterGenStatus, afterGenCodes, RETIRED } from "/packages/verify-js/index.js";
 
 const TEST_STEWARD = "78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0"; // signs only the test directory
 const $ = (id) => document.getElementById(id);
@@ -60,8 +60,10 @@ async function findByHash(directory, hash) {
   return found;
 }
 
-// The PG- spelling is no longer issued: never shown, also not inside a library's error message.
+// PG codes are retired: a PG- string is never shown, also not inside a library's error message.
 const noPg = (m) => String(m).replace(/\bPG-[0-9A-Z*~$=!-]+/g, "the person's code");
+// A record naming a PG- string: not a code, so the record is not accepted (TOG-CODE.md §1). One neutral message.
+const PG_RECORD = "a retired PG code";
 
 // One block per record that checks out: a file may show several people. `codes` are computed from the record.
 function show(summary, status, error, codes) {
@@ -70,8 +72,7 @@ function show(summary, status, error, codes) {
     : status.state === "withdrawn" ? `Withdrawn by the person on ${when(status.withdrawn_at)}`
     : status.state === "expired" ? `Expired on ${when(status.not_after)}`
     : "Not confirmed by the registry today";
-  // Nothing is shown in the PG- spelling, which is no longer issued: the person is named by the approval's ToG code
-  // until the PG to TOG folding rule lands.
+  // The person is named by the approval's ToG code, computed from the record.
   const who = codes.Code || `a person at registry ${summary.prefix}`;
   const block = el("section", undefined, "cf-record");
   block.append(el("p", status.state === "active" ? `Approved after generation: ${who}`
@@ -158,6 +159,7 @@ async function check(file) {
   let lastError;
   for (const { env, codes } of records) {
     try {
+      if (/^PG-/.test(String(env?.body?.subject_ref ?? ""))) throw new Error(PG_RECORD);
       const summary = await checkAfterGen(env, { directory, media, codes });
       if (!good.has(summary.id)) good.set(summary.id, { summary, env, codes: await afterGenCodes(env) });
     } catch (e) { lastError = e; }
@@ -165,6 +167,9 @@ async function check(file) {
   if (!good.size) {
     step("s-sign", "fail");
     const msg = noPg(lastError?.message || "");
+    if (lastError?.message === PG_RECORD) {
+      return say("The record in this file names a retired PG code", `${RETIRED} A record that holds a PG code is not accepted: it approves nothing.`);
+    }
     if (/not for this file/.test(msg)) {
       return say("The record in this file belongs to another file",
         "The record names a different video. A record copied into another file approves nothing.");

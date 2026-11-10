@@ -1,5 +1,6 @@
-// The site's lookup proxy (api/lookup.js): a code is asked in the spelling and at the route its registry reads,
-// answers show TOG only. No network: registry answers below were recorded live on 2026-11-10.
+// The site's lookup proxy (api/lookup.js): PG codes are retired, so a PG- string gets one neutral message and nothing
+// is asked; a ToG code is asked at the route its registry publishes, through the marked transition shim at a registry
+// not yet migrated; answers never show PG-. No network: registry answers below were recorded live on 2026-11-10.
 // Run: node --test test/lookup.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -20,15 +21,15 @@ const RECORDED = {
     reserved_subject_serial_floor: 900000000, spec: "https://www.pregen.org/docs/pg-code" }],
   [PRAM_PG + "PG-PRAM-000043R"]: [200, { kind: "subject", found: true, status: "active" }],
   [PRAM_PG + "PG-PRAM-000099J"]: [404, { error: "not_found", detail: { error: "not_found" }, request_id: "2518c8aa" }],
-  [PRAM_PG + "TOG-PRAM-123456789G"]: [400, { error: "invalid_format", detail: { error: "invalid_format" }, request_id: "b6ea4a5c" }],
   "https://api2.prampta.com/v1/subjects/PG-0000016": [200, require("./subject-PG-0000016.json")],
-  "https://api2.prampta.com/v1/licenses/PG-STD-000001-K7M2QX9/proof": [404, { detail: "License not found", request_id: "884ae566" }],
   // The sandbox publishes no policy and no /v1/pg: the fallback route is asked, its 404 is not called "unknown".
   "https://sandbox.pregen.org/.well-known/pg-policy": [404, { detail: "Not Found" }],
   "https://sandbox.pregen.org/v1/pg/PG-TEST-000001N": [404, { detail: "Not Found" }],
-  // A registry whose policy names /v2/codes; its answer is the sandbox's recorded /v2 answer, in the PG spelling.
+  // A migrated registry: its policy names /v2/codes (it announces TOG); the sandbox's recorded /v2 answer, with a PG
+  // string left in a free-text field.
   "https://zyxw.example/.well-known/pg-policy": [200, { resolver_url_template: "https://zyxw.example/v2/codes/{code}" }],
-  "https://zyxw.example/v2/codes/PG-ZYXW-0000014": [200, { code: "PG-TEST-000001N", registry: "TEST", status: "active",
+  "https://zyxw.example/v2/codes/TOG-ZYXW-0000014": [200, { code: "TOG-ZYXW-0000014", registry: "ZYXW", status: "active",
+    rules_text: "Formerly PG-ZYXW-0000014.",
     name: "Test subject 1 (allow)", level: "verified", subject_key: { key_id: "pg-ed25519:e9d2d58988e65dbe81975c357fbe3bd2",
       public_key_hex: "59c3f4a451a9002def6ddfd3efeb01e33546d28d918f82820f4e3dced51459e3", custody: "managed" } }],
 };
@@ -49,11 +50,20 @@ async function lookup(code) {
 }
 const noPG = (body) => assert.doesNotMatch(JSON.stringify(body), /(^|[^O])PG-[A-Z0-9]/);
 
-test("an old person is asked in its PG spelling at the route PRAMPTA publishes, and shown TOG", async () => {
+const RETIRED = "PG codes are retired. Use the ToG code your registry shows you.";
+const retired = (r) => assert.deepEqual([r.status, r.body, r.asked],
+  [422, { error: "invalid_code", detail: RETIRED }, []]);
+
+test("the shim: a person of the old shape is asked in PG at a registry not yet migrated, and shown TOG", async () => {
   const want = { code: "TOG-PRAM-000043R", kind: "subject", status: "active" };
   const first = await lookup("TOG-PRAM-000043R");
   assert.deepEqual([first.status, first.body, first.asked], [200, want, [PRAM_PG + "PG-PRAM-000043R"]]);
-  assert.deepEqual((await lookup("PG-PRAM-000043R")).body, want);   // one code, one cache entry
+});
+
+test("a PG string is not a code: one neutral message, no TOG suggestion, nothing asked", async () => {
+  for (const typed of ["PG-PRAM-000043R", "pg-pram-000043r", "PG-0000016", " pg-std-000001-k7m2qx9 ", "PG-PRAM-900000037K"]) {
+    retired(await lookup(typed));
+  }
 });
 
 test("a person PRAMPTA never issued is unknown, in the TOG spelling", async () => {
@@ -61,9 +71,11 @@ test("a person PRAMPTA never issued is unknown, in the TOG spelling", async () =
   assert.deepEqual([r.status, r.body, r.asked], [200, { code: "TOG-PRAM-000099J", status: "unknown" }, [PRAM_PG + "PG-PRAM-000099J"]]);
 });
 
-test("a 9-digit person exists only as TOG and is asked so; the registry's refusal is passed on", async () => {
-  const r = await lookup("TOG-PRAM-123456789G");
-  assert.deepEqual([r.status, r.body.error, r.asked], [400, "invalid_format", [PRAM_PG + "TOG-PRAM-123456789G"]]);
+test("the shim asks nothing else at a registry not yet migrated: a 9-digit person or an act is not found", async () => {
+  for (const code of ["TOG-PRAM-123456789G", "TOG-LIC-PRAM-ZZZZ-QH28-TDQ8"]) {
+    const r = await lookup(code);
+    assert.deepEqual([r.status, r.body, r.asked], [200, { code, status: "unknown" }, []], code);
+  }
 });
 
 // The card live main shows for PG-0000016, as the proxy now answers it: lookup.md's fields and the registry's words.
@@ -79,13 +91,13 @@ test("a bare code goes to the first registry as before; only its curated card is
   noPG(r.body);
 });
 
-test("typed as live answered it: trimmed and case-folded, one code, one TOG spelling out", async () => {
+test("typed as live answered it: trimmed and case-folded, one code out", async () => {
   const want = { code: "TOG-PRAM-000043R", kind: "subject", status: "active" };
-  for (const typed of ["pg-pram-000043r", " tog-pram-000043r ", "TOG-PRAM-000043R"]) {
+  for (const typed of [" tog-pram-000043r ", "TOG-PRAM-000043R"]) {
     const r = await lookup(typed);
     assert.deepEqual([r.status, r.body], [200, want], typed);
   }
-  assert.deepEqual((await lookup("pg-0000016")).body, BRAND);
+  assert.deepEqual((await lookup("tog-0000016")).body, BRAND);
 });
 
 test("the page shows a bare code's card as live main does, every code TOG", async () => {
@@ -116,23 +128,17 @@ test("the page shows a bare code's card as live main does, every code TOG", asyn
   assert.equal(els.pgInput.value, "TOG-0000016");
 });
 
-test("an old licence number stays reachable through its proof, never shown", async () => {
-  const r = await lookup("PG-STD-000001-K7M2QX9");
-  assert.deepEqual(r.asked, ["https://api2.prampta.com/v1/licenses/PG-STD-000001-K7M2QX9/proof"]);
-  assert.deepEqual([r.status, r.body], [200, { code: "(an old licence number)", status: "unknown" }]);
+test("a migrated registry is asked for the TOG code at its /v2 route; a PG string left in its answer is not shown", async () => {
+  const r = await lookup("TOG-ZYXW-0000014");
+  assert.deepEqual(r.asked, ["https://zyxw.example/v2/codes/TOG-ZYXW-0000014"]);
+  assert.equal(r.body.code, "TOG-ZYXW-0000014");
+  assert.equal(r.body.rules_text, "Formerly (a retired code).");
+  noPG(r.body);
 });
 
 test("no policy: the route the site asked before; a missing route is not called unknown", async () => {
   const r = await lookup("TOG-TEST-000001N");
   assert.deepEqual([r.status, r.asked], [404, ["https://sandbox.pregen.org/v1/pg/PG-TEST-000001N"]]);
-});
-
-test("a /v2 answer is read as it stands, every code shown TOG", async () => {
-  const r = await lookup("TOG-ZYXW-0000014");
-  assert.deepEqual(r.asked, ["https://zyxw.example/v2/codes/PG-ZYXW-0000014"]);
-  assert.equal(r.body.code, "TOG-TEST-000001N");
-  assert.equal(r.body.subject_key.custody, "managed");
-  noPG(r.body);
 });
 
 test("not a code, mistyped, or an unlisted prefix: nothing is asked", async () => {
@@ -141,10 +147,25 @@ test("not a code, mistyped, or an unlisted prefix: nothing is asked", async () =
   assert.deepEqual([await lookup("TOG-NWRD-900000042R")].map((r) => [r.status, r.body.error, r.asked.length]), [[404, "unknown_issuer", 0]]);
 });
 
-test("the page asks for an old licence number by its folded id, however it was typed", async () => {
+test("the page: a typed PG string gets only the retired message, and nothing is asked", async () => {
   const { normalizeTyped } = await import("../packages/verify-js/index.js");
   for (const typed of ["PG–STD–000001–K7M2QX9", "PG-STD-000001-K7M2QX9.", "https://www.pregen.org/lookup/PG-STD-000001-K7M2QX9",
-    "РG-STD-000001-K7M2QX9", "PG-STD-OOOOO1-K7M2QX9", "pg-std-000001-k7m2qx9"]) {
-    assert.throws(() => normalizeTyped(typed), (e) => e.reason === "ask_registry" && e.folded === "PG-STD-000001-K7M2QX9", typed);
+    "РG-STD-000001-K7M2QX9", "pg-pram-000043r", "PG 000 042 *", "https://api2.prampta.com/v1/pg/PG-PRAM-000043R"]) {
+    assert.throws(() => normalizeTyped(typed), (e) => e.reason === "malformed" && e.message === RETIRED && !e.hints, typed);
   }
+  const el = () => ({ value: "", innerHTML: "", addEventListener() {}, focus() {} });
+  const els = { pgForm: el(), pgInput: el(), pgResult: el() };
+  globalThis.document = { getElementById: (id) => els[id] };
+  globalThis.window = { location: { search: "?code=PG-PRAM-000043R" }, history: { replaceState() {} } };
+  const saved = globalThis.fetch;
+  let fetched = 0;
+  globalThis.fetch = async () => { fetched++; return { status: 500, json: async () => ({}) }; };
+  const { readFile } = await import("node:fs/promises");
+  const lib = new URL("../packages/verify-js/index.js", import.meta.url).href;
+  const src = (await readFile(new URL("../lookup.js", import.meta.url), "utf8")).replace('"/packages/verify-js/index.js"', JSON.stringify(lib));
+  await import("data:text/javascript," + encodeURIComponent(src + "\n// typed PG"));
+  globalThis.fetch = saved;
+  assert.equal(fetched, 0);
+  assert.match(els.pgResult.innerHTML, /PG codes are retired\. Use the ToG code your registry shows you\./);
+  assert.doesNotMatch(els.pgResult.innerHTML, /TOG-PRAM/);   // no suggestion
 });

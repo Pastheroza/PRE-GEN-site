@@ -185,8 +185,8 @@ stop, never check sandbox answers without it, and report it through the steward'
 
 ## 4. Ask
 
-A person's code looks like `TOG-ABCD-418207365E`; its letters name the registry. Old `PG-` codes are still
-accepted and become `TOG-` (`PG-TEST-000001N` is `TOG-TEST-000001N`).
+A person's code looks like `TOG-ABCD-418207365E`; its letters name the registry. PG codes are retired: a `PG-`
+string is not a code, and the library refuses it like any other.
 `directory.registry_for(code)` / `directory.registryFor(code)` gives that registry's entry
 (`prefix`, `api`, `keys` = the URL of its key set, `key_fingerprints`, …). If it gives
 `None` / `null`, no listed registry holds the code: you have no `allow`: do not generate

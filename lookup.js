@@ -1,6 +1,6 @@
-/* PRE-GEN registry lookup — page logic. Typed input folds with the library's own rules (TOG-CODE.md §7.4); only TOG
-   spellings are shown. Old PG- codes are accepted and become TOG-. */
-import { normalizeTyped, CodeError } from "/packages/verify-js/index.js";
+/* PRE-GEN registry lookup — page logic. Typed input folds with the library's own rules (TOG-CODE.md §7.4); only ToG
+   codes are shown. PG codes are retired: a typed PG- string gets one neutral message and no TOG suggestion. */
+import { normalizeTyped, CodeError, RETIRED } from "/packages/verify-js/index.js";
 
 function esc(s) {
   return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
@@ -79,15 +79,14 @@ var input = document.getElementById("pgInput");
 var out = document.getElementById("pgResult");
 var busy = false;
 
-/* { code } in its TOG spelling; { code, old: true } for an old licence number, folded (only its registry gives its
-   TOG code, so it is never shown); or { error, hint }. */
+/* { code } or { error, hint }. */
 function read(raw) {
   if (!String(raw || "").trim()) return { error: "Enter a code to resolve.", hint: "" };
   try {
     return { code: normalizeTyped(String(raw)) };
   } catch (e) {
     if (!(e instanceof CodeError)) throw e;
-    if (e.reason === "ask_registry") return { code: e.folded, old: true };
+    if (e.message === RETIRED) return { error: RETIRED, hint: "" };
     if (e.hints) return { error: "Two codes match: " + e.hints.join(" or ") + ".", hint: "Type the one you mean." };
     if (e.reason === "mistyped") return { error: "Mistyped code.", hint: "The check character does not fit: compare the code with its source." };
     return { error: "Not a code.", hint: "A person: TOG-PRAM-000037J · a licence: TOG-LIC-…" };
@@ -97,10 +96,10 @@ function read(raw) {
 function run(raw) {
   var c = read(raw);
   if (c.error) { out.innerHTML = renderError(c.error, c.hint); return; }
-  if (!c.old) input.value = c.code;
+  input.value = c.code;
   if (busy) return;
   busy = true;
-  var named = c.old ? "this old licence number" : c.code;
+  var named = c.code;
   out.innerHTML = '<article class="pg-card pg-card--pending"><span class="pg-prompt">&gt;_</span> resolving ' + esc(named) + " …</article>";
   fetch("/api/lookup?code=" + encodeURIComponent(c.code))
     .then(function (r) { return r.json().then(function (j) { return { status: r.status, body: j }; }); })

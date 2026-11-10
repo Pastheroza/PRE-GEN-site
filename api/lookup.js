@@ -5,20 +5,20 @@
    - in-memory response cache (absorbs replay floods, cuts upstream load)
    - 5s upstream timeout (no slow-loris cost amplification)
    - no secrets in responses
-   Codes are read with @pregen/verify (TOG-CODE.md). A code is asked in the spelling its registry can read: a code
-   born PG (a PG- input, or the TOG spelling of an old person or bare code) in its PG spelling, which a registry reads
-   before and after its TOG migration; a code that exists only as TOG (a 9-digit person, an event) as TOG-. Every code
-   in an answer is shown in its TOG spelling. */
+   Codes are read with @pregen/verify (TOG-CODE.md). PG code is incompatible: a PG- string is not a code here and gets
+   one neutral message, with no TOG suggestion. A registry is asked for the TOG code; one not yet migrated is asked
+   through the transition shim below. No PG- string is ever shown. */
 
 const REGISTRIES = require("../registries.json");
 const LIB = import("../packages/verify-js/index.js");
 
-/* Returns { code, wire, kind, issuer } or { error, detail, status }: `code` the TOG key (cache, false claims), `wire`
-   the spelling sent to the registry. Trimmed and case-folded as before; the page folds the rest of typed input. */
-function classify(raw, { parseCode, codeKey, CodeError }) {
+/* Returns { code, shape, kind, issuer } or { error, detail, status }. Trimmed and case-folded as before; the page folds
+   the rest of typed input. */
+function classify(raw, { parseCode, CodeError, RETIRED }) {
   const code = String(raw || "").trim().toUpperCase().replace(/\s+/g, "");
   if (!code) return { error: "missing_code", detail: "Provide ?code=TOG-…", status: 400 };
   if (code.length > 64) return { error: "invalid_code", detail: "Not a code.", status: 422 };
+  if (code.startsWith("PG-")) return { error: "invalid_code", detail: RETIRED, status: 422 };   // no mapping to TOG
   let p;
   try { p = parseCode(code); } catch (e) {
     if (!(e instanceof CodeError)) throw e;
@@ -26,26 +26,22 @@ function classify(raw, { parseCode, codeKey, CodeError }) {
       ? { error: "check_mismatch", detail: "Mistyped code: the check character does not fit.", status: 422 }
       : { error: "invalid_code", detail: "Not a code.", status: 422 };
   }
-  const wire = p.shape.startsWith("old_") ? "PG" + code.slice(3) : code;   // TOG-PRAM-000043R asks PG-PRAM-000043R
-  try { return { code: codeKey(code), wire, kind: p.kind, issuer: p.issuer }; } catch (e) {
-    if (!(e instanceof CodeError)) throw e;
-    return { code, wire, kind: p.kind, issuer: p.issuer };   // an old licence number: only its registry gives its TOG code
-  }
+  return { code, shape: p.shape, kind: p.kind, issuer: p.issuer };
 }
 
-/* Every code in an answer in its TOG spelling (TOG-CODE.md §13); an old licence number its registry did not respell
-   is not shown. Codes inside registry URLs (status_url, terms.url) are respelled too: such a link works only at a
-   registry that routes TOG paths. */
-function togOnly(v, { findCodes, codeKey }) {
-  const key = (c) => { try { return codeKey(c); } catch { return "(an old licence number)"; } };
-  if (typeof v === "string") return findCodes(v).reduce((s, c) => s.split(c).join(key(c)), v);
-  if (Array.isArray(v)) return v.map((x) => togOnly(x, { findCodes, codeKey }));
-  if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, togOnly(x, { findCodes, codeKey })]));
+/* No PG- string is shown: the shim's own request string is the TOG code asked; any other PG- string in an answer
+   is not shown. Nothing is converted to a TOG spelling. */
+const PG_STRING = /(?<![A-Za-z0-9-])PG-[A-Z0-9]+(?:-[A-Z0-9]+)*[*~$=!]?(?![A-Za-z0-9])/g;
+function noPg(v, wire, code) {
+  if (typeof v === "string") return v.split(wire).join(code).replace(PG_STRING, "(a retired code)");
+  if (Array.isArray(v)) return v.map((x) => noPg(x, wire, code));
+  if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, noPg(x, wire, code)]));
   return v;
 }
 
-/* The route a registry publishes: resolver_url_template of its /.well-known/pg-policy (PG-CODE.md §12), on its own
-   host; without one, /v1/pg/{code}, the route this site asked before. A policy answer is kept an hour. */
+/* The route a registry publishes: resolver_url_template of its /.well-known/pg-policy, on its own host; without one,
+   /v1/pg/{code}, the route this site asked before. A policy answer is kept an hour. A registry announces TOG when its
+   template is the lookup.md route, .../v2/codes/{code}. */
 const POLICY_TTL = 60 * 60_000;
 const policies = new Map();
 
@@ -62,23 +58,33 @@ async function resolverTemplate(api, signal) {
   return template;
 }
 
+/* TRANSITION SHIM, inside this proxy only (TOG-CODE.md §12). A registry not yet migrated (prampta.com today reads only
+   PG- at /v1/pg/{code}, and bare codes at /v1/subjects/{code}) is asked for a person of the old shape in the PG
+   spelling: PG + the TOG code after its marker, the same serial and check. Nothing else is asked there: any other
+   code at such a registry is "not found". The answer is shown under the TOG code; users never type or see PG-.
+   REMOVE this shim, the /v1 branches below and asLookup's /v1 shapes when every listed registry's
+   .well-known/pg-policy announces TOG (resolver_url_template ending /v2/codes/{code}). */
+function shimWire(c) {
+  return c.shape.startsWith("old_") ? "PG" + c.code.slice(3) : null;
+}
+
 /* Both answer shapes read as extensions/lookup.md's: /v1 answers ({kind, found, status}, a subject record) gain the
-   code asked; a registry's "not found" is lookup.md's "unknown". A subject record (`record`) gives only what the
+   TOG code asked; a registry's "not found" is lookup.md's "unknown". A subject record (`record`) gives only what the
    site's card always showed: lookup.md's fields, and the registry's own words about owner, type and authority. */
-function asLookup(status, body, wire, record) {
+function asLookup(status, body, code, record) {
   if (status === 404 && (body?.error === "not_found" || /^(Subject|License) not found$/.test(body?.detail))) {
-    return [200, { code: wire, status: "unknown" }];
+    return [200, { code, status: "unknown" }];
   }
   if (status !== 200 || !body || typeof body !== "object" || Array.isArray(body)) return [status, body];
   if (record) {
     const d = body;
-    return [200, { code: wire, kind: "subject", status: d.status, visibility: d.visibility, aliases: d.aliases,
+    return [200, { code, kind: "subject", status: d.status, visibility: d.visibility, aliases: d.aliases,
       owner_verified: d.owner_verified, subject_type: d.subject_type, lifecycle_status: d.lifecycle_status,
       authority_status: d.authority_status, subject_key: { public_key_hex: d.public_key_hex, custody: d.key_custody },
       rules_text: d.rules_text, registered_at: d.registered_at }];
   }
   const { found, ...rest } = body;
-  return [200, { code: wire, ...rest }];
+  return [200, { code, ...rest }];
 }
 
 /* ── Rate limit: sliding window, per IP, per instance ────── */
@@ -148,10 +154,9 @@ module.exports = async (req, res) => {
     return;
   }
 
-  /* The steward's word beats the registry's: a false claim or a revoked registry is never asked (PG-CODE.md §9.1).
-     One code under two spellings is one code. */
-  const same = (a) => { try { return lib.codeKey(a) === c.code; } catch { return a === c.code; } };
-  const falseClaim = (REGISTRIES.false_claims || []).find((f) => same(f.code));
+  /* The steward's word beats the registry's: a false claim or a revoked registry is never asked. Compared by the code
+     itself: a PG- line names no one. */
+  const falseClaim = (REGISTRIES.false_claims || []).find((f) => f.code === c.code);
   if (falseClaim) {
     res.status(410).json({ error: "false_claim", at: falseClaim.at,
       detail: "The steward recorded this code as a false claim." });
@@ -176,25 +181,34 @@ module.exports = async (req, res) => {
       detail: "The registry that issued this code was revoked." });
     return;
   }
-  const wire = encodeURIComponent(c.wire);
   const headers = { Accept: "application/json" };
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 5000);
   try {
-    let url, record = false;
-    if (!c.issuer) {
-      /* A bare code at the origin registry, as before: a licence through its public proof, which hides confidential
-         terms; never the private licence record. */
-      url = (process.env.PRAMPTA_API_URL || registry.api)
-        + (c.kind === "license" ? "/v1/licenses/" + wire + "/proof" : "/v1/subjects/" + wire);
-      record = c.kind !== "license";
-      if (process.env.PRAMPTA_TOKEN) headers.Authorization = "Bearer " + process.env.PRAMPTA_TOKEN;
+    const template = await resolverTemplate(registry.api, ctrl.signal);
+    let url, wire = c.code, record = false;
+    if (template.endsWith("/v2/codes/{code}")) {
+      url = template.replace("{code}", encodeURIComponent(c.code));                // a migrated registry: TOG only
     } else {
-      url = (await resolverTemplate(registry.api, ctrl.signal)).replace("{code}", wire);
+      wire = shimWire(c);                                                          // the transition shim (above)
+      if (!wire) {
+        const body = { code: c.code, status: "unknown" };
+        cacheSet(c.code, 200, body);
+        res.status(200).json(body);
+        return;
+      }
+      if (!c.issuer) {
+        /* A bare code at the origin registry, as before: its public subject record. */
+        url = (process.env.PRAMPTA_API_URL || registry.api) + "/v1/subjects/" + encodeURIComponent(wire);
+        record = true;
+        if (process.env.PRAMPTA_TOKEN) headers.Authorization = "Bearer " + process.env.PRAMPTA_TOKEN;
+      } else {
+        url = template.replace("{code}", encodeURIComponent(wire));
+      }
     }
     const upstream = await fetch(url, { headers, signal: ctrl.signal });
-    const [status, raw] = asLookup(upstream.status, await upstream.json().catch(() => ({})), c.wire, record);
-    const body = togOnly(raw, lib);
+    const [status, raw] = asLookup(upstream.status, await upstream.json().catch(() => ({})), c.code, record);
+    const body = noPg(raw, wire, c.code);
     if (status < 500) cacheSet(c.code, status, body);
     res.status(status).json(body);
   } catch (e) {

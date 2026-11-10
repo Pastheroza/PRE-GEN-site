@@ -103,8 +103,8 @@ hours ago are refused.
 
 A person's code looks like `TOG-<prefix>-<number><check>`, e.g. `TOG-TEST-000001N`. The prefix
 names the registry; it is the only part of a code software may read. Codes without a prefix
-(`TOG-000042*`) were issued before v5 by the first registry. Old `PG-` codes are still accepted
-and become `TOG-` (`PG-TEST-000001N` is `TOG-TEST-000001N`); never write them.
+(`TOG-000042*`) were issued before v5 by the first registry. PG codes are retired: a `PG-` string
+is not a code anywhere. Use the ToG code your registry shows you.
 
 ```js
 const entry = directory.registryFor("TOG-TEST-000001N");   // null = no listed registry holds it
