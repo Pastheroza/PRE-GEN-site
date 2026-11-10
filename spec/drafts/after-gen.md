@@ -246,7 +246,7 @@ accepted in every container below.
   `hvcC`, `av1C`, `vpcC`, `esds` (its descriptors inside it, as players read them), `dOps`,
   `dfLa`, `alac`, `dac3`, `dec3`, `pcmC`, `colr` (`nclx`, `nclc` or `prof`), `pasp`, `clap`,
   `btrt`, `fiel`, `gama`, `chrm`, `chan`, `wave` (holding `frma`, `enda`, `mp4a`, `esds`,
-  `alac`, `chan`, `dac3` and a terminator), `mdcv`, `clli`, `st3d`, `sv3d` (holding `svhd` and
+  `alac`, `chan`, `dac3`, `dec3` and a terminator), `mdcv`, `clli`, `st3d`, `sv3d` (holding `svhd` and
   `proj`), `dvcC`, `dvvC`, `glbl`, `tcmi`, `ftab`, `name`, and the 20-byte iPod `uuid`; then,
   as Apple's writers end it, optionally four zero bytes (`tmcd`: two).
 - `udta` (in any of the places above): `meta`, `XMP_`, `chpl`, `name`, `loci`, `Xtra`, and
@@ -254,7 +254,9 @@ accepted in every container below.
   records that fill it exactly. `meta` (in its ISO or QuickTime form): `hdlr` whose handler
   type is `mdir`, `mdta` or `ID32`, `keys`, `ilst`, `xml `. `ilst`: items whose type is an
   `mdta` key index, begins with the byte `A9` (©), is `----` or comes from a closed list of
-  iTunes atoms, each holding only `data`, `mean` and `name` boxes.
+  iTunes atoms, each holding only `data`, `mean` and `name` boxes; a `data` box holds at least
+  the value a player reads from it (4 bytes for `trkn`, `disk`, `tves`, `tvsn`; 2 for `gnre`; 1
+  for `stik`, `rtng`, `cpil`, `pgap`, `hdvd`, `pcst`, `akID`, `egid`).
 - At most one box of a type in a container, except `trak`, `ilst` items and their children,
   one `sgpd` and one `sbgp` per grouping type, `free` and `skip`. Required: `mvhd`; `tkhd`
   and `mdia`; `mdhd`, `hdlr` and `minf`; `dinf` and `stbl`; `elst` in `edts`.

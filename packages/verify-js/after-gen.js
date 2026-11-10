@@ -364,7 +364,8 @@ const OTHER = { tmcd: 26, tx3g: 38, text: 38 }; // fixed fields, the 8 bytes of 
 const ENTRY_BOXES = ["avcC", "hvcC", "av1C", "vpcC", "esds", "dOps", "dfLa", "alac", "dac3", "dec3", "pcmC", "colr", "pasp",
   "clap", "btrt", "fiel", "gama", "chan", "wave", "mdcv", "clli", "st3d", "sv3d", "dvcC", "dvvC", "glbl", "tcmi", "name",
   "chrm", "uuid", "ftab"]; // widened: Apple's chroma location, the iPod uuid, a font table
-const WAVE = ["frma", "enda", "esds", "alac", "chan", "\0\0\0\0", "mp4a", "dac3"]; // widened: mp4a, dac3 (ffmpeg)
+const WAVE = ["frma", "enda", "esds", "alac", "chan", "\0\0\0\0", "mp4a", "dac3", "dec3"]; // widened (ffmpeg)
+const ITEM_VALUE = { trkn: 4, disk: 4, tves: 4, tvsn: 4, gnre: 2, stik: 1, rtng: 1, cpil: 1, pgap: 1, hdvd: 1, pcst: 1, akID: 1, egid: 1 }; // value bytes FFmpeg reads
 const IPOD = "6b6840f25f244fc5ba39a51bcf0323f3";
 const has = (list) => (t) => list.includes(t);
 
@@ -422,6 +423,8 @@ function known(mv, zones) {
         for (const it of kidsOf(mv, k.s, k.e, "ilst", (t) => [0, 0xa9].includes(t.charCodeAt(0)) || ITUNES.includes(t), { multi: () => true })) {
           const items = kidsOf(mv, it.s, it.e, it.type, has(["data", "mean", "name"]), { multi: () => true, free: false });
           leaves(items, it.type);
+          const need = ITEM_VALUE[it.type] ?? 0; // FFmpeg reads these fixed values whatever the length
+          if (items.some((d) => d.type === "data" && d.e - d.s < 8 + need)) M(`data in ${it.type} is not whole`);
           for (const d of items) if (d.type === "data") zones.push([d.s, d.e]);
         }
       } else leaves([k], "meta");

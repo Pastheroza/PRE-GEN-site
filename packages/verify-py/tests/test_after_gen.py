@@ -255,7 +255,9 @@ FFMPEG_FILES = ("a.mp4", "a-remux.mp4", "a-remux-faststart.mp4", "b.mov", "b-rem
                 "c.mp4",
                 # made outside this script: an AVAssetWriter MOV (timescale = frame rate, empty alis), and a file with a
                 # chunk offset table hidden in its sample entry, which FFmpeg reads in place of the real one
-                "apple-writer-ts-fps.mov", "attack-stco-in-entry.mp4")
+                "apple-writer-ts-fps.mov", "attack-stco-in-entry.mp4",
+                # an ilst trkn whose data is shorter than the 4 value bytes FFmpeg reads, last in a moov at the end
+                "attack-ilst-short-data.mp4")
 
 
 HUGE = {b"stsz": full(b"stsz", 0, 0, U(1, 2**32 - 1)), b"stts": full(b"stts", 0, 0, U(1, 2**32 - 1, 1)),
@@ -589,6 +591,7 @@ REFUSALS = [
     ("attack-trak-udta-stco.mp4", "stco in udta is not a known box"), ("attack-free-tables.mp4", "stsz outside its place"),
     ("attack-iloc-meta.mp4", "iloc outside its place"), ("attack-chunkmode-none.mp4", "read by chunk"),
     ("attack-chunkmode-stz2.mp4", "read by chunk"), ("attack-stco-in-entry.mp4", "stco in mp4v is not a known box"),
+    ("attack-ilst-short-data.mp4", "data in trkn is not whole"),
     # known boxes only
     ("attack-mdhd-short.mp4", "mdhd in mdia is not whole"), ("attack-dref-count.mp4", "entry count"),
     ("attack-hdlr-in-stbl.mp4", "read by chunk"), ("attack-unknown-box-in-trak.mp4", "xyz1 in trak is not a known box"),

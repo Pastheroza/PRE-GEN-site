@@ -349,7 +349,9 @@ _ENTRY_BOXES = {b"avcC", b"hvcC", b"av1C", b"vpcC", b"esds", b"dOps", b"dfLa", b
                 b"colr", b"pasp", b"clap", b"btrt", b"fiel", b"gama", b"chan", b"wave", b"mdcv", b"clli", b"st3d",
                 b"sv3d", b"dvcC", b"dvvC", b"glbl", b"tcmi", b"name",
                 b"chrm", b"uuid", b"ftab"}               # widened: Apple's chroma location, the iPod uuid, a font table
-_WAVE = {b"frma", b"enda", b"esds", b"alac", b"chan", b"\0\0\0\0", b"mp4a", b"dac3"}   # widened: mp4a, dac3 (ffmpeg)
+_WAVE = {b"frma", b"enda", b"esds", b"alac", b"chan", b"\0\0\0\0", b"mp4a", b"dac3", b"dec3"}  # widened (ffmpeg)
+_ITEM_VALUE = {**dict.fromkeys((b"trkn", b"disk", b"tves", b"tvsn"), 4), b"gnre": 2,       # value bytes FFmpeg reads
+               **dict.fromkeys((b"stik", b"rtng", b"cpil", b"pgap", b"hdvd", b"pcst", b"akID", b"egid"), 1)}
 _IPOD = bytes.fromhex("6b6840f25f244fc5ba39a51bcf0323f3")
 
 
@@ -423,6 +425,9 @@ def _known(m, mv, zones):
                     items = _kids(m, ics, ice, it, {b"data", b"mean", b"name"}.__contains__, multi=lambda t: True,
                                   free=False)
                     _leaves(mv, items, it)
+                    need = _ITEM_VALUE.get(it, 0)              # FFmpeg reads these fixed values whatever the length
+                    if any(k[0] == b"data" and k[3] - k[2] < 8 + need for k in items):
+                        raise PregenError(f"media/1: data in {_n(it)} is not whole")
                     zones.extend((k[2], k[3]) for k in items if k[0] == b"data")
             else:
                 _leaves(mv, [(t, 0, cs, ce)], b"meta")
