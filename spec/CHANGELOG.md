@@ -69,6 +69,10 @@ Both libraries implement it: `parse_code`, `kind_of`, `describe`, `issuer_of`, `
 - **`PG-CODE.md`** frozen, with a pointer to `TOG-CODE.md`; its errata are in `TOG-CODE.md` §18.
 - **Vectors:** `test-vectors/tog-code.json` (with `describe`), generated from the reference model
   `tools/tog_code.py` by `tools/tog_vectors.py`; `test-vectors/anchors.json` revised for TOG lines.
+- **Simulator:** an allow names the example licence `TOG-LIC-TEST-ZZZZ-0000-001K` (a reserved `ZZZZ` tail, never
+  issued), and the simulator's throwaway directory lists it under the `TEST` prefix instead of the bare namespace.
+- **Steward tool:** `false-claim` and `reverse-false-claim` write the code's TOG spelling into the signed directory;
+  a mistyped code, or an old licence id (only its registry knows its `TOG-LIC` code), is refused.
 - **Old clients:** 0.13 refuses every TOG code (fails closed); 0.13.1 refuses an anchor list
   with a TOG line instead of dropping it. 0.14 reads it.
 

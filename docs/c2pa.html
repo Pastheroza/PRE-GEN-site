@@ -27,7 +27,7 @@
 </div>
 </div></header>
 <main><div class="wrap">
-<div class="doc"><aside><ul><li><a href="/docs">How it works</a></li><li><a href="/docs/two-layers">Two layers</a></li><li><a href="/docs/pg-code">PG codes</a></li><li><a href="/docs/versions">Versions</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Add it to your service</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa" aria-current="page">C2PA</a></li><li><a href="/docs/implement">Build it</a></li></ul></aside><article><h1>PRE-GEN inside C2PA</h1>
+<div class="doc"><aside><ul><li><a href="/docs">How it works</a></li><li><a href="/docs/two-layers">Two layers</a></li><li><a href="/spec/TOG-CODE.md">ToG codes</a></li><li><a href="/docs/versions">Versions</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Add it to your service</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa" aria-current="page">C2PA</a></li><li><a href="/docs/implement">Build it</a></li></ul></aside><article><h1>PRE-GEN inside C2PA</h1>
     <p class="meta">PRE-GEN v5 · v5 bundle: <span class="mono">pg.proof.v1</span> (assertion label <span class="mono">org.pregen.proof</span>) · earlier assertion: <span class="mono">pg.assertion.v1</span> · not yet tested end to end with a platform</p>
     <p><strong>Version 5.</strong> The <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/proof.md">proof</a> extension carries the whole signed record in a C2PA manifest: for every subject of the job, the request, the registry's answer, the provider's report naming the output's SHA-256 (and soft bindings that survive re-encoding), and the registry's acknowledgement. When metadata was stripped, the holder presents the bundle, or a platform that knows the report id fetches the registry's part. A platform checks it as of the moment the output was made, and against the file. The rest of this page describes the earlier assertion, which stays valid.</p>
 
@@ -57,8 +57,8 @@
   "schema_version": "pg.assertion.v1",
   "assertion_id": "assert_…",
   "decision_id": "dec_…",
-  "subject_id": "PG-000042*",
-  "license_id": "PG-PRM-…",
+  "subject_id": "TOG-000042*",
+  "license_id": "TOG-LIC-…",
   "provider_id": "prov_studio_one",
   "model_id": "image-model-2",
   "decision": "allow",

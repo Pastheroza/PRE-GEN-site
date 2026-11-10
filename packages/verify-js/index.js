@@ -1463,10 +1463,10 @@ export async function createSimulator({ baseUrl = "https://simulator.pregen.inva
   };
   const steward = await keygen(), operator = await keygen();
   const dirBody = { schema: SCHEMA, sequence: 1, steward_key_id: steward.id, simulator: true,
-    registries: [{ name: "PRE-GEN simulator (not a registry)", prefix: "", api: baseUrl, keys: baseUrl + "/keys",
+    registries: [{ name: "PRE-GEN simulator (not a registry)", prefix: "TEST", api: baseUrl, keys: baseUrl + "/keys",
       key_fingerprints: [operator.id] }] };
   const directory = await verifyDirectory({ ...dirBody, signature: await steward.sign(dirBody) },
-    { stewardPublicKeyHex: steward.pub, successorPublicKeyHex: null, pinnedKeys: { "": [operator.id] } });
+    { stewardPublicKeyHex: steward.pub, successorPublicKeyHex: null, pinnedKeys: { TEST: [operator.id] } });
   const answers = { "sbx-allowed": ["allow", null], "sbx-revoked": ["deny", "PG_NO_LICENSE"], "sbx-expired": ["deny", "PG_NO_LICENSE"],
     "sbx-exhausted": ["deny", "PG_USAGE_LIMIT"], "sbx-optedout": ["deny", "PG_SUBJECT_OPTED_OUT"] };
   // What PRAMPTA's /v1 does with receipts (R-10), so a provider's tests meet the same rules: a receipt
@@ -1493,7 +1493,7 @@ export async function createSimulator({ baseUrl = "https://simulator.pregen.inva
       const body = { schema_version: "pg.decision.v1", decision_id: `sim-${++n}`, simulator: true,
         allowed: disposition === "allow", disposition, reason, is_hard_refusal: reason === "PG_SUBJECT_OPTED_OUT",
         subject_id: req.subject_id ?? "", provider_id: header(init, "X-Provider-ID"), licensee_id: header(init, "X-Licensee-ID"),
-        license_id: disposition === "allow" ? "PG-RND-000001-SMVTRXK" : null,
+        license_id: disposition === "allow" ? "TOG-LIC-TEST-ZZZZ-0000-001K" : null,
         prompt_hash: req.prompt_hash ?? "", model: req.model ?? "", modality: req.modality ?? "",
         intended_use: req.intended_use ?? {}, generation_id: req.generation_id ?? "",
         provider_user_binding: named ? "verified" : "unbound",

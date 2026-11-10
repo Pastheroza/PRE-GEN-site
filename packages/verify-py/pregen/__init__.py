@@ -1725,11 +1725,11 @@ class Simulator:
         self._operator_id = fingerprint(self.operator_public_key_hex)
         steward_pub = pub(self._steward)
         body = {"schema": SCHEMA, "sequence": 1, "steward_key_id": fingerprint(steward_pub), "simulator": True,
-                "registries": [{"name": "PRE-GEN simulator (not a registry)", "prefix": "", "api": base_url,
+                "registries": [{"name": "PRE-GEN simulator (not a registry)", "prefix": "TEST", "api": base_url,
                                 "keys": base_url + "/keys", "key_fingerprints": [self._operator_id]}]}
         body["signature"] = self._steward.sign(canonical_json(body)).hex()
         self.directory = verify_directory(body, steward_pub, successor_public_key_hex=None,
-                                          pinned_keys={"": [self._operator_id]})
+                                          pinned_keys={"TEST": [self._operator_id]})
         self._decisions, self._receipts, self._n = {}, {}, 0
 
     def get_json(self, url: str) -> dict:
@@ -1749,7 +1749,7 @@ class Simulator:
                 "allowed": disposition == "allow", "disposition": disposition, "reason": reason,
                 "is_hard_refusal": reason == "PG_SUBJECT_OPTED_OUT",
                 "subject_id": request.get("subject_id", ""), "provider_id": provider_id, "licensee_id": licensee_id,
-                "license_id": "PG-RND-000001-SMVTRXK" if disposition == "allow" else None,
+                "license_id": "TOG-LIC-TEST-ZZZZ-0000-001K" if disposition == "allow" else None,
                 "prompt_hash": request.get("prompt_hash", ""), "model": request.get("model", ""),
                 "modality": request.get("modality", ""), "intended_use": request.get("intended_use", {}),
                 "generation_id": request.get("generation_id", ""),
