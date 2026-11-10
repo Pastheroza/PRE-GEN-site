@@ -131,8 +131,8 @@ const bytesText = (b) => { // one character per byte
 
 const PIECE = 1 << 20;
 const PATH = { moov: "trak", trak: "mdia", mdia: "minf", minf: "stbl" }; // a value of its children's elements
-const NOT_HASHED = ["free", "skip", "wide"]; // padding, besides the two carriers
 const PCM = ["raw ", "twos", "sowt", "in24", "in32", "fl32", "fl64", "lpcm", "ipcm", "fpcm", "ulaw", "alaw"];
+const TABLES = /(?=(stco|co64|stsc|stsz|stz2|stts|ctts|iloc|saio|saiz|sidx|ssix|tfra|mfra|trun|tfhd))/;
 
 // An unsigned big-endian field of a box's bytes.
 function u(b, at, n = 4) {
@@ -142,85 +142,117 @@ function u(b, at, n = 4) {
   return x;
 }
 
+// Tables outside their place: any of the codes at any byte position.
+function scan(b) {
+  const x = bytesText(b).match(TABLES);
+  if (x) M(`${x[1]} outside its place`);
+}
+
+const exact = (ok) => ok || M("a table whose length is not exactly what its count gives");
+
 // A sample size table (stsz or stz2): {count, fixed size or 0, table}.
 function sizes(type, b) {
   const count = u(b, 8);
   if (type === "stsz") {
     const fixed = u(b, 4);
-    if (fixed) return { count, fixed, table: [] };
-    if (b.length < 12 + 4 * count) M("a box shorter than its own fields");
-    return { count, fixed: 0, table: Array.from({ length: count }, (_, j) => u(b, 12 + 4 * j)) };
+    exact(b.length === 12 + (fixed ? 0 : 4 * count));
+    return { count, fixed, table: fixed ? [] : Array.from({ length: count }, (_, j) => u(b, 12 + 4 * j)) };
   }
   const bits = u(b, 7, 1);
-  if (![4, 8, 16].includes(bits) || b.length < 12 + Math.ceil(count * bits / 8)) {
-    M("an stz2 table shorter than its count, or a field size other than 4, 8 or 16");
-  }
+  if (![4, 8, 16].includes(bits)) M("an stz2 field size other than 4, 8 or 16");
+  exact(b.length === 12 + Math.ceil(count * bits / 8));
   return { count, fixed: 0, table: Array.from({ length: count },
     (_, j) => (bits === 4 ? (b[12 + (j >> 1)] >> (j % 2 ? 0 : 4)) & 15 : u(b, 12 + (bits / 8) * j, bits / 8))) };
 }
 
-// The bytes of each of n chunks, by stsc and the sample sizes; samples past the size table count none.
-function chunkLengths(n, runs, { count, fixed, table }) {
-  const out = [];
-  for (let c = 1, e = 0, s = 0; c <= n; c++) {
-    while (e + 1 < runs.length && runs[e + 1][0] <= c) e++;
-    const k = Math.max(0, Math.min(runs.length && runs[e][0] <= c ? runs[e][1] : 0, count - s));
-    let len = fixed * k;
-    if (!fixed) for (let j = s; j < s + k; j++) len += table[j];
-    out.push(len);
-    s += k;
+const WIDTH = { "raw ": 1, ulaw: 1, alaw: 1, in24: 3, in32: 4, fl32: 4, fl64: 8 }; // bytes a sample
+
+// The frame size players take from a sound entry read by chunk (One reading only), or null: bytes per frame (v1, one
+// sample a packet), bytes per packet (v2, one frame a packet), or channels x the codec's bytes a sample (v0), which v1
+// and v2 must agree with where the codec has a width.
+function frame(e) {
+  const b = e.data, v = u(b, 8, 2);
+  if (!PCM.includes(e.type)) return null;
+  let width = ["twos", "sowt"].includes(e.type) ? Math.floor(u(b, 18, 2) / 8) : WIDTH[e.type] ?? null;
+  if (["ipcm", "fpcm"].includes(e.type)) {
+    const pcmc = boxesIn(b.subarray({ 1: 44, 2: 64 }[v] ?? 28)).find((k) => k.type === "pcmC");
+    width = pcmc ? Math.floor(u(pcmc.data, 5, 1) / 8) : null;
   }
-  return out;
+  let size, channels;
+  if (v === 1) [size, channels] = u(b, 28) === 1 ? [u(b, 36), u(b, 16, 2)] : [null, 0];
+  else if (v === 2) [size, channels] = u(b, 60) === 1 ? [u(b, 56), u(b, 40)] : [null, 0];
+  else return width === null ? null : u(b, 16, 2) * width;
+  return size === null || (width !== null && size !== channels * width) ? null : size;
 }
 
-// Checks an stbl on the path and returns its chunk offset tables as hashed, by start: per offset, the position of the
-// mdat whose data holds it and the offset within that data (The stream; One reading only).
-function stbl(kids, mdats) {
-  const sz = kids.find((k) => k.type === "stsz" || k.type === "stz2"), sc = kids.find((k) => k.type === "stsc");
-  const z = sz ? sizes(sz.type, sz.data) : { count: 0, fixed: 0, table: [] }, runs = [];
-  if (sc) {
-    const n = u(sc.data, 4);
-    if (sc.data.length < 8 + 12 * n) M("a box shorter than its own fields");
-    for (let i = 0; i < n; i++) runs.push([u(sc.data, 8 + 12 * i), u(sc.data, 12 + 12 * i)]);
-  }
-  const out = new Map();
+// Checks an stbl on the path (One reading only) and returns its chunk offset table as hashed, by start: per offset, the
+// position of the mdat whose data holds it and the offset within that data.
+function stbl(kids, mdats, sound) {
+  const one = new Map();
   for (const k of kids) {
-    if (k.type === "stsd") {
-      for (const e of boxesIn(k.data.subarray(8))) {
-        if (["encv", "enca", "encs"].includes(e.type) || bytesText(e.data).includes("sinf")) M("encrypted samples");
-        if (PCM.includes(e.type)) {
-          const v = u(e.data, 8, 2);
-          const bpf = v === 1 ? u(e.data, 36) : v === 2 ? u(e.data, 56) : Math.floor(u(e.data, 16, 2) * u(e.data, 18, 2) / 8);
-          if ((z.fixed && z.fixed !== bpf) || z.table.some((x) => x !== bpf)) {
-            M("an uncompressed sound track whose stsz is not its bytes per frame");
-          }
-        }
-      }
-    }
-    if (k.type === "stco" || k.type === "co64") {
-      const b = k.data, w = k.type === "stco" ? 4 : 8, n = u(b, 4);
-      if (b.length !== 8 + w * n) M("a chunk offset table whose count does not agree with its size");
-      const lengths = chunkLengths(n, runs, z), value = [b.subarray(0, 4), ints([n])];
-      for (let i = 0; i < n; i++) {
-        const o = u(b, 8 + w * i, w);
-        let lo = 0, hi = mdats.length; // the last mdat whose data starts at or before o
-        while (lo < hi) { const mid = (lo + hi) >> 1; if (mdats[mid][0] <= o) lo = mid + 1; else hi = mid; }
-        const j = lo - 1;
-        if (j < 0 || o >= mdats[j][1]) M("a chunk offset outside the data of an mdat");
-        if (o + lengths[i] > mdats[j][1]) M("a chunk whose samples run past its mdat's data");
-        value.push(ints([j, o - mdats[j][0]]));
-      }
-      out.set(k.start, concat(value));
+    const key = { stz2: "stsz", co64: "stco" }[k.type] ?? k.type;
+    if (["stsd", "stts", "stsc", "stsz", "stco", "ctts"].includes(key)) {
+      if (one.has(key)) M(`two ${k.type} tables in one stbl`);
+      one.set(key, k);
     }
   }
-  return out;
+  if (["stsd", "stts", "stsc", "stsz", "stco"].some((k) => !one.has(k))) M("an stbl without its stsd, stts, stsc, stsz or stz2, and stco or co64");
+  const entries = boxesIn(one.get("stsd").data.subarray(8));
+  exact(entries.length === u(one.get("stsd").data, 4));
+  for (const e of entries) if (["encv", "enca", "encs"].includes(e.type) || bytesText(e.data).includes("sinf")) M("encrypted samples");
+  let b = one.get("stts").data;
+  exact(b.length === 8 + 8 * u(b, 4));
+  const durations = Array.from({ length: u(b, 4) }, (_, i) => [u(b, 8 + 8 * i), u(b, 12 + 8 * i)]);
+  if (one.has("ctts")) { b = one.get("ctts").data; exact(b.length === 8 + 8 * u(b, 4)); }
+  b = one.get("stsc").data;
+  exact(b.length === 8 + 12 * u(b, 4));
+  const runs = Array.from({ length: u(b, 4) }, (_, i) => [u(b, 8 + 12 * i), u(b, 12 + 12 * i), u(b, 16 + 12 * i)]);
+  const z = sizes(one.get("stsz").type, one.get("stsz").data), co = one.get("stco");
+  b = co.data;
+  const w = co.type === "stco" ? 4 : 8, n = u(b, 4);
+  exact(b.length === 8 + w * n);
+  let total = 0;
+  runs.forEach(([first, per, sdi], j) => {
+    const last = j + 1 < runs.length ? runs[j + 1][0] : n + 1;
+    if ((j === 0 ? first !== 1 : first <= runs[j - 1][0]) || first > n || per === 0 || sdi < 1 || sdi > entries.length) {
+      M("an stsc that reads two ways");
+    }
+    total += (last - first) * per;
+  });
+  if (n && !runs.length) M("an stsc that reads two ways");
+  if (total !== z.count || durations.reduce((s, [c]) => s + c, 0) !== z.count) M("stsc, stts and the sample sizes count different samples");
+  if (sound && z.count && durations.every(([c, d]) => !c || d === 1)) { // sound read by chunk
+    for (const e of entries) {
+      if (one.get("stsz").type !== "stsz" || !z.fixed || frame(e) !== z.fixed) {
+        M("a sound track read by chunk whose entry does not give its sample size");
+      }
+    }
+  }
+  const value = [b.subarray(0, 4), ints([n])];
+  for (let c = 0, r = 0, s = 0; c < n; c++) {
+    while (r + 1 < runs.length && runs[r + 1][0] <= c + 1) r++;
+    const per = runs[r][1], o = u(b, 8 + w * c, w);
+    let length = z.fixed * per;
+    if (!z.fixed) for (let j = s; j < s + per; j++) length += z.table[j];
+    s += per;
+    let lo = 0, hi = mdats.length; // the last mdat whose data starts at or before o
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (mdats[mid][0] <= o) lo = mid + 1; else hi = mid; }
+    const j = lo - 1;
+    if (j < 0 || o >= mdats[j][1]) M("a chunk offset outside the data of an mdat");
+    if (o + length > mdats[j][1]) M("a chunk whose samples run past its mdat's data");
+    value.push(ints([j, o - mdats[j][0]]));
+  }
+  return new Map([[co.start, concat(value)]]);
 }
 
-// The value of the element of a box on the path moov/trak/mdia/minf/stbl: its children's elements.
-function value(data, type, mdats) {
+// The value of the element of a box on the path moov/trak/mdia/minf/stbl: its children's elements. The direct children
+// of an stbl are added to `zones` ([start, end) in the movie box's content), the bytes the table scan leaves out.
+function value(data, type, mdats, zones, at = 0, sound = false) {
   const kids = boxesIn(data);
   if (type === "moov" && kids.some((k) => k.type === "mvex")) M("a fragmented file (mvex)");
   if (type === "moov" && kids.some((k) => k.type === "cmov")) M("a compressed movie (cmov)");
+  const hdlr = type === "mdia" && kids.find((k) => k.type === "hdlr");
+  if (hdlr) sound = latin1(hdlr.data, 8, 4) === "soun";
   if (type === "minf") {
     for (const d of kids.filter((k) => k.type === "dinf")) {
       for (const r of boxesIn(d.data).filter((k) => k.type === "dref")) {
@@ -232,14 +264,19 @@ function value(data, type, mdats) {
       }
     }
   }
-  const offsets = type === "stbl" ? stbl(kids, mdats) : new Map();
-  return concat(kids.map((k) => el(k.type, PATH[type] === k.type ? value(k.data, k.type, mdats) : offsets.get(k.start) ?? k.data)));
+  let offsets = new Map();
+  if (type === "stbl") {
+    offsets = stbl(kids, mdats, sound);
+    for (const k of kids) zones.push([at + k.start, at + k.start + k.size]);
+  }
+  return concat(kids.map((k) => el(k.type, PATH[type] === k.type ? value(k.data, k.type, mdats, zones, at + k.start + k.hdr, sound)
+    : offsets.get(k.start) ?? k.data)));
 }
 
 /** media/1 of an ISO base media file (MP4, MOV, M4V): {binding: "media/1", hash, leaves}, the RFC 6962 root over the 1 MiB
- * pieces of the stream of every top-level box but padding and the two carriers, chunk offsets counted within their mdat.
- * `source` is a Uint8Array, a Blob or File, or {size, read(offset, length) -> Promise<Uint8Array>}; the movie box is read
- * whole, the rest in ranges. Throws PregenError("media/1: <reason>") for every file "One reading only" refuses. */
+ * pieces of the stream of every top-level box but the two carriers, chunk offsets counted within their mdat. `source` is
+ * a Uint8Array, a Blob or File, or {size, read(offset, length) -> Promise<Uint8Array>}; the movie box is read whole, the
+ * rest in ranges. Throws PregenError("media/1: <reason>") for every file "One reading only" refuses. */
 export async function mediaHash(source) {
   const r = reader(source);
   const top = await topBoxes(r, M);
@@ -247,8 +284,21 @@ export async function mediaHash(source) {
   if (moovs.length !== 1) M(moovs.length ? "more than one moov box" : "no moov box");
   if (top.some((b) => b.type === "moof")) M("a fragmented file (moof)");
   const mdats = top.filter((b) => b.type === "mdat").map((b) => [b.start + b.hdr, b.start + b.size]);
-  const mv = await r.read(moovs[0].start + moovs[0].hdr, moovs[0].size - moovs[0].hdr);
-  const moov = el("moov", value(mv, "moov", mdats));
+  const whole = await r.read(moovs[0].start, moovs[0].size), h = moovs[0].hdr, zones = [];
+  const moov = el("moov", value(whole.subarray(h), "moov", mdats, zones));
+  let from = 0; // the table scan: the movie box but the direct children of each stbl
+  for (const [zs, ze] of zones.sort((a, b) => a[0] - b[0])) { scan(whole.subarray(from, h + zs)); from = h + ze; }
+  scan(whole.subarray(from));
+  const carrier = (b) => b.uuid === XMP_UUID || b.uuid === C2PA_UUID;
+  for (const b of top) {
+    if (b.type === "moov" || b.type === "mdat" || carrier(b)) continue;
+    let carry = new Uint8Array(0);
+    for (let p = b.start; p < b.start + b.size; p += PIECE) {
+      const chunk = concat([carry, await r.read(p, Math.min(PIECE, b.start + b.size - p))]);
+      scan(chunk);
+      carry = chunk.subarray(Math.max(0, chunk.length - 3));
+    }
+  }
 
   const stack = [], buf = new Uint8Array(PIECE); // the stream, cut into pieces of 1 MiB: a leaf each
   let fill = 0, leaves = 0;
@@ -263,12 +313,12 @@ export async function mediaHash(source) {
   };
   await add(utf8.encode("PREGEN-MEDIA\0media/1\0"));
   for (const b of top) {
-    if (NOT_HASHED.includes(b.type) || b.uuid === XMP_UUID || b.uuid === C2PA_UUID) continue;
+    if (carrier(b)) continue;
     if (b.type === "moov") { await add(moov); continue; }
-    const end = b.start + b.size, h = new Uint8Array(12);
-    h.set(code(b.type));
-    view(h).setBigUint64(4, BigInt(end - b.start - b.hdr));
-    await add(h);
+    const end = b.start + b.size, head = new Uint8Array(12);
+    head.set(code(b.type));
+    view(head).setBigUint64(4, BigInt(end - b.start - b.hdr));
+    await add(head);
     for (let at = b.start + b.hdr; at < end; at += PIECE) await add(await r.read(at, Math.min(PIECE, end - at)));
   }
   if (fill) { await push(stack, await leafHash(buf.subarray(0, fill))); leaves++; }
@@ -435,33 +485,28 @@ function dropPgag(packet) {
   return out + packet.slice(from);
 }
 
-/** The file with the record in XMP: a top-level XMP uuid box appended at the end, so no offset moves. An existing XMP
- * box keeps its properties: they move into the new packet (an earlier pgag description is dropped) and the old box
- * becomes a `free` box of the same size, its payload zeroed. A last box of size 0 ("to the end of the file") gets its
- * real size written, so the new box follows it; one larger than 4 GiB is refused. pgag:Id, pgag:Registry and, given the
+/** The file with the record in XMP. With no XMP box, a top-level uuid box is appended at the end, so no offset moves; a
+ * last box of size 0 ("to the end of the file") gets its real size written first, and one larger than 4 GiB is refused.
+ * An existing XMP box keeps its properties (an earlier pgag description is dropped) and is rewritten in place: as the
+ * last box it may grow; elsewhere the new packet must fit in it, padded with spaces, or embedding is refused. pgag:Id, pgag:Registry and, given the
  * directory, pgag:Status ({api}/v2/after-gen/{id}) are copies for people, never read as the record. */
 export async function embedXmp(bytes, envelope, { directory } = {}) {
   if (!(bytes instanceof Uint8Array)) A("embedXmp takes the file as a Uint8Array");
   if (envelope?.type !== RECORD || !envelope.body || typeof envelope.body !== "object") A(`not a ${RECORD} envelope`);
   const { top, xmp } = await carriers(reader(bytes));
   if (xmp.length > 1) A("more than one XMP box");
-  const out = new Uint8Array(bytes.length);
-  out.set(bytes);
-  const last = top.at(-1);
-  if (last?.zero) {
+  const out = Uint8Array.from(bytes), last = top.at(-1), old = xmp[0];
+  if (last?.zero && !old) {
     if (last.size > 0xffffffff) A("the last box runs to the end of the file and is larger than 4 GiB");
     view(out).setUint32(last.start, last.size);
   }
   let packet = XPACKET;
-  if (xmp.length) {
-    const old = xmp[0];
+  if (old) {
     try { packet = UTF8.decode(old.data.subarray(16)); } catch { A("the existing XMP packet is not UTF-8"); }
     if (["<!--", "<![CDATA[", "<!DOCTYPE", "<!ENTITY"].some((x) => packet.includes(x))) {
       A("the existing XMP packet holds a comment, CDATA or a DTD, which the lexical rule refuses");
     }
-    packet = dropPgag(packet);
-    out.set(code("free"), old.start + 4);
-    out.fill(0, old.start + old.hdr, old.start + old.size); // keep the size fields, zero the usertype and the packet
+    packet = dropPgag(packet).replace(/[ \t\r\n]+(?=<\?xpacket end=)/, ""); // its old padding: the room to fill again
   }
   const at = packet.search(/<rdf:RDF\b(?:[^>"']|"[^"]*"|'[^']*')*>/);
   if (at < 0) A("the existing XMP packet has no rdf:RDF");
@@ -473,18 +518,26 @@ export async function embedXmp(bytes, envelope, { directory } = {}) {
     + `<pgag:Registry>${escapeXml(issuerOf(body.subject_ref))}</pgag:Registry>\n`
     + (api ? `<pgag:Status>${escapeXml(api.replace(/\/+$/, ""))}/v2/after-gen/${id}</pgag:Status>\n` : "")
     + "</rdf:Description>";
-  const text = utf8.encode(packet.slice(0, at + open.length) + description + packet.slice(at + open.length));
+  let text = utf8.encode(packet.slice(0, at + open.length) + description + packet.slice(at + open.length));
   const back = fromXmp(text);
   if (!back || canonicalJson(back) !== canonicalJson(envelope)) {
     A("the packet would not carry the record under the lexical rule: an existing property spells pgag:Record= or "
       + "xmlns:pgag=, or the record is not canonical JSON");
   }
-  const box = new Uint8Array(24 + text.length);
-  view(box).setUint32(0, box.length);
-  box.set(code("uuid"), 4);
-  box.set(Uint8Array.from(XMP_UUID.match(/../g), (h) => parseInt(h, 16)), 8);
-  box.set(text, 24);
-  return concat([out, box]);
+  const uuid = Uint8Array.from(XMP_UUID.match(/../g), (h) => parseInt(h, 16));
+  if (old && old.start + old.size < bytes.length) { // in place, the same size, padded before the trailer
+    const room = old.size - old.hdr - 16, end = bytesText(text).lastIndexOf("<?xpacket end=");
+    if (text.length > room) A("the new packet does not fit in the existing XMP box, which is not the last box");
+    const cut = end < 0 ? text.length : end;
+    text = concat([text.subarray(0, cut), new Uint8Array(room - text.length).fill(0x20), text.subarray(cut)]);
+    out.set(text, old.start + old.hdr + 16);
+    return out;
+  }
+  const big = old?.hdr === 16, head = new Uint8Array(big ? 16 : 8); // the last box, rewritten or appended
+  view(head).setUint32(0, big ? 1 : 24 + text.length);
+  head.set(code("uuid"), 4);
+  if (big) view(head).setBigUint64(8, BigInt(32 + text.length));
+  return concat([out.subarray(0, old ? old.start : out.length), head, uuid, text]);
 }
 
 // ── checking the record and its status ──

@@ -255,6 +255,11 @@ CMOV = box(b"cmov", box(b"dcom", b"zlib"), box(b"cmvd", U(0)))
 PCM = box(b"sowt", bytes(6), b"\x00\x01", struct.pack(">HHIHH", 0, 0, 0, 2, 16), bytes(8))     # 4 bytes a frame
 
 
+def CHUNKS(size):
+    """Durations of 1 (sound read by chunk) and a fixed sample size."""
+    return {b"stts": full(b"stts", 0, 0, U(1, 2, 1)), b"stsz": full(b"stsz", 0, 0, U(size, 2))}
+
+
 GMHD_KEPT = mp4(({"tref": box(b"tapt", b"t") + box(b"edts", box(b"x123", b"e")), "minf": box(b"hdlr", b"h"),
                   "stbl": {b"stss": full(b"stss", 0, 0, U(0))}},)).replace(b"vmhd", b"gmhd")
 
@@ -326,8 +331,21 @@ def derived():
         "attack-mvhd-duration.mp4": mp4().replace(b"mvhd" + bytes(4) + U(0, 0, 1000, 20), b"mvhd" + bytes(4) + U(0, 0, 1000, 5)),
         "attack-mdhd-language.mp4": mp4().replace(b"mdhd" + bytes(4) + U(0, 0, 1000, 20) + bytes(4),
                                                   b"mdhd" + bytes(4) + U(0, 0, 1000, 20) + b"\x15\xc7\x00\x00"),
-        "attack-pcm-ok.mp4": mp4(({"hdlr": b"soun", "entry": PCM, "samples": (b"abcd", b"efgh")},)),
-        "attack-pcm-stsz1.mp4": mp4(({"hdlr": b"soun", "entry": PCM, "samples": (b"a", b"b")},)),
+        "attack-pcm-ok.mp4": mp4(({"hdlr": b"soun", "entry": PCM, "samples": (b"abcd", b"efgh"), "stbl": CHUNKS(4)},)),
+        "attack-pcm-stsz1.mp4": mp4(({"hdlr": b"soun", "entry": PCM, "samples": (b"abcd", b"efgh"), "stbl": CHUNKS(1)},)),
+        # round 5: tables that read two ways, tables outside their place, sound read by chunk
+        "attack-stsc-first2.mp4": mp4(({"stbl": {b"stsc": full(b"stsc", 0, 0, U(1, 2, 2, 1))}},)),
+        "attack-stsc-count0.mp4": mp4(({"stbl": {b"stsc": full(b"stsc", 0, 0, U(2, 1, 2, 1, 2, 0, 1)),
+                                                 b"stco": full(b"stco", 0, 0, U(2, DATA_AT, DATA_AT + 5))}},)),
+        "attack-two-stsz.mp4": mp4(({"stbl": {b"stsz2": full(b"stsz", 0, 0, U(5, 1))}},)),
+        "attack-trak-udta-stco.mp4": mp4(({"tref": box(b"udta", full(b"stco", 0, 0, U(1, DATA_AT + 1)))},)),
+        "attack-free-tables.mp4": mp4(top=box(b"free", full(b"stsz", 0, 0, U(1, 1)))),
+        "attack-iloc-meta.mp4": mp4(top=full(b"meta", 0, 0, full(b"iloc", 0, 0, bytes(8)))),
+        "attack-chunkmode-none.mp4": mp4(({"hdlr": b"soun", "entry": PCM.replace(b"sowt", b"NONE"),
+                                           "samples": (b"abcd", b"efgh"), "stbl": CHUNKS(4)},)),
+        "attack-chunkmode-stz2.mp4": mp4(({"hdlr": b"soun", "entry": PCM, "samples": (b"abcd", b"efgh"),
+                                           "stbl": {**CHUNKS(4), b"stsz": None,
+                                                    b"stz2": full(b"stz2", 0, 0, bytes(3) + b"\x08", U(2), b"\x04\x04")}},)),
         "attack-offset-in-moov.mp4": mp4(({"stbl": {b"stco": full(b"stco", 0, 0, U(1, DATA_AT + 13))}},)),
         "attack-chunk-past-mdat.mp4": mp4(({"stbl": {b"stco": full(b"stco", 0, 0, U(1, DATA_AT + 3))}},)),
         "attack-xmp-pi.mp4": mp4(top=xmp_box(ag._packet(None, rec).replace(b"<x:xmpmeta", b"<?note ?><x:xmpmeta", 1))),
@@ -342,8 +360,7 @@ def derived():
         "attack-c2pa-older-bad.mp4": mp4(top=c2pa_box(jumb("urn:old", box(b"jumb", box(b"free"))), manifest(2, assertion(rec)))),
         "attack-c2pa-not-canonical.mp4": mp4(top=c2pa_box(manifest(1, jumb("org.pregen.after_gen", box(b"json", json.dumps(rec).encode()))))),
     }
-    out["a-xmp-foreign-pg.mp4"] = out["a-xmp-foreign.mp4"][:-len(xmp_box(FOREIGN_XMP))] \
-        + box(b"free", bytes(len(xmp_box(FOREIGN_XMP)) - 8)) + xmp_box(ag._packet(FOREIGN_XMP, rec))
+    out["a-xmp-foreign-pg.mp4"] = a + xmp_box(ag._packet(FOREIGN_XMP, rec))           # the last box, rewritten
     return out, rec
 
 
@@ -438,7 +455,7 @@ def ref_stream(d):
     mdats = [(s, e) for t, s, e in top if t == b"mdat"]
     return b"PREGEN-MEDIA\x00media/1\x00" + b"".join(
         el(t, ref_value(d, t, s, e, mdats) if t == b"moov" else d[s:e]) for t, s, e in top
-        if t not in (b"free", b"skip", b"wide") and not (t == b"uuid" and d[s:s + 16] in (ag._XMP_UUID, ag._C2PA_UUID)))
+        if not (t == b"uuid" and d[s:s + 16] in (ag._XMP_UUID, ag._C2PA_UUID)))
 
 
 def ref_hash(d):
@@ -470,9 +487,9 @@ def test_what_keeps_the_hash_and_what_changes_it():
         assert media(n) == media("a.mp4"), n                                 # the carriers
     a = (DIR / "a.mp4").read_bytes()
     _, p, size = next(b for b in top_boxes(a) if b[0] == b"free")          # ffmpeg's free box before mdat
-    assert H(a[:p] + box(b"skip", bytes(size - 8)) + a[p + size:]) == H(a)  # padding
+    assert H(a[:p] + box(b"skip", bytes(size - 8)) + a[p + size:]) != H(a)  # padding is hashed like any box
     f = (DIR / "a-remux-faststart.mp4").read_bytes()                      # moov before mdat: every offset moves
-    assert H(insert_after_ftyp(f, c2pa_box(manifest(1)))) == H(f) == H(insert_after_ftyp(f, box(b"free", bytes(3))))
+    assert H(insert_after_ftyp(f, c2pa_box(manifest(1)))) == H(f) != H(insert_after_ftyp(f, box(b"free", bytes(3))))
     big = bytearray(mp4())                                                  # a size-0 last box runs to EOF
     struct.pack_into(">I", big, top_boxes(bytes(big))[-1][1], 0)
     assert H(bytes(big)) == H(mp4())
@@ -513,8 +530,14 @@ REFUSALS = [
     ("x-past-eof.mp4", "outside the data of an mdat"), ("x-box-past-parent.mp4", "past its parent"),
     ("attack-short-uuid.mp4", "shorter than its header"), ("attack-dref-external.mp4", "self-contained"),
     ("attack-dos.mp4", "run past"), ("attack-cmov.mp4", "compressed movie"), ("attack-dref-alis.mp4", "self-contained"),
-    ("attack-pcm-stsz1.mp4", "bytes per frame"), ("attack-offset-in-moov.mp4", "outside the data of an mdat"),
-    ("attack-chunk-past-mdat.mp4", "run past")]
+    ("attack-pcm-stsz1.mp4", "read by chunk"), ("attack-offset-in-moov.mp4", "outside the data of an mdat"),
+    ("attack-chunk-past-mdat.mp4", "run past"), ("x-stts-stsz.mp4", "count different samples"),
+    ("attack-stray-stco.mp4", "stco outside its place"), ("attack-top-trak.mp4", "stts outside its place"),
+    ("attack-top-udta-trak.mp4", "stts outside its place"), ("attack-two-stco.mp4", "two stco"),
+    ("attack-stsc-first2.mp4", "stsc"), ("attack-stsc-count0.mp4", "stsc"), ("attack-two-stsz.mp4", "two stsz"),
+    ("attack-trak-udta-stco.mp4", "stco outside its place"), ("attack-free-tables.mp4", "stsz outside its place"),
+    ("attack-iloc-meta.mp4", "iloc outside its place"), ("attack-chunkmode-none.mp4", "read by chunk"),
+    ("attack-chunkmode-stz2.mp4", "read by chunk")]
 
 
 @pytest.mark.parametrize("name,why", REFUSALS)
@@ -534,23 +557,43 @@ def test_every_byte_a_player_could_read_counts():
 def test_more_refusals():
     assert "past its parent" in refused(mp4() + b"\x00\x00\x00")                       # a trailing partial header
     assert "past its parent" in refused(FTYP + struct.pack(">I4s", 1 << 20, b"mdat"))
-    assert "count does not agree" in refused(mp4(({"stbl": {b"stco": full(b"stco", 0, 0, U(2, DATA_AT))}},)))
+    assert "not exactly what its count gives" in refused(mp4(({"stbl": {b"stco": full(b"stco", 0, 0, U(2, DATA_AT))}},)))
     assert "run past" in refused(mp4(({"stbl": HUGE},)))                              # 2^32 samples: at once
     assert "run past" in refused(mp4(({"stbl": {b"stsz": None, b"stz2": full(b"stz2", 0, 0, bytes(3) + b"\x04", U(2),
                                                                               b"\x3f")}},)))     # 3 and 15 bytes
     assert H(mp4(({"stbl": {b"stsz": None, b"stz2": full(b"stz2", 0, 0, bytes(3) + b"\x04", U(2), b"\x32")}},)))
     assert "field size" in refused(mp4(({"stbl": {b"stsz": None, b"stz2": full(b"stz2", 0, 0, bytes(3) + b"\x05", U(0))}},)))
     assert "outside the data" in refused(mp4(({"stbl": {b"stco": None, b"co64": full(b"co64", 0, 0, U(1), struct.pack(">Q", 2**64 - 1))}},)))
-    assert "shorter than its own fields" in refused(mp4(({"stbl": {b"stsc": full(b"stsc", 0, 0, U(2, 1, 2, 1))}},)))
+    assert "not exactly what its count gives" in refused(mp4(({"stbl": {b"stsc": full(b"stsc", 0, 0, U(2, 1, 2, 1))}},)))
+    for stbl in ({b"stts": None}, {b"ctts2": full(b"ctts", 0, 0, U(0)), b"ctts": full(b"ctts", 0, 0, U(0))},
+                 {b"stsc": full(b"stsc", 0, 0, U(1, 1, 2, 2))},                                # no sample entry 2
+                 {b"stco": full(b"stco", 0, 0, U(2, DATA_AT, DATA_AT + 3))},                    # stsc counts 4 samples
+                 {b"stsd": full(b"stsd", 0, 0, U(2), box(b"avc1", bytes(78)))}):
+        assert refused(mp4(({"stbl": stbl},))).startswith("media/1: "), stbl
     assert "shorter than its header" in refused(mp4(moov_extra=box(b"uuid", bytes(8))))
-    for v, fields in ((0, struct.pack(">HHIHH", 0, 0, 0, 2, 16) + bytes(8)),           # 2 channels of 16 bits: 4 bytes
-                      (1, struct.pack(">HHIHH", 1, 0, 0, 1, 8) + bytes(8) + U(1, 4, 4, 2)),
-                      (2, struct.pack(">HHIHH", 2, 0, 0, 3, 16) + bytes(8) + U(72) + bytes(8) + U(1, 0x7F000000, 16, 0, 4, 1))):
-        pcm = lambda *samples: mp4(({"hdlr": b"soun", "entry": box(b"lpcm", bytes(6), b"\x00\x01", fields),
-                                     "samples": samples},))
-        assert H(pcm(b"abcd", b"efgh"))["leaves"] == 1, v
-        assert "bytes per frame" in refused(pcm(b"ab", b"cd")), v
-    assert "shorter than its own fields" in refused(mp4(({"entry": box(b"twos", bytes(8), b"\x00\x01")},)))
+    # sound read by chunk: stsz one fixed size, the frame size players take from the entry (and its codec's width)
+    v0 = lambda ch, bits: struct.pack(">HHIHH", 0, 0, 0, ch, bits) + bytes(8)
+    v1 = lambda ch, spf, bpf: struct.pack(">HHIHH", 1, 0, 0, ch, 16) + bytes(8) + U(spf, bpf, bpf, 2)
+    v2 = lambda ch, bpp, fpp: (struct.pack(">HHIHH", 2, 0, 0, 3, 16) + bytes(8) + U(72) + bytes(8)
+                               + U(ch, 0x7F000000, 16, 0, bpp, fpp))
+    pcmc = full(b"pcmC", 0, 0, b"\x01\x18")                                              # 24 bits a sample
+    for t, fields, size, ok in (
+            (b"sowt", v0(2, 16), 4, True), (b"twos", v0(1, 8), 1, True), (b"in24", v0(2, 16), 6, True),
+            (b"ulaw", v0(1, 16), 1, True), (b"fl64", v0(1, 32), 8, True), (b"ipcm", v0(2, 16) + pcmc, 6, True),
+            (b"lpcm", v0(2, 16), 4, False),                                          # no codec width in v0
+            (b"in24", v1(1, 1, 3), 3, True), (b"in24", v1(1, 1, 2), 2, False),          # against the codec width
+            (b"lpcm", v1(1, 1, 5), 5, True), (b"lpcm", v1(1, 0, 5), 5, False),
+            (b"lpcm", v2(1, 6, 1), 6, True), (b"fl32", v2(2, 8, 1), 8, True), (b"fl32", v2(1, 8, 1), 8, False),
+            (b"lpcm", v2(1, 6, 0), 6, False), (b"ima4", v1(1, 1, 3), 3, False), (b"NONE", v0(2, 16), 4, False)):
+        def pcm(n, hdlr=b"soun"):
+            return mp4(({"hdlr": hdlr, "entry": box(t, bytes(6), b"\x00\x01", fields), "samples": (b"x" * size,) * 2,
+                         "stbl": CHUNKS(n)},))
+        if ok:
+            assert H(pcm(size))["leaves"] == 1, t
+            assert "read by chunk" in refused(pcm(size + 1)), t
+        else:
+            assert "read by chunk" in refused(pcm(size)), t
+        assert H(pcm(size, b"vide")), t                                       # not a sound track: read by stsz
 
 
 # ── read_after_gen and embed_xmp ────────────────────────────────────────────────
@@ -577,12 +620,9 @@ def test_embed_xmp_round_trip(tmp_path):
                  'xmlns:pgag="https://pregen.org/ns/after-gen/1/"'):
         assert part.encode() in packet
     assert b"pgag:Status" not in packet          # the record names no status address (The status)
-    # again: the old box becomes free of the same size, zeroed; still one record
+    # again: the last box is rewritten in place, never turned into padding
     pregen.embed_xmp(tmp_path / "x.mp4", tmp_path / "y.mp4", rec)
-    y = (tmp_path / "y.mp4").read_bytes()
-    assert y[:len(data)] == data[:-len(packet) - 24] + struct.pack(">I4s", len(packet) + 24, b"free") + bytes(len(packet) + 16)
-    assert pregen.read_after_gen(tmp_path / "y.mp4")["xmp"] == rec and pregen.media_hash(tmp_path / "y.mp4") == media("a.mp4")
-    assert y.count(b"<pgag:Record>") == 1
+    assert (tmp_path / "y.mp4").read_bytes() == data
 
 
 def test_embed_xmp_keeps_existing_properties(tmp_path):
@@ -592,13 +632,24 @@ def test_embed_xmp_keeps_existing_properties(tmp_path):
     assert x == (DIR / "a-xmp-foreign-pg.mp4").read_bytes()
     assert b"Spring &lt;cut&gt;" in x and b'xml:lang="x-default"' in x and b'xmp:CreatorTool="Studio &amp; Co"' in x
     assert pregen.read_after_gen(tmp_path / "x.mp4")["xmp"] == rec
-    a = (DIR / "a.mp4").read_bytes()                                       # an old box in the 64-bit form keeps it
+    a = (DIR / "a.mp4").read_bytes()                                       # the last box in the 64-bit form keeps it
     (tmp_path / "w.mp4").write_bytes(a + struct.pack(">I4sQ", 1, b"uuid", 32 + len(FOREIGN_XMP)) + ag._XMP_UUID + FOREIGN_XMP)
     pregen.embed_xmp(tmp_path / "w.mp4", tmp_path / "x.mp4", rec)
-    x = (tmp_path / "x.mp4").read_bytes()
-    assert x[len(a):len(a) + 32 + len(FOREIGN_XMP)] == struct.pack(">I4sQ", 1, b"free", 32 + len(FOREIGN_XMP)) \
-        + bytes(16 + len(FOREIGN_XMP))
-    assert pregen.read_after_gen(tmp_path / "x.mp4")["xmp"] == rec
+    new = ag._packet(FOREIGN_XMP, rec)
+    assert (tmp_path / "x.mp4").read_bytes() == a + struct.pack(">I4sQ", 1, b"uuid", 32 + len(new)) + ag._XMP_UUID + new
+    # an XMP box that is not the last: rewritten in place, padded with spaces before its trailer; refused if too small
+    room = FOREIGN_XMP.replace(b"<?xpacket end", b" " * 2000 + b"<?xpacket end")
+    for packet, fits in ((room, True), (FOREIGN_XMP, False)):
+        src, n = insert_after_ftyp(a, xmp_box(packet)), top_boxes(a)[0][2]   # chunk offsets moved, as a tool would
+        (tmp_path / "v.mp4").write_bytes(src)
+        if not fits:
+            with pytest.raises(pregen.PregenError, match="does not fit"):
+                pregen.embed_xmp(tmp_path / "v.mp4", tmp_path / "u.mp4", rec)
+            continue
+        pregen.embed_xmp(tmp_path / "v.mp4", tmp_path / "u.mp4", rec)
+        u = (tmp_path / "u.mp4").read_bytes()
+        assert len(u) == len(src) and u[:n + 24] == src[:n + 24] and u[n + len(xmp_box(room)):] == src[n + len(xmp_box(room)):]
+        assert pregen.read_after_gen(io.BytesIO(u))["xmp"] == rec and H(u) == media("a.mp4") and b"  <?xpacket end" in u
 
 
 def test_embed_xmp_refusals(tmp_path):

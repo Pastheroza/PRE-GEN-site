@@ -35,7 +35,8 @@ function rfc6962(hashes) {
 }
 
 // A small MP4: ftyp, mdat (every track's samples, one chunk per track), moov at the end. Each track:
-// {id, handler, samples, durations, ctts, edits, tref, entry, extraStbl, extraMinf, extraTrak, offset, stszCount, timescale}.
+// {id, handler, samples, durations, ctts, edits, tref, entry, extraStbl, extraMinf, extraTrak, offset, stszCount, fixed,
+// timescale}.
 function mp4({ tracks = [], extraTop = [], moovExtra = [] } = {}) {
   const ftyp = box("ftyp", "isom", u32(0x200), "isom");
   let at = ftyp.length + 8;
@@ -50,8 +51,8 @@ function mp4({ tracks = [], extraTop = [], moovExtra = [] } = {}) {
       full("stsd", 0, 0, u32(1), entry),
       full("stts", 0, 0, u32(durations.length), ...durations.flatMap((d) => [u32(1), u32(d)])),
       ...(t.ctts ? [full("ctts", 1, 0, u32(n), ...t.ctts.flatMap((c) => [u32(1), i32(c)]))] : []),
-      full("stsc", 0, 0, u32(n ? 1 : 0), ...(n ? [u32(1), u32(n), u32(1)] : [])),
-      full("stsz", 0, 0, u32(0), u32(t.stszCount ?? n), ...t.samples.map((s) => u32(s.length))),
+      full("stsc", 0, 0, u32(n ? 1 : 0), ...(n ? (t.stsc ?? [1, n, 1]).map(u32) : [])),
+      t.fixed ? full("stsz", 0, 0, u32(t.fixed), u32(n)) : full("stsz", 0, 0, u32(0), u32(t.stszCount ?? n), ...t.samples.map((s) => u32(s.length))),
       full("stco", 0, 0, u32(n ? 1 : 0), ...(n ? [u32(t.offset ?? offsets[i])] : [])),
       ...(t.extraStbl ?? []));
     const mhd = t.handler === "soun" ? full("smhd", 0, 0, i16(0), u16(0)) : full("vmhd", 0, 1, u16(0), u16(0), u16(0), u16(0));
@@ -95,8 +96,7 @@ function refValue(b, type, s, e, mdats) {
 }
 function refStream(file) {
   const b = Buffer.from(file), top = kids(b, 0, b.length), mdats = top.filter(([t]) => t === "mdat").map(([, s, e]) => [s, e]);
-  return B("PREGEN-MEDIA\0media/1\0", ...top.filter(([t, s]) => !["free", "skip", "wide"].includes(t)
-    && !(t === "uuid" && [XMP_UUID, C2PA_UUID].includes(b.toString("hex", s, s + 16))))
+  return B("PREGEN-MEDIA\0media/1\0", ...top.filter(([t, s]) => !(t === "uuid" && [XMP_UUID, C2PA_UUID].includes(b.toString("hex", s, s + 16))))
     .map(([t, s, e]) => el(t, t === "moov" ? refValue(b, t, s, e, mdats) : b.subarray(s, e))));
 }
 function expected(file) {
@@ -132,14 +132,14 @@ test("media/1: the same from a Uint8Array, a Blob and a reader, without reading 
   await assert.rejects(mediaHash("not a file"), PregenError);
 });
 
-test("media/1: every byte a player could read counts; padding and the carriers do not", async () => {
+test("media/1: every byte a player could read counts, padding too; the carriers do not", async () => {
   const file = mp4({ tracks: [VIDEO, AUDIO] }), want = await mediaHash(file);
   const flipped = Uint8Array.from(file);
   flipped[file.indexOf(0x2d, 30)] ^= 1; // a byte of "frame-one" in mdat
   assert.notEqual((await mediaHash(flipped)).hash, want.hash);
-  const more = mp4({ tracks: [VIDEO, AUDIO], extraTop: [box("free", "padding"), box("skip"), box("wide"), uuidBox(XMP_UUID, "<x/>"),
-    uuidBox(C2PA_UUID, Buffer.alloc(4), "other\0")] });
+  const more = mp4({ tracks: [VIDEO, AUDIO], extraTop: [uuidBox(XMP_UUID, "<x/>"), uuidBox(C2PA_UUID, Buffer.alloc(4), "other\0")] });
   assert.deepEqual(await mediaHash(more), want);
+  for (const pad of ["free", "skip", "wide"]) assert.notEqual((await mediaHash(mp4({ tracks: [VIDEO, AUDIO], extraTop: [box(pad)] }))).hash, want.hash);
   for (const other of [mp4({ tracks: [AUDIO, VIDEO] }), mp4({ tracks: [{ ...VIDEO, handler: "meta" }, AUDIO] }),
     mp4({ tracks: [VIDEO, { ...AUDIO, timescale: 44100 }] }), mp4({ tracks: [VIDEO, AUDIO], moovExtra: [box("udta", box("name", "a title"))] }),
     mp4({ tracks: [VIDEO, AUDIO], extraTop: [box("udta", "x")] }), mp4({ tracks: [VIDEO, AUDIO], extraTop: [box("trak", "x")] }),
@@ -162,6 +162,7 @@ const plain = mp4({ tracks: [VIDEO] });
 const mvhdOnly = box("moov", full("mvhd", 0, 0, u32(0), u32(0), u32(1000), u32(0), i32(0x10000), i16(0x100), Buffer.alloc(10),
   ...MATRIX.map(i32), Buffer.alloc(24), u32(2)));
 const sowt = box("sowt", Buffer.alloc(6), u16(1), u16(0), u16(0), u32(0), u16(2), u16(16), Buffer.alloc(8)); // 4 bytes a frame
+const PCM_TRACK = { id: 1, handler: "soun", entry: sowt, samples: [B("abcd"), B("efgh")], durations: [1, 1], fixed: 4 };
 const REFUSED = [
   ["no moov", new Uint8Array(box("ftyp", "isom", u32(0))), /no moov/],
   ["two moov", new Uint8Array(B(plain, mvhdOnly)), /more than one moov/],
@@ -179,11 +180,27 @@ const REFUSED = [
   ["a uuid box under 24 bytes", mp4({ tracks: [VIDEO], moovExtra: [box("uuid", Buffer.alloc(8))] }), /shorter than its header/],
   ["an alis data reference", mp4({ tracks: [{ ...VIDEO, extraMinf: [box("dinf", full("dref", 0, 0, u32(1), full("alis", 0, 1)))] }] }), /self-contained/],
   ["a data reference elsewhere", mp4({ tracks: [{ ...VIDEO, extraMinf: [box("dinf", full("dref", 0, 0, u32(1), full("url ", 0, 0, "https://x.example/a\0")))] }] }), /self-contained/],
-  ["uncompressed sound whose stsz is not its bytes per frame", mp4({ tracks: [{ id: 1, handler: "soun", entry: sowt, samples: [B("a")] }] }), /bytes per frame/],
+  ["sound read by chunk whose stsz is not its frame size", mp4({ tracks: [{ ...PCM_TRACK, fixed: 1 }] }), /read by chunk/],
+  ["sound read by chunk with an entry other than PCM", mp4({ tracks: [{ ...PCM_TRACK, entry: box("NONE", sowt.subarray(8)) }] }), /read by chunk/],
+  ["sound read by chunk without one fixed size", mp4({ tracks: [{ ...PCM_TRACK, fixed: undefined }] }), /read by chunk/],
+  ["an stsc starting at chunk 2", mp4({ tracks: [{ ...VIDEO, stsc: [2, 3, 1] }] }), /stsc/],
+  ["an stsc entry of 0 samples", mp4({ tracks: [{ ...VIDEO, stsc: [1, 0, 1] }] }), /stsc/],
+  ["two stsz in one stbl", mp4({ tracks: [{ ...VIDEO, extraStbl: [full("stsz", 0, 0, u32(1), u32(3))] }] }), /two stsz/],
+  ["a stco in trak/udta", mp4({ tracks: [{ ...VIDEO, extraTrak: [box("udta", full("stco", 0, 0, u32(1), u32(DATA)))] }] }), /stco outside its place/],
+  ["a sample table in top-level padding", mp4({ tracks: [VIDEO], extraTop: [box("free", full("stts", 0, 0, u32(0)))] }), /stts outside its place/],
+  ["an iloc in a top-level meta", mp4({ tracks: [VIDEO], extraTop: [full("meta", 0, 0, full("iloc", 0, 0, Buffer.alloc(8)))] }), /iloc outside its place/],
+  ["stsz counting other samples than stts", mp4({ tracks: [{ ...VIDEO, durations: [100, 200] }] }), /count different samples/],
 ];
 
-test("media/1: uncompressed sound whose stsz is its bytes per frame hashes", async () => {
-  await mediaHash(mp4({ tracks: [{ id: 1, handler: "soun", entry: sowt, samples: [B("abcd"), B("efgh")] }] }));
+test("media/1: sound read by chunk whose stsz is its frame size hashes; a track not of sound is read by stsz", async () => {
+  await mediaHash(mp4({ tracks: [PCM_TRACK] }));
+  // the frame size from the entry: v1 bytes per frame (one sample a packet), agreeing with the codec's width (in24: 3)
+  const in24 = (bpf) => box("in24", Buffer.alloc(6), u16(1), u16(1), u16(0), u32(0), u16(1), u16(16), Buffer.alloc(8),
+    u32(1), u32(bpf), u32(bpf), u32(2));
+  await mediaHash(mp4({ tracks: [{ ...PCM_TRACK, entry: in24(3), samples: [B("abc"), B("def")], fixed: 3 }] }));
+  await assert.rejects(mediaHash(mp4({ tracks: [{ ...PCM_TRACK, entry: in24(2), samples: [B("ab"), B("de")], fixed: 2 }] })), /read by chunk/);
+  await assert.rejects(mediaHash(mp4({ tracks: [{ ...PCM_TRACK, entry: box("lpcm", sowt.subarray(8)) }] })), /read by chunk/); // no width in v0
+  await mediaHash(mp4({ tracks: [{ ...PCM_TRACK, handler: "vide", entry: box("NONE", sowt.subarray(8)) }] }));
 });
 
 test("media/1: tracks claiming billions of samples are refused at once", async () => {
@@ -290,25 +307,31 @@ test("XMP: read by the fixed lexical rule only; a packet that breaks it carries 
   ]) assert.equal(await xmp(...args), null, args[0].slice(0, 40));
 });
 
-test("XMP: an existing box keeps its properties and becomes free of the same size", async () => {
+test("XMP: an existing box keeps its properties and is rewritten in place, padded with spaces", async () => {
   const old = '<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?><x:xmpmeta xmlns:x="adobe:ns:meta/">'
     + '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:dc="http://purl.org/dc/elements/1.1/">'
     + '<rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/" xmp:CreatorTool="Editor &amp; Co"/>'
     + '<rdf:Description rdf:about=""><dc:title><rdf:Alt><rdf:li xml:lang="x-default">A > B</rdf:li></rdf:Alt></dc:title></rdf:Description>'
     + '<rdf:Description rdf:about="" xmlns:pgag="https://pregen.org/ns/after-gen/1/"><pgag:Record>{"old":1}</pgag:Record></rdf:Description>'
-    + '</rdf:RDF></x:xmpmeta><?xpacket end="w"?>';
+    + '</rdf:RDF></x:xmpmeta>' + " ".repeat(2000) + '<?xpacket end="w"?>';
   const xmpBox = uuidBox(XMP_UUID, Buffer.from(old));
   const withXmp = new Uint8Array(B(FILE, xmpBox, box("free", "tail")));
   const out = await embedXmp(withXmp, RECORD);
-  const start = FILE.length, freed = out.subarray(start, start + xmpBox.length);
-  assert.equal(Buffer.from(freed.subarray(0, 8)).toString("latin1"), B(u32(xmpBox.length), "free").toString("latin1"));
-  assert.ok(freed.subarray(8).every((x) => x === 0));
-  assert.deepEqual(out.subarray(start + xmpBox.length, withXmp.length), withXmp.subarray(start + xmpBox.length));
-  const packet = Buffer.from(out.subarray(withXmp.length + 24)).toString();
+  const start = FILE.length;
+  assert.equal(out.length, withXmp.length); // the same box, the same size: nothing moves
+  assert.deepEqual(out.subarray(0, start + 24), withXmp.subarray(0, start + 24));
+  assert.deepEqual(out.subarray(start + xmpBox.length), withXmp.subarray(start + xmpBox.length));
+  const packet = Buffer.from(out.subarray(start + 24, start + xmpBox.length)).toString();
   assert.ok(packet.includes('xmp:CreatorTool="Editor &amp; Co"') && packet.includes("A > B") && packet.includes("xmlns:dc="));
   assert.equal(packet.match(/pgag:Record>/g).length, 2); // one element: the new record only
+  assert.ok(packet.endsWith(' <?xpacket end="w"?>'));
   assert.deepEqual((await readAfterGen(out)).xmp, RECORD);
-  assert.deepEqual(await mediaHash(out), MEDIA);
+  assert.deepEqual(await mediaHash(out), await mediaHash(withXmp));
+  // too little room in a box that is not the last: refused; as the last box it grows
+  await assert.rejects(embedXmp(new Uint8Array(B(FILE, uuidBox(XMP_UUID, Buffer.from(old.replace(/ {2000}/, ""))), box("free"))), RECORD), /does not fit/);
+  const grown = await embedXmp(new Uint8Array(B(FILE, uuidBox(XMP_UUID, Buffer.from(old.replace(/ {2000}/, ""))))), RECORD);
+  assert.deepEqual((await readAfterGen(grown)).xmp, RECORD);
+  assert.deepEqual(await mediaHash(grown), MEDIA);
   // embedding again replaces the record, keeps the rest
   const again = await embedXmp(out, await record({ "use.n": 4 }));
   assert.equal((await readAfterGen(again)).xmp.body.use.n, 4);

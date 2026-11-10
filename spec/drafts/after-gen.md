@@ -117,8 +117,11 @@ no second factor. A mandate that does not list `after_gen` gives no power to app
 
 Putting a record into a file changes the file's bytes, so a plain hash of the file could not
 both be in the record and stay true. `media/1` hashes **every byte of the file a player could
-read**, and leaves out only the record's two carriers and padding. Two files with one `media/1`
-hash therefore hold the same bytes wherever a player looks, and play the same. `after-gen/1`
+read**, and leaves out only the record's two carriers. Two files with one `media/1` hash
+therefore hold the same bytes everywhere but in those two boxes, and the rules below make sure
+no player reads media from them; they play the same. (A player may show the XMP box's other
+properties, such as a title, as metadata: those are not covered, and a verifier shows only the
+record.) `after-gen/1`
 defines `media/1` for ISO base media files (MP4, MOV, M4V).
 
 An earlier design hashed only the coded samples and the parameters thought to matter, so that
@@ -132,8 +135,9 @@ unsigned 64-bit big-endian integer, then its value. An integer value is eight by
 big-endian, two's complement. A value made of elements is those elements joined.
 
 **The stream.** The ASCII bytes `PREGEN-MEDIA`, `0x00`, `media/1`, `0x00`, then one element
-for each top-level box in file order, leaving out `free`, `skip`, `wide` and the two carrier
-boxes (the C2PA and XMP `uuid` boxes of "Carrying the record"). A box's element has the box's
+for each top-level box in file order, leaving out only the two carrier boxes (the C2PA and
+XMP `uuid` boxes of "Carrying the record"); padding (`free`, `skip`, `wide`) is hashed like
+any other box. A box's element has the box's
 type as its code. Its value is the box's bytes after its size and type fields (after the
 64-bit size too, where it has one; a `uuid` box's value begins with its 16-byte user type),
 except for `moov`, `trak`, `mdia`, `minf` and `stbl` on the path `moov`/`trak`/`mdia`/`minf`/
@@ -151,25 +155,47 @@ A verifier never needs the whole file in memory.
 
 **What keeps the hash, and what changes it.** Appending, removing or rewriting the XMP box,
 inserting or removing the C2PA box (a C2PA tool rewrites the chunk offsets when it inserts its
-box before the movie, and the offsets are hashed by position within `mdat`), and padding keep
-the hash. Any other change changes it: a remux, moving the movie box, a new title or chapters,
+box before the movie, and the offsets are hashed by position within `mdat`) keep the hash. An
+existing XMP box is rewritten in place when it is the last box or the new packet fits in it,
+padded with spaces as XMP allows; otherwise embedding is refused, since turning it into padding
+would change the hash. Any other change changes it: a remux, moving the movie box, a new title or chapters,
 a tool's own tag in `udta`, new creation times. So a production asks for approval of the file
 it will publish, after its last remux and metadata edit, and adds only the record afterwards.
 
-**One reading only.** A verifier refuses `media/1`, and says why, for a file with no `moov` or
-more than one; a box whose size runs past its parent, or that is shorter than its own header
-(a `uuid` box under 24 bytes); a fragmented file (`mvex` in `moov`, or a `moof` at the top
-level), whose offsets are not chunk offsets; encrypted samples (an `encv`, `enca` or `encs`
-entry, or a `sinf` in any entry), whose auxiliary offsets are absolute; a compressed movie
-(`cmov` in `moov`); a data reference that is not in the same file (a `dref` entry that is not
-a self-contained `url ` or `urn `); a chunk offset that does not fall inside the data of a
-top-level `mdat`, or a chunk whose samples (by `stsc` and `stsz`) run past the end of that
-data; an uncompressed sound track (a sample entry `raw `, `twos`, `sowt`, `in24`, `in32`,
-`fl32`, `fl64`, `lpcm`, `ipcm`, `fpcm`, `ulaw` or `alaw`) whose `stsz` gives a size per sample
-other than the bytes per frame its entry states (version 0: channels × sample size ÷ 8;
-version 1: its bytes-per-frame field; version 2: its bytes-per-packet field), because players
-then read its chunks by that entry, not by `stsz`; and a value that does not fit a signed
-64-bit integer.
+**One reading only.** Every byte is hashed, so two files with one hash differ only inside the
+carriers. What remains is to make sure that every player finds its samples where `media/1`
+does, so that no player reads media from a carrier. A verifier therefore refuses `media/1`, and
+says why, for:
+- a file with no `moov` or more than one; a box whose size runs past its parent, or that is
+  shorter than its own header (a `uuid` box under 24 bytes); a value that does not fit a signed
+  64-bit integer;
+- a fragmented file (`mvex` in `moov`, or a `moof` at the top level); encrypted samples (an
+  `encv`, `enca` or `encs` entry, or a `sinf` in any entry); a compressed movie (`cmov` in
+  `moov`); a data reference that is not in the same file (a `dref` entry that is not a
+  self-contained `url ` or `urn `);
+- **tables outside their place:** any of the codes `stco`, `co64`, `stsc`, `stsz`, `stz2`,
+  `stts`, `ctts`, `iloc`, `saio`, `saiz`, `sidx`, `ssix`, `tfra`, `mfra`, `trun`, `tfhd` found
+  at any byte position of a top-level box other than `mdat` and the carriers, except as a
+  direct child of an `stbl` on the path `moov`/`trak`/`mdia`/`minf`/`stbl` (the payloads of the
+  boxes there are not searched; a text in metadata that spells such a code makes the file
+  refused);
+- **tables that read two ways:** an `stbl` without exactly one `stsd`, one `stts`, one `stsc`,
+  one of `stsz` and `stz2` and one of `stco` and `co64`, or with more than one `ctts`; an
+  `stsc` whose first entry's first chunk is not 1, whose first chunks do not strictly increase
+  or exceed the number of chunks, with a count of 0, or with a sample description index that
+  names no entry; a sample count from `stsc` over all chunks, or from `stts`, that differs from
+  the count of `stsz`/`stz2`; a table whose length is not exactly what its count gives;
+- **chunks outside `mdat`:** a chunk offset that does not fall inside the data of a top-level
+  `mdat`, or a chunk whose samples run past the end of that data;
+- **sound read by chunk:** a sound track whose `stts` durations are all 1 (players then read
+  its chunks by the sample entry, not by `stsz`), unless its `stsz` gives one fixed size equal
+  to the frame size players take from the entry: for a version 1 entry, its bytes per frame
+  (with samples per packet 1); for a version 2 entry, its bytes per packet (with frames per
+  packet 1); for a version 0 entry, the entry's channel count times the codec's bytes per
+  sample: `raw `, `ulaw`, `alaw` 1, `twos` and `sowt` the entry's sample size ÷ 8, `in24` 3,
+  `in32` and `fl32` 4, `fl64` 8; for `ipcm` and `fpcm`, the sample size its `pcmC` box states ÷ 8.
+  Any other entry in chunk mode is refused, and so is a version 1 or 2 entry whose fields
+  disagree with that codec width where the codec has one.
 
 **Re-encoded copies.** A transcoded copy has other coded samples and does not match. A later
 version may carry soft bindings (C2PA soft-binding algorithm names with opaque values) for a
@@ -192,8 +218,9 @@ The record is the same whatever carries it, and a verifier checks it the same wa
   moves. Namespace `https://pregen.org/ns/after-gen/1/`, prefix `pgag`: `pgag:Record` holds the
   envelope as canonical JSON text; `pgag:Id`, `pgag:Registry` (the prefix) and `pgag:Status`
   (the status address) are copies for people and tools, never read as the record. An existing XMP
-  box keeps its properties: they move into the new box, and the old box becomes a `free` box of
-  the same size, so no offset moves. So that every reader finds the same record, the packet
+  box keeps its properties and is rewritten in place: when it is the last box of the file it
+  may grow; elsewhere the new packet must fit in it, padded with spaces, or embedding is
+  refused (see "What keeps the hash"). So that every reader finds the same record, the packet
   is read by a fixed lexical rule, not by an XML library: it holds no `<!--`, `<![CDATA[`,
   `<!DOCTYPE` or `<!ENTITY`, and no `<?` other than the packet's opening `<?xpacket begin=`
   and closing `<?xpacket end=`; the namespace `https://pregen.org/ns/after-gen/1/` appears

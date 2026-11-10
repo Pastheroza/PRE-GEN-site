@@ -20,7 +20,7 @@
    "subject_ref": "PG-TEST-000001N",
    "content": {
     "binding": "media/1",
-    "hash": "61944b2a4d47067a12e423f65a95e36ed9808a98d6399c54e6566a27f843d254",
+    "hash": "30a395600665973aee7f69e64c97bf160642e651aede46400a690e9c6e8f6c26",
     "leaves": 1
    },
    "request": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -61,7 +61,7 @@
    "issued_at": 1789999900
   },
   "signatures": [
-   "344f5caac3b1a75fa51cfda568385cd0d8d98d342399a1048e5472b7896ccdfeff82c05702bf94c0a7cf01fdf68b8f4909e7883a0d75d87babeffd58462e2f0f"
+   "d2705277acee5827b65f6eac6c619d1b11a678790a057ec6f2de132fa1a95b08a19d8d0efb985c423c21a8a26bdca4c86d42985790fd4bd531528be421ef9c03"
   ]
  },
  "files": [
@@ -69,7 +69,7 @@
    "file": "a-c2pa-cbor.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "61944b2a4d47067a12e423f65a95e36ed9808a98d6399c54e6566a27f843d254",
+    "hash": "30a395600665973aee7f69e64c97bf160642e651aede46400a690e9c6e8f6c26",
     "leaves": 1
    }
   },
@@ -77,7 +77,7 @@
    "file": "a-c2pa-earlier.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "61944b2a4d47067a12e423f65a95e36ed9808a98d6399c54e6566a27f843d254",
+    "hash": "30a395600665973aee7f69e64c97bf160642e651aede46400a690e9c6e8f6c26",
     "leaves": 1
    }
   },
@@ -85,7 +85,7 @@
    "file": "a-c2pa-json.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "61944b2a4d47067a12e423f65a95e36ed9808a98d6399c54e6566a27f843d254",
+    "hash": "30a395600665973aee7f69e64c97bf160642e651aede46400a690e9c6e8f6c26",
     "leaves": 1
    }
   },
@@ -93,7 +93,7 @@
    "file": "a-flip.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "857e6ad54a5d1b126fcfff49e621077e77efedab149ab18a7bd452f759cd0d22",
+    "hash": "e64a3e00017e5dd56738349c61020f835ea51bfdb6d22be092b04bb01d5624be",
     "leaves": 1
    }
   },
@@ -101,7 +101,7 @@
    "file": "a-meta.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "e2e60b1ca705f3fd7a189e76e733f0b48991bbb4b6b9ca1e0492b2ad7181025a",
+    "hash": "c6090885bd404e176d9222e30f843cab5a9d2cb4fe442d489ecc07f425db3268",
     "leaves": 1
    }
   },
@@ -109,7 +109,7 @@
    "file": "a-remux-faststart.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "d0d4f395086eb6e2aa91d551df72fd2b13aad7dc1f8e152fd6ce248b826e1948",
+    "hash": "b943a4626beb61dbf36af3ce7eebba4dc71eb6f086c43ff74a48b0354b314a8e",
     "leaves": 1
    }
   },
@@ -117,7 +117,7 @@
    "file": "a-remux.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "19c8da198ff5f03d79bb9fa91850d64df591f8dcec48a272cf256c47b7ca6a66",
+    "hash": "1f3528804ac90232d88939199ed0c3c9adb8a6d13ca8a865a013880887e3372f",
     "leaves": 1
    }
   },
@@ -125,7 +125,7 @@
    "file": "a-xmp-foreign-pg.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "61944b2a4d47067a12e423f65a95e36ed9808a98d6399c54e6566a27f843d254",
+    "hash": "30a395600665973aee7f69e64c97bf160642e651aede46400a690e9c6e8f6c26",
     "leaves": 1
    }
   },
@@ -133,7 +133,7 @@
    "file": "a-xmp-foreign.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "61944b2a4d47067a12e423f65a95e36ed9808a98d6399c54e6566a27f843d254",
+    "hash": "30a395600665973aee7f69e64c97bf160642e651aede46400a690e9c6e8f6c26",
     "leaves": 1
    }
   },
@@ -141,7 +141,7 @@
    "file": "a-xmp.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "61944b2a4d47067a12e423f65a95e36ed9808a98d6399c54e6566a27f843d254",
+    "hash": "30a395600665973aee7f69e64c97bf160642e651aede46400a690e9c6e8f6c26",
     "leaves": 1
    }
   },
@@ -149,7 +149,7 @@
    "file": "a.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "61944b2a4d47067a12e423f65a95e36ed9808a98d6399c54e6566a27f843d254",
+    "hash": "30a395600665973aee7f69e64c97bf160642e651aede46400a690e9c6e8f6c26",
     "leaves": 1
    }
   },
@@ -180,6 +180,14 @@
   {
    "file": "attack-chunk-past-mdat.mp4",
    "refused": "media/1: a chunk whose samples run past its mdat's data"
+  },
+  {
+   "file": "attack-chunkmode-none.mp4",
+   "refused": "media/1: a sound track read by chunk whose entry does not give its sample size"
+  },
+  {
+   "file": "attack-chunkmode-stz2.mp4",
+   "refused": "media/1: a sound track read by chunk whose entry does not give its sample size"
   },
   {
    "file": "attack-cmov.mp4",
@@ -214,6 +222,10 @@
    }
   },
   {
+   "file": "attack-free-tables.mp4",
+   "refused": "media/1: stsz outside its place"
+  },
+  {
    "file": "attack-ftyp-qt.mp4",
    "media": {
     "binding": "media/1",
@@ -236,6 +248,10 @@
     "hash": "378ebaf6c35d554f2423785a67342a1fdda527b8955465bd86c8d41ab4dc742d",
     "leaves": 1
    }
+  },
+  {
+   "file": "attack-iloc-meta.mp4",
+   "refused": "media/1: iloc outside its place"
   },
   {
    "file": "attack-mdhd-language.mp4",
@@ -277,13 +293,13 @@
    "file": "attack-pcm-ok.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "72bde7f261b7a003592266e0ff7cce5fb410455971917bca617ccfa60f0a123c",
+    "hash": "9d868868c0953049f86be9fb23ef1f67f164f6fabf6db8ff14e3ba9543eddb0e",
     "leaves": 1
    }
   },
   {
    "file": "attack-pcm-stsz1.mp4",
-   "refused": "media/1: an uncompressed sound track whose stsz is not its bytes per frame"
+   "refused": "media/1: a sound track read by chunk whose entry does not give its sample size"
   },
   {
    "file": "attack-short-uuid.mp4",
@@ -299,11 +315,15 @@
   },
   {
    "file": "attack-stray-stco.mp4",
-   "media": {
-    "binding": "media/1",
-    "hash": "271f41f3cb428a24d51c78d8bf5689148cf04daf5584008b0c057d0d6d54e92e",
-    "leaves": 1
-   }
+   "refused": "media/1: stco outside its place"
+  },
+  {
+   "file": "attack-stsc-count0.mp4",
+   "refused": "media/1: an stsc that reads two ways"
+  },
+  {
+   "file": "attack-stsc-first2.mp4",
+   "refused": "media/1: an stsc that reads two ways"
   },
   {
    "file": "attack-stss.mp4",
@@ -323,19 +343,11 @@
   },
   {
    "file": "attack-top-trak.mp4",
-   "media": {
-    "binding": "media/1",
-    "hash": "176be370b386555fef28e129d3c9c5899b871293a6cc6c4dbf22a9c2a2151175",
-    "leaves": 1
-   }
+   "refused": "media/1: stts outside its place"
   },
   {
    "file": "attack-top-udta-trak.mp4",
-   "media": {
-    "binding": "media/1",
-    "hash": "cd1610eb067573ea73c46978a0410d9803eaa204b004529ded91836c7c27c981",
-    "leaves": 1
-   }
+   "refused": "media/1: stts outside its place"
   },
   {
    "file": "attack-trak-order.mp4",
@@ -344,6 +356,10 @@
     "hash": "005d0ed9c372a4fcac22457286650ae3edf95459d56b2a46e7cda0c3aaabedee",
     "leaves": 1
    }
+  },
+  {
+   "file": "attack-trak-udta-stco.mp4",
+   "refused": "media/1: stco outside its place"
   },
   {
    "file": "attack-two-media-headers.mp4",
@@ -355,11 +371,11 @@
   },
   {
    "file": "attack-two-stco.mp4",
-   "media": {
-    "binding": "media/1",
-    "hash": "02bc71621f01394a2a1fbd5191a8f6ec26be4e037691fe488ff0373b05fdea29",
-    "leaves": 1
-   }
+   "refused": "media/1: two stco tables in one stbl"
+  },
+  {
+   "file": "attack-two-stsz.mp4",
+   "refused": "media/1: two stsz tables in one stbl"
   },
   {
    "file": "attack-two-tkhd.mp4",
@@ -429,7 +445,7 @@
    "file": "b-copied-record.mov",
    "media": {
     "binding": "media/1",
-    "hash": "47b67f6d8165c55851f2507f5bb147291c37e9db24e10cb0174c6855c85ad58f",
+    "hash": "16321a0fadae03a48467e49e75fab5b5c4745d8481f2569eb2315d3c49a89f36",
     "leaves": 1
    }
   },
@@ -437,7 +453,7 @@
    "file": "b-remux-faststart.mov",
    "media": {
     "binding": "media/1",
-    "hash": "dbef8b09a3594f1f0814eb7f6e9c6a814f36831a656cf7d4da953def0968ced1",
+    "hash": "81f140c4d4b8bad69459a8a94a4f2bd823f1ec4e44ceacf36ee57773375e8ea6",
     "leaves": 1
    }
   },
@@ -445,7 +461,7 @@
    "file": "b-remux.mov",
    "media": {
     "binding": "media/1",
-    "hash": "de4de5456b704a1a691fb3e60061f51c26fcbb00caa1a2c61c49b7e6887d5c71",
+    "hash": "867cf701fa346f63305f700c943ac18071041903ab03a6df11bcde935913e119",
     "leaves": 1
    }
   },
@@ -453,7 +469,7 @@
    "file": "b.mov",
    "media": {
     "binding": "media/1",
-    "hash": "47b67f6d8165c55851f2507f5bb147291c37e9db24e10cb0174c6855c85ad58f",
+    "hash": "16321a0fadae03a48467e49e75fab5b5c4745d8481f2569eb2315d3c49a89f36",
     "leaves": 1
    }
   },
@@ -461,7 +477,7 @@
    "file": "c.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "5b20493bd9dee1a6235d12d36546f2b6d8ace9f11c0cc34a59c5d820f8fa7f4c",
+    "hash": "cb4618118dace544f92baea5e46b79b0b27669e79ded9cbeee8e0563f6cfcfc0",
     "leaves": 1
    }
   },
@@ -527,11 +543,7 @@
   },
   {
    "file": "x-stts-stsz.mp4",
-   "media": {
-    "binding": "media/1",
-    "hash": "6818c4e6ec0a808188b64470edee0a469cb8b5b3211d33adf13d2c427077ecbc",
-    "leaves": 1
-   }
+   "refused": "media/1: stsc, stts and the sample sizes count different samples"
   },
   {
    "file": "x-stz2.mp4",
@@ -557,10 +569,10 @@
  "read": [
   {
    "file": "a-c2pa-cbor.mp4",
-   "c2pa": "1f789285b923084229b7b54590df27d56e66b942e9699d6a53ec20bfd476b5f5",
+   "c2pa": "3bc41012cefbd4a1210526376f2cc26d699dfb25f39bd23664a6b117d7c73982",
    "xmp": null,
    "check": {
-    "c2pa": "1f789285b923084229b7b54590df27d56e66b942e9699d6a53ec20bfd476b5f5"
+    "c2pa": "3bc41012cefbd4a1210526376f2cc26d699dfb25f39bd23664a6b117d7c73982"
    }
   },
   {
@@ -571,18 +583,18 @@
   },
   {
    "file": "a-c2pa-json.mp4",
-   "c2pa": "1f789285b923084229b7b54590df27d56e66b942e9699d6a53ec20bfd476b5f5",
+   "c2pa": "3bc41012cefbd4a1210526376f2cc26d699dfb25f39bd23664a6b117d7c73982",
    "xmp": null,
    "check": {
-    "c2pa": "1f789285b923084229b7b54590df27d56e66b942e9699d6a53ec20bfd476b5f5"
+    "c2pa": "3bc41012cefbd4a1210526376f2cc26d699dfb25f39bd23664a6b117d7c73982"
    }
   },
   {
    "file": "a-xmp-foreign-pg.mp4",
    "c2pa": null,
-   "xmp": "1f789285b923084229b7b54590df27d56e66b942e9699d6a53ec20bfd476b5f5",
+   "xmp": "3bc41012cefbd4a1210526376f2cc26d699dfb25f39bd23664a6b117d7c73982",
    "check": {
-    "xmp": "1f789285b923084229b7b54590df27d56e66b942e9699d6a53ec20bfd476b5f5"
+    "xmp": "3bc41012cefbd4a1210526376f2cc26d699dfb25f39bd23664a6b117d7c73982"
    }
   },
   {
@@ -594,9 +606,9 @@
   {
    "file": "a-xmp.mp4",
    "c2pa": null,
-   "xmp": "1f789285b923084229b7b54590df27d56e66b942e9699d6a53ec20bfd476b5f5",
+   "xmp": "3bc41012cefbd4a1210526376f2cc26d699dfb25f39bd23664a6b117d7c73982",
    "check": {
-    "xmp": "1f789285b923084229b7b54590df27d56e66b942e9699d6a53ec20bfd476b5f5"
+    "xmp": "3bc41012cefbd4a1210526376f2cc26d699dfb25f39bd23664a6b117d7c73982"
    }
   },
   {
@@ -644,7 +656,7 @@
   {
    "file": "b-copied-record.mov",
    "c2pa": null,
-   "xmp": "1f789285b923084229b7b54590df27d56e66b942e9699d6a53ec20bfd476b5f5",
+   "xmp": "3bc41012cefbd4a1210526376f2cc26d699dfb25f39bd23664a6b117d7c73982",
    "check": {
     "xmp": "not for this file"
    }
