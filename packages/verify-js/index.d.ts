@@ -1,5 +1,8 @@
 export const STEWARD_PUBLIC_KEY_HEX: string;
+/** The directory v3 (TOG-CODE.md §9.2). */
 export const DIRECTORY_URL: string;
+/** The frozen v2 directory, for clients before 0.14. This library reads both. */
+export const DIRECTORY_V2_URL: string;
 /** Load the directory again at least this often (seconds): PRE-GEN-CORE.md rule 2. */
 export const DIRECTORY_MAX_AGE: number;
 export const STEWARD_SUCCESSOR_PUBLIC_KEY_HEX: string | null;
@@ -33,6 +36,8 @@ export class Directory {
   toJSON(): Record<string, unknown>;
   /** The registry that owns a code's namespace (resolve codes only there), or null. */
   registryFor(code: string): RegistryEntry | null;
+  /** Offline party check of a code against this v3 directory at `at` (Unix seconds, the act's witnessed time, or null). */
+  parties(code: string, options?: { at?: number | null; provider?: string | null }): { ok: boolean; facts: string[] };
   /** V-10: may this operator key sign objects carrying this code? */
   checkSigner(code: string, signerKeyId: string): "valid" | "unknown_issuer" | "issuer_mismatch" | "revoked";
   /** The owner's public key for `keyId`, fetched from its key set and checked against the listed fingerprint. */
@@ -53,9 +58,76 @@ export function verifyLicense(license: {
   subjectPublicKeyHex: string; subjectSignatureHex: string;
   operatorPublicKeyHex: string; operatorSignatureHex: string;
 }): Promise<{ subjectValid: boolean; operatorValid: boolean }>;
+/** The registry to ask: a code's first prefix, "" for the bare legacy namespace. Shape only (TOG-CODE.md §8). */
 export function issuerOf(code: string): string;
-/** What a person typed, as the canonical code (trim ASCII spaces, raise lower case, nothing else). Input boundaries only. */
+/** @deprecated Use normalizeTyped. Trims ASCII spaces and raises lower case, nothing else; keeps the spelling typed. */
 export function normalizeCode(typed: string): string;
+
+// ── ToG code (TOG-CODE.md) ──
+export const CROCKFORD: string;
+/** The TOG value table: Crockford, then I L O U as 32-35. */
+export const TOG_VALUES: string;
+/** Prefixes of the specification's examples and vectors, reserved forever. */
+export const FIXTURE_PREFIXES: readonly string[];
+/** Not a code, or a record that gives none. `hints`: both readings of ambiguous typed input. */
+export class CodeError extends PregenError {
+  reason: "malformed" | "mistyped" | "ask_registry" | "no_code";
+  hints?: string[];
+}
+export interface ParsedCode {
+  shape: "person" | "event" | "old_person" | "old_bare_person" | "old_no_check" | "pg_person" | "pg_licence"
+    | "bare_person" | "bare_licence" | "no_check";
+  marker: "TOG" | "PG";
+  kind: "subject" | "license" | "generated" | "approved_after";
+  /** Events only: "terms", "licence", or null for a licence. */
+  basis?: "terms" | "licence" | null;
+  issuer: string;
+  home: string | null;
+  /** The TOG spelling; null for an old PG licence id (ask its registry). */
+  key: string | null;
+  cls?: string;
+  serial?: string;
+  example: boolean;
+}
+/** An act record: the fields codeFor reads. */
+export interface CodeAct {
+  type: "pg.grant.v1" | "pg.license.v2" | "pg.answer.v1" | "pg.after_gen.v1";
+  id: string;
+  signer: string;
+  subject_ref: string;
+  grant?: { id: string; signer: string } | null;
+  cosign?: { id: string; home: string; home_in_code: boolean } | null;
+  license_id?: string;
+  media_hash?: string;
+}
+/** The check character of a body, under the TOG table (default) or CROCKFORD for a PG body. */
+export function checkChar(body: string, values?: string): string;
+/** The one reading of a code exactly as it stands in a message, never repaired. Throws CodeError. */
+export function parseCode(code: string, options?: { check?: boolean }): ParsedCode;
+/** The one TOG spelling, used by every comparison. Old PG licence ids need their pg.license.v2 record. */
+export function codeKey(code: string, licences?: Record<string, CodeAct>): string;
+/** "subject", "license", "generated" or "approved_after", from the string alone (no network). */
+export function kindOf(code: string): string;
+/** What the string claims, for support tools; never shown beside a video. */
+export function describe(code: string): string;
+/** Where a person types: the one code meant, in its TOG spelling, for "Did you mean …?". Throws CodeError. */
+export function normalizeTyped(typed: string, licences?: Record<string, CodeAct>): string;
+/** The code of an act, computed from its record. Throws CodeError ("no_code" when the record gives none). */
+export function codeFor(act: CodeAct): string;
+/** Readable copies {Code?, Licence?} against the record: true when every copy present equals its recomputed code. */
+export function metadataOk(meta: { Code?: string; Licence?: string }, act: CodeAct, licence?: CodeAct | null): boolean;
+/** What a verifier may say before signatures and the chain (TOG-CODE.md §15). */
+export function codeVerdict(fileHash: string, act?: CodeAct | null, caption?: string | null, ingredient?: string | null): string;
+export interface PartyEntry { entity: string; group: string; government?: boolean;
+  roles: Record<string, { from: number; until: number | null }>; provider_domains?: string[]; void_from?: number; closed?: number }
+/** Offline party check against dated entries (prefix → entry); Directory#parties builds them from a v3 directory. */
+export function checkParties(code: string, entries: Record<string, PartyEntry>,
+  options?: { at?: number | null; provider?: string | null }): { ok: boolean; facts: string[] };
+/** The steward's admission check of a new prefix: "" if admissible, else the reason. */
+export function admissionRefusal(prefix: string, entity: string, government: boolean,
+  directory: Record<string, { entity: string }>, reserved?: readonly string[]): string;
+/** Every well-formed code in free text, as it stands there. Fold a PG- string with codeKey before comparing it. */
+export function findCodes(text: string): string[];
 export function verifyDirectory(directory: unknown, options?: { stewardPublicKeyHex?: string; successorPublicKeyHex?: string | null; minSequence?: number;
   previous?: Directory | Record<string, unknown>;
   /** Your own pins: prefix → key fingerprints ("" for bare codes). No registry is pinned by default. */

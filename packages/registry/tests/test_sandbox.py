@@ -188,7 +188,7 @@ def test_an_older_sandbox_gains_serials_9_to_12_when_opened(tmp_path):
 
 def test_an_older_sandbox_whose_serial_9_is_the_operators_own_is_refused_clearly(tmp_path, capsys):
     key = old_sandbox(tmp_path / "registry.db", "My own test person")
-    with pytest.raises(ValueError, match="PG-TEST-000009V"):                # even on a new key, nothing is written
+    with pytest.raises(ValueError, match="TOG-TEST-000009V"):                # even on a new key, nothing is written
         Registry(Config(prefix="TEST", name="Test", api="https://test.example", sandbox=True), Key(), str(tmp_path / "registry.db"))
     (tmp_path / "registry.json").write_text(json.dumps({"prefix": "TEST", "name": "Test", "api": "https://test.example",
                                                       "sandbox": True}))

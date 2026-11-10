@@ -13,6 +13,7 @@ import pregen
 HERE = Path(__file__).resolve().parent
 CASES = json.loads((HERE / "identity_cases.json").read_text())
 V = json.loads((HERE.parents[2] / "spec/test-vectors/answers.json").read_text())
+ANCHOR_LISTS = json.loads((HERE.parents[2] / "spec/test-vectors/anchors.json").read_text())
 NOW, KEY = V["now"], hashlib.sha256(b"pregen-answer-vector-registry").hexdigest()
 D = pregen.verify_directory(V["directory"], V["steward_public_key_hex"], now=NOW)
 
@@ -107,9 +108,16 @@ def entry(code, anchor="wikidata:Q11571"):
     return {"anchor": anchor, "code": code, "level": "verified", "proof_url": "", "status": "active"}
 
 
-def test_an_anchor_list_keeps_its_own_codes_and_drops_foreign_ones():
-    own, foreign, junk = entry("PG-TEST-000001N"), entry("PG-ABCD-000001V"), entry("pg-test-000003x")
-    assert anchors([own, foreign, junk]) == [own]
+@pytest.mark.parametrize("case", ANCHOR_LISTS["cases"], ids=lambda c: c["name"])
+def test_anchor_list_vectors(case):
+    """spec/test-vectors/anchors.json: TOG lines kept, PG lines folded, foreign codes dropped; an entry that is not a
+    person code fails the whole list."""
+    a = case.get("anchor", "wikidata:Q11571")
+    if "error" in case:
+        with pytest.raises(pregen.PregenError, match=case["error"]):
+            anchors([entry(c, a) for c in case["codes"]])
+    else:
+        assert anchors([entry(c, a) for c in case["codes"]]) == [entry(c, a) for c in case["keep"]]
 
 
 def test_an_anchor_list_naming_a_code_twice_is_refused():
@@ -130,8 +138,8 @@ def test_an_old_anchor_list_is_refused():
 
 def test_an_anchor_list_drops_a_false_claim_only_under_its_own_anchor():
     false = "PG-TEST-000002Z"               # the vector directory: a false claim under wikidata:Q42
-    assert anchors([entry(false, "wikidata:Q42"), entry("PG-TEST-000001N")]) == [entry("PG-TEST-000001N")]
-    assert anchors([entry(false)]) == [entry(false)]
+    assert anchors([entry(false, "wikidata:Q42"), entry("PG-TEST-000001N")]) == [entry("TOG-TEST-000001N")]
+    assert anchors([entry(false)]) == [entry("TOG-TEST-000002Z")]
 
 
 def test_a_false_claim_is_weighed_under_another_anchor_but_never_generated_alone():

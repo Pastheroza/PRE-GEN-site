@@ -18,6 +18,69 @@ Text only: no message format, required schema member or vector changes.
 - **`licensee`:** a licensee not bound to a provider URL gets 403 `PG_NOT_BOUND` (`bind` B-5), not 401.
 - **Conformance:** two profiles for the message interface (`PRE-GEN-SPEC.md` §8.1).
 
+## pregen-registry 0.5.0 (unreleased): the registry writes ToG codes
+
+Needs `pregen` 0.14.
+- **Persons:** a new person is born `TOG-<prefix>-<9 random digits><check>`. A PG-born person is written `TOG-`
+  with the same number and check; stored rows are not rewritten, and the `PG-` spelling is read as legacy input
+  for the same person in requests, lookups and commands. An over-padded number gets `PG_MALFORMED` with the TOG
+  spelling as a hint.
+- **Licences and allows:** every licence has a `TOG-LIC` code and every allow a `TOG-PG-LIC` code, computed from
+  the signed record (flat model) and issued once; one that would give no code, or a code issued already, is signed
+  again a second shorter. Records signed before 0.5 get their codes by the same computation at start. One whose
+  code would end in a symbol or start `ZZZZ` (about 1 in 7) is not signed again: it has no code and no
+  `/v2/codes` answer until the home model exists.
+- **`POST /v2/requests`** returns an allow's code beside the answer (`extensions/proof.md`); proof entries carry
+  `code`, `licence` and `grant`.
+- **Lookup** answers any code in its TOG spelling with its kind (`extensions/lookup.md`).
+- **Anchor lists, catalog, terms and grants** write `TOG-`. Prefixes are 4 to 8 letters; a sandbox keeps 4 PG
+  letters.
+
+## pregen 0.14.0, @pregen/verify 0.14.0 (unreleased): the ToG code
+
+A core change (ToG code design, all decisions approved; decision 4 replaced by the hard switch).
+Both libraries implement it: `parse_code`, `kind_of`, `describe`, `issuer_of`, `code_key`, `normalize_typed`,
+`find_codes`, `code_for`, `metadata_ok`, `code_verdict`, `check_parties`, `admission_refusal`, directory v3
+(`parseCode`, `kindOf`, `describe`, `codeKey`, … in `@pregen/verify`).
+- **`TOG-CODE.md` (new):** the ToG code, formerly PG code. Every code is written `TOG-`. Persons
+  `TOG-<PREFIX>-<9 random digits><check>`; licences and acts `TOG-<KIND>-<ISSUER>[-<HOME>]-XXXX-XXXX-XXXX`
+  with the kinds `PG`, `PG-LIC`, `AG`, `AG-LIC` and `LIC`. The tail is 55 bits of the message id
+  of the object the home signed for the act (the act itself in the flat model); no counter. The
+  check covers two prefix-length digits and a kind digit; I, L, O, U take 32–35 in a TOG-only
+  value table. Prefixes are 4–8 letters A–Z, never with `LIC` at either end, admitted under
+  §9.1. Readable copies of a file's codes are recomputed and refused on any mismatch (§14).
+- **The hard switch:** PG-born persons are respelled by the marker only (same number, same
+  check); old licences get their `TOG-LIC` code from the signed licence's id. A `PG-` string is
+  legacy input only: `code_key` folds it to its one TOG spelling, used by every comparison, and
+  nothing writes `PG-`. A PG person string with no valid TOG spelling is not a code.
+- **Directory v3** at `https://www.pregen.org/registries.v3.json`: entity, group, dated roles,
+  government, provider domains, `void_from`, `closed`, `resolver`, `min_library`. v2 stays
+  frozen at its URL for 0.10–0.13 clients.
+- **`PRE-GEN-CORE.md`** rules 1 and 2; **`identity`:** codes in their TOG spelling, compared by
+  `code_key`; `verify_anchors` / `verifyAnchors` keep `TOG-` lines, fold `PG-` lines and return the TOG
+  spelling; an entry that is not a person code (not a code, mistyped, a licence or event code) fails the
+  whole list; **`lookup`:** `kind`, `moved`, `alias`, answers in TOG, an over-padded number gets
+  `PG_MALFORMED` with a hint; **`grants`:** a licence's `TOG-LIC` code, old licences included;
+  **`proof`:** each subject's `PG` or `PG-LIC` code, readable copies `code`, `licence` and the
+  `grant` they are recomputed from.
+- **Schemas:** `subject_ref` accepts `TOG-` (request, grant, terms); prefixes 4–8 letters
+  (anchors, registry document, key set); `proof.json` entries may carry `code`, `licence`,
+  `grant`. The registry's vendored copies follow.
+- **`PG-CODE.md`** frozen, with a pointer to `TOG-CODE.md`; its errata are in `TOG-CODE.md` §18.
+- **Vectors:** `test-vectors/tog-code.json` (with `describe`), generated from the reference model
+  `tools/tog_code.py` by `tools/tog_vectors.py`; `test-vectors/anchors.json` revised for TOG lines.
+- **Old clients:** 0.13 refuses every TOG code (fails closed); 0.13.1 refuses an anchor list
+  with a TOG line instead of dropping it. 0.14 reads it.
+
+## pregen 0.13.1, @pregen/verify 0.13.1 (unreleased)
+
+A patch that changes published behaviour (ToG code design, decision 14, approved):
+- **`identity`:** an anchor-list entry of unknown shape fails the whole list. 0.13.0 dropped it silently, so a
+  refusal written in a code shape it cannot read (a `TOG-` code) was lost. Now `verify_anchors` / `verifyAnchors`
+  refuse the list, and that registry's people get no decision until a list verifies. Another registry's code of a
+  known shape is still dropped. Vectors: `test-vectors/anchors.json`. This patch ships before any registry writes
+  `TOG-` codes.
+
 ## pregen 0.13.0, @pregen/verify 0.13.0, pregen-registry 0.4.0 (unreleased)
 
 Four clarifications of existing extensions (approved 2026-11-07), no new extension:

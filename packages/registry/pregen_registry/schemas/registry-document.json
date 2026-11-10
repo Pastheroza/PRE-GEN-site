@@ -18,7 +18,7 @@
   "properties": {
     "prefix": {
       "type": "string",
-      "pattern": "^([ABCDEFGHJKMNPQRSTVWXYZ]{4})?$"
+      "pattern": "^((?!LIC)(?![A-Z]*LIC$)(?!L[A-Z]IC$)(?!LI[A-Z]C$)[A-Z]{4,8})?$"
     },
     "name": {
       "type": "string"

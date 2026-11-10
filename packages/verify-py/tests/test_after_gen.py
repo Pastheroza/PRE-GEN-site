@@ -267,7 +267,7 @@ def with_codes(env, **codes):
 def relabel(code, kind):
     """The same tail under another kind, with the check of that kind: a well-formed code of another meaning."""
     prefix, tail = code.split("-")[-4], code[-14:].replace("-", "")[:-1]
-    t = tail + ag._tog_check(f"{len(prefix)}0{ag._TOG_KINDS.index(kind) + 1}{prefix}{tail}")
+    t = tail + pregen.check_char(f"{len(prefix)}0{('PG', 'PG-LIC', 'AG', 'AG-LIC', 'LIC').index(kind) + 1}{prefix}{tail}")
     return f"TOG-{kind}-{prefix}-{t[:4]}-{t[4:8]}-{t[8:]}"
 
 
@@ -1001,12 +1001,12 @@ TOG_PERSONS = ["TOG-PRAM-900000037K", "TOG-OMNI-9000000055", "TOG-KINO-900000007
 def test_the_tog_check_on_the_design_examples():
     for head, code in TOG_EVENTS:
         tail = code[-14:].replace("-", "")
-        assert ag._tog_check(head + tail[:-1]) == tail[-1], code
-        assert ag._tog_check(head + tail[:-2] + ("0" if tail[-2] != "0" else "1")) != tail[-1], code
+        assert pregen.check_char(head + tail[:-1]) == tail[-1], code
+        assert pregen.check_char(head + tail[:-2] + ("0" if tail[-2] != "0" else "1")) != tail[-1], code
     for code in TOG_PERSONS:
         prefix, serial = code[4:8], code[9:]
-        assert ag._tog_check(prefix + serial[:-1]) == serial[-1], code
-    assert ag._tog_check("PRAMIL") != ag._tog_check("PRAM11")       # I and L are not 1: their own values
+        assert pregen.check_char(prefix + serial[:-1]) == serial[-1], code
+    assert pregen.check_char("PRAMIL") != pregen.check_char("PRAM11")       # I and L are not 1: their own values
 
 
 LIC_CODE = "TOG-LIC-TEST-XVQE-XVQE-XVQY"      # basis.licence.id "e" * 64: the tail of 0xeee..., then the check
@@ -1018,16 +1018,18 @@ def test_the_readable_codes():
     code, lic = pregen.after_gen_codes(rec).values()
     tail = "".join("0123456789ABCDEFGHJKMNPQRSTVWXYZ"[int(f"{int(rid, 16):0256b}"[i:i + 5], 2)] for i in range(0, 55, 5))
     assert code == "TOG-AG-LIC-TEST-" + "-".join(((tail + code[-1])[i:i + 4]) for i in (0, 4, 8)) and lic == LIC_CODE
-    assert code[-1] == ag._tog_check("404TEST" + tail) and LIC_CODE[-1] == ag._tog_check("405TEST" + "XVQEXVQEXVQ")
+    assert code[-1] == pregen.check_char("404TEST" + tail) and LIC_CODE[-1] == pregen.check_char("405TEST" + "XVQEXVQEXVQ")
     terms = coded(a(), basis=TERMS)
     assert pregen.after_gen_codes(terms)["Code"].startswith("TOG-AG-TEST-") and pregen.after_gen_codes(terms)["Licence"] is None
     # none where a code does not exist: a check * ~ $ = !, a tail starting ZZZZ, no prefix
     plain = coded(a(), exists=False)                           # a nonce under which its check would be a symbol
     pid = pregen.message_id("pg.after_gen.v1", plain["body"])
     ptail = "".join("0123456789ABCDEFGHJKMNPQRSTVWXYZ"[int(f"{int(pid, 16):0256b}"[i:i + 5], 2)] for i in range(0, 55, 5))
-    assert ag._tog_check("404TEST" + ptail) in "*~$=!" and pregen.after_gen_codes(plain)["Code"] is None
-    assert ag._tog_code("AG", "TEST", "f" * 64) is None and ag._tog_code("LIC", "TEST", "f" * 64) is None   # ZZZZ...
-    assert ag._tog_code("AG", "", rid) is None and ag._tog_code("AG", "TEST", "e" * 63) is None
+    assert pregen.check_char("404TEST" + ptail) in "*~$=!" and pregen.after_gen_codes(plain)["Code"] is None
+    # code_for gives none for a ZZZZ tail (an act, a licence), a broken id, or a signer not the person's own registry
+    for act in ({"id": "f" * 64}, {"type": "pg.grant.v1", "id": "f" * 64}, {"id": "e" * 63}, {"signer": "NWRD"}):
+        with pytest.raises(pregen.PregenError):
+            pregen.code_for({"type": "pg.after_gen.v1", "id": rid, "signer": "TEST", "subject_ref": CODE, **act})
     bare = {**rec, "body": {**rec["body"], "subject_ref": "TOG-000042*"}}
     codes = pregen.after_gen_codes(bare)                                       # the bare namespace is PRAMPTA's
     assert codes["Code"].startswith("TOG-AG-LIC-PRAM-") and codes["Licence"].startswith("TOG-LIC-PRAM-")
@@ -1343,20 +1345,23 @@ def test_request_and_decision():
     # a request may name the person in the PG spelling: it is written in TOG
     assert pregen.after_gen_request("https://studio.example", key, "PG-TEST-000001N", "e" * 64, a(), SCOPE)["body"][
         "subject_ref"] == CODE
-    with pytest.raises(pregen.PregenError, match="not a person's code"):
+    with pytest.raises(pregen.PregenError, match="mistyped"):
         pregen.after_gen_request("https://studio.example", key, "PG-TEST-000001M", "e" * 64, a(), SCOPE)
+    with pytest.raises(pregen.PregenError, match="not a person's code"):                # an act's code names no person
+        pregen.after_gen_request("https://studio.example", key, "TOG-AG-PRAM-ZZZZ-T8JE-WDJX", "e" * 64, a(), SCOPE)
 
 
 def test_one_spelling_for_the_person():                       # TOG-CODE.md §7.3
     for code, key in (("TOG-TEST-000001N", "TOG-TEST-000001N"), ("PG-TEST-000001N", "TOG-TEST-000001N"),
                       ("PG-000042*", "TOG-000042*"), ("TOG-000042*", "TOG-000042*"), ("PG-STD-000001", "TOG-STD-000001"),
                       ("PG-PRAM-900000037K", "TOG-PRAM-900000037K"), ("TOG-PRAM-900000037K", "TOG-PRAM-900000037K")):
-        assert ag.code_key(code) == key, code
+        assert ag.person_key(code) == key, code
     for bad in ("PG-TEST-000001M", "TOG-TEST-000001M", "tog-TEST-000001N", "PG-PRAM-12345678K", "PG-XYZ-000001",
                 "PG-PRAMB-900000037K",                                       # a PG prefix always had 4 letters
-                "PG-STD-000001-K7M2QX9", "TOG-AG-TEST-T8JE-WDJX-0000", " TOG-TEST-000001N", "TEST-000001N", None, 1):
+                "PG-STD-000001-K7M2QX9", "TOG-AG-PRAM-ZZZZ-T8JE-WDJX", "TOG-LIC-NWRD-PRAM-ZZZZ-84RN-RT04",
+                " TOG-TEST-000001N", "TEST-000001N", None, 1):
         with pytest.raises(pregen.PregenError):
-            ag.code_key(bad)
+            ag.person_key(bad)
     with pytest.raises(pregen.PregenError, match="one spelling, TOG"):     # a record never writes PG-
         check(record(a(), subject_ref="PG-TEST-000001N"))
 

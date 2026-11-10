@@ -19,6 +19,12 @@ follows. (Founder, 2026-09-28: "синхронизировать
 The "Technical Specification v1.1" addendum (August 2026) was never published
 as its own Zenodo version; everything it added is part of v5.
 
+**Collected for the next version: the ToG code (libraries 0.14.0, unreleased).** A core
+change: every code is written `TOG-` ([`TOG-CODE.md`](TOG-CODE.md)), and the directory moves to
+v3 at a new URL while v2 stays frozen. No issued code changes meaning (rule 2): every PG string
+keeps resolving to the same person or licence, read as legacy input. It gets a version number
+when it is published (rule 1). What changed: `CHANGELOG.md`, "pregen 0.14.0".
+
 ## Rules
 
 1. **A version is a published snapshot.** The number changes only when a new

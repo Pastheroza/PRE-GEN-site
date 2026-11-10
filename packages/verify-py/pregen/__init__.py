@@ -4,8 +4,11 @@ built in. Same API as the npm package @pregen/verify.
 """
 
 import hashlib
+import itertools
 import json
+import math
 import re
+import unicodedata
 import urllib.request
 from copy import deepcopy
 from urllib.parse import urlsplit
@@ -13,7 +16,7 @@ from urllib.parse import urlsplit
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-__version__ = "0.13.0"
+__version__ = "0.14.0"
 __all__ = [
     "STEWARD_PUBLIC_KEY_HEX", "DIRECTORY_URL", "PregenError", "Directory", "canonical_json",
     "fingerprint", "check_public_key", "verify_bytes", "verify_signed", "verify_license", "issuer_of", "normalize_code",
@@ -25,22 +28,26 @@ __all__ = [
     "AFTER_GEN_LABEL", "AFTER_GEN_NOTICE", "AFTER_GEN_NOT", "media_hash", "read_after_gen", "embed_xmp",
     "c2pa_assertion", "check_after_gen", "check_after_gen_status", "after_gen_request", "after_gen_decision",
     "after_gen_codes",
+    "NotACode", "Mistyped", "AskRegistry", "CROCKFORD", "TOG_VALUES", "BARE_ISSUER", "FIXTURE_PREFIXES", "check_char",
+    "parse_code", "kind_of", "describe", "code_key", "normalize_typed", "find_codes", "code_for", "metadata_ok", "code_verdict",
+    "check_parties", "admission_refusal", "DIRECTORY_V2_URL", "CodeError",
 ]
 
 STEWARD_PUBLIC_KEY_HEX = "5cb949aab04186e3e216ec541b847c912fc3f78138c0ec3cb2560b2dad0d1f1b"
 # The successor steward key, created in advance and kept apart (PG-CODE.md §9.1). A directory it
 # signs replaces every directory signed by the current steward key, whatever their sequence.
 STEWARD_SUCCESSOR_PUBLIC_KEY_HEX = "658544163d6abd5fef046407980d249817875d87d8cf4b67879a2e265fa5612f"  # pg-ed25519:3e5e20729ce8485eea274c4cb33721d6, created 2026-10-03
-DIRECTORY_URL = "https://www.pregen.org/registries.json"
+# The directory (PRE-GEN-CORE.md rule 2, TOG-CODE.md §9.2): v3 lists prefixes of 4 to 8 letters, legal entities and
+# dated roles. The v2 file stays frozen at DIRECTORY_V2_URL, with the PG-era entries only, for clients before 0.14;
+# this library verifies both.
+DIRECTORY_URL = "https://www.pregen.org/registries.v3.json"
+DIRECTORY_V2_URL = "https://www.pregen.org/registries.json"
 SCHEMA = "pregen.registries.v2"
+SCHEMA_V3 = "pregen.registries.v3"
+_ROLES = ("home", "market", "wallet", "log_operator", "witness")
 _MAX_INT = 2**53 - 1
 _PREFIX = re.compile(r"[ABCDEFGHJKMNPQRSTVWXYZ]{4}")
 _FINGERPRINT = re.compile(r"pg-ed25519:[0-9a-f]{32}")
-# A code has one form in every message (PG-CODE.md §7, stress test H5): the whole string matches, ASCII, upper case,
-# nothing around it. Subject, licence, or a legacy code of the bare namespace (PG-STD-000123: no check character).
-_CHECK = r"[0-9A-HJKMNP-TV-Z*~$=!]"
-_CANONICAL_CODE = re.compile(rf"PG-(?:([ABCDEFGHJKMNPQRSTVWXYZ]{{4}})-)?(?:[0-9]{{6,}}{_CHECK}"
-                             rf"|[A-Z]{{3}}-[0-9]{{6,}}-[0-9A-HJKMNP-TV-Z]{{6}}{_CHECK})|PG-[A-Z]{{3}}-[0-9]{{6,}}")
 # The curve's 8 small-order points, sign bit cleared; y = p and p + 1 are 0 and 1 again (as libsodium lists them).
 # Under such a key a signature checks out for any message with no private key behind it, and OpenSSL takes it
 # (stress test C1, 2026-10-28). The same list as PRAMPTA's verify_ed25519.
@@ -156,21 +163,457 @@ def verify_license(body: dict, license_id: str, subject_public_key_hex: str, sub
     return {"subject_valid": subject_valid, "operator_valid": operator_valid}
 
 
+# ── ToG code (spec/TOG-CODE.md) ──────────────────────────────────────────────────
+# One family, one written spelling: TOG-. A PG- string is legacy input only; code_key() folds it to its one TOG
+# spelling, and nothing here returns a PG- string. A code is a handle, never proof: an act's code is recomputed from
+# its record (code_for) and compared. Shared vectors: spec/test-vectors/tog-code.json, also run by verify-js.
+
+CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"   # PG-CODE §3, frozen: serials, tails, PG bodies
+TOG_VALUES = CROCKFORD + "ILOU"                  # TOG bodies: I L O U take 32-35 (TOG-CODE §3)
+_CHECKS = CROCKFORD + "*~$=!"                    # PG-CODE §3.1, frozen; new codes never end in a symbol
+_MAX_BODY = 36
+_TAIL = 11                                       # 55 bits of a message id
+_KINDS = {"LIC": "license", "PG": "generated", "AG": "approved_after"}
+_FIVE = ("PG", "PG-LIC", "AG", "AG-LIC", "LIC")  # the kind digit is the 1-based index
+_KIND_OF_TYPE = {"pg.grant.v1": "LIC", "pg.license.v2": "LIC", "pg.answer.v1": "PG", "pg.after_gen.v1": "AG"}
+_RESERVED_SERIAL, _RESERVED_TAIL = 900_000_000, "ZZZZ"
+BARE_ISSUER = "PRAM"       # the bare PG- namespace belongs to the first registry, which also holds PRAM
+FIXTURE_PREFIXES = ("NWRD", "HLWD", "USAD", "VELR", "SKAN", "KAST", "TGOV", "HYBR", "OMNI", "KINO",
+                    "KOBEMK", "LYONMK", "RIOMKT", "PUNEMK", "OSLOMK", "ZYXW", "ABCD", "TEST")   # reserved forever
+
+_C = "0-9A-HJKMNP-TV-Z"
+_K = rf"[{_C}*~$=!]"
+_TOG_PREFIX = "(?!LIC|L[A-Z]IC(?![A-Z])|LI[A-Z]C(?![A-Z]))[A-Z]{4,8}(?<!LIC)"
+_OLDP = "[A-HJKMNP-TV-Z]{4}"
+_SHAPES = (  # (shape, marker, kind, regex): exactly one matches any valid code (TOG-CODE §7.1)
+    ("person", "TOG", "subject", re.compile(rf"TOG-({_TOG_PREFIX})-([1-9][0-9]{{8}})([{_C}])")),
+    ("event", "TOG", None, re.compile(rf"TOG-(LIC|(?:PG|AG)(?:-LIC)?)-({_TOG_PREFIX})(?:-({_TOG_PREFIX}))?"
+                                      rf"-([{_C}]{{4}}-[{_C}]{{4}}-[{_C}]{{3}})([{_C}])")),
+    ("old_person", "TOG", "subject", re.compile(rf"TOG-({_OLDP})-([0-9]{{6,7}})({_K})")),
+    ("old_bare_person", "TOG", "subject", re.compile(rf"TOG-()([0-9]{{6,}})({_K})")),
+    ("old_no_check", "TOG", "subject", re.compile(r"TOG-(STD|SUB)-([0-9]{6,})")),
+    ("pg_person", "PG", "subject", re.compile(rf"PG-({_OLDP})-([0-9]{{6,}})({_K})")),
+    ("pg_licence", "PG", "license", re.compile(rf"PG-({_OLDP})-([A-Z]{{3}})-([0-9]{{6,}})-([{_C}]{{6}})({_K})")),
+    ("bare_person", "PG", "subject", re.compile(rf"PG-()([0-9]{{6,}})({_K})")),
+    ("bare_licence", "PG", "license", re.compile(rf"PG-()([A-Z]{{3}})-([0-9]{{6,}})-([{_C}]{{6}})({_K})")),
+    ("no_check", "PG", "subject", re.compile(r"PG-([A-Z]{3})-([0-9]{6,})")),
+)
+_FIND = re.compile(r"(?<![A-Za-z0-9-])(?:TOG|PG)-[A-Z0-9]+(?:-[A-Z0-9]+)*[*~$=!]?(?![A-Za-z0-9])")
+
+
+class CodeError(PregenError):
+    """A string that is not a code, or a record that gives none. `reason`: "malformed", "mistyped", "ask_registry" or
+    "no_code" (as the vectors write it); catch the subclasses, or this and read `reason`."""
+    reason = "no_code"
+
+
+class NotACode(CodeError):
+    """Malformed: not a code at all. `hints` lists the codes a typed string could mean when more than one fits."""
+    reason = "malformed"
+
+    def __init__(self, message="not a code", hints=()):
+        super().__init__(message)
+        self.hints = list(hints)
+
+
+class Mistyped(CodeError):
+    """The shape matches, the check character does not: distinct from not found and from not a code."""
+    reason = "mistyped"
+
+
+class AskRegistry(CodeError):
+    """An old PG licence id with no record at hand: only its registry knows its TOG-LIC code."""
+    reason = "ask_registry"
+
+
+def check_char(body: str, values: str = TOG_VALUES) -> str:
+    """PG-CODE §4.1: the sum of each value times its 1-based position, mod 37. `values` is TOG_VALUES for a TOG body,
+    CROCKFORD for a PG body. Raises NotACode for a body over 36 characters or outside the table."""
+    if not isinstance(body, str) or len(body) > _MAX_BODY or any(c not in values for c in body):
+        raise NotACode("body too long or outside the alphabet")
+    return _CHECKS[sum(values.index(c) * (i + 1) for i, c in enumerate(body)) % 37]
+
+
+def _verifies(body, chk, values) -> bool:
+    try:
+        return check_char(body, values) == chk
+    except NotACode:
+        return False
+
+
+def _event_body(kind, issuer, home, tail) -> str:
+    return f"{len(issuer)}{len(home or '')}{_FIVE.index(kind) + 1}{issuer}{home or ''}{tail}"
+
+
+def parse_code(code: str, check: bool = True) -> dict:
+    """The one reading of a code exactly as it stands (TOG-CODE §7): no trimming, case change or folding. Offline:
+    shape, kind ("subject", "license", "generated", "approved_after"), basis of an event ("terms", "licence" or None),
+    issuer (the registry to ask; "" for the bare namespace), home, example, and `key`, the TOG spelling (None for an
+    old PG licence id: see code_key). check=False reads the shape only, for routing; it never says a code is real.
+    Raises NotACode or Mistyped."""
+    if not isinstance(code, str) or not code.isascii():
+        raise NotACode("not an ASCII string")
+    hits = [(s, mk, k, m) for s, mk, k, rx in _SHAPES if (m := rx.fullmatch(code))]
+    if len(hits) != 1:
+        raise NotACode(f"not a code: {code!r}")
+    shape, marker, kind, m = hits[0]
+    g = m.groups()
+    out = {"shape": shape, "marker": marker, "kind": kind, "home": None, "key": code if marker == "TOG" else None}
+    if marker == "PG" and kind == "subject":
+        # Legacy input: its one spelling is TOG- + the rest. With no valid TOG spelling it was never issued.
+        if check and shape != "no_check" and not _verifies(g[0] + g[1], g[2], CROCKFORD):
+            raise Mistyped(f"mistyped code: {code}")
+        if check and not _valid("TOG" + code[2:]):
+            raise NotACode(f"never issued in any spelling: {code}")
+        out["key"] = "TOG" + code[2:]
+    if shape in ("no_check", "old_no_check"):
+        return dict(out, issuer="", cls=g[0], serial=g[1], example=False)
+    if shape == "event":
+        kind, issuer, home, tail, chk = g
+        tail = tail.replace("-", "")
+        if home == issuer:
+            raise NotACode("a registry is written once")
+        if check and not _verifies(_event_body(kind, issuer, home, tail), chk, TOG_VALUES):
+            raise Mistyped(f"mistyped code: {code}")
+        basis = None if kind == "LIC" else "licence" if kind.endswith("-LIC") else "terms"
+        return dict(out, kind=_KINDS[kind[:3].rstrip("-")], basis=basis, issuer=issuer, home=home,
+                    example=tail.startswith(_RESERVED_TAIL))
+    prefix, *rest, chk = g
+    if check and not _verifies(prefix + "".join(rest), chk, TOG_VALUES if marker == "TOG" else CROCKFORD):
+        raise Mistyped(f"mistyped code: {code}")
+    serial = rest[-1] if kind == "subject" else rest[1]
+    return dict(out, issuer=prefix, cls="", serial=serial, example=int(serial) >= _RESERVED_SERIAL)
+
+
+def _valid(s) -> bool:
+    try:
+        parse_code(s)
+        return True
+    except PregenError:
+        return False
+
+
+def kind_of(code: str) -> str:
+    """"subject", "license", "generated" or "approved_after", from the string alone (no network)."""
+    return parse_code(code)["kind"]
+
+
+def describe(code: str) -> str:
+    """What the string claims, for support tools (TOG-CODE §15): never shown beside a video, where party names come
+    only from a record that fits the file. Raises NotACode or Mistyped."""
+    p = parse_code(code)
+    home = f" · home {p['home']}" if p["home"] else ""
+    basis = {"licence": " under a licence", "terms": " under the person's terms"}.get(p.get("basis"), "")
+    ex = " · EXAMPLE, never issued" if p["example"] else ""
+    if p["marker"] == "PG":
+        ex += f" · old spelling of {p['key']}" if p["key"] else " · old licence number: its registry gives its TOG code"
+    return f"claims {p['kind']}{basis} · issued by {p['issuer'] or 'the bare legacy namespace'}{home} · not checked{ex}"
+
+
+def code_key(code: str, licences: dict = None) -> str:
+    """The one TOG spelling (TOG-CODE §7.3). Compare, hash and look up codes only by it. A TOG code is its own key; a PG
+    person folds by its marker; an old PG licence id folds through its record: `licences` maps that id to the signed
+    pg.license.v2 as {type, id (its message id), signer (prefix), subject_ref, license_id}. Without it: AskRegistry.
+    Never returns a PG- string."""
+    p = parse_code(code)
+    if p["key"]:
+        return p["key"]
+    rec = (licences or {}).get(code)
+    if not isinstance(rec, dict) or rec.get("license_id") != code:
+        raise AskRegistry(f"ask its registry for the code of {code}")
+    return code_for(rec)
+
+
+def _k(code):
+    """code_key where there is one, else the string as it stands: a comparison never splits one code in two."""
+    try:
+        return code_key(code)
+    except PregenError:
+        return code
+
+
 def issuer_of(code: str) -> str:
-    """The namespace of a canonical PG code: its four-letter prefix, or "" for the bare namespace. Anything else —
-    lower case, spaces, invisible or non-ASCII characters — is refused, never repaired: one code, one string
-    (PG-CODE.md §7). Pass what a person typed through normalize_code first."""
-    if not isinstance(code, str):
-        raise PregenError("PG code must be a string")
-    m = _CANONICAL_CODE.fullmatch(code)
-    if not m:
-        raise PregenError("not a canonical PG code")
-    return m.group(1) or ""
+    """The registry to ask about a code: its first prefix, or "" for the bare namespace. The shape only, like 0.13
+    (TOG-CODE §8); TOG and PG spellings alike. Anything else is refused, never repaired: lower case, spaces,
+    invisible or non-ASCII characters (PG-CODE §7). Pass what a person typed through normalize_typed first."""
+    return parse_code(code, check=False)["issuer"]
+
+
+def find_codes(text: str) -> list:
+    """Every well-formed code in free text, as it stands there (TOG-CODE §13). A PG- string found is legacy input:
+    pass it through code_key before comparing or showing it."""
+    found = (c if _valid(c) else c[:-1] for c in _FIND.findall(text))
+    return [c for c in found if _valid(c)]
+
+
+_DASHES = dict.fromkeys(map(ord, "‐‑‒–—―−﹣"), "-")
+_DROP = dict.fromkeys(map(ord, "­​‌‍⁠﻿\\"))
+_LOOKALIKE = str.maketrans("АВСЕНІКМОРТХаеорсхіктмΑΒΕΗΙΚΜΝΟΡΤΧΥΖ", "ABCEHIKMOPTXAEOPCXIKTMABEHIKMNOPTXYZ")
+_AS_DIGIT = str.maketrans("OIL", "011")
+_MAX_READINGS = 4096
+
+
+def _readings(g, letters=True) -> set:
+    out = {g, g.translate(_AS_DIGIT)}
+    if letters and len(g) <= 8 and set(g) <= set("ABCDEFGHIJKLMNOPQRSTUVWXYZ01"):
+        out |= {"".join(x) for x in itertools.product(*("IL" if c == "1" else "O" if c == "0" else c for c in g))}
+    if letters and re.fullmatch("[1IL]{2}C", g):
+        out.add("LIC")
+    return out
+
+
+def normalize_typed(typed: str, licences: dict = None) -> str:
+    """Only where a person types, pastes or scans a code (TOG-CODE §7.4), never on a code from a message: the one code
+    meant, in its TOG spelling, to show as "Did you mean ...?". Folds width, dashes, invisibles, Cyrillic and Greek
+    look-alikes, case, a resolver URL, trailing punctuation, then O/0 and I/L/1 by slot, then the PG spelling.
+    Raises NotACode when no reading is a code, or more than one is (their codes in `hints`), or the readings exceed
+    4096; Mistyped when the string as typed has the shape but not the check; AskRegistry for an old licence id whose
+    record (`licences`, as for code_key) is not at hand."""
+    if not isinstance(typed, str):
+        raise NotACode("a code is a string")
+    s = unicodedata.normalize("NFKC", typed).translate(_DASHES).translate(_DROP).translate(_LOOKALIKE).strip()
+    if "/" in s:
+        s = s.split("#")[0].rstrip("/").rsplit("/", 1)[-1]
+    s = s.rstrip(".,;:)]\"'").upper()
+    if "-" in s:
+        groups = ["".join(x.split()) for x in s.split("-")]
+    elif s.split() and s.split()[0] in ("PG", "TOG"):          # the display form 'PG 000 042 *' (PG-CODE §13)
+        groups = s.split()
+        groups = [groups[0], "".join(groups[1:])] if len(groups) > 2 and not groups[1].isalpha() else groups
+    else:
+        groups = [s]
+    tail_from = len(groups) - 3 if "TOG" in _readings(groups[0]) and len(groups) >= 6 else len(groups)
+    readings = [_readings(g, i < tail_from) for i, g in enumerate(groups)]
+    if math.prod(map(len, readings)) > _MAX_READINGS:
+        raise NotACode("too many readings: type the code again")
+    found = set()
+    for combo in itertools.product(*readings):
+        if _valid(c := "-".join(combo)):
+            try:
+                found.add(code_key(c, licences))
+            except AskRegistry:
+                found.add(c)
+    if len(found) > 1:
+        raise NotACode("more than one code fits: ask which", sorted(found))
+    if not found:
+        parse_code("-".join(groups))     # the honest error for the string as typed
+        raise NotACode(f"not a code: {typed!r}")
+    c = found.pop()
+    if c.startswith("PG-"):
+        raise AskRegistry(f"ask its registry for the code of {c}")
+    return c
+
+
+def _tail_of(message_id_hex) -> str:
+    if not isinstance(message_id_hex, str) or not _HEX64.fullmatch(message_id_hex):
+        raise CodeError("a message id is 64 lowercase hex")
+    n = int(message_id_hex, 16) >> (256 - 5 * _TAIL)
+    return "".join(CROCKFORD[(n >> (5 * (_TAIL - 1 - i))) & 31] for i in range(_TAIL))
+
+
+def code_for(act: dict) -> str:
+    """The code of an act, computed from its record, never read off a string (TOG-CODE §6.1). act = {type, id (its
+    message id), signer (the signer's prefix), subject_ref, grant?: {id, signer} of the licence it was made under,
+    cosign?: {id, home, home_in_code} of the home's countersignature}. Without a cosign (the flat model) the signer
+    must be the registry the person's code was born at. Raises PregenError when the record gives no code."""
+    try:
+        kind = _KIND_OF_TYPE[act["type"]]
+        grant = act.get("grant")
+        if grant:
+            if kind == "LIC" or grant["signer"] != act["signer"]:
+                raise CodeError("a licence has no basis; the grant behind an act is signed by the act's own signer")
+            kind += "-LIC"
+        cs = act.get("cosign")
+        if cs is None:
+            if (issuer_of(act["subject_ref"]) or BARE_ISSUER) != act["signer"]:
+                raise CodeError("no home countersignature: only the person's own registry may sign alone")
+            issuer, home, mid = act["signer"], None, act["id"]
+        else:
+            issuer, home, mid = act["signer"], cs["home"] if cs.get("home_in_code") else None, cs["id"]
+    except (KeyError, TypeError, AttributeError):
+        raise CodeError("not an act record")
+    home = None if home == issuer else home
+    tail = _tail_of(mid)
+    if tail.startswith(_RESERVED_TAIL):
+        raise CodeError("a reserved tail: never issued")
+    if not isinstance(issuer, str) or not (home is None or isinstance(home, str)):
+        raise CodeError("not an act record")
+    chk = check_char(_event_body(kind, issuer, home, tail))
+    if chk not in CROCKFORD:
+        raise CodeError("a symbol check: never issued")
+    t = tail + chk
+    code = f"TOG-{kind}-{issuer}{'-' + home if home else ''}-{t[:4]}-{t[4:8]}-{t[8:]}"
+    parse_code(code)
+    return code
+
+
+def _same(a, b) -> bool:
+    try:
+        return code_key(a) == code_key(b)
+    except PregenError:
+        return False
+
+
+def _matches(code, act) -> bool:
+    try:
+        return code_for(act) == code
+    except PregenError:
+        return False
+
+
+def metadata_ok(meta: dict, act: dict, licence: dict = None) -> bool:
+    """The readable copies beside a signed record (TOG-CODE §14): meta = {"Code", "Licence"}, either may be absent.
+    Both are recomputed (code_for on the act, and on `licence`, the record its grant names) and any mismatch refuses
+    the file. A Licence copy without a licence basis, or whose licence is not at hand, is a mismatch."""
+    try:
+        want = {"Code": code_for(act), "Licence": None}
+        if act.get("grant") and licence is not None and licence.get("id") == act["grant"]["id"]:
+            want["Licence"] = code_for(licence)
+    except (PregenError, KeyError, TypeError, AttributeError):
+        return False
+    return all(want[k] is not None and want[k] == v for k, v in meta.items() if k in want)
+
+
+_COVERS = " It covers the named person only, and says nothing about anyone else in the file."
+
+
+def code_verdict(file_hash: str, act: dict = None, caption: str = None, ingredient: str = None) -> str:
+    """What a verifier may say before it checks signatures and the chain (TOG-CODE §15). `act` is the record carried
+    with the file, with its `media_hash`; `caption` the code shown beside it, checked against the record, never the
+    other way round; `ingredient` the hash an edited file's C2PA manifest cites. A result starting "fits: " means the
+    record fits this file and this code: now verify the signatures and the chain, then show the outcome."""
+    p = None
+    if caption is not None:
+        try:
+            p = parse_code(caption)
+        except Mistyped:
+            return "Mistyped code."
+        except NotACode:
+            return "Not a code."
+        if p["example"]:
+            return "Example code from the specification. Never issued."
+    if act is None:
+        if p is None:
+            return "No record. This says nothing either way."
+        if p["shape"] != "event" or p["kind"] == "license":
+            return f"This code names a {p['kind']}. It says nothing about this file."
+        return "Unchecked: no record at hand. This says nothing either way."
+    edit = False
+    if act.get("media_hash") != file_hash:
+        if ingredient is None or ingredient != act.get("media_hash"):
+            return "This code belongs to a different file. It does not show that this video is allowed."
+        edit = True
+    if p is not None and not (_matches(caption, act) if p["shape"] == "event" else _same(caption, act.get("subject_ref"))):
+        return "The code does not match its record."
+    try:
+        kind = _KINDS[_KIND_OF_TYPE[act["type"]]]
+        code_for(act)
+    except (PregenError, KeyError, TypeError):
+        return "The code does not match its record."
+    if edit:
+        return "An editor states this was made from an approved file. Only the editor says so."
+    return f"fits: {kind}; now verify signatures and the chain (V-H)." + _COVERS
+
+
+def _held(span, at) -> bool:
+    return span is not None and (at is None or (span["from"] <= at and (span["until"] is None or at < span["until"])))
+
+
+def check_parties(code: str, entries: dict, at=None, provider: str = None) -> dict:
+    """{"ok", "facts"}: a code's parties against directory v3 entries {prefix: {entity, group, government, roles:
+    {role: {from, until}}, provider_domains, void_from?, closed?}}, read at `at` (the witnessed time of the act) or,
+    with no record, at no time (TOG-CODE §9.2). A revoked, closed or re-roled party is a fact, never "not a code";
+    ok is False only when a slot names an unlisted party, one without the slot's role at `at`, or one whose listing
+    was void at `at`. Times compare as numbers. For support tools, never shown beside a video."""
+    p = parse_code(code)
+    if p["shape"] != "event":
+        slots = [("issuer", p["issuer"] or BARE_ISSUER, ())]
+    elif p["home"]:
+        slots = [("issuer", p["issuer"], ("market",)), ("home", p["home"], ("home",))]
+    else:
+        slots = [("issuer", p["issuer"], ("market",) if p["kind"] == "license" else ("home", "market"))]
+    ok, facts = True, []
+    for slot, prefix, roles in slots:
+        e = entries.get(prefix)
+        if e is None or ("GOV" in prefix) != e.get("government", False):
+            ok = False
+            facts.append(f"! {prefix} is not a listed registry")
+            continue
+        if roles and not any(_held(e.get("roles", {}).get(r), at) for r in roles):
+            ok = False
+            facts.append(f"! {prefix} did not hold the role {' or '.join(roles)}" + (" at the act" if at else ""))
+        v = e.get("void_from")
+        if v is not None:
+            if at is not None and at >= v:
+                ok = False
+                facts.append(f"! {prefix} listing void from {v}; the act is after it")
+            else:
+                facts.append(f"{prefix} listing void from {v}" + ("; the act predates it" if at is not None else ""))
+        if e.get("closed") is not None:
+            facts.append(f"{prefix} closed at {e['closed']}; ask the home")
+        facts.append(f"{slot} {prefix} ({e['entity']})")
+    listed = [entries[x] for _, x, _ in slots if x in entries]
+    if len(listed) == 2 and listed[0].get("group") == listed[1].get("group"):
+        facts.append("issuer and home are one group")
+    for _, x, _ in slots:
+        if provider and x in entries and provider in entries[x].get("provider_domains", ()):
+            facts.append(f"{x} also generated it ({provider})")
+    return {"ok": ok, "facts": facts}
+
+
+_SKELETON = str.maketrans("CGQDJLVNRF", "OOOOIIUMPE")   # visual groups: CGOQD, IJL, UV, MN, PR, EF
+_RESERVED_WORDS = (
+    "PREGEN", "AFTERGEN", "TOGCODE", "STEWARD", "HOME", "MARKET", "BRANCH", "PROVIDER", "WALLET",
+    "ALLOW", "APPROV", "AUTHORI", "VERIF", "VALID", "LEGAL", "LAWFUL", "LICENS", "OFFICIAL", "CERTIF", "GENUIN",
+    "NOTFAKE", "TRUST", "DENIED", "DENY", "REFUS", "REVOK", "BLOCK", "BANNED", "POLICE", "COURT", "STATE",
+    "ADULT", "PORN", "NSFW", "XXX", "EROTIC", "NUDE")
+
+
+def _skeleton(s) -> str:
+    return s.replace("VV", "W").replace("RN", "M").replace("CL", "D").translate(_SKELETON)
+
+
+def _osa(a, b) -> int:
+    """Edit distance with adjacent swaps (optimal string alignment)."""
+    d = [[i + j if i * j == 0 else 0 for j in range(len(b) + 1)] for i in range(len(a) + 1)]
+    for i in range(1, len(a) + 1):
+        for j in range(1, len(b) + 1):
+            d[i][j] = min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] != b[j - 1]))
+            if i > 1 and j > 1 and a[i - 1] == b[j - 2] and a[i - 2] == b[j - 1]:
+                d[i][j] = min(d[i][j], d[i - 2][j - 2] + 1)
+    return d[-1][-1]
+
+
+def admission_refusal(new: str, entity: str, government: bool, directory: dict, reserved=FIXTURE_PREFIXES) -> str:
+    """The steward's check of a new prefix (TOG-CODE §9.1): "" if it may be listed for this legal entity, else the
+    reason. `directory` maps every listed prefix to {"entity": ...}. Refused or not is normative, the wording is not.
+    Human judgement (others' marks, offensive words, sensitive categories in other words) comes on top."""
+    if not isinstance(new, str) or not re.fullmatch(_TOG_PREFIX, new):
+        return "4 to 8 letters A-Z, never LIC at either end, never LIC with one letter added"
+    if new in directory or new in reserved:
+        return "taken or reserved: a prefix is never reassigned"
+    if government != ("GOV" in new):
+        return "GOV is for governments, and governments hold only prefixes with GOV"
+    sk = _skeleton(new)
+    if not government and "OOU" in sk:
+        return "looks like GOV"
+    if re.match("T[OQCGD][CGQ]|[PRA][CGQ]|[IJL]{2}[CGQ]", new) or re.search("[IJL]{2}[CGQ]$", new) \
+            or len(new) == 4 and re.search("[IJL].?[IJL].?[CGQ]", new) or new.endswith(("PG", "TOG")):
+        return "reads as a marker or a kind"
+    if any(_skeleton(w) in sk for w in _RESERVED_WORDS):
+        return "contains a reserved word"
+    if any(e.get("entity") == entity for e in directory.values()):
+        return "one prefix per legal entity"
+    for old in directory:
+        so = _skeleton(old)
+        if _osa(new, old) <= 1 or _osa(sk, so) <= 1 or so in sk or sk in so:
+            return f"too close to {old}"
+    return ""
 
 
 def normalize_code(typed: str) -> str:
-    """What a person typed or pasted, as the canonical code: surrounding ASCII spaces trimmed and lower case raised,
-    nothing else (PG-CODE.md §7). Only at a human input boundary, never on a code taken from a message."""
+    """Deprecated: use normalize_typed, which folds look-alikes and gives the TOG spelling. Surrounding ASCII spaces
+    trimmed and lower case raised, nothing else; the spelling is kept as typed (PG-CODE.md §7)."""
     if not isinstance(typed, str):
         raise PregenError("PG code must be a string")
     s = typed.strip(" \t\r\n")
@@ -193,8 +636,9 @@ def _https_url(value, field):
 def _check_invariants(d):
     if not isinstance(d, dict):
         raise PregenError("directory must be an object")
-    if d.get("schema") != SCHEMA:
-        raise PregenError(f"schema must be {SCHEMA}")
+    if d.get("schema") not in (SCHEMA, SCHEMA_V3):
+        raise PregenError(f"schema must be {SCHEMA} or {SCHEMA_V3}")
+    v3 = d["schema"] == SCHEMA_V3
     seq = d.get("sequence")
     if type(seq) is not int or not 1 <= seq <= _MAX_INT:
         raise PregenError("sequence must be a positive integer")
@@ -212,7 +656,7 @@ def _check_invariants(d):
         _https_url(r.get("api"), "api")
         _https_url(r.get("keys"), "keys")
         prefix = r.get("prefix")
-        if prefix != "" and not (isinstance(prefix, str) and _PREFIX.fullmatch(prefix)):
+        if prefix != "" and not (isinstance(prefix, str) and re.fullmatch(_TOG_PREFIX if v3 else _PREFIX, prefix)):
             raise PregenError(f"bad prefix {prefix!r}")
         if prefix in seen:
             raise PregenError("the bare namespace is listed twice" if prefix == "" else f"prefix {prefix} is listed twice")
@@ -225,6 +669,8 @@ def _check_invariants(d):
         rev = r.get("revoked")
         if rev is not None and not (isinstance(rev, dict) and isinstance(rev.get("at"), str)):
             raise PregenError(f"registry {r.get('name')!r}: revoked must be an object with 'at'")
+    if v3:
+        _check_v3(d)
     rk = d.get("revoked_keys")
     if rk is not None and not (isinstance(rk, list) and all(
             isinstance(k, dict) and _FINGERPRINT.fullmatch(str(k.get("key_id", ""))) and isinstance(k.get("at"), str)
@@ -246,6 +692,42 @@ def _check_invariants(d):
     for f in d.get("freezes") or []:
         if not 0 < _when(f["until"]) - _when(f["at"]) <= SETTLED_AFTER:
             raise PregenError("a freeze lasts more than nothing and at most 7 days")
+
+
+def _v3_time(v, field, nullable=False):
+    if v is None and nullable:
+        return
+    if not (isinstance(v, str) and _RFC3339.fullmatch(v)):
+        raise PregenError(f"{field}: not an RFC 3339 time")
+    _when(v)
+
+
+def _check_v3(d):
+    """The members directory v3 adds (TOG-CODE.md §9.2), each checked when present; times in RFC 3339 as in v2."""
+    for r in d["registries"]:
+        name = r.get("name")
+        for f in ("entity", "group"):
+            if f in r and not (isinstance(r[f], str) and r[f]):
+                raise PregenError(f"registry {name!r}: {f} must be a nonempty string")
+        if "government" in r and type(r["government"]) is not bool:
+            raise PregenError(f"registry {name!r}: government must be true or false")
+        roles, domains = r.get("roles", {}), r.get("provider_domains", [])
+        if not (isinstance(roles, dict) and all(k in _ROLES and isinstance(x, dict) and set(x) <= {"from", "until"}
+                                                for k, x in roles.items())):
+            raise PregenError(f"registry {name!r}: roles maps {', '.join(_ROLES)} to {{from, until}}")
+        if not (isinstance(domains, list) and all(isinstance(x, dict) and set(x) <= {"domain", "from", "until"}
+                                                  and isinstance(x.get("domain"), str) and x["domain"] for x in domains)):
+            raise PregenError(f"registry {name!r}: provider_domains lists {{domain, from, until}}")
+        for x in [*roles.values(), *domains]:
+            _v3_time(x.get("from"), f"registry {name!r}")
+            _v3_time(x.get("until"), f"registry {name!r}", nullable=True)
+        for f in ("void_from", "closed"):
+            if f in r:
+                _v3_time(r[f], f"registry {name!r}: {f}")
+    if "resolver" in d:
+        _https_url(d["resolver"], "resolver")
+    if "min_library" in d and not (isinstance(d["min_library"], str) and re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", d["min_library"])):
+        raise PregenError("min_library must be a version")
 
 
 _RFC3339 = re.compile(r"(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\.[0-9]{3})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])")
@@ -300,11 +782,12 @@ class Directory:
     def is_false_claim(self, code: str, anchor: str = None) -> bool:
         """The steward found `code` a false claim under `anchor` and has not reversed it (identity.md): drop that
         claim. For one anchor and code the latest entry of false_claims and false_claim_reversals by `at` decides; a
-        tie stays false. Without `anchor`, under any anchor: a code asked as a private person is then never generated."""
-        latest = {}
+        tie stays false. Without `anchor`, under any anchor: a code asked as a private person is then never generated.
+        Codes compare by code_key: a ruling on one spelling holds for the other (identity.md)."""
+        latest, key = {}, _k(code)
         for is_false, field in ((True, "false_claims"), (False, "false_claim_reversals")):
             for f in self._d.get(field) or []:
-                if f["code"] == code and anchor in (None, f["anchor"]):
+                if _k(f["code"]) == key and anchor in (None, f["anchor"]):
                     latest[f["anchor"]] = max(latest.get(f["anchor"], (float("-inf"), False)), (_when(f["at"]), is_false))
         return any(is_false for _, is_false in latest.values())
 
@@ -315,6 +798,24 @@ class Directory:
         now = int(time.time()) if now is None else now
         return next((deepcopy(f) for f in self._d.get("freezes") or []
                      if f["anchor"] == anchor and _when(f["at"]) <= now < _when(f["until"])), None)
+
+    def parties(self, code: str, at=None, provider: str = None) -> dict:
+        """Offline party check of `code` (TOG-CODE.md §9.2, see check_parties) against this v3 directory, read at `at`
+        (Unix seconds: the act's witnessed time, or None). Returns {"ok", "facts"}; for support tools, never beside a
+        video."""
+        if self._d["schema"] != SCHEMA_V3:
+            raise PregenError("party checks need directory v3")
+
+        def t(v):
+            x = None if v is None else _when(v)
+            return int(x) if x is not None and x.is_integer() else x
+        entries = {r["prefix"]: {
+            "entity": r.get("entity", r["name"]), "group": r.get("group"), "government": r.get("government", False),
+            "provider_domains": [x["domain"] for x in r.get("provider_domains", [])],
+            "roles": {k: {"from": t(x.get("from")), "until": t(x.get("until"))} for k, x in r.get("roles", {}).items()},
+            **({"void_from": t(r["void_from"])} if "void_from" in r else {}),
+            **({"closed": t(r["closed"])} if "closed" in r else {})} for r in self._d["registries"]}
+        return check_parties(code, entries, at, provider)
 
     def check_signer(self, code: str, signer_key_id: str) -> str:
         """V-10, V-14: "valid", "unknown_issuer", "issuer_mismatch" or "revoked"."""
@@ -352,6 +853,8 @@ _TOKEN = object()
 
 def _check_continuity(new: dict, previous: dict) -> None:
     """A newer directory may add registries and keys, never remove or move them (PG-CODE.md §9.1)."""
+    if _cross_schema(new, previous):
+        return
     if new["sequence"] < previous["sequence"]:
         raise PregenError(f"sequence {new['sequence']} is older than {previous['sequence']} already seen")
     if new["sequence"] == previous["sequence"]:
@@ -359,6 +862,16 @@ def _check_continuity(new: dict, previous: dict) -> None:
             raise PregenError("a different directory with the same sequence")
         return
     _keeps_history(new, previous)
+
+
+def _cross_schema(new: dict, previous: dict) -> bool:
+    """v2 and v3 are two lines, each with its own sequence: none is compared across them, and a v2 directory after a
+    v3 one is refused (it would hide registries listed only in v3)."""
+    if new["schema"] == previous["schema"]:
+        return False
+    if previous["schema"] == SCHEMA_V3:
+        raise PregenError("a v3 directory was already accepted: load registries.v3.json")
+    return True
 
 
 def _when(value) -> float:
@@ -444,7 +957,7 @@ def verify_directory(directory: dict, steward_public_key_hex: str = STEWARD_PUBL
             raise PregenError(f"sequence {directory['sequence']} is older than {min_sequence} already seen")
         if prev is not None:
             _check_continuity(directory, prev)
-    elif prev is not None:
+    elif prev is not None and not _cross_schema(directory, prev):
         # A handover may restart the sequence, never drop a listing or a revocation, except
         # revocations the old key signed after it was compromised, named in `annulled`.
         _keeps_history(directory, prev, _annulments(directory))
@@ -785,13 +1298,16 @@ FLOOR_REASONS = frozenset({"PG_SUBJECT_OPTED_OUT", "PG_SUBJECT_UNAVAILABLE", "PG
 
 def verify_anchors(envelope: dict, prefix: str, directory: Directory, get_json=_get_json, now=None) -> list:
     """A registry's signed anchor list (pg.anchors.v1), checked through the directory and at most a day old, so
-    an old copy cannot hide a new opt-out. Returns its entries, without those the steward found false under their own
-    anchor (a false claim under another anchor silences no one). An entry
-    naming another registry's code is dropped, not the whole list: one foreign line must not make the list fail. A
-    list naming one of its codes twice is refused: its anchor would depend on which line a client read last."""
+    an old copy cannot hide a new opt-out. Returns its entries, each code in its TOG spelling (a PG- line of an older
+    list folds by code_key), without those the steward found false under their own anchor (a false claim under
+    another anchor silences no one). An entry naming another registry's code is dropped, not the whole list: one
+    foreign line must not make the list fail. An entry that is not a person code (unknown shape, mistyped, a licence
+    or an event) fails the whole list: dropping it could lose a refusal. A list naming one of its codes twice, in
+    either spelling, is refused: its anchor would depend on which line a client read last."""
     import time
     now = int(time.time()) if now is None else now
-    body = _registry_signed(envelope, "pg.anchors.v1", f"PG-{prefix}-0000000", directory, get_json)  # names the prefix
+    # The code only names the prefix, so the directory finds the registry's keys (any prefix length).
+    body = _registry_signed(envelope, "pg.anchors.v1", f"TOG-{prefix}-1000000000", directory, get_json)
     entries = body.get("anchors")
     if body.get("registry") != prefix or not isinstance(entries, list) or type(body.get("issued_at")) is not int:
         raise PregenError("not an anchor list of this registry")
@@ -799,7 +1315,13 @@ def verify_anchors(envelope: dict, prefix: str, directory: Directory, get_json=_
         raise PregenError("the anchor list is more than 24 hours old")
     if not all(isinstance(e, dict) and isinstance(e.get("code"), str) for e in entries):
         raise PregenError("an anchor list entry is {anchor, code, level, proof_url, status}")
-    own = [e for e in entries if _CANONICAL_CODE.fullmatch(e["code"]) and issuer_of(e["code"]) == prefix]
+    try:
+        parsed = [parse_code(e["code"]) for e in entries]
+    except PregenError:
+        parsed = None
+    if parsed is None or any(p["kind"] != "subject" for p in parsed):
+        raise PregenError("an anchor list entry of unknown shape fails the whole list: not a person code")
+    own = [dict(e, code=p["key"]) for e, p in zip(entries, parsed) if p["issuer"] == prefix]
     if len({e["code"] for e in own}) != len(own):
         raise PregenError("an anchor list names each code once")
     return [e for e in own if not directory.is_false_claim(e["code"], e.get("anchor"))]
@@ -866,7 +1388,7 @@ def check_channel_proof(code: str, proof_url: str, official_urls: list, get_text
       `get_text` returns {"author": <handle or channel id>, "text": <what the account itself wrote there>} from the
       platform's own record of who wrote it. The author must be the account (letter case aside); a string, a comment
       or another account's post confirms nothing.
-    The text must have a line "PRE-GEN: <code>", the whole code, alone or followed by a space and more words; a
+    The text must have a line "PRE-GEN: <code>", the whole code in either spelling (code_key), alone or followed by a space and more words; a
     line "PRE-GEN: <code> withdraw <party>" confirms nothing. `proof_url` is taken exactly as written: https, a
     lower-case host, no credentials, port, query, fragment, percent-escape or dot segment, at most 512 characters;
     `get_text` must not follow redirects (treat a 3xx like a 404: return ""). If `get_text` raises (the
@@ -898,7 +1420,7 @@ def check_channel_proof(code: str, proof_url: str, official_urls: list, get_text
         got = got.get("text")
     for line in (got if isinstance(got, str) else "").split("\n"):
         words = re.split(r"[ \t]+", line.strip(" \t\r"))
-        if words[:2] == ["PRE-GEN:", code] and words[2:3] != ["withdraw"]:
+        if words[0] == "PRE-GEN:" and len(words) > 1 and _k(words[1]) == _k(code) and words[2:3] != ["withdraw"]:
             return True
     return False
 
@@ -1061,7 +1583,7 @@ def check_terms(env: dict, code: str, directory: Directory = None, get_json=_get
     body. Its message id, message_id("pg.terms.v1", body), is what a request accepts in `terms`."""
     directory = directory or load_directory(get_json=get_json)
     b = _registry_signed(env, "pg.terms.v1", code, directory, get_json)
-    if b.get("subject_ref") != code:
+    if _k(b.get("subject_ref")) != _k(code):   # one person, either spelling (TOG-CODE §7.3)
         raise PregenError("these terms are another person's")
     if not _TERMS_MEMBERS - {"amends", "factor"} <= set(b) <= _TERMS_MEMBERS or not _printable(b) \
             or set(b["signers"][0]) != {"role", "key_id"}:
@@ -1112,13 +1634,33 @@ def _terms_finding(item: dict, asked: dict, basis, code: str, directory: Directo
 
 # ── extension proof (spec/extensions/proof.md) ──────────────────────────────────
 
+def _copies_ok(item: dict, answer: dict, code: str) -> bool:
+    """proof.md step 3 (TOG-CODE §14): the entry's readable copies `code` and `licence` equal the codes recomputed
+    from the signed answer, and the `licence` from the pg.grant.v1 in `grant` whose message id the answer's basis
+    names. Flat model: the answer's signer is the registry of the person's prefix. No copy, nothing to check."""
+    meta = {m: item[n] for m, n in (("Code", "code"), ("Licence", "licence")) if n in item}
+    if not meta:
+        return True
+    signer = issuer_of(code) or BARE_ISSUER
+    basis = answer.get("basis") or {}
+    g = basis.get("grant") if basis.get("kind") == "grant" else None
+    act = {"type": "pg.answer.v1", "id": message_id("pg.answer.v1", answer), "signer": signer, "subject_ref": code,
+           "grant": {"id": g["id"], "signer": signer} if g else None}
+    env, licence = item.get("grant"), None
+    if g and g.get("format") == "pg.grant.v1" and isinstance(env, dict) and env.get("type") == "pg.grant.v1" \
+            and isinstance(env.get("body"), dict) and message_id("pg.grant.v1", _ints(env["body"])) == g["id"]:
+        licence = {"type": "pg.grant.v1", "id": g["id"], "signer": signer, "subject_ref": env["body"].get("subject_ref")}
+    return metadata_ok(meta, act, licence)
+
+
 def check_proof(bundle: dict, directory: Directory = None, get_json=_get_json, output_sha256: str = None,
                 now=None, testing: bool = False) -> dict:
     """A pg.proof.v1 bundle carried with an output: was every subject of the job allowed at the moment it was
     generated, did each registry acknowledge the provider's report of this output, and (given its SHA-256)
     is it this file? Raises PregenError with the reason; returns {"output_hash", "job_id", "subjects"}. Each subject also
     says what the proof shows about the terms its request accepted (`terms`: "absent", "ok", "outside" or "unverified",
-    and `terms_assent`, "registry" for a record that checked out): what was signed, not that those terms still stand."""
+    and `terms_assent`, "registry" for a record that checked out): what was signed, not that those terms still stand.
+    A subject's readable copies `code` and `licence` must equal the codes recomputed from its record (TOG-CODE §14)."""
     import time
     now = int(time.time()) if now is None else now
     directory = directory or load_directory(get_json=get_json)
@@ -1144,6 +1686,8 @@ def check_proof(bundle: dict, directory: Directory = None, get_json=_get_json, o
         if ack.get("report") != message_id("pg.report.v1", rbody) or ack.get("answer") != message_id("pg.answer.v1", answer) \
                 or rbody.get("answer") != ack.get("answer") or rbody.get("outcome") != "generated":
             raise PregenError(f"{code}: the registry's acknowledgement does not match this report and answer (one was changed) or names no generation")
+        if not _copies_ok(it, answer, code):
+            raise PregenError(f"{code}: a readable copy (code, licence) differs from the code computed from its record")
         received = ack.get("received_at")
         if type(received) is not int or received > answer.get("expires_at", 0) + REPORT_GRACE:
             raise PregenError(f"{code}: reported more than 24 hours after the allow expired, so when the output was "

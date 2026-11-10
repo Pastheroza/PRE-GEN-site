@@ -9,6 +9,7 @@ import { checkChannelProof, wikidataOfficialUrls, decideIdentity, verifyAnchors,
 
 const CASES = JSON.parse(readFileSync(new URL("../../verify-py/tests/identity_cases.json", import.meta.url)));
 const V = JSON.parse(readFileSync(new URL("../../../spec/test-vectors/answers.json", import.meta.url)));
+const ANCHOR_LISTS = JSON.parse(readFileSync(new URL("../../../spec/test-vectors/anchors.json", import.meta.url)));
 const NOW = V.now, KEY = await sha256Hex("pregen-answer-vector-registry");
 const directory = await verifyDirectory(V.directory, { stewardPublicKeyHex: V.steward_public_key_hex, now: NOW });
 const keys = async (url) => (url in V.key_sets ? { ok: true, status: 200, json: async () => V.key_sets[url] }
@@ -87,10 +88,15 @@ async function anchors(entries, issuedAt = NOW - 10) {
 }
 const entry = (code, anchor = "wikidata:Q11571") => ({ anchor, code, level: "verified", proof_url: "", status: "active" });
 
-test("verifyAnchors keeps its own codes and drops foreign ones", async () => {
-  const own = entry("PG-TEST-000001N");
-  assert.deepEqual(await anchors([own, entry("PG-ABCD-000001V"), entry("pg-test-000003x")]), [own]);
-});
+// spec/test-vectors/anchors.json: TOG lines kept, PG lines folded, foreign codes dropped; an entry that is not a person
+// code fails the whole list.
+for (const c of ANCHOR_LISTS.cases) {
+  test(`anchor list vector: ${c.name}`, async () => {
+    const a = c.anchor ?? "wikidata:Q11571", run = anchors(c.codes.map((code) => entry(code, a)));
+    if (c.error) await assert.rejects(run, (e) => e instanceof PregenError && e.message.includes(c.error));
+    else assert.deepEqual(await run, c.keep.map((code) => entry(code, a)));
+  });
+}
 
 test("verifyAnchors refuses a list naming a code twice", async () => {
   await assert.rejects(anchors([entry("PG-TEST-000001N"), entry("PG-TEST-000001N", "wikidata:Q1")]), /each code once/);
@@ -106,8 +112,8 @@ test("verifyAnchors refuses an old list", async () => {
 
 test("verifyAnchors drops a false claim only under its own anchor", async () => {
   const fc = "PG-TEST-000002Z"; // the vector directory: a false claim under wikidata:Q42
-  assert.deepEqual(await anchors([entry(fc, "wikidata:Q42"), entry("PG-TEST-000001N")]), [entry("PG-TEST-000001N")]);
-  assert.deepEqual(await anchors([entry(fc)]), [entry(fc)]);
+  assert.deepEqual(await anchors([entry(fc, "wikidata:Q42"), entry("PG-TEST-000001N")]), [entry("TOG-TEST-000001N")]);
+  assert.deepEqual(await anchors([entry(fc)]), [entry("TOG-TEST-000002Z")]);
 });
 
 test("a false claim is weighed under another anchor but never generated alone", async () => {

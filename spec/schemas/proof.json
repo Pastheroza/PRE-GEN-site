@@ -65,6 +65,25 @@
               "signatures"
             ],
             "description": "extension terms: the pg.terms.v1 envelope whose message id the request carries"
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^TOG-PG-",
+            "description": "TOG-CODE.md section 14: a readable copy of the entry's act code; recomputed from the signed parts, never trusted"
+          },
+          "licence": {
+            "type": "string",
+            "pattern": "^TOG-LIC-",
+            "description": "TOG-CODE.md section 14: a readable copy of the licence's code, only when the answer's basis names a licence"
+          },
+          "grant": {
+            "type": "object",
+            "required": [
+              "type",
+              "body",
+              "signatures"
+            ],
+            "description": "the pg.grant.v1 envelope the answer's basis names, so that licence can be recomputed"
           }
         }
       }

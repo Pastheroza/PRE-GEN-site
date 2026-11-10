@@ -2,7 +2,7 @@
 
 The PRE-GEN client for JavaScript. Ask a registry before you generate, as a provider known by
 its domain (no account), and check what comes back against the signed registry directory at
-[pregen.org](https://www.pregen.org/registries.json). The PRE-GEN steward key is built in; no
+[pregen.org](https://www.pregen.org/registries.v3.json). The PRE-GEN steward key is built in; no
 dependencies (Web Crypto, Node 20+ or a modern browser).
 
 Ask with a signed `pg.request.v1` (`POST {api}/v2/requests`), check the answer with
@@ -42,8 +42,9 @@ Also exported: `checkProviderUrl`, `signingInput`, `publicKeyHex`, `messageId`, 
 ## One person in several registries, and proof in a video
 
 - `verifyAnchors(list, prefix, { directory })` — a registry's signed anchor list (`extensions/identity.md`). Another
-  registry's codes are dropped, and so is an entry the steward found false under its own anchor; a list naming a code
-  twice is refused.
+  registry's codes are dropped, and so is an entry the steward found false under its own anchor. Kept entries come back
+  in their TOG spelling (a `PG-` line folds by its code key). A list naming a code twice, in either spelling, or an
+  entry that is not a person code, is refused.
 - `wikidataOfficialUrls(anchor, { fetch })` — the channels Wikidata lists as current: not deprecated, not ended,
   started, each value in its property's own form. A website counts by its host alone. With
   `at: now - SETTLED_AFTER`, the channels of the item as it stood 7 days earlier (its last revision then).
@@ -82,7 +83,33 @@ Also exported: `checkProviderUrl`, `signingInput`, `publicKeyHex`, `messageId`, 
 - `floor(use, minor)`, `forbids(rules, use)`, `termsOpens(old, next)`; `CATEGORIES` (the closed vocabulary of
   likeness/1, which a request carrying `terms` must keep to), `PROHIBITED_FOR_MINORS`, `INTIMATE`.
 
+## Codes (`TOG-CODE.md`)
+
+Every code is written `TOG-`: persons `TOG-PRAM-900000037K`, licences and acts
+`TOG-<PG|PG-LIC|AG|AG-LIC|LIC>-<ISSUER>[-<HOME>]-XXXX-XXXX-XXXX`. A `PG-` string is legacy input
+only: it folds to its one TOG spelling and is never written.
+
+- `parseCode(code)` — the one reading of a code exactly as it stands in a message: shape, kind,
+  basis, issuer, home, example flag and `key`. Never repaired. Throws `CodeError` with `reason`
+  `malformed` or `mistyped`. `kindOf(code)` gives the kind alone; `describe(code)` what the string
+  claims, for support tools, never beside a video.
+- `codeKey(code, licences)` — the one TOG spelling; every comparison uses it (the library compares
+  false claims and terms this way). An old PG licence id needs its `pg.license.v2` record, else
+  `ask_registry`.
+- `normalizeTyped(typed)` — only where a person types, pastes or scans: folds width, dashes,
+  look-alikes, a resolver URL and O/0, I/L/1 by slot, and returns the one code meant, for a "Did you
+  mean …?" prompt. Two readings fail with both as `hints`.
+- `codeFor(act)`, `metadataOk(meta, act, licence)`, `codeVerdict(fileHash, act, caption, ingredient)` —
+  a code is computed from its record and compared, never read; readable copies are refused on any
+  mismatch (`checkProof` does this for an entry's `code` and `licence`).
+- `checkChar`, `findCodes`, `checkParties` / `directory.parties(code, { at })` (v3 only),
+  `admissionRefusal` (the steward's prefix check).
+
 ## The registry directory
+
+The library reads directory v3 (`DIRECTORY_URL`, `registries.v3.json`: 4–8 letter prefixes,
+entity, group, dated roles, provider domains, `void_from`, `closed`) and the frozen v2 file
+(`DIRECTORY_V2_URL`). Once a v3 directory is accepted, a v2 one passed after it is refused.
 
 The directory check refuses an older directory, a newer one that removes
 a registry or key, undoes a revocation or drops a false claim, a reversal or a freeze, and a different one with the same sequence. No registry is pinned by default: every registry, the first one included,
@@ -164,8 +191,8 @@ so nothing it signs is ever accepted by the real directory.
 `verifyDecision` (signatures only), `verifyDirectory`,
 `Directory.checkSigner` / `registryFor` / `publicKey`, `verifyLicense` (subject
 signature plus operator countersignature), `verifySigned`, `canonicalJson`,
-`fingerprint`, `checkPublicKey` (refuses keys no one can be held to), `issuerOf` (canonical codes only) and
-`normalizeCode` (for what a person types, never for a code in a message).
+`fingerprint`, `checkPublicKey` (refuses keys no one can be held to), `issuerOf` (the registry to ask, from
+the shape only) and `normalizeCode` (deprecated: use `normalizeTyped`).
 
 Tests: `npm test` runs the unit tests and the PRE-GEN Level 1 conformance
 vectors with every verifier operation required.

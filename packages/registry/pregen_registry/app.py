@@ -10,9 +10,11 @@ from fastapi import Body, FastAPI, Header, Request
 from starlette.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 
+from pregen import code_key
+
 from . import __version__
 from .protocol import ProtocolError
-from .registry import Registry, code_key
+from .registry import Registry
 
 SANDBOX_ACCESS_PER_HOUR = 10
 BIND_APPROVALS_PER_HOUR = 20
@@ -112,8 +114,8 @@ def create_app(registry: Registry, policy_file=None) -> FastAPI:
         return registry.grant(grant_id)
 
     @app.get("/v2/codes/{code}")
-    def lookup(code: str):
-        return registry.lookup(code)
+    def lookup(code: str, media: str | None = None):
+        return registry.lookup(code, media)
 
     @app.get("/v2/codes/{code}/terms")
     def status(code: str):

@@ -6,14 +6,15 @@ export const STEWARD_PUBLIC_KEY_HEX = "5cb949aab04186e3e216ec541b847c912fc3f7813
 /** The successor steward key, created in advance and kept apart (PG-CODE.md §9.1). A directory
  * it signs replaces every directory signed by the current steward key, whatever their sequence. */
 export const STEWARD_SUCCESSOR_PUBLIC_KEY_HEX = "658544163d6abd5fef046407980d249817875d87d8cf4b67879a2e265fa5612f"; // pg-ed25519:3e5e20729ce8485eea274c4cb33721d6, created 2026-10-03
-export const DIRECTORY_URL = "https://www.pregen.org/registries.json";
-const SCHEMA = "pregen.registries.v2";
+/** The directory (PRE-GEN-CORE.md rule 2, TOG-CODE.md §9.2). The v2 file stays frozen at DIRECTORY_V2_URL for
+ * clients before 0.14; this library reads both. */
+export const DIRECTORY_URL = "https://www.pregen.org/registries.v3.json";
+export const DIRECTORY_V2_URL = "https://www.pregen.org/registries.json";
+const SCHEMA = "pregen.registries.v2", SCHEMA_V3 = "pregen.registries.v3";
+const ROLES = ["home", "market", "wallet", "log_operator", "witness"];
 const MAX_INT = 2 ** 53 - 1;
 const PREFIX = /^[ABCDEFGHJKMNPQRSTVWXYZ]{4}$/;
 const FINGERPRINT = /^pg-ed25519:[0-9a-f]{32}$/;
-// A code has one form in every message (PG-CODE.md §7, stress test H5): the whole string matches, ASCII, upper case,
-// nothing around it. Subject, licence, or a legacy code of the bare namespace (PG-STD-000123: no check character).
-const CANONICAL_CODE = /^(?:PG-(?:([ABCDEFGHJKMNPQRSTVWXYZ]{4})-)?(?:[0-9]{6,}[0-9A-HJKMNP-TV-Z*~$=!]|[A-Z]{3}-[0-9]{6,}-[0-9A-HJKMNP-TV-Z]{6}[0-9A-HJKMNP-TV-Z*~$=!])|PG-[A-Z]{3}-[0-9]{6,})$/;
 
 export class PregenError extends Error {
   constructor(message) { super(message); this.name = "PregenError"; }
@@ -127,24 +128,392 @@ export async function verifyLicense({ body, licenseId, subjectPublicKeyHex, subj
   return { subjectValid, operatorValid };
 }
 
-/** The namespace of a canonical PG code: its four-letter prefix, or "" for the bare namespace. Anything else —
- *  lower case, spaces, invisible or non-ASCII characters — is refused, never repaired: one code, one string
- *  (PG-CODE.md §7). Pass what a person typed through normalizeCode first. */
+/** The registry to ask for a code: its first prefix, or "" for the bare legacy namespace (TOG-CODE.md §8). Reads the
+ *  shape only, never says a code is real. Anything else — lower case, spaces, invisible or non-ASCII characters — is
+ *  refused, never repaired: one code, one string. Pass what a person typed through normalizeTyped first. */
 export function issuerOf(code) {
-  if (typeof code !== "string") fail("PG code must be a string");
-  const m = CANONICAL_CODE.exec(code);
-  if (!m) fail("not a canonical PG code");
-  return m[1] ?? "";
+  if (typeof code !== "string") fail("a code must be a string");
+  return parseCode(code, { check: false }).issuer;
 }
 
-/** What a person typed or pasted, as the canonical code: surrounding ASCII spaces trimmed and lower case raised,
- *  nothing else (PG-CODE.md §7). Only at a human input boundary, never on a code taken from a message. */
+/** @deprecated Use normalizeTyped, which folds look-alikes and gives the TOG spelling. Surrounding ASCII spaces
+ *  trimmed and lower case raised, nothing else; the spelling is kept as typed (PG-CODE.md §7). */
 export function normalizeCode(typed) {
-  if (typeof typed !== "string") fail("PG code must be a string");
+  if (typeof typed !== "string") fail("a code must be a string");
   const s = typed.replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, "");
-  if (!/^[\x00-\x7f]*$/.test(s)) fail("a PG code is ASCII: retype it");
+  if (!/^[\x00-\x7f]*$/.test(s)) fail("a code is ASCII: retype it");
   issuerOf(s.toUpperCase());
   return s.toUpperCase();
+}
+
+// ── ToG code (spec/TOG-CODE.md): the one code family, written TOG-; PG- is legacy input only ──
+
+export const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";   // serials, tails (PG-CODE §3, frozen)
+export const TOG_VALUES = CROCKFORD + "ILOU";                  // TOG bodies only: I L O U take 32-35 (§3)
+const CHECK = CROCKFORD + "*~$=!";
+const MAX_BODY = 36, TAIL = 11, RESERVED_SERIAL = 900_000_000n, RESERVED_TAIL = "ZZZZ", BARE_ISSUER = "PRAM";
+const FIVE = ["PG", "PG-LIC", "AG", "AG-LIC", "LIC"];
+const KINDS = { LIC: "license", PG: "generated", AG: "approved_after" };
+const KIND_OF_TYPE = { "pg.grant.v1": "LIC", "pg.license.v2": "LIC", "pg.answer.v1": "PG", "pg.after_gen.v1": "AG" };
+
+/** A string that is not a code, or a record that gives none. `reason`: "malformed" (not a code), "mistyped" (the check
+ * fails), "ask_registry" (an old licence id with no record at hand) or "no_code" (a record that gives no code).
+ * `hints`: both readings when typed input is ambiguous. */
+export class CodeError extends PregenError {
+  constructor(reason, message = reason, hints) {
+    super(message);
+    this.name = "CodeError";
+    this.reason = reason;
+    if (hints) this.hints = hints;
+  }
+}
+const codeFail = (reason, message, hints) => { throw new CodeError(reason, message, hints); };
+
+const C = "0-9A-HJKMNP-TV-Z", K = `[${C}*~$=!]`;
+const TP = "(?!LIC|L[A-Z]IC(?![A-Z])|LI[A-Z]C(?![A-Z]))[A-Z]{4,8}(?<!LIC)", OLDP = "[A-HJKMNP-TV-Z]{4}";
+const SHAPES = [   // [shape, marker, kind, regex]: exactly one matches any valid code (§7.1)
+  ["person", "TOG", "subject", `TOG-(${TP})-([1-9][0-9]{8})([${C}])`],
+  ["event", "TOG", null, `TOG-(LIC|(?:PG|AG)(?:-LIC)?)-(${TP})(?:-(${TP}))?-([${C}]{4}-[${C}]{4}-[${C}]{3})([${C}])`],
+  ["old_person", "TOG", "subject", `TOG-(${OLDP})-([0-9]{6,7})(${K})`],
+  ["old_bare_person", "TOG", "subject", `TOG-()([0-9]{6,})(${K})`],
+  ["old_no_check", "TOG", "subject", "TOG-(STD|SUB)-([0-9]{6,})"],
+  ["pg_person", "PG", "subject", `PG-(${OLDP})-([0-9]{6,})(${K})`],
+  ["pg_licence", "PG", "license", `PG-(${OLDP})-([A-Z]{3})-([0-9]{6,})-([${C}]{6})(${K})`],
+  ["bare_person", "PG", "subject", `PG-()([0-9]{6,})(${K})`],
+  ["bare_licence", "PG", "license", `PG-()([A-Z]{3})-([0-9]{6,})-([${C}]{6})(${K})`],
+  ["no_check", "PG", "subject", "PG-([A-Z]{3})-([0-9]{6,})"],
+].map(([s, m, k, rx]) => [s, m, k, new RegExp(`^${rx}$`)]);
+const PREFIX_TOG = new RegExp(`^${TP}$`);
+
+/** The check character of a body (PG-CODE §4.1): value × 1-based position, mod 37. Values from the TOG table by
+ * default; pass CROCKFORD for a PG body. Throws CodeError "malformed" for a body over 36 or outside the table. */
+export function checkChar(body, values = TOG_VALUES) {
+  if (typeof body !== "string" || body.length > MAX_BODY || [...body].some((c) => !values.includes(c))) {
+    codeFail("malformed", "body too long or outside the alphabet");
+  }
+  let sum = 0;
+  for (let i = 0; i < body.length; i++) sum += values.indexOf(body[i]) * (i + 1);
+  return CHECK[sum % 37];
+}
+const verifies = (body, chk, values) => { try { return checkChar(body, values) === chk; } catch { return false; } };
+const eventBody = (kind, issuer, home, tail) =>
+  `${issuer.length}${(home || "").length}${FIVE.indexOf(kind) + 1}${issuer}${home || ""}${tail}`;
+
+/** The one reading of a code exactly as it stands in a message (§7): no trimming, case change or folding. Returns
+ * {shape, marker, kind, home, key, issuer, example, ...}: `kind` is "subject", "license", "generated" or
+ * "approved_after"; `key` the TOG spelling (null for an old PG licence id: ask its registry). Throws CodeError
+ * "malformed" or "mistyped". `check: false` reads the shape only (routing); it never says a code is real. */
+export function parseCode(code, { check = true } = {}) {
+  if (typeof code !== "string" || !/^[\x00-\x7f]*$/.test(code)) codeFail("malformed", "not an ASCII string");
+  const hits = SHAPES.map(([s, mk, k, rx]) => [s, mk, k, rx.exec(code)]).filter((h) => h[3]);
+  if (hits.length !== 1) codeFail("malformed", `not a code: ${JSON.stringify(code)}`);
+  const [shape, marker, kind, m] = hits[0], g = m.slice(1).map((x) => x ?? null);
+  const out = { shape, marker, kind, home: null, key: marker === "TOG" ? code : null };
+  if (marker === "PG" && kind === "subject") {
+    // Legacy input: its one spelling is TOG- + the rest. With no valid TOG spelling it was never issued (§7.3).
+    if (check && shape !== "no_check" && !verifies(g[0] + g[1], g[2], CROCKFORD)) codeFail("mistyped", code);
+    if (check && !isCode("TOG" + code.slice(2))) codeFail("malformed", "never issued in any spelling");
+    out.key = "TOG" + code.slice(2);
+  }
+  if (shape === "no_check" || shape === "old_no_check") return { ...out, issuer: "", cls: g[0], serial: g[1], example: false };
+  if (shape === "event") {
+    const [k, issuer, home, groups, chk] = g, tail = groups.replaceAll("-", "");
+    if (home === issuer) codeFail("malformed", "a registry is written once");
+    if (check && !verifies(eventBody(k, issuer, home, tail), chk, TOG_VALUES)) codeFail("mistyped", code);
+    return { ...out, kind: KINDS[k.slice(0, 3).replace(/-$/, "")], basis: k === "LIC" ? null : k.endsWith("-LIC") ? "licence" : "terms",
+      issuer, home, example: tail.startsWith(RESERVED_TAIL) };
+  }
+  const prefix = g[0], rest = g.slice(1, -1), chk = g.at(-1);
+  if (check && !verifies(prefix + rest.join(""), chk, marker === "TOG" ? TOG_VALUES : CROCKFORD)) codeFail("mistyped", code);
+  const serial = kind === "subject" ? rest.at(-1) : rest[1];
+  return { ...out, issuer: prefix, cls: "", serial, example: BigInt(serial) >= RESERVED_SERIAL };
+}
+const isCode = (s) => { try { parseCode(s); return true; } catch { return false; } };
+
+/** "subject", "license", "generated" or "approved_after", from the string alone (no network). */
+export function kindOf(code) { return parseCode(code).kind; }
+
+/** What the string claims, for support tools (§15): never shown beside a video, where party names come only from a
+ * record that fits the file. Throws CodeError "malformed" or "mistyped". */
+export function describe(code) {
+  const p = parseCode(code);
+  const home = p.home ? ` · home ${p.home}` : "";
+  const basis = { licence: " under a licence", terms: " under the person's terms" }[p.basis] ?? "";
+  let ex = p.example ? " · EXAMPLE, never issued" : "";
+  if (p.marker === "PG") ex += p.key ? ` · old spelling of ${p.key}` : " · old licence number: its registry gives its TOG code";
+  return `claims ${p.kind}${basis} · issued by ${p.issuer || "the bare legacy namespace"}${home} · not checked${ex}`;
+}
+
+/** The one TOG spelling of a code (§7.3). Every comparison, hash key and refusal check uses it. A TOG code is its own
+ * key; a PG person folds by its marker; an old PG licence id folds through its signed pg.license.v2 record, from
+ * `licences` ({old id: record}), else CodeError "ask_registry". Never returns a PG- string. */
+export function codeKey(code, licences = {}) {
+  const p = parseCode(code);
+  if (p.key) return p.key;
+  const rec = Object.hasOwn(licences ?? {}, code) ? licences[code] : null;
+  if (rec == null || rec.license_id !== code) codeFail("ask_registry", `${code}: only its registry gives its TOG code`);
+  return codeFor(rec);
+}
+const truthy = (o) => Boolean(o) && (typeof o !== "object" || Object.keys(o).length > 0);   // as the reference model reads a record
+/** codeKey where there is one, else the string as it stands: a comparison never splits one code in two (§7.3). */
+const keyOf = (c) => { try { return codeKey(c); } catch { return c; } };
+/** One code under two spellings (§7.3): equal TOG spellings. A string that is not a code equals nothing. */
+function sameCode(a, b) {
+  try { return codeKey(a) === codeKey(b); } catch { return false; }
+}
+
+function tailOf(messageId) {
+  if (typeof messageId !== "string" || !/^[0-9a-f]{64}$/.test(messageId)) codeFail("no_code", "a message id is 64 lowercase hex");
+  const n = BigInt("0x" + messageId) >> BigInt(256 - 5 * TAIL);
+  return Array.from({ length: TAIL }, (_, i) => CROCKFORD[Number((n >> BigInt(5 * (TAIL - 1 - i))) & 31n)]).join("");
+}
+
+function eventCode(kind, issuer, home, messageId) {
+  if (home === issuer) home = null;
+  const tail = tailOf(messageId);
+  if (tail.startsWith(RESERVED_TAIL)) codeFail("no_code", "reserved tail: the issuer signs again");
+  const chk = checkChar(eventBody(kind, issuer, home, tail));
+  if (!CROCKFORD.includes(chk)) codeFail("no_code", "symbol check: the issuer signs again");
+  const t = tail + chk, code = `TOG-${kind}-${issuer}${home ? "-" + home : ""}-${t.slice(0, 4)}-${t.slice(4, 8)}-${t.slice(8)}`;
+  parseCode(code);
+  return code;
+}
+
+/** The code of an act, computed from its record, never read off a code (§6.1). act = {type, id, signer, subject_ref,
+ * grant?: {id, signer}, cosign?: {id, home, home_in_code}}: `type` pg.grant.v1 / pg.license.v2 (LIC), pg.answer.v1
+ * (PG), pg.after_gen.v1 (AG); `grant` the licence the act names (adds -LIC); `signer` the signer's prefix. Throws
+ * CodeError ("no_code" when the record gives none). */
+export function codeFor(act) {
+  let kind = Object.hasOwn(KIND_OF_TYPE, act?.type) ? KIND_OF_TYPE[act.type] : null;
+  if (!kind) codeFail("no_code", "not an act type");
+  const grant = act.grant;
+  if (truthy(grant)) {
+    if (kind === "LIC" || grant.signer !== act.signer) {
+      codeFail("no_code", "a licence has no basis; the grant behind an act is signed by the act's own signer");
+    }
+    kind += "-LIC";
+  }
+  const cs = act.cosign;
+  if (cs == null) {
+    if ((issuerOf(act.subject_ref) || BARE_ISSUER) !== act.signer) {
+      codeFail("no_code", "no home countersignature: only the person's own registry may sign alone");
+    }
+    return eventCode(kind, act.signer, null, act.id);
+  }
+  return eventCode(kind, act.signer, cs.home_in_code ? cs.home : null, cs.id);
+}
+
+/** Readable copies beside the signed record (§14): meta = {Code?, Licence?} (pgag:Code, pgag:Licence, or a proof
+ * entry's code and licence). Both are recomputed: the act's code, and the code of `licence`, the record its grant
+ * names. True when every copy present equals its recomputed code; a missing copy is not an error. */
+export function metadataOk(meta, act, licence = null) {
+  const want = { Code: null, Licence: null };
+  try {
+    want.Code = codeFor(act);
+    if (truthy(act.grant) && licence != null && licence.id === act.grant.id) want.Licence = codeFor(licence);
+  } catch (e) {
+    if (e instanceof CodeError) return false;
+    throw e;
+  }
+  return Object.entries(meta).every(([k, v]) => !Object.hasOwn(want, k) || (want[k] !== null && want[k] === v));
+}
+
+const COVERS = " It covers the named person only, and says nothing about anyone else in the file.";
+const WORDS = {
+  noRecord: "No record. This says nothing either way.",
+  otherFile: "This code belongs to a different file. It does not show that this video is allowed.",
+  differs: "The code does not match its record.",
+  example: "Example code from the specification. Never issued.",
+  mistyped: "Mistyped code.",
+  notACode: "Not a code.",
+  editClaim: "An editor states this was made from an approved file. Only the editor says so.",
+};
+const safeCode = (act) => { try { return codeFor(act); } catch { return null; } };   // a record that gives no code
+
+/** What a verifier may say before signatures and the chain (§15). `fileHash` and act.media_hash name the file;
+ * `caption` is a code found beside it, checked against the act, never the other way round; `ingredient` is the hash
+ * an edited file's C2PA manifest cites. "fits: …" means: now verify the signatures and the chain, then show the
+ * outcome with its parties. No party is ever named from a string. */
+export function codeVerdict(fileHash, act = null, caption = null, ingredient = null) {
+  let p = null;
+  if (caption != null) {
+    try { p = parseCode(caption); } catch (e) {
+      if (!(e instanceof CodeError)) throw e;
+      return e.reason === "mistyped" ? WORDS.mistyped : WORDS.notACode;
+    }
+    if (p.example) return WORDS.example;
+  }
+  if (act == null) {
+    if (p === null) return WORDS.noRecord;
+    if (p.shape !== "event" || p.kind === "license") return `This code names a ${p.kind}. It says nothing about this file.`;
+    return "Unchecked: no record at hand. This says nothing either way.";
+  }
+  let edit = false;
+  if (act.media_hash !== fileHash) {
+    if (ingredient == null || ingredient !== act.media_hash) return WORDS.otherFile;
+    edit = true;
+  }
+  if (p !== null && !(p.shape === "event" ? safeCode(act) === caption : sameCode(caption, act.subject_ref))) return WORDS.differs;
+  if (safeCode(act) === null) return WORDS.differs;
+  const kind = KINDS[KIND_OF_TYPE[act.type]];
+  if (edit) return WORDS.editClaim;
+  return `fits: ${kind}; now verify signatures and the chain (V-H).` + COVERS;
+}
+
+const held = (span, at) => span != null && (at == null || (span.from <= at && (span.until == null || at < span.until)));
+
+/** Offline party check of a code against a dated directory (§9.2), for support tools, never beside a video.
+ * `entries`: prefix → {entity, group, government, roles: {home|market|…: {from, until}}, provider_domains: [domain],
+ * void_from?, closed?} (Directory#partyEntries gives it). `at`: the act's witnessed time, or null: then a revoked,
+ * closed or re-roled party is a fact, never a failure. Returns {ok, facts}; ok is false only when a slot names an
+ * unlisted party, a party without the slot's role at `at`, or one whose listing was void at `at`. */
+export function checkParties(code, entries, { at = null, provider = null } = {}) {
+  const p = parseCode(code);
+  const slots = p.shape !== "event" ? [["issuer", p.issuer || BARE_ISSUER, []]]
+    : p.home ? [["issuer", p.issuer, ["market"]], ["home", p.home, ["home"]]]
+      : [["issuer", p.issuer, p.kind === "license" ? ["market"] : ["home", "market"]]];
+  const get = (x) => (Object.hasOwn(entries, x) ? entries[x] : undefined);
+  let ok = true;
+  const facts = [];
+  for (const [slot, prefix, roles] of slots) {
+    const e = get(prefix);
+    if (e === undefined || prefix.includes("GOV") !== Boolean(e.government)) {
+      ok = false;
+      facts.push(`! ${prefix} is not a listed registry`);
+      continue;
+    }
+    if (roles.length && !roles.some((r) => held(e.roles?.[r], at))) {
+      ok = false;
+      facts.push(`! ${prefix} did not hold the role ${roles.join(" or ")}` + (at ? " at the act" : ""));
+    }
+    const v = e.void_from;
+    if (v != null) {
+      if (at != null && at >= v) {
+        ok = false;
+        facts.push(`! ${prefix} listing void from ${v}; the act is after it`);
+      } else facts.push(`${prefix} listing void from ${v}` + (at != null ? "; the act predates it" : ""));
+    }
+    if (e.closed != null) facts.push(`${prefix} closed at ${e.closed}; ask the home`);
+    facts.push(`${slot} ${prefix} (${e.entity})`);
+  }
+  const listed = slots.map((s) => get(s[1])).filter((e) => e !== undefined);
+  if (listed.length === 2 && listed[0].group === listed[1].group) facts.push("issuer and home are one group");
+  for (const [, x] of slots) {
+    if (provider && get(x)?.provider_domains?.includes(provider)) facts.push(`${x} also generated it (${provider})`);
+  }
+  return { ok, facts };
+}
+
+const SKELETON = Object.fromEntries([..."CGQDJLVNRF"].map((c, i) => [c, "OOOOIIUMPE"[i]]));
+const skeleton = (s) => s.replaceAll("VV", "W").replaceAll("RN", "M").replaceAll("CL", "D").replace(/[CGQDJLVNRF]/g, (c) => SKELETON[c]);
+const RESERVED_WORDS = ["PREGEN", "AFTERGEN", "TOGCODE", "STEWARD", "HOME", "MARKET", "BRANCH", "PROVIDER", "WALLET",
+  "ALLOW", "APPROV", "AUTHORI", "VERIF", "VALID", "LEGAL", "LAWFUL", "LICENS", "OFFICIAL", "CERTIF", "GENUIN",
+  "NOTFAKE", "TRUST", "DENIED", "DENY", "REFUS", "REVOK", "BLOCK", "BANNED", "POLICE", "COURT", "STATE",
+  "ADULT", "PORN", "NSFW", "XXX", "EROTIC", "NUDE"];
+/** Prefixes of the specification's examples and vectors: reserved forever (§11). */
+export const FIXTURE_PREFIXES = Object.freeze(["NWRD", "HLWD", "USAD", "VELR", "SKAN", "KAST", "TGOV", "HYBR", "OMNI",
+  "KINO", "KOBEMK", "LYONMK", "RIOMKT", "PUNEMK", "OSLOMK", "ZYXW", "ABCD", "TEST"]);
+
+function osa(a, b) {   // optimal string alignment: substitution, insertion, deletion, adjacent swap
+  const d = Array.from({ length: a.length + 1 }, (_, i) => Array.from({ length: b.length + 1 }, (_, j) => (i * j === 0 ? i + j : 0)));
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] !== b[j - 1] ? 1 : 0));
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+    }
+  }
+  return d[a.length][b.length];
+}
+
+/** The steward's admission check of a new prefix (§9.1): "" when `prefix` may be listed for this legal entity, else
+ * the reason (its wording is informative). `directory`: prefix → {entity} already listed. Human judgement (another
+ * party's mark, offensive or sensitive words) comes on top. */
+export function admissionRefusal(prefix, entity, government, directory, reserved = FIXTURE_PREFIXES) {
+  const n = prefix;
+  if (typeof n !== "string" || !PREFIX_TOG.test(n)) return "4 to 8 letters A-Z, never LIC at either end, never LIC with one letter added";
+  if (Object.hasOwn(directory, n) || reserved.includes(n)) return "taken or reserved: a prefix is never reassigned";
+  if (government !== n.includes("GOV")) return "GOV is for governments, and governments hold only prefixes with GOV";
+  const sk = skeleton(n);
+  if (!government && sk.includes("OOU")) return "looks like GOV";
+  if (/^(?:T[OQCGD][CGQ]|[PRA][CGQ]|[IJL]{2}[CGQ])/.test(n) || /[IJL]{2}[CGQ]$/.test(n)
+      || (n.length === 4 && /[IJL].?[IJL].?[CGQ]/.test(n)) || n.endsWith("PG") || n.endsWith("TOG")) {
+    return "reads as a marker or a kind";
+  }
+  if (RESERVED_WORDS.some((w) => sk.includes(skeleton(w)))) return "contains a reserved word";
+  if (Object.values(directory).some((e) => e.entity === entity)) return "one prefix per legal entity";
+  for (const old of Object.keys(directory)) {
+    const so = skeleton(old);
+    if (osa(n, old) <= 1 || osa(sk, so) <= 1 || sk.includes(so) || so.includes(sk)) return `too close to ${old}`;
+  }
+  return "";
+}
+
+const FIND = /(?<![A-Za-z0-9-])(?:TOG|PG)-[A-Z0-9]+(?:-[A-Z0-9]+)*[*~$=!]?(?![A-Za-z0-9])/g;
+/** Every code in free text (captions, pages, transcripts), as it stands there (§13). A PG- string found is legacy
+ * input: pass it through codeKey before comparing or showing it. */
+export function findCodes(text) {
+  return (text.match(FIND) || []).map((c) => (isCode(c) ? c : c.slice(0, -1))).filter(isCode);
+}
+
+const DASHES = /[‐‑‒–—―−﹣]/g;
+const DROP = /[­​‌‍⁠﻿\\]/g;
+const LOOKALIKE = Object.fromEntries([..."АВСЕНІКМОРТХаеорсхіктмΑΒΕΗΙΚΜΝΟΡΤΧΥΖ"].map((c, i) => [c, "ABCEHIKMOPTXAEOPCXIKTMABEHIKMNOPTXYZ"[i]]));
+const SPACE = "[\\s\\x1c-\\x1f\\x85]";   // Python's str.isspace: the reference model strips and splits on these
+const MAX_READINGS = 4096;
+const asDigits = (g) => g.replace(/[OIL]/g, (c) => (c === "O" ? "0" : "1"));
+
+function groupVariants(g, letters = true) {
+  const out = new Set([g, asDigits(g)]);
+  if (letters && g.length <= 8 && /^[A-Z01]*$/.test(g)) {
+    let all = [""];
+    for (const c of g) {
+      const opts = c === "1" ? ["I", "L"] : c === "0" ? ["O"] : [c];
+      all = all.flatMap((x) => opts.map((o) => x + o));
+    }
+    for (const x of all) out.add(x);
+  }
+  if (letters && /^[1IL]{2}C$/.test(g)) out.add("LIC");
+  return [...out];
+}
+
+/** Where a person types, pastes or scans a code (never inside a message, §7.4): the one code meant, in its TOG
+ * spelling, for a "Did you mean …?" prompt. Folds width, dashes, invisibles, look-alikes, a resolver URL, trailing
+ * punctuation, case and display spaces, then O/0 and I/L/1 by slot, then the PG spelling (codeKey). Throws CodeError:
+ * "malformed" for none or (with `hints`) more than one valid reading, or over 4096 readings; "mistyped"; or
+ * "ask_registry" for an old licence id whose record is not in `licences`. */
+export function normalizeTyped(typed, licences = {}) {
+  if (typeof typed !== "string") codeFail("malformed", "a code is a string");
+  let s = typed.normalize("NFKC").replace(DASHES, "-").replace(DROP, "").replace(/./gsu, (c) => LOOKALIKE[c] ?? c)
+    .replace(new RegExp(`^${SPACE}+|${SPACE}+$`, "gu"), "");
+  if (s.includes("/")) s = s.split("#")[0].replace(/\/+$/, "").split("/").at(-1);
+  s = s.replace(/[.,;:)\]"']+$/, "").toUpperCase();
+  const words = s.split(new RegExp(`${SPACE}+`, "u")).filter(Boolean);
+  let groups;
+  if (s.includes("-")) groups = s.split("-").map((x) => x.replace(new RegExp(`${SPACE}+`, "gu"), ""));
+  else if (words.length && ["PG", "TOG"].includes(words[0])) {   // the display form "PG 000 042 *" (§18)
+    groups = words.length > 2 && !/^\p{L}+$/u.test(words[1]) ? [words[0], words.slice(1).join("")] : words;
+  } else groups = [s];
+  const tailFrom = groupVariants(groups[0]).includes("TOG") && groups.length >= 6 ? groups.length - 3 : groups.length;
+  const readings = groups.map((g, i) => groupVariants(g, i < tailFrom));
+  if (readings.reduce((n, r) => n * r.length, 1) > MAX_READINGS) codeFail("malformed", "too many readings: type the code again");
+  const found = new Set();
+  let combos = [""];
+  readings.forEach((r, i) => { combos = combos.flatMap((x) => r.map((v) => (i ? `${x}-${v}` : v))); });
+  for (const c of combos) {
+    if (!isCode(c)) continue;
+    try { found.add(codeKey(c, licences)); } catch (e) {
+      if (!(e instanceof CodeError) || e.reason !== "ask_registry") throw e;
+      found.add(c);   // an old licence id: only its registry knows its code
+    }
+  }
+  if (found.size > 1) { const hints = [...found].sort(); codeFail("malformed", `ambiguous: ${hints.join(", ")}`, hints); }
+  if (!found.size) {
+    parseCode(groups.join("-"));   // the honest error for the string as typed
+    codeFail("malformed", `not a code: ${JSON.stringify(typed)}`);
+  }
+  const [c] = found;
+  if (c.startsWith("PG-")) codeFail("ask_registry", `${c}: only its registry gives its TOG code`);
+  return c;
 }
 
 function httpsUrl(value, field) {
@@ -157,7 +526,8 @@ function httpsUrl(value, field) {
 
 function checkInvariants(d) {
   if (!d || typeof d !== "object" || Array.isArray(d)) fail("directory must be an object");
-  if (d.schema !== SCHEMA) fail(`schema must be ${SCHEMA}`);
+  if (d.schema !== SCHEMA && d.schema !== SCHEMA_V3) fail(`schema must be ${SCHEMA} or ${SCHEMA_V3}`);
+  const v3 = d.schema === SCHEMA_V3;
   if (!Number.isSafeInteger(d.sequence) || d.sequence < 1) fail("sequence must be a positive integer");
   if (!FINGERPRINT.test(String(d.steward_key_id))) fail("steward_key_id must be a pg-ed25519 fingerprint");
   if (!Array.isArray(d.registries) || d.registries.length === 0) fail("registries must be a non-empty list");
@@ -167,7 +537,7 @@ function checkInvariants(d) {
     if (typeof r.name !== "string" || !r.name.trim()) fail("registry name must be nonempty");
     httpsUrl(r.api, "api");
     httpsUrl(r.keys, "keys");
-    if (r.prefix !== "" && !(typeof r.prefix === "string" && PREFIX.test(r.prefix))) fail(`bad prefix ${r.prefix}`);
+    if (r.prefix !== "" && !(typeof r.prefix === "string" && (v3 ? PREFIX_TOG : PREFIX).test(r.prefix))) fail(`bad prefix ${r.prefix}`);
     if (seen.has(r.prefix)) fail(r.prefix === "" ? "the bare namespace is listed twice" : `prefix ${r.prefix} is listed twice`);
     seen.add(r.prefix);
     if (!Array.isArray(r.key_fingerprints) || !r.key_fingerprints.length
@@ -181,6 +551,7 @@ function checkInvariants(d) {
       fail(`registry ${r.name}: revoked must be an object with "at"`);
     }
   }
+  if (v3) checkV3(d);
   if (d.revoked_keys !== undefined && !(Array.isArray(d.revoked_keys)
       && d.revoked_keys.every((k) => k && FINGERPRINT.test(String(k.key_id)) && typeof k.at === "string"))) {
     fail("revoked_keys must list {key_id, at}");
@@ -201,6 +572,29 @@ function checkInvariants(d) {
   for (const f of d.freezes || []) {
     const span = when(f.until) - when(f.at);
     if (!(span > 0 && span <= SETTLED_AFTER)) fail("a freeze lasts more than nothing and at most 7 days");
+  }
+}
+
+// Directory v3 members (TOG-CODE.md §9.2), every time in RFC 3339 like v2's revoked.at.
+function checkV3(d) {
+  const time = (v, nullable) => (nullable && v === null) || (typeof v === "string" && Number.isFinite(when(v)));
+  const span = (x) => isObject(x) && time(x.from) && time(x.until, true) && Object.keys(x).every((k) => ["from", "until"].includes(k));
+  for (const r of d.registries) {
+    const bad = (m) => fail(`registry ${r.name}: ${m}`);
+    for (const m of ["entity", "group"]) if (r[m] !== undefined && !(typeof r[m] === "string" && r[m])) bad(`${m} must be a nonempty string`);
+    if (r.government !== undefined && typeof r.government !== "boolean") bad("government must be true or false");
+    if (r.roles !== undefined && !(isObject(r.roles) && Object.entries(r.roles).every(([k, v]) => ROLES.includes(k) && span(v)))) {
+      bad(`roles maps ${ROLES.join(", ")} to {from, until}`);
+    }
+    if (r.provider_domains !== undefined && !(Array.isArray(r.provider_domains) && r.provider_domains.every((x) => span({ from: x?.from, until: x?.until })
+        && typeof x.domain === "string" && x.domain && Object.keys(x).every((k) => ["domain", "from", "until"].includes(k))))) {
+      bad("provider_domains lists {domain, from, until}");
+    }
+    for (const m of ["void_from", "closed"]) if (r[m] !== undefined && !time(r[m])) bad(`${m} must be an RFC 3339 time`);
+  }
+  if (d.resolver !== undefined) httpsUrl(d.resolver, "resolver");
+  if (d.min_library !== undefined && !(typeof d.min_library === "string" && /^[0-9]+\.[0-9]+\.[0-9]+$/.test(d.min_library))) {
+    fail("min_library must be a version");
   }
 }
 
@@ -245,6 +639,18 @@ export class Directory {
     return r ? structuredClone(r) : null;
   }
 
+  /** Offline party check of `code` (TOG-CODE.md §9.2) against this v3 directory, read at `at` (Unix seconds: the
+   * act's witnessed time, or null). Returns {ok, facts}; for support tools, never beside a video. */
+  parties(code, { at = null, provider = null } = {}) {
+    if (this.#d.schema !== SCHEMA_V3) fail("party checks need directory v3");
+    const t = (v) => (v == null ? null : when(v));
+    const entries = Object.fromEntries(this.#d.registries.map((r) => [r.prefix, { entity: r.entity ?? r.name, group: r.group,
+      government: r.government ?? false, provider_domains: (r.provider_domains || []).map((x) => x.domain),
+      roles: Object.fromEntries(Object.entries(r.roles || {}).map(([k, v]) => [k, { from: t(v.from), until: t(v.until) }])),
+      ...(r.void_from !== undefined && { void_from: t(r.void_from) }), ...(r.closed !== undefined && { closed: t(r.closed) }) }]));
+    return checkParties(code, entries, { at, provider });
+  }
+
   /** The steward found `code` a false claim under `anchor` and has not reversed it (identity.md): drop that claim. For
    * one anchor and code the latest entry of false_claims and false_claim_reversals by `at` decides; a tie stays false.
    * Without `anchor`, under any anchor: a code asked as a private person is then never generated. */
@@ -252,7 +658,7 @@ export class Directory {
     const latest = new Map();
     for (const [isFalse, field] of [[true, "false_claims"], [false, "false_claim_reversals"]]) {
       for (const f of this.#d[field] || []) {
-        if (f.code !== code || (anchor !== null && anchor !== undefined && f.anchor !== anchor)) continue;
+        if (keyOf(f.code) !== keyOf(code) || (anchor !== null && anchor !== undefined && f.anchor !== anchor)) continue;
         const at = when(f.at), was = latest.get(f.anchor);
         if (!was || at > was[0] || (at === was[0] && isFalse)) latest.set(f.anchor, [at, isFalse]);
       }
@@ -298,12 +704,21 @@ export class Directory {
 
 /** A newer directory may add registries and keys, never remove or move them (PG-CODE.md §9.1). */
 function checkContinuity(next, previous) {
+  if (crossSchema(next, previous)) return;
   if (next.sequence < previous.sequence) fail(`sequence ${next.sequence} is older than ${previous.sequence} already seen`);
   if (next.sequence === previous.sequence) {
     if (canonicalJson(next) !== canonicalJson(previous)) fail("a different directory with the same sequence");
     return;
   }
   keepsHistory(next, previous);
+}
+
+/** v2 and v3 are two lines, each with its own sequence: none is compared across them, and a v2 directory after a v3 one
+ * is refused (it would hide registries listed only in v3). */
+function crossSchema(next, previous) {
+  if (next.schema === previous.schema) return false;
+  if (previous.schema === SCHEMA_V3) fail("a v3 directory was already accepted: load registries.v3.json");
+  return true;
 }
 
 /** Revocations a successor's first directory may drop (PG-CODE.md §9.1). */
@@ -366,7 +781,7 @@ export async function verifyDirectory(directory, { stewardPublicKeyHex = STEWARD
   if (!handover) {
     if (directory.sequence < minSequence) fail(`sequence ${directory.sequence} is older than ${minSequence} already seen`);
     if (prev) checkContinuity(directory, prev);
-  } else if (prev) {
+  } else if (prev && !crossSchema(directory, prev)) {
     // A handover may restart the sequence, never drop a listing or a revocation, except
     // revocations the old key signed after it was compromised, named in `annulled`.
     keepsHistory(directory, prev, annulments(directory));
@@ -660,13 +1075,16 @@ export const FLOOR_REASONS = Object.freeze(["PG_SUBJECT_OPTED_OUT", "PG_SUBJECT_
   "PG_IMMUTABLE_DENIAL", "PG_PERSONAL_SIGNATURE_REQUIRED"]);
 
 /** A registry's signed anchor list (pg.anchors.v1), checked through the directory and at most a day old, so an
- * old copy cannot hide a new opt-out. Returns its entries, without those the steward found false under their own anchor
- * (a false claim under another anchor silences no one). An entry naming
- * another registry's code is dropped, not the whole list: one foreign line must not make the list fail. A list naming
- * one of its codes twice is refused: its anchor would depend on which line a client read last. */
+ * old copy cannot hide a new opt-out. Returns its entries, each code in its TOG spelling (a PG- line of an older list
+ * folds by codeKey), without those the steward found false under their own anchor (a false claim under another anchor
+ * silences no one). An entry naming another registry's code is dropped, not the whole list: one foreign line must not
+ * make the list fail. An entry that is not a person code (unknown shape, mistyped, a licence or an event) fails the
+ * whole list: dropping it could lose a refusal. A list naming one of its codes twice, in either spelling, is refused:
+ * its anchor would depend on which line a client read last. */
 export async function verifyAnchors(envelope, prefix, { directory, fetch: fetchFn = globalThis.fetch,
   now = Math.floor(Date.now() / 1000) } = {}) {
-  const body = await registrySigned(envelope, "pg.anchors.v1", `PG-${prefix}-0000000`, directory, fetchFn); // names the prefix
+  // The code only names the prefix, so the directory finds the registry's keys (any prefix length).
+  const body = await registrySigned(envelope, "pg.anchors.v1", `TOG-${prefix}-1000000000`, directory, fetchFn);
   if (body.registry !== prefix || !Array.isArray(body.anchors) || !Number.isSafeInteger(body.issued_at)) {
     fail("not an anchor list of this registry");
   }
@@ -674,7 +1092,12 @@ export async function verifyAnchors(envelope, prefix, { directory, fetch: fetchF
   if (!body.anchors.every((e) => e && typeof e === "object" && !Array.isArray(e) && typeof e.code === "string")) {
     fail("an anchor list entry is {anchor, code, level, proof_url, status}");
   }
-  const own = body.anchors.filter((e) => CANONICAL_CODE.test(e.code) && issuerOf(e.code) === prefix);
+  let parsed;
+  try { parsed = body.anchors.map((e) => parseCode(e.code)); } catch { parsed = null; }
+  if (!parsed || parsed.some((p) => p.kind !== "subject")) {
+    fail("an anchor list entry of unknown shape fails the whole list: not a person code");
+  }
+  const own = body.anchors.flatMap((e, i) => (parsed[i].issuer === prefix ? [{ ...e, code: parsed[i].key }] : []));
   if (new Set(own.map((e) => e.code)).size !== own.length) fail("an anchor list names each code once");
   return own.filter((e) => !directory.isFalseClaim(e.code, e.anchor));
 }
@@ -735,7 +1158,7 @@ function channelUrl(url) {
  *   `getText` returns {author: <handle or channel id>, text: <what the account itself wrote there>} from the
  *   platform's own record of who wrote it. The author must be the account (letter case aside); a string, a comment or
  *   another account's post confirms nothing.
- * The text must have a line "PRE-GEN: <code>", the whole code, alone or followed by a space and more words; a line
+ * The text must have a line "PRE-GEN: <code>", the whole code in either spelling (codeKey), alone or followed by a space and more words; a line
  * "PRE-GEN: <code> withdraw <party>" confirms nothing. `proofUrl` is taken exactly as written: https, a lower-case
  * host, no credentials, port, query, fragment, percent-escape or dot segment, at most 512 characters; `getText` must
  * not follow redirects (treat a 3xx like a 404: return ""). If `getText` throws (the page cannot be read), the claim
@@ -765,7 +1188,7 @@ export async function checkChannelProof(code, proofUrl, officialUrls, getText, {
   }
   return (typeof got === "string" ? got : "").split("\n").some((line) => {
     const words = line.replace(/^[ \t\r]+|[ \t\r]+$/g, "").split(/[ \t]+/);
-    return words[0] === "PRE-GEN:" && words[1] === code && words[2] !== "withdraw";
+    return words[0] === "PRE-GEN:" && words.length > 1 && keyOf(words[1]) === keyOf(code) && words[2] !== "withdraw";
   });
 }
 
@@ -910,7 +1333,7 @@ const isObject = (v) => Boolean(v) && typeof v === "object" && !Array.isArray(v)
 export async function checkTerms(env, code, { directory, fetch: fetchFn = globalThis.fetch } = {}) {
   directory ??= await loadDirectory({ fetch: fetchFn });
   const b = await registrySigned(env, "pg.terms.v1", code, directory, fetchFn);
-  if (b.subject_ref !== code) fail("these terms are another person's");
+  if (keyOf(b.subject_ref) !== keyOf(code)) fail("these terms are another person's");
   const has = (k) => Object.hasOwn(b, k);
   if (!TERMS_MEMBERS.every((k) => has(k) || k === "amends" || k === "factor") || !Object.keys(b).every((k) => TERMS_MEMBERS.includes(k))
       || !printable(b) || !same(Object.keys(b.signers[0]).sort(), ["key_id", "role"])) {
@@ -966,6 +1389,20 @@ async function termsFinding(item, asked, basis, code, directory, fetchFn) {
 
 // ── extension proof (spec/extensions/proof.md) ──
 
+/** proof.md acceptance step 3: an entry's readable copies `code` and `licence` equal the codes recomputed from its
+ * signed answer (flat model: the answer's signer is the code's own registry) and from `grant`, the pg.grant.v1 envelope
+ * whose message id the answer's basis names. A missing copy is not an error. */
+async function checkCopies(it, answer, code) {
+  const meta = Object.fromEntries([["Code", it.code], ["Licence", it.licence]].filter(([, v]) => v !== undefined));
+  if (!Object.keys(meta).length) return;
+  const signer = issuerOf(code) || BARE_ISSUER, g = answer.basis?.kind === "grant" ? answer.basis.grant : null;
+  const act = { type: "pg.answer.v1", id: await messageId("pg.answer.v1", answer), signer, subject_ref: code,
+    grant: g && { id: g.id, signer } };
+  const env = it.grant, licence = g?.format === "pg.grant.v1" && env?.type === "pg.grant.v1" && isObject(env.body)
+    && (await messageId("pg.grant.v1", env.body)) === g.id ? { type: "pg.grant.v1", id: g.id, signer, subject_ref: env.body.subject_ref } : null;
+  if (!metadataOk(meta, act, licence)) fail(`${code}: a readable copy does not match the code its record gives`);
+}
+
 /** A pg.proof.v1 bundle carried with an output: was every subject of the job allowed at the moment it was
  * generated, did each registry acknowledge the provider's report of this output, and (given its SHA-256) is it
  * this file? Throws PregenError with the reason; returns {outputHash, jobId, subjects}. Each subject also says what the
@@ -995,6 +1432,7 @@ export async function checkProof(bundle, { directory, fetch: fetchFn = globalThi
     if (!Number.isInteger(ack.received_at) || ack.received_at > (answer.expires_at ?? 0) + REPORT_GRACE) {
       fail(`${code}: reported more than 24 hours after the allow expired, so when the output was made is only the provider's word`);
     }
+    await checkCopies(it, answer, code);
     outputs.add(rbody.output_hash);
     jobs.add(rbody.job_id);
     subjects.push({ code, level: answer.level, basis: answer.basis,

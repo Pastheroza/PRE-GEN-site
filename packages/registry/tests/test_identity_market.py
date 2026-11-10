@@ -16,8 +16,6 @@ from pregen_registry.registry import PURPOSES, Config, Registry
 NOW = 1_800_000_000
 RONALDO = "wikidata:Q11571"
 steward = Key()
-
-
 class World:
     """Registries AAAA and BBBB (honest), XXXX and YYYY (listed, but claim people they cannot prove)."""
 
@@ -159,9 +157,9 @@ def test_a_proof_must_be_on_the_persons_own_channel():
 
 
 def test_the_steward_marks_a_false_claim_and_every_client_drops_it():
-    x_code = World().person("XXXX", confirmed=False)       # same serial in a fresh world: PG-XXXX-000001…
+    x_code = World().person("XXXX", confirmed=False, serial=1)     # the same code in a fresh world
     w = World(false_claims=[x_code])
-    w.person("XXXX", confirmed=False)
+    w.person("XXXX", confirmed=False, serial=1)
     assert w.claims({}) == []
 
 
