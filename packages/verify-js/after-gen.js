@@ -143,6 +143,8 @@ function u(b, at, n = 4) {
 }
 
 const MOVIE = /(cmov|hoov)/, MPEG = /(hdlr[\s\S]{4}mhlrMPEG)/, CARRIER_MAX = 64 << 20;
+const NUT = /(NMzV\x1f_\x04\xad)/; // NUT main startcode: its probe ties with MP4, the file opens as neither
+const PROBED_AWAY = ["jp2 ", "jpx ", "jxl "]; // major brands a player's MP4 probe scores low (One reading only)
 
 // Any of the codes of `rx` at any byte position of `b` (One reading only).
 function scan(b, rx = TABLES, why = (c) => `${c} outside its place`) {
@@ -292,6 +294,9 @@ export async function mediaHash(source) {
   const r = reader(source);
   const top = await topBoxes(r, M);
   if (top[0]?.type !== "ftyp") M("the first box is not ftyp");
+  if (top[0].size - top[0].hdr < 4 || PROBED_AWAY.includes(latin1(await r.read(top[0].hdr, 4), 0, 4))) {
+    M("an ftyp major brand that players do not read as MP4");
+  }
   for (const [uuid, name] of [[XMP_UUID, "XMP"], [C2PA_UUID, "C2PA"]]) { // carriers that are not what they claim
     const boxes = top.filter((b) => b.uuid === uuid);
     if (boxes.length > 1) M(`more than one ${name} box`);
@@ -324,6 +329,7 @@ export async function mediaHash(source) {
   for (const [s, e] of mdats) { await scanFile(r, from, s, MOVIE, (c) => `${c}: a second movie`); from = e; }
   await scanFile(r, from, r.size, MOVIE, (c) => `${c}: a second movie`);
   await scanFile(r, 0, r.size, MPEG, () => "the pattern hdlr ... mhlr MPEG, which makes players read the file as another format", 15);
+  await scanFile(r, 0, r.size, NUT, () => "a NUT startcode, which makes players read the file as another format", 7);
 
   const stack = [], buf = new Uint8Array(PIECE); // the stream, cut into pieces of 1 MiB: a leaf each
   let fill = 0, leaves = 0;

@@ -13,6 +13,7 @@
 .steps li[data-state="fail"]::after { content: "  ✕"; }
 .steps li[data-state="busy"]::after { content: "  …"; }
 .cf-result { margin: 24px 0; max-width: 720px; }
+.cf-record + .cf-record { margin-top: 40px; }
 .cf-verdict { margin: 0 0 16px; font-size: 22px; font-weight: 600; line-height: 1.3; }
 .cf-why { margin: 0 0 16px; font-size: 16px; line-height: 1.5; }
 .cf-table { width: 100%; border-collapse: collapse; font-size: 15px; }

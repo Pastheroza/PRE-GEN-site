@@ -60,14 +60,20 @@ async function findByHash(directory, hash) {
   return found;
 }
 
-function show(summary, status) {
+// One block per record that checks out: a file may show several people.
+function show(summary, status, error) {
   const s = summary.scope;
   const state = status.state === "active" ? "In force"
     : status.state === "withdrawn" ? `Withdrawn by the person on ${when(status.withdrawn_at)}`
     : status.state === "expired" ? `Expired on ${when(status.not_after)}`
     : "Not confirmed by the registry today";
-  say(status.state === "active" ? "Approved after generation" : "Approved after generation, no longer in force",
-    `${summary.approvedBy} The registry signed this record on ${when(summary.issued_at)}.`);
+  const block = el("section", undefined, "cf-record");
+  block.append(el("p", status.state === "active" ? `Approved after generation: ${summary.subject_ref}`
+    : status.state === "unknown" ? `A record for ${summary.subject_ref} was found, but whether it stands today could not be confirmed`
+    : `Approved after generation, no longer in force: ${summary.subject_ref}`, "cf-verdict"));
+  block.append(el("p", error
+    ? `The registry did not answer for its status (${error}). The person may have withdrawn it. Treat it as not confirmed until the registry answers.`
+    : `${summary.approvedBy} The registry signed this record on ${when(summary.issued_at)}.`, "cf-why"));
   const rows = [
     ["Status today", state],
     ["Person", summary.subject_ref],
@@ -91,7 +97,8 @@ function show(summary, status) {
     tr.append(el("th", k), el("td", String(v)));
     table.append(tr);
   }
-  result.append(table, el("p", summary.notice, "meta"));
+  block.append(table, el("p", summary.notice, "meta"));
+  result.append(block);
 }
 
 async function check(file) {
@@ -118,36 +125,34 @@ async function check(file) {
     return say("The list of registries could not be loaded", e.message);
   }
 
+  // Every record is collected, from the file and from the registries by the fingerprint, so a planted record cannot
+  // hide a real one, and a file that shows several people shows every record.
   step("s-find", "busy");
-  let records = [];
+  let inFile = [];
   try {
-    const inFile = await readAfterGen(file);
-    records = [inFile.c2pa, inFile.xmp].filter(Boolean);
-  } catch { /* unreadable metadata: look the hash up instead */ }
-  // A record in the file is tried first; if none checks out, the registries are asked by the fingerprint, so a
-  // planted record cannot hide a real approval.
-  let summary, env, lastError, where = "in the file's metadata";
-  const tryAll = async (list) => {
-    for (const r of list) {
-      try { summary = await checkAfterGen(r, { directory, media }); env = r; return; } catch (e) { lastError = e; }
-    }
-  };
-  await tryAll(records);
-  if (!summary) {
-    const held = await findByHash(directory, media.hash);
-    if (held.length) where = "at the registry, by the file's fingerprint";
-    await tryAll(held);
-    records = records.concat(held);
-  }
+    const found = await readAfterGen(file);
+    inFile = [found.c2pa, found.xmp].filter(Boolean);
+  } catch { /* unreadable metadata: the registries are asked anyway */ }
+  const held = await findByHash(directory, media.hash);
+  const records = inFile.concat(held);
   if (!records.length) {
     step("s-find", "fail");
     return say("No approval found for this file",
       "The file carries no AFTER-GEN record, and no registry holds one for its fingerprint. This says nothing about whether the video is permitted, generated or real.");
   }
-  step("s-find", "ok", where);
+  step("s-find", "ok", [inFile.length && "in the file's metadata", held.length && "at the registry, by the file's fingerprint"]
+    .filter(Boolean).join("; "));
 
   step("s-sign", "busy");
-  if (!summary) {
+  const good = new Map();
+  let lastError;
+  for (const r of records) {
+    try {
+      const summary = await checkAfterGen(r, { directory, media });
+      if (!good.has(summary.id)) good.set(summary.id, { summary, env: r });
+    } catch (e) { lastError = e; }
+  }
+  if (!good.size) {
     step("s-sign", "fail");
     const msg = lastError?.message || "";
     if (/not for this file/.test(msg)) {
@@ -163,22 +168,23 @@ async function check(file) {
     say("The record does not check out", "It approves nothing.");
     return result.append(el("p", msg, "meta"));
   }
-  step("s-sign", "ok", `registry ${summary.prefix}`);
+  step("s-sign", "ok", good.size === 1 ? "1 record" : `${good.size} records`);
+  if (lastError) result.append(el("p", `Some records found for this file do not check out and are not shown (${lastError.message}).`, "meta"));
 
   step("s-status", "busy");
-  try {
-    const api = apiFor(directory, summary.subject_ref);
-    if (!api) throw new Error("the registry has no https API in the directory");
-    const { status } = await getJson(`${api}/v2/after-gen/${summary.id}`);
-    const st = await checkAfterGenStatus(status, env, { directory });
-    step("s-status", "ok", st.state);
-    show(summary, st);
-  } catch (e) {
-    step("s-status", "fail");
-    show(summary, { state: "unknown", not_after: summary.scope.not_after });
-    result.firstChild.textContent = "A record was found, but whether it stands today could not be confirmed";
-    result.insertBefore(el("p", `The registry did not answer for its status (${e.message}). The person may have withdrawn it. Treat it as not confirmed until the registry answers.`, "cf-why"), result.children[1]);
+  let confirmed = 0;
+  for (const { summary, env } of good.values()) {
+    try {
+      const api = apiFor(directory, summary.subject_ref);
+      if (!api) throw new Error("the registry has no https API in the directory");
+      const { status } = await getJson(`${api}/v2/after-gen/${summary.id}`);
+      show(summary, await checkAfterGenStatus(status, env, { directory }));
+      confirmed++;
+    } catch (e) {
+      show(summary, { state: "unknown", not_after: summary.scope.not_after }, e.message);
+    }
   }
+  step("s-status", confirmed === good.size ? "ok" : "fail", `${confirmed} of ${good.size} confirmed`);
 }
 
 for (const li of $("steps").children) li.dataset.label = li.textContent;

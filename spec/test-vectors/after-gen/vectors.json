@@ -234,6 +234,10 @@
    "refused": "media/1: stsz outside its place"
   },
   {
+   "file": "attack-ftyp-jp2.mp4",
+   "refused": "media/1: an ftyp major brand that players do not read as MP4"
+  },
+  {
    "file": "attack-ftyp-not-first.mp4",
    "refused": "media/1: the first box is not ftyp"
   },
@@ -312,6 +316,10 @@
     "hash": "e01870d6921a3a1feea7458a9048a1446b7242cb2fd39344c51cfd504a8e102d",
     "leaves": 1
    }
+  },
+  {
+   "file": "attack-nut.mp4",
+   "refused": "media/1: a NUT startcode, which makes players read the file as another format"
   },
   {
    "file": "attack-offset-in-moov.mp4",

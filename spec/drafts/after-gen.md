@@ -118,8 +118,10 @@ no second factor. A mandate that does not list `after_gen` gives no power to app
 Putting a record into a file changes the file's bytes, so a plain hash of the file could not
 both be in the record and stay true. `media/1` hashes **every byte of the file a player could
 read**, and leaves out only the record's two carriers. Two files with one `media/1` hash
-therefore hold the same bytes everywhere but in those two boxes, and the rules below make sure
-no player reads media from them; they play the same. (A player may show the XMP box's other
+therefore hold the same boxes with the same contents everywhere but in those two boxes (a box's
+size field may be written in its short or long form, and chunk offsets may shift with a
+carrier), and the rules below make sure no player reads media from the carriers or reads the
+file as anything but MP4; they play the same. (A player may show the XMP box's other
 properties, such as a title, as metadata: those are not covered, and a verifier shows only the
 record.) `after-gen/1`
 defines `media/1` for ISO base media files (MP4, MOV, M4V).
@@ -166,7 +168,9 @@ it will publish, after its last remux and metadata edit, and adds only the recor
 carriers. What remains is to make sure that every player finds its samples where `media/1`
 does, so that no player reads media from a carrier. A verifier therefore refuses `media/1`, and
 says why, for:
-- a file whose first box is not `ftyp`, with no `moov` or more than one; a box whose size runs
+- a file whose first box is not `ftyp`, or whose `ftyp` major brand is `jp2 `, `jpx ` or `jxl `
+  (a player's MP4 probe then scores the file low and may read it as another format), with no
+  `moov` or more than one; a box whose size runs
   past its parent, or that is shorter than its own header (a `uuid` box under 24 bytes); a value
   that does not fit a signed 64-bit integer;
 - **carriers that are not what they claim:** an XMP box whose packet is not UTF-8 text free of
@@ -177,8 +181,10 @@ says why, for:
   self-contained `url ` or `urn `);
 - **a second movie anywhere:** the code `cmov` or `hoov` at any byte position of the file
   outside `mdat` data, carriers included (a player decompresses or adopts such a movie wherever
-  it finds one); and the sixteen-byte pattern `hdlr`, any four bytes, `mhlr`, `MPEG` anywhere in
-  the file (it makes a player give up reading the file as MP4 and scan it as another format);
+  it finds one); the sixteen-byte pattern `hdlr`, any four bytes, `mhlr`, `MPEG` anywhere in the
+  file (it makes a player give up reading the file as MP4 and scan it as another format); and
+  the eight bytes of NUT's main startcode `4E 4D 7A 56 1F 5F 04 AD` anywhere in the file (a
+  player's NUT probe then ties with its MP4 probe and the file opens as neither);
 - **tables outside their place:** any of the codes `stco`, `co64`, `stsc`, `stsz`, `stz2`,
   `stts`, `ctts`, `iloc`, `saio`, `saiz`, `sidx`, `ssix`, `tfra`, `mfra`, `trun`, `tfhd` found
   at any byte position of a top-level box other than `mdat` and the carriers, except as a

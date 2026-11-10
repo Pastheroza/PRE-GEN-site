@@ -30,7 +30,7 @@
 <label class="drop" id="drop">
 <input id="file" type="file" accept="video/mp4,video/quicktime,.mp4,.mov,.m4v">
 <span class="drop-main">Drop an MP4 or MOV file here, or choose one</span>
-<span class="drop-sub">The file never leaves your device. Its fingerprint is computed here, in your browser.</span>
+<span class="drop-sub">The file never leaves your device. Its fingerprint is computed here, in your browser, and only the fingerprint is sent to the registries.</span>
 </label>
 <p class="meta"><label class="sandbox"><input id="sandbox" type="checkbox"> Test registries only (the sandbox directory)</label></p>
 
@@ -51,7 +51,7 @@
 <li>It says nothing about whether the video is AI-generated or real.</li>
 </ul>
 </section>
-<p class="meta">How it works: the page computes the file's fingerprint (<span class="mono">media/1</span>, a hash of the coded video and audio only), reads the record from the file's metadata or asks the registries by the fingerprint, checks the registry's signature against the signed list of registries, and asks the registry whether the approval still stands. When the file carries no record, only the fingerprint is sent to the registries, never the file.</p>
+<p class="meta">How it works: the page computes the file's fingerprint (<span class="mono">media/1</span>, a hash of every byte of the file except the boxes that carry the record), reads the records in the file's metadata and asks the registries for any they hold under that fingerprint, checks each registry's signature against the signed list of registries, and asks each registry whether its approval still stands. Only the fingerprint is sent to the registries, never the file. Editing the file in any way, even its title, gives it a new fingerprint.</p>
 </div></main>
 <footer class="foot"><div class="wrap">
 <div class="foot-top">

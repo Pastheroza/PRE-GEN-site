@@ -89,6 +89,8 @@ def _u(b, at, n=4):
 
 _MOVIE = re.compile(rb"(cmov|hoov)")
 _MPEG = re.compile(rb"(hdlr[\s\S]{4}mhlrMPEG)")
+_NUT = re.compile(rb"(NMzV\x1f_\x04\xad)")           # NUT main startcode: its probe ties with MP4, the file opens as neither
+_PROBED_AWAY = {b"jp2 ", b"jpx ", b"jxl "}             # major brands a player's MP4 probe scores low (One reading only)
 _CARRIER_MAX = 64 << 20
 
 
@@ -289,6 +291,9 @@ def media_hash(f) -> dict:
     top = list(_boxes(f, 0, size, top=True))
     if not top or top[0][0] != b"ftyp":
         raise PregenError("media/1: the first box is not ftyp")
+    f.seek(top[0][2])
+    if top[0][3] - top[0][2] < 4 or f.read(4) in _PROBED_AWAY:
+        raise PregenError("media/1: an ftyp major brand that players do not read as MP4")
     for uuid, name in ((_XMP_UUID, "XMP"), (_C2PA_UUID, "C2PA")):      # carriers that are not what they claim
         boxes = _top(f, uuid)
         if len(boxes) > 1:
@@ -339,6 +344,7 @@ def media_hash(f) -> dict:
     _scan_file(f, at, size, _MOVIE, "{}: a second movie")
     _scan_file(f, 0, size, _MPEG, "the pattern hdlr ... mhlr MPEG, which makes players read the file as another format",
                15)
+    _scan_file(f, 0, size, _NUT, "a NUT startcode, which makes players read the file as another format", 7)
 
     def stream():
         yield b"PREGEN-MEDIA\x00media/1\x00"
