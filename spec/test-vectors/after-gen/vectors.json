@@ -1,0 +1,315 @@
+{
+ "description": "after-gen/1 (spec/drafts/after-gen.md): media/1 of each file, or its refusal; for files carrying a record, the message id read from C2PA and XMP and what check_after_gen says against the file's own media/1. The directory and key sets are those of answers.json.",
+ "now": 1790000000,
+ "record": {
+  "type": "pg.after_gen.v1",
+  "body": {
+   "signers": [
+    {
+     "role": "registry",
+     "key_id": "pg-ed25519:a5599d87d32efebb2571d65a6848da03"
+    }
+   ],
+   "kind": "ratification",
+   "label": "approved after generation",
+   "notice": "Recorded after the content existed. Not a PRE-GEN permission given before generation. Says nothing about whether the content is AI-generated.",
+   "not": [
+    "pre_generation_permission",
+    "statement_of_origin"
+   ],
+   "subject_ref": "PG-TEST-000001N",
+   "content": {
+    "binding": "media/1",
+    "hash": "3612e004b074e751e541149b7099ca934ed79b45d1c8ca0e1e29dc5e8420beb2",
+    "leaves": 58
+   },
+   "request": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "holder": "https://studio.example",
+   "licence": {
+    "format": "pg.grant.v1",
+    "id": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+   },
+   "use": {
+    "n": 3,
+    "of": 10
+   },
+   "scope": {
+    "purposes": [
+     "commercial"
+    ],
+    "categories": [
+     "advertising"
+    ],
+    "territories": [
+     "ES",
+     "IT"
+    ],
+    "channels": [
+     "online-video",
+     "social"
+    ],
+    "project": "Spring campaign 2027",
+    "not_after": 1791000000
+   },
+   "approval": {
+    "assent": "agent",
+    "agent": "https://agency.example",
+    "mandate": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "decision": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "factor": "signature"
+   },
+   "issued_at": 1789999900
+  },
+  "signatures": [
+   "85e46eb4ce523079a16108ae3e443f07dbd683fd89e88ca75df97d0dfab17b29b88dc8ecc438fc1f0a9b55ee4dd5011094cba1389e2a17f861e33d80de245d02"
+  ]
+ },
+ "files": [
+  {
+   "file": "a-c2pa-cbor.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "3612e004b074e751e541149b7099ca934ed79b45d1c8ca0e1e29dc5e8420beb2",
+    "leaves": 58
+   }
+  },
+  {
+   "file": "a-c2pa-earlier.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "3612e004b074e751e541149b7099ca934ed79b45d1c8ca0e1e29dc5e8420beb2",
+    "leaves": 58
+   }
+  },
+  {
+   "file": "a-c2pa-json.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "3612e004b074e751e541149b7099ca934ed79b45d1c8ca0e1e29dc5e8420beb2",
+    "leaves": 58
+   }
+  },
+  {
+   "file": "a-flip.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "991f93af4c52aa00cd23da98451ea5653f529a84b8e844ec6df963fd5dda3461",
+    "leaves": 58
+   }
+  },
+  {
+   "file": "a-meta.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "3612e004b074e751e541149b7099ca934ed79b45d1c8ca0e1e29dc5e8420beb2",
+    "leaves": 58
+   }
+  },
+  {
+   "file": "a-remux-faststart.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "c652e4c2174d8ff69dd7f30f13da15f92b991377ed1c971f627a74e5d4539f53",
+    "leaves": 58
+   }
+  },
+  {
+   "file": "a-remux.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "c652e4c2174d8ff69dd7f30f13da15f92b991377ed1c971f627a74e5d4539f53",
+    "leaves": 58
+   }
+  },
+  {
+   "file": "a-xmp-foreign-pg.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "3612e004b074e751e541149b7099ca934ed79b45d1c8ca0e1e29dc5e8420beb2",
+    "leaves": 58
+   }
+  },
+  {
+   "file": "a-xmp-foreign.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "3612e004b074e751e541149b7099ca934ed79b45d1c8ca0e1e29dc5e8420beb2",
+    "leaves": 58
+   }
+  },
+  {
+   "file": "a-xmp.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "3612e004b074e751e541149b7099ca934ed79b45d1c8ca0e1e29dc5e8420beb2",
+    "leaves": 58
+   }
+  },
+  {
+   "file": "a.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "3612e004b074e751e541149b7099ca934ed79b45d1c8ca0e1e29dc5e8420beb2",
+    "leaves": 58
+   }
+  },
+  {
+   "file": "b-copied-record.mov",
+   "media": {
+    "binding": "media/1",
+    "hash": "7b321fc4d039e7f2dac220d3c5940d5929643c73047ccf01b686eb17123dbea6",
+    "leaves": 60
+   }
+  },
+  {
+   "file": "b-remux-faststart.mov",
+   "media": {
+    "binding": "media/1",
+    "hash": "1170025746349e66510e507e35bb5d3e6056b4d43629710a944a1778aca5bc3d",
+    "leaves": 60
+   }
+  },
+  {
+   "file": "b-remux.mov",
+   "media": {
+    "binding": "media/1",
+    "hash": "1170025746349e66510e507e35bb5d3e6056b4d43629710a944a1778aca5bc3d",
+    "leaves": 60
+   }
+  },
+  {
+   "file": "b.mov",
+   "media": {
+    "binding": "media/1",
+    "hash": "7b321fc4d039e7f2dac220d3c5940d5929643c73047ccf01b686eb17123dbea6",
+    "leaves": 60
+   }
+  },
+  {
+   "file": "c.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "6330c0489a776ad99aea41aa77960cee8445be4be8402840323514e28f410119",
+    "leaves": 7
+   }
+  },
+  {
+   "file": "tiny-tref.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "c18dd30db2990613668e4bca4b2b10e655f5482dd0fdf1b7a1b96fcad631a8ec",
+    "leaves": 7
+   }
+  },
+  {
+   "file": "tiny.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "e3be5e27f2b21c4959c32bda7f7e3829fca1183a6e1fb1344c894daeb8af51b9",
+    "leaves": 4
+   }
+  },
+  {
+   "file": "x-box-past-parent.mp4",
+   "refused": "media/1: a box runs past its parent"
+  },
+  {
+   "file": "x-encv.mp4",
+   "refused": "media/1: encrypted samples"
+  },
+  {
+   "file": "x-moof.mp4",
+   "refused": "media/1: a fragmented file (moof)"
+  },
+  {
+   "file": "x-mvex.mp4",
+   "refused": "media/1: a fragmented file (mvex)"
+  },
+  {
+   "file": "x-no-moov.mp4",
+   "refused": "media/1: no moov box"
+  },
+  {
+   "file": "x-overlap.mp4",
+   "refused": "media/1: sample ranges overlap"
+  },
+  {
+   "file": "x-past-eof.mp4",
+   "refused": "media/1: a sample range falls outside the file"
+  },
+  {
+   "file": "x-sinf.mp4",
+   "refused": "media/1: encrypted samples"
+  },
+  {
+   "file": "x-stts-stsz.mp4",
+   "refused": "media/1: stts, ctts and stsz count different samples"
+  },
+  {
+   "file": "x-stz2.mp4",
+   "refused": "media/1: stz2 is not read"
+  },
+  {
+   "file": "x-tref-unlisted.mp4",
+   "refused": "media/1: a tref names a track that is not listed"
+  },
+  {
+   "file": "x-two-moov.mp4",
+   "refused": "media/1: more than one moov box"
+  }
+ ],
+ "read": [
+  {
+   "file": "a-c2pa-cbor.mp4",
+   "c2pa": "0128b388b46c04fb82203cfb936fb4e597bd751f8460ef3262744afdaa1c872c",
+   "xmp": null,
+   "check": {
+    "c2pa": "0128b388b46c04fb82203cfb936fb4e597bd751f8460ef3262744afdaa1c872c"
+   }
+  },
+  {
+   "file": "a-c2pa-earlier.mp4",
+   "c2pa": null,
+   "xmp": null,
+   "check": {}
+  },
+  {
+   "file": "a-c2pa-json.mp4",
+   "c2pa": "0128b388b46c04fb82203cfb936fb4e597bd751f8460ef3262744afdaa1c872c",
+   "xmp": null,
+   "check": {
+    "c2pa": "0128b388b46c04fb82203cfb936fb4e597bd751f8460ef3262744afdaa1c872c"
+   }
+  },
+  {
+   "file": "a-xmp-foreign-pg.mp4",
+   "c2pa": null,
+   "xmp": "0128b388b46c04fb82203cfb936fb4e597bd751f8460ef3262744afdaa1c872c",
+   "check": {
+    "xmp": "0128b388b46c04fb82203cfb936fb4e597bd751f8460ef3262744afdaa1c872c"
+   }
+  },
+  {
+   "file": "a-xmp-foreign.mp4",
+   "c2pa": null,
+   "xmp": null,
+   "check": {}
+  },
+  {
+   "file": "a-xmp.mp4",
+   "c2pa": null,
+   "xmp": "0128b388b46c04fb82203cfb936fb4e597bd751f8460ef3262744afdaa1c872c",
+   "check": {
+    "xmp": "0128b388b46c04fb82203cfb936fb4e597bd751f8460ef3262744afdaa1c872c"
+   }
+  },
+  {
+   "file": "b-copied-record.mov",
+   "c2pa": null,
+   "xmp": "0128b388b46c04fb82203cfb936fb4e597bd751f8460ef3262744afdaa1c872c",
+   "check": {
+    "xmp": "not for this file"
+   }
+  }
+ ]
+}

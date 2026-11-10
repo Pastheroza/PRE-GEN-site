@@ -1,6 +1,7 @@
 """HTTP interface (PRE-GEN-CORE.md and extensions/*.md)."""
 from __future__ import annotations
 
+import json
 import threading
 from html import escape
 from urllib.parse import parse_qs, urlencode, urlsplit
@@ -16,6 +17,9 @@ from .registry import Registry
 SANDBOX_ACCESS_PER_HOUR = 10
 BIND_APPROVALS_PER_HOUR = 20
 BIND_PAGES_PER_HOUR = 60
+AFTER_GEN_REQUESTS_PER_HOUR = 60
+PUBLIC_READ = {"Access-Control-Allow-Origin": "*"}   # after-gen's two public reads, fetched by a browser check page
+PAGE_HEADERS = {"X-Frame-Options": "DENY", "Content-Security-Policy": "frame-ancestors 'none'", "Cache-Control": "no-store"}
 
 
 def _path(request: Request) -> str:
@@ -45,6 +49,7 @@ def create_app(registry: Registry, policy_file=None) -> FastAPI:
     issued: dict[str, list[float]] = {}            # sandbox credentials per client address, last hour
     approvals: dict[str, list[float]] = {}         # bind consents per client address, last hour
     pages: dict[str, list[float]] = {}             # consent pages shown per client address, last hour
+    ag_requests: dict[str, list[float]] = {}       # after-gen requests taken per client address, last hour
 
     limits = threading.Lock()
 
@@ -214,6 +219,88 @@ def create_app(registry: Registry, policy_file=None) -> FastAPI:
     def bound_grants(request: Request, licensee_id: str = "", x_provider_id: str = Header(""),
                      authorization: str | None = Header(None), pg_access: str | None = Header(None)):
         return registry.bound_grants(x_provider_id, authorization, pg_access, licensee_id, _path(request))
+
+    # ── after-gen (spec/drafts/after-gen.md) ──
+    @app.post("/v2/after-gen/requests")
+    def after_gen_request(request: Request, payload=Body(...), x_provider_id: str = Header(""),
+                          authorization: str | None = Header(None)):
+        give_back = take(ag_requests, request, AFTER_GEN_REQUESTS_PER_HOUR, "after-gen requests")
+        try:                                      # only a request that was taken keeps its slot
+            return registry.after_gen_request(x_provider_id, authorization, payload)
+        except ProtocolError:
+            give_back()
+            raise
+
+    @app.get("/v2/after-gen/requests/{rid}")
+    def after_gen_request_state(rid: str, request: Request, x_provider_id: str = Header(""),
+                                authorization: str | None = Header(None), pg_access: str | None = Header(None)):
+        return registry.after_gen_request_state(x_provider_id, authorization, pg_access, rid, _path(request))
+
+    @app.post("/v2/after-gen/decisions")
+    def after_gen_decision(env=Body(...), x_provider_id: str = Header("")):
+        """X-Provider-ID names the agent for a decision signed with role agent; a subject's own key needs nothing."""
+        return registry.after_gen_decide(x_provider_id, env)
+
+    def review_page(body: str) -> HTMLResponse:
+        return HTMLResponse("<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'>"
+                            "<title>Approve a file</title>" + body, headers=PAGE_HEADERS)
+
+    @app.get("/v2/after-gen/review/{token}")
+    def after_gen_review(token: str):
+        """Sandbox only: the approval page of the sandbox's test creator. It alone shows the viewing link."""
+        row = registry.after_gen_request_info(token=token) if registry.config.sandbox else None
+        if row is None:
+            raise ProtocolError("PG_NOT_FOUND", "no pending request for this page", status=404)
+        scope = json.loads(row["scope"])
+        items = "".join(f"<li>{escape(k)}: {escape(', '.join(v) if isinstance(v, list) else str(v))}</li>"
+                        for k, v in scope.items())
+        link = (f'<p>Preview: <a href="{escape(row["preview_url"])}" rel="noreferrer noopener" target=_blank>'
+                f'{escape(row["preview_url"])}</a></p>' if row["preview_url"] else "<p>No preview link was sent.</p>")
+        return review_page(
+            f"<h1>Approve this file for {escape(row['requester'])}?</h1>"
+            f"<p>Subject: {escape(row['subject_ref'])}. Licence: {escape(row['licence_id'])}.</p>"
+            f"<p>File (media/1): {escape(row['media_hash'])}, {row['leaves']} leaves.</p>{link}"
+            f"<p>Scope asked for:</p><ul>{items}</ul>"
+            "<p>An approval is recorded after the content existed. It is not a PRE-GEN permission given before "
+            "generation, and it says nothing about whether the content is AI-generated.</p>"
+            "<p>Signed in as the sandbox's test creator, acting for the test subject, with a simulated second factor "
+            "(email): a sandbox holds no real people.</p>"
+            "<form method=post><button name=decision value=approve>Approve</button> "
+            "<button name=decision value=refuse>Refuse</button></form>")
+
+    @app.post("/v2/after-gen/review/{token}")
+    async def after_gen_review_decide(token: str, request: Request):
+        origin = request.headers.get("origin")
+        if origin and origin != _origin(registry.config.api):
+            raise ProtocolError("PG_MALFORMED", "the approval form is answered only from this registry's own page",
+                                status=403)
+        try:
+            form = (await request.body()).decode()
+            decision = parse_qs(form, keep_blank_values=True, errors="strict").get("decision", [""])[-1]
+        except UnicodeDecodeError:
+            raise ProtocolError("PG_MALFORMED", "the approval form is not UTF-8", status=400) from None
+        record = await run_in_threadpool(registry.after_gen_review, token, decision, form)
+        return review_page(f"<h1>Approved</h1><p>Record {escape(record)}.</p>" if record else
+                           "<h1>Refused</h1><p>Nothing is published.</p>")
+
+    @app.post("/v2/after-gen/{rid}/withdraw")
+    def after_gen_withdraw(rid: str, env=Body(...)):
+        return registry.withdraw_after_gen(rid, env)
+
+    def public(read, *args):
+        try:
+            return JSONResponse(read(*args), headers=PUBLIC_READ)
+        except ProtocolError as e:
+            return JSONResponse({"error": e.code, "error_description": e.detail, **e.extra}, status_code=e.status,
+                                headers=PUBLIC_READ)
+
+    @app.get("/v2/after-gen")
+    def after_gen_lookup(media: str = ""):
+        return public(registry.after_gen_lookup, media)
+
+    @app.get("/v2/after-gen/{rid}")
+    def after_gen_status(rid: str):
+        return public(registry.after_gen_status, rid)
 
     @app.get("/v2/proofs/{short_id}")
     def proof(short_id: str):

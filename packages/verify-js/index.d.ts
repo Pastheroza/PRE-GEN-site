@@ -151,3 +151,41 @@ export function checkProof(bundle: Record<string, unknown>, options?: { director
     terms: "absent" | "ok" | "outside" | "unverified"; termsAssent: "registry" | null }[] }>;
 /** Offline sandbox registry for tests and CI. Never accepted by the real directory. */
 export function createSimulator(options?: { baseUrl?: string }): Promise<{ baseUrl: string; directory: Directory; operatorPublicKeyHex: string; fetch: Fetch & ((url: string, init?: { method?: string; headers?: Record<string, string>; body?: string }) => Promise<Response>) }>;
+/** A message signed by exactly one registry key the directory lists for `code`'s prefix (core rules 1-2). Returns its body. */
+export function registrySigned(env: unknown, type: string, code: string, directory: Directory, fetch?: Fetch): Promise<Record<string, any>>;
+
+// ── draft after-gen (spec/drafts/after-gen.md): a record that the rights holder approved one existing file ──
+/** The three statements every record carries, exactly. */
+export const AFTER_GEN_LABEL: "approved after generation";
+export const AFTER_GEN_NOTICE: string;
+export const AFTER_GEN_NOT: readonly ["pre_generation_permission", "statement_of_origin"];
+export interface MediaHash { binding: "media/1"; hash: string; leaves: number }
+/** A file read in ranges: `read` resolves to exactly `length` bytes. */
+export interface RangeReader { size: number; read(offset: number, length: number): Promise<Uint8Array> }
+export interface Envelope { type: string; body: Record<string, any>; signatures: string[] }
+/** media/1 of an ISO base media file (MP4, MOV, M4V), read in ranges. Throws PregenError("media/1: <reason>"). */
+export function mediaHash(source: Uint8Array | Blob | RangeReader): Promise<MediaHash>;
+/** The records a file carries, unchecked: the C2PA assertion of the active manifest and the XMP pgag:Record, or null. */
+export function readAfterGen(source: Uint8Array | Blob | RangeReader): Promise<{ c2pa: Envelope | null; xmp: Envelope | null }>;
+/** The file with the record in a top-level XMP uuid box appended at the end; an existing XMP box becomes `free` of the
+ * same size and its properties move into the new packet. Given the directory, pgag:Status is {api}/v2/after-gen/{id}. */
+export function embedXmp(bytes: Uint8Array, envelope: Envelope, options?: { directory?: Directory }): Promise<Uint8Array>;
+/** The assertion to add with your own C2PA tool and certificate. */
+export function c2paAssertion(envelope: Envelope): { label: "org.pregen.after_gen"; data: Envelope };
+export interface AfterGenSummary {
+  id: string; subject_ref: string; prefix: string; label: string; notice: string; not: string[]; holder: string;
+  licence: string; use: { n: number; of: number | null };
+  scope: { purposes: string[]; categories: string[]; territories: string[]; channels: string[]; project: string; not_after: number };
+  approval: Record<string, string>; approvedBy: string; issued_at: number; content: MediaHash;
+  /** true when `media` was given and matched; null when no file was given. */
+  fileMatch: true | null;
+}
+/** The record's shape, constants and floor, its signature by one registry key of the subject's prefix, and, given
+ * `media`, that it names this file (else PregenError "not for this file"). */
+export function checkAfterGen(env: unknown, options?: { directory?: Directory; getJson?: (url: string) => Promise<any>; fetch?: Fetch;
+  media?: MediaHash | string }): Promise<AfterGenSummary>;
+/** The live status of this record ({api}/v2/after-gen/{id}): signed for the subject's prefix, naming this record,
+ * current, at most 300 seconds of life. */
+export function checkAfterGenStatus(statusEnv: unknown, recordEnv: unknown, options?: { directory?: Directory;
+  getJson?: (url: string) => Promise<any>; fetch?: Fetch; now?: number }): Promise<{ state: "active" | "withdrawn" | "expired";
+  approved_at: number; withdrawn_at: number | null; not_after: number }>;

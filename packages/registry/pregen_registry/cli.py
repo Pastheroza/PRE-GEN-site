@@ -19,6 +19,13 @@
   pregen-registry subject opt-out --dir DATA --code PG-…  (the person opted out or withdrew: refused from the next answer)
   pregen-registry subject level --dir DATA --code PG-… --level verified   (after you checked identity and authority)
   pregen-registry subject publish --dir DATA --code PG-… [--off]   (name and level public at /v2/codes, by the person's choice)
+  pregen-registry after-gen show --dir DATA REQUEST_ID        (a pending request and its viewing link, for the approver)
+  pregen-registry after-gen approve --dir DATA REQUEST_ID --instruction-sha256 HEX --factor authenticator|email [--purposes …]
+  pregen-registry after-gen refuse --dir DATA REQUEST_ID
+  pregen-registry after-gen withdraw --dir DATA RECORD_ID --instruction-sha256 HEX   (closing: no factor)
+  pregen-registry mandate add --dir DATA SUBJECT AGENT --powers after_gen --purposes … --not-after T --instruction-sha256 HEX --factor …
+  pregen-registry mandate add --dir DATA --envelope FILE      (a pg.mandate.v1 the subject signed with their own key)
+  pregen-registry mandate end --dir DATA MANDATE_ID
   pregen-registry check --api https://registry.example [--directory URL --steward HEX] [--provider-id ID --token T --subject PG-… [--purpose P] [--licensee ID]]
 """
 from __future__ import annotations
@@ -30,7 +37,7 @@ import os
 import sys
 from pathlib import Path
 
-from .protocol import Key
+from .protocol import Key, ProtocolError
 from .registry import Config, Registry
 
 
@@ -78,7 +85,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(prog="pregen-registry", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for name in ("init", "serve", "subject", "grant", "provider", "connect", "bindings", "info", "key"):
+    for name in ("init", "serve", "subject", "grant", "provider", "connect", "bindings", "info", "key", "after-gen",
+                 "mandate"):
         p = sub.add_parser(name)
         p.add_argument("--dir", required=True)
         if name == "init":
@@ -125,6 +133,19 @@ def main(argv=None):
             p.add_argument("--revoke", metavar="LICENSEE_ID", help="end this binding now (bind B-2)")
         elif name == "key":
             p.add_argument("action", choices=["next", "rotate"])
+        elif name in ("after-gen", "mandate"):          # on the subject's authenticated instruction (after-gen.md)
+            p.add_argument("action", choices=["show", "approve", "refuse", "withdraw"] if name == "after-gen"
+                           else ["add", "end"])
+            p.add_argument("ids", nargs="*")
+            p.add_argument("--instruction-sha256", help="SHA-256 of the evidence of the subject's instruction")
+            p.add_argument("--factor", choices=["authenticator", "email"], help="the second factor you confirmed")
+            p.add_argument("--purposes", help="comma-separated")
+            if name == "mandate":
+                p.add_argument("--powers", default="after_gen")
+                p.add_argument("--not-after", type=int)
+                p.add_argument("--envelope", help="a pg.mandate.v1 file the subject signed with their own key")
+        if name == "init":
+            p.add_argument("--after-gen", action="store_true", help="declare after-gen (a sandbox does unless set)")
     p = sub.add_parser("check", help="the live self-test: document, key set, errors, listing, and one answer")
     p.add_argument("--api", required=True, help="this registry's public https URL")
     p.add_argument("--directory", help="the directory URL to look for this registry in")
@@ -150,7 +171,8 @@ def main(argv=None):
         if cfg_path.exists():
             sys.exit(f"{a.dir} already holds a registry")
         cfg = {"prefix": a.prefix, "name": a.name, "api": a.api, "policy": a.policy, "complaints": a.complaints,
-               "sandbox": a.sandbox, "providers": "open" if a.open_providers or a.sandbox else "registered"}
+               "sandbox": a.sandbox, "providers": "open" if a.open_providers or a.sandbox else "registered",
+               **({"after_gen": True} if a.after_gen else {})}
         try:
             Config(**cfg)
         except ValueError as e:
@@ -300,6 +322,38 @@ def main(argv=None):
             new = load(a.dir).key                                          # starting on it retires the old key in /keys
             print(f"operator key is now {new.id}; {old.id} is retired and stays in /keys, so everything it signed "
                   f"still verifies. Move the retired private key file offline.")
+    elif a.cmd in ("after-gen", "mandate"):
+        reg, want = load(a.dir), 2 if a.cmd == "mandate" and a.action == "add" and not a.envelope else 1
+        if len(a.ids) != want:
+            sys.exit(f"{a.cmd} {a.action} needs " + ("SUBJECT AGENT" if want == 2 else "one id"))
+        purposes = a.purposes.split(",") if a.purposes else None
+        try:
+            if a.cmd == "after-gen" and a.action == "show":
+                row = reg.after_gen_request_info(rid=a.ids[0])
+                if row is None:
+                    sys.exit(f"no pending request {a.ids[0]}")
+                print(json.dumps({**row, "scope": json.loads(row["scope"]), "envelope": json.loads(row["envelope"])},
+                                 indent=2))
+            elif a.cmd == "after-gen" and a.action == "approve":
+                print(reg.approve_after_gen(a.ids[0], instruction=a.instruction_sha256 or "", factor=a.factor,
+                                            purposes=purposes))
+            elif a.cmd == "after-gen" and a.action == "refuse":
+                reg.refuse_after_gen(a.ids[0])
+                print(f"request {a.ids[0]} refused: nothing is published")
+            elif a.cmd == "after-gen":
+                print(json.dumps(reg.withdraw_after_gen(a.ids[0], instruction=a.instruction_sha256 or "")))
+            elif a.action == "end":
+                reg.end_mandate(a.ids[0])
+                print(f"mandate {a.ids[0]} ended")
+            elif a.envelope:
+                print(reg.add_mandate_envelope(json.loads(Path(a.envelope).read_text())))
+            else:
+                if not (purposes and a.not_after):
+                    sys.exit("mandate add needs --purposes and --not-after")
+                print(reg.add_mandate(a.ids[0], a.ids[1], powers=a.powers.split(","), purposes=purposes,
+                                      not_after=a.not_after, instruction=a.instruction_sha256 or "", factor=a.factor))
+        except (ValueError, ProtocolError) as e:
+            sys.exit(str(e))
     elif a.cmd == "info":
         reg = load(a.dir)
         print(json.dumps({**reg.document(), "operator_key_id": reg.key.id, "public_key": reg.key.public_hex}, indent=2))

@@ -98,6 +98,42 @@ never signs again. Move its private key file offline.
 | `POST /v2/sandbox/purchases` | a test purchase, no money: one use of a catalog subject for this provider (sandbox mode only) |
 | `POST /v2/sandbox/party` | a provider's party document by post (sandbox mode only) |
 
+## AFTER-GEN (working draft)
+
+AFTER-GEN ([`drafts/after-gen.md`](https://www.pregen.org/spec/drafts/after-gen.md)) lets a rights holder approve one
+video that already exists, under a licence the registry holds. The registry signs a `pg.after_gen.v1` record that
+names the file by its `media/1` hash. A record is never a PRE-GEN permission: no answer rests on one, and a report
+that cites one is refused. A sandbox declares `after-gen` by default. A production registry declares it only with
+`"after_gen": true` in `registry.json`, or `init --after-gen`.
+
+| Method and path | What |
+|---|---|
+| `POST /v2/after-gen/requests` | `{"request": <pg.after_gen_request.v1>, "preview_url"?: "https://…"}`, authenticated as a provider request is. Returns `{request, state: "pending", review_until}`; a sandbox adds `review_url`, its test approval page |
+| `GET /v2/after-gen/requests/{id}` | the requester only (credential or `PG-Access`): `{request, state, review_until, record?}` |
+| `POST /v2/after-gen/decisions` | a `pg.after_gen_decision.v1` signed by the subject's own key (custody self, role `subject`), or by an agent's key (role `agent`, `X-Provider-ID` naming the agent) under a mandate that lists `after_gen` |
+| `GET`, `POST /v2/after-gen/review/{token}` | sandbox only: the approval page of the sandbox's test creator, with a simulated second factor |
+| `POST /v2/after-gen/{record}/withdraw` | a `pg.after_gen_withdrawal.v1` `{signers, record, issued_at}` signed by the subject's own key |
+| `GET /v2/after-gen?media={64 hex}` | `{"records": [ids]}`, approved records only; readable from any origin |
+| `GET /v2/after-gen/{id}` | `{"record", "status"}`, the status signed now and valid for 300 seconds; readable from any origin |
+
+The operator acts on the subject's authenticated instruction, from the command line. An approval or a mandate opens,
+so it names the second factor you confirmed. A refusal, a withdrawal and the end of a mandate close, and need none.
+
+```bash
+pregen-registry after-gen show --dir ./data REQUEST_ID
+pregen-registry after-gen approve --dir ./data REQUEST_ID --instruction-sha256 HEX --factor authenticator [--purposes commercial]
+pregen-registry after-gen refuse --dir ./data REQUEST_ID
+pregen-registry after-gen withdraw --dir ./data RECORD_ID --instruction-sha256 HEX
+pregen-registry mandate add --dir ./data PG-… https://agency.example --purposes commercial --not-after 1830000000 --instruction-sha256 HEX --factor email
+pregen-registry mandate add --dir ./data --envelope mandate.json
+pregen-registry mandate end --dir ./data MANDATE_ID
+```
+
+A request undecided after 14 days expires, and nothing approves it after that. The preview link is deleted when the
+request is decided or expires, and only the approver sees it. One use of the licence is counted when a record is
+signed, on the same counter as allows under the `limits` extension. A record carries no status address, because its
+id is the hash of its body; its status is at `GET /v2/after-gen/{record id}`.
+
 ## Limits of this version
 
 - **One process, SQLite, one write lock.** Correct and simple; move to Postgres with per-row

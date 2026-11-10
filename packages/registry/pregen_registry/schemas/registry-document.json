@@ -55,10 +55,11 @@
           "provider-identity",
           "bind",
           "terms",
-          "commerce"
+          "commerce",
+          "after-gen"
         ]
       },
-      "description": "commerce: a registry's own, optional second layer (selling licences); its terms are the registry's own page until a shared extension is published"
+      "description": "commerce: a registry's own, optional second layer (selling licences); its terms are the registry's own page until a shared extension is published. after-gen: the working draft spec/drafts/after-gen.md, approval of a file that already exists"
     },
     "policy": {
       "type": "string"

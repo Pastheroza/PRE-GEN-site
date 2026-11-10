@@ -1,0 +1,7 @@
+# after-gen/1 test vectors (draft, spec/drafts/after-gen.md)
+
+`vectors.json` gives, for every file here, its `media/1` `{binding, hash, leaves}` or the refusal (`x-*.mp4`, one per
+"One reading only" rule), and, for the files carrying a record, the message id read from C2PA and XMP and what
+`check_after_gen` says against the file's own hash. Its directory and key sets are those of `../answers.json`.
+`a.mp4`, `b.mov`, `c.mp4` and their `-remux` copies were made once with ffmpeg 9.0.2 (commands in
+`packages/verify-py/tests/test_after_gen.py`); every other file is derived from them by `python tests/test_after_gen.py`.

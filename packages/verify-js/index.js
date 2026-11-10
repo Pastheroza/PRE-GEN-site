@@ -564,8 +564,8 @@ export async function pgAccess(providerUrl, privateKeyHex, aud, method, path, { 
  * that it answers exactly this request under the same profile, that it is within its lifetime, that it
  * is not a sandbox answer outside testing, and that it is an `allow`. Throws PregenError with the
  * reason; returns the answer body when you may generate. Keep the answer with the output. */
-/** A message signed by exactly one registry key the directory lists for `code`'s prefix (core rules 1-2). */
-async function registrySigned(env, type, code, directory, fetchFn) {
+/** A message signed by exactly one registry key the directory lists for `code`'s prefix (core rules 1-2). Returns its body. */
+export async function registrySigned(env, type, code, directory, fetchFn) {
   if (!env || env.type !== type || !same(Object.keys(env).sort(), ["body", "signatures", "type"])
       || !env.body || typeof env.body !== "object") fail(`not a ${type} envelope`);
   const body = env.body, signers = body.signers, sigs = env.signatures;
@@ -1100,3 +1100,6 @@ export async function createSimulator({ baseUrl = "https://simulator.pregen.inva
   }
   return { baseUrl, directory, fetch: simFetch, operatorPublicKeyHex: operator.pub };
 }
+
+// ── draft after-gen (spec/drafts/after-gen.md): a record that the rights holder approved one existing file ──
+export * from "./after-gen.js";

@@ -1,0 +1,24 @@
+/* Check a file (AFTER-GEN draft, spec/drafts/after-gen.md) */
+.drop { display: block; max-width: 640px; margin: 24px 0 8px; padding: 32px 24px; border: 1px dashed var(--rule); cursor: pointer; }
+.drop.over { border-style: solid; }
+.drop input { display: block; margin-bottom: 12px; font: inherit; max-width: 100%; }
+.drop-main { display: block; font-size: 17px; }
+.drop-sub { display: block; margin-top: 6px; font-size: 14px; color: var(--muted); }
+.sandbox { display: inline-flex; gap: 8px; align-items: center; cursor: pointer; }
+.steps { margin: 24px 0 0; padding-left: 20px; font-size: 15px; color: var(--muted); }
+.steps li { margin: 4px 0; }
+.steps li[data-state="ok"] { color: var(--fg); }
+.steps li[data-state="ok"]::after { content: "  ✓"; }
+.steps li[data-state="fail"] { color: var(--fg); }
+.steps li[data-state="fail"]::after { content: "  ✕"; }
+.steps li[data-state="busy"]::after { content: "  …"; }
+.cf-result { margin: 24px 0; max-width: 720px; }
+.cf-verdict { margin: 0 0 16px; font-size: 22px; font-weight: 600; line-height: 1.3; }
+.cf-why { margin: 0 0 16px; font-size: 16px; line-height: 1.5; }
+.cf-table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.cf-table th, .cf-table td { padding: 8px 12px 8px 0; border-top: 1px solid var(--rule); text-align: left; vertical-align: top; }
+.cf-table th { width: 34%; font-weight: 500; color: var(--muted); }
+.cf-table td { overflow-wrap: anywhere; }
+.never { max-width: 640px; margin: 32px 0 16px; padding: 16px 20px; border: 1px solid var(--rule); }
+.never h2 { margin: 0 0 8px; font-size: 16px; font-weight: 600; }
+.never ul { margin: 0; padding-left: 20px; font-size: 15px; line-height: 1.6; }
