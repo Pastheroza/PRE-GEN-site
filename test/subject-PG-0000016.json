@@ -1,0 +1,195 @@
+{
+ "subject_id": "prampta",
+ "pg_code": "PG-0000016",
+ "status": "active",
+ "visibility": "public",
+ "rules_text": "",
+ "extra_deny_categories": [
+  "weapons"
+ ],
+ "extra_obligations": {},
+ "aliases": [
+  "PRAMPTA"
+ ],
+ "subject_type": "brand",
+ "risk_flags": [],
+ "profile": {
+  "industry": "tech",
+  "assets": [
+   "logo"
+  ],
+  "trademark": "registered"
+ },
+ "visual_description": "",
+ "visual_descriptions": [],
+ "price": null,
+ "authority_status": "self",
+ "lifecycle_status": "commercial_enabled",
+ "owner_verified": true,
+ "verified_through_org": null,
+ "availability": {
+  "STD": {
+   "state": "open",
+   "reason": null
+  },
+  "RND": {
+   "state": "open",
+   "reason": null,
+   "access_mode": "request"
+  },
+  "PRM": {
+   "state": "open",
+   "reason": null,
+   "access_mode": "request"
+  }
+ },
+ "managing_org_id": null,
+ "public_key_hex": "02ffb782f2f0fecbc02aa3908963026a65b0e8f43e225a714190577cfc67225b",
+ "key_custody": "managed",
+ "banner_url": "/api/v1/subjects/prampta/banner?v=f59c15ea379a836bw1",
+ "gallery": [],
+ "photo_square_url": null,
+ "photo_portrait_url": null,
+ "commercial_photo_count": 0,
+ "banner_pos": 48,
+ "banner_pos_x": 95,
+ "auto_approve_requests": true,
+ "creator_use": false,
+ "auto_approve_use_cases": [],
+ "auto_approve_max_duration_days": null,
+ "auto_approve_require_payment": false,
+ "tiers": [
+  {
+   "key": "personal",
+   "label": "Personal",
+   "description": "Art, fan content, personal projects (not distributed commercially)",
+   "license_class": "STD",
+   "deny": [
+    "adult",
+    "advertising",
+    "commercial",
+    "endorsement",
+    "political",
+    "weapons"
+   ],
+   "paid": false,
+   "price": "",
+   "price_cents": null,
+   "duration_days": 365,
+   "disposition": "auto",
+   "access_mode": "open",
+   "available": true
+  },
+  {
+   "key": "educational",
+   "label": "Educational",
+   "description": "Teaching, training, academic use",
+   "license_class": "RND",
+   "deny": [
+    "adult",
+    "advertising",
+    "endorsement",
+    "political",
+    "weapons"
+   ],
+   "paid": false,
+   "price": "",
+   "price_cents": null,
+   "duration_days": 365,
+   "disposition": "review",
+   "access_mode": "request",
+   "available": true
+  },
+  {
+   "key": "research",
+   "label": "Research",
+   "description": "Academic research, analysis",
+   "license_class": "RND",
+   "deny": [
+    "adult",
+    "advertising",
+    "endorsement",
+    "political",
+    "weapons"
+   ],
+   "paid": false,
+   "price": "",
+   "price_cents": null,
+   "duration_days": 365,
+   "disposition": "review",
+   "access_mode": "request",
+   "available": true
+  },
+  {
+   "key": "editorial",
+   "label": "Editorial",
+   "description": "News, journalism, documentary (factual, non-promotional)",
+   "license_class": "RND",
+   "deny": [
+    "adult",
+    "advertising",
+    "endorsement",
+    "political",
+    "weapons"
+   ],
+   "paid": false,
+   "price": "",
+   "price_cents": null,
+   "duration_days": 365,
+   "disposition": "review",
+   "access_mode": "request",
+   "available": true
+  },
+  {
+   "key": "commercial",
+   "label": "Commercial",
+   "description": "Advertising, marketing, brand content",
+   "license_class": "PRM",
+   "deny": [
+    "adult",
+    "gambling",
+    "political",
+    "vice",
+    "weapons"
+   ],
+   "paid": true,
+   "price": "",
+   "price_cents": null,
+   "duration_days": 365,
+   "disposition": "review",
+   "access_mode": "request",
+   "available": true
+  }
+ ],
+ "tier_policy": {
+  "personal": {
+   "disposition": "auto",
+   "price": "",
+   "enabled": true
+  },
+  "educational": {
+   "disposition": "review",
+   "price": "",
+   "enabled": true
+  },
+  "research": {
+   "disposition": "review",
+   "price": "",
+   "enabled": true
+  },
+  "editorial": {
+   "disposition": "review",
+   "price": "",
+   "enabled": true
+  },
+  "commercial": {
+   "disposition": "review",
+   "price": "",
+   "enabled": true
+  }
+ },
+ "terms": null,
+ "terms_open": true,
+ "registered_at": "2026-08-22T00:55:14.185363+00:00",
+ "controls": false
+}

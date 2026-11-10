@@ -32,18 +32,29 @@ function row(label, value) {
 function renderAnswer(d) {
   var key = d.subject_key || {};
   var known = ["code", "kind", "status", "registry", "name", "level", "subject_key", "terms", "status_url", "moved",
-    "alias", "issued_at", "directory"];
+    "alias", "issued_at", "directory", "visibility", "aliases", "owner_verified", "subject_type", "lifecycle_status",
+    "authority_status", "rules_text", "registered_at"];
   var rows = row("Name", esc(d.name))
+    + row("Aliases", (d.aliases || []).map(esc).join(" · "))
+    /* The registry's own word about the owner: never a badge. Only a claim the person confirmed on their own
+       channel (spec/extensions/identity.md) may earn one, and this page does not check that yet. */
+    + row("Owner", d.owner_verified === true ? "the registry says it verified the owner" : d.owner_verified === false ? "the registry says it did not verify the owner" : "")
     /* The registry's own word about who may decide for the person: a claim, never a badge (lookup.md, Level). */
     + row("Level", d.level ? esc(d.level) + " (the registry's claim)" : "")
     + row("Registry", esc(d.registry))
-    + row("Subject key", key.key_id ? '<span class="mono">' + esc(key.key_id) + "</span>" : "")
+    + row("Type", esc(d.subject_type))
+    + row("Lifecycle", esc(d.lifecycle_status))
+    + row("Authority", esc(d.authority_status))
     + row("Key custody", esc(key.custody))
+    + row("Subject key", key.key_id ? '<span class="mono">' + esc(key.key_id) + "</span>"
+      : key.public_key_hex ? '<span class="mono">' + esc(String(key.public_key_hex).slice(0, 20)) + "…</span>" : "")
+    + row("Rules", esc(d.rules_text))
     + row("Terms", d.terms && d.terms.url ? link(d.terms.url, "current terms") : "")
     + row("Status page", link(d.status_url, "every version"))
     + row("Moved to", esc(d.moved))
     + row("Joined with", d.alias ? '<span class="mono">' + esc(d.alias) + "</span>" : "")
-    + row("Issued", fmtDate(d.issued_at));
+    + row("Issued", fmtDate(d.issued_at))
+    + row("Registered", fmtDate(d.registered_at));
   for (var k in d) {
     if (known.indexOf(k) >= 0 || ["string", "number", "boolean"].indexOf(typeof d[k]) < 0) continue;
     rows += row(esc(k.replace(/_/g, " ")), esc(d[k]));
@@ -51,7 +62,7 @@ function renderAnswer(d) {
   return '<article class="pg-card">'
     + '<div class="pg-card-head"><span class="pg-code">' + esc(d.code || "") + "</span>"
     + badge(d.status || "unknown", d.status === "active" || d.status === "valid" ? "ok" : "")
-    + (d.kind ? badge(d.kind) : "") + "</div>"
+    + (d.visibility ? badge(d.visibility) : d.kind ? badge(d.kind) : "") + "</div>"
     + '<dl class="pg-rows">' + rows + "</dl>"
     + '<div class="pg-card-foot">Resolved live from the registry that holds the code. Everything above is what the registry says. Identity: not confirmed on the person’s own channel by pregen.org. This is public metadata — it is not a generation permission. Providers need a signed allow from <span class="mono">POST /v2/requests</span>.</div>'
     + "</article>";
