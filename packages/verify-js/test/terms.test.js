@@ -170,3 +170,8 @@ test("terms in a proof", async () => { // beyond the vectors
     assert.deepEqual(await finding({ use: { purpose: "personal", categories: spelled } }), ["outside", "registry"]);
   }
 });
+
+test("TOG-CODE.md §7.3: terms of one person under either spelling", async () => {
+  assert.equal((await check(await terms(), "TOG-TEST-000001N")).subject_ref, CODE);
+  assert.equal((await check(await terms({ subject_ref: "TOG-TEST-000001N" }))).subject_ref, "TOG-TEST-000001N");
+});
