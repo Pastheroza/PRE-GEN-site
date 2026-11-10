@@ -148,6 +148,14 @@ test("not a code, mistyped, or an unlisted prefix: nothing is asked", async () =
   assert.deepEqual([await lookup("TOG-NWRD-900000042R")].map((r) => [r.status, r.body.error, r.asked.length]), [[404, "unknown_issuer", 0]]);
 });
 
+test("a ToG code holding a PG-looking group, wrapped or mistyped, is not a code, never retired", async () => {
+  for (const typed of ['"TOG-PG-PRAM-9R3M-11B2-QVD3"', "(TOG-PG-PRAM-9R3M-11B2-QVD3)", "TO-PG-PRAM-9R3M-11B2-QVD3",
+    "PG-PRAM-ZZZZ-K6X4-RZJB", "(TOG-LIC-PRAM-ZZZZ-HPG0-RJ0C)"]) {
+    const r = await lookup(typed, "203.0.113.8");
+    assert.deepEqual([r.status, r.body, r.asked], [422, { error: "invalid_code", detail: "Not a code." }, []], typed);
+  }
+});
+
 test("the page: a typed PG string gets only the retired message, and nothing is asked", async () => {
   const { normalizeTyped } = await import("../packages/verify-js/index.js");
   for (const typed of ["PG–STD–000001–K7M2QX9", "PG-STD-000001-K7M2QX9.", "https://www.pregen.org/lookup/PG-STD-000001-K7M2QX9",

@@ -58,7 +58,9 @@ Both libraries implement it: `parse_code`, `kind_of`, `describe`, `issuer_of`, `
   not converted, not suggested. `parse_code`, `code_key` (no folding: the code itself),
   `issuer_of`, `describe`, `find_codes`, anchor lists, false claims, channel lines and a request's
   `subject_ref` refuse it like any other non-code. Typed, it gets one message, `RETIRED`: "PG codes
-  are retired. Use the ToG code your registry shows you.", with no TOG suggestion. Each registry
+  are retired. Use the ToG code your registry shows you.", with no TOG suggestion; only a PG start
+  counts, so a wrapped or mistyped ToG code (`(TOG-PG-…)`, `TO-PG-…`, `TPG-…`) or an event code without
+  its `TOG-` is "not a code", never retired (`TOG-CODE.md` §7.4). Each registry
   migrates its own rows once (persons and release works by the marker, same number and check; old
   licences get the `TOG-LIC` code of their signed object). An object whose signed bytes hold a PG id
   (a `pg.license.v2`, an act with a PG `subject_ref`) gives no code and is not accepted; there is no

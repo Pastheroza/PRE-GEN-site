@@ -5,16 +5,17 @@
 // Run: node --test test/pages.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const HISTORICAL = { "docs/pg-code.html": /Retired, not supported/, "spec/paper/pre-gen-v5.html": /Retired, not supported/ };
 const PG_CODE = /(?<![A-Za-z0-9-])PG-(?!Access\b|CODE\b|LIC\b)[A-Z0-9][A-Z0-9*~$=!-]*/g;
 
-const pages = execFileSync("git", ["ls-files", "*.html", "*.md", "*.txt"], { cwd: ROOT, encoding: "utf8" }).split("\n")
-  .filter((f) => f && !/^(packages|test|spec)\//.test(f) || f.endsWith(".html") && f.startsWith("spec/"));
+// A walk, not git ls-files: the suite also runs from an archive or tarball.
+const pages = readdirSync(ROOT, { recursive: true }).map((f) => f.split("\\").join("/"))
+  .filter((f) => /\.(html|md|txt)$/.test(f) && !/(^|\/)(\.git|\.venv|\.claude|node_modules)\//.test(f))
+  .filter((f) => !/^(packages|test|spec)\//.test(f) || f.endsWith(".html") && f.startsWith("spec/"));
 
 test("no page shows a PG code; the historical documents carry the retired banner", () => {
   assert.ok(pages.includes("docs/tog-code.html") && pages.includes("lookup.html") && pages.length > 20, pages.join());

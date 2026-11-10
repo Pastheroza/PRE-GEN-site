@@ -218,7 +218,7 @@ export function describe(code) {
   const home = p.home ? ` · home ${p.home}` : "";
   const basis = { licence: " under a licence", terms: " under the person's terms" }[p.basis] ?? "";
   const ex = p.example ? " · EXAMPLE, never issued" : "";
-  return `claims ${p.kind}${basis} · issued by ${p.issuer || "the bare namespace"}${home} · not checked${ex}`;
+  return `claims ${p.kind}${basis} · issued by ${p.issuer || "the bare legacy namespace"}${home} · not checked${ex}`;
 }
 
 /** The key every comparison, hash key, anchor list and refusal check uses (§7.3): the code itself, once it parses.
@@ -434,9 +434,15 @@ const DROP = /[­​‌‍⁠﻿\\]/g;
 const LOOKALIKE = Object.fromEntries([..."АВСЕНІКМОРТХаеорсхіктмΑΒΕΗΙΚΜΝΟΡΤΧΥΖ"].map((c, i) => [c, "ABCEHIKMOPTXAEOPCXIKTMABEHIKMNOPTXYZ"[i]]));
 const SPACE = "[\\s\\x1c-\\x1f\\x85]";   // Python's str.isspace: the reference model strips and splits on these
 const MAX_READINGS = 4096;
-// A PG string however it was typed: wrapped, prefixed by one letter, without a dash or with any separator, P G spaced,
-// Cyrillic Г. Only read when nothing else is a code, and never for a TOG string: it only picks the message.
-const PG_TYPED = new RegExp(`(?<![A-Z0-9])[A-Z]?P${SPACE}*[GГ](?![A-Z])[^A-Z0-9]*[A-Z0-9]`, "u");
+// A PG string however it was typed: wrapped, prefixed by one letter (not T: TPG is TOG mistyped), without a dash or with
+// any separator, P G spaced, Cyrillic Г. Matched at the start only, so a TOG string holding a PG-looking group (TOG-PG-…,
+// a licence tail '-HPG0') is never retired. Only read when nothing else is a code: it only picks the message.
+const PG_TYPED = new RegExp(`^[^A-Z0-9]*[A-SU-Z]?P${SPACE}*[GГ](?![A-Z])[^A-Z0-9]*[A-Z0-9]`, "u");
+// A ToG code typed without its "TOG-" (PG-PRAM-ZZZZ-K6X4-RZJB): a typo, not a PG code, so not the retired message.
+// Only picks the message; the code is never suggested.
+function markerDropped(s) {
+  try { normalizeTyped(`TOG-${s}`); return true; } catch { return false; }
+}
 const asDigits = (g) => g.replace(/[OIL]/g, (c) => (c === "O" ? "0" : "1"));
 
 function groupVariants(g, letters = true) {
@@ -462,10 +468,11 @@ export function normalizeTyped(typed) {
   if (typeof typed !== "string") codeFail("malformed", "a code is a string");
   let s = typed.normalize("NFKC").replace(DASHES, "-").replace(DROP, "").replace(/./gsu, (c) => LOOKALIKE[c] ?? c)
     .replace(new RegExp(`^${SPACE}+|${SPACE}+$`, "gu"), "");
-  const pgTyped = PG_TYPED.test(s.toUpperCase());
+  let pgTyped = PG_TYPED.test(s.toUpperCase());
   if (s.includes("/")) s = s.split("#")[0].replace(/\/+$/, "").split("/").at(-1);
   s = s.replace(/[.,;:)\]"']+$/, "").toUpperCase();
-  if (new RegExp(`^PG(?:-|${SPACE})`, "u").test(s)) codeFail("malformed", RETIRED);   // no mapping to TOG
+  pgTyped = (pgTyped || PG_TYPED.test(s)) && !(s.startsWith("PG-") && markerDropped(s));
+  if (pgTyped && new RegExp(`^PG(?:-|${SPACE})`, "u").test(s)) codeFail("malformed", RETIRED);   // no mapping to TOG
   const words = s.split(new RegExp(`${SPACE}+`, "u")).filter(Boolean);
   let groups;
   if (s.includes("-")) groups = s.split("-").map((x) => x.replace(new RegExp(`${SPACE}+`, "gu"), ""));
@@ -483,7 +490,7 @@ export function normalizeTyped(typed) {
   }
   if (found.size > 1) { const hints = [...found].sort(); codeFail("malformed", `ambiguous: ${hints.join(", ")}`, hints); }
   if (!found.size) {
-    if (pgTyped && !groupVariants(groups[0]).includes("TOG")) codeFail("malformed", RETIRED);
+    if (pgTyped) codeFail("malformed", RETIRED);
     parseCode(groups.join("-"));   // the honest error for the string as typed
     codeFail("malformed", `not a code: ${JSON.stringify(typed)}`);
   }

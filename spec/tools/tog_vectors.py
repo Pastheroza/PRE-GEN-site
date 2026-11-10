@@ -246,6 +246,11 @@ def main():
               "PG:0000016", "PG_0000016", "PG.0000016", "PG/0000016", "P G-0000016", "РГ-0000016", "photo.jpg"]
     typed += [lic_ex.replace("-LIC-", x) for x in ("-L1C-", "-LlC-", "-1IC-", "-lic-")]
     typed += [c.lower() for c in pinned] + [c[4:] for c in new if t.parse(c)["shape"] == "event"][:6]
+    # A ToG code holding a PG-looking group, wrapped or with its marker mistyped: not a code, never the retired message.
+    hpg = next(t.spell("LIC", "PRAM", None, "ZZZZHPG0RJ" + c, k) for c in t.CROCKFORD
+               if (k := t.check_char(t.event_body("LIC", "PRAM", None, "ZZZZHPG0RJ" + c))) in t.CROCKFORD)
+    for c in ("TOG-PG-PRAM-ZZZZ-K6X4-RZJB", hpg):
+        typed += [c, f"({c})", f'"{c}"', "TO" + c[3:], "T0G" + c[3:], "TPG" + c[3:]]
     out["typed"] = [dict({"input": s}, **run(t.normalize_typed, s)) for s in dict.fromkeys(typed)]
 
     # Codes from records.

@@ -1275,11 +1275,11 @@
   },
   {
    "code": "TOG-000042*",
-   "result": "claims subject · issued by the bare namespace · not checked"
+   "result": "claims subject · issued by the bare legacy namespace · not checked"
   },
   {
    "code": "TOG-STD-000123",
-   "result": "claims subject · issued by the bare namespace · not checked"
+   "result": "claims subject · issued by the bare legacy namespace · not checked"
   },
   {
    "code": "TOG-ZZZZZZZZ-8999999909",
@@ -1331,7 +1331,7 @@
   },
   {
    "code": "TOG-SUB-000123",
-   "result": "claims subject · issued by the bare namespace · not checked"
+   "result": "claims subject · issued by the bare legacy namespace · not checked"
   },
   {
    "code": "PG-0000016",
@@ -2810,13 +2810,11 @@
   },
   {
    "input": "PG-LIC-PRAM-ZZZZ-8RD8-3EQ9",
-   "error": "malformed",
-   "message": "PG codes are retired. Use the ToG code your registry shows you."
+   "error": "malformed"
   },
   {
    "input": "PG-PRAM-ZZZZ-K6X4-RZJB",
-   "error": "malformed",
-   "message": "PG codes are retired. Use the ToG code your registry shows you."
+   "error": "malformed"
   },
   {
    "input": "LIC-NWRD-PRAM-ZZZZ-84RN-RT04",
@@ -2824,13 +2822,59 @@
   },
   {
    "input": "PG-LIC-NWRD-PRAM-ZZZZ-VGDY-WCWV",
-   "error": "malformed",
-   "message": "PG codes are retired. Use the ToG code your registry shows you."
+   "error": "malformed"
   },
   {
    "input": "PG-LIC-NWRD-ZZZZ-WNJB-820Q",
-   "error": "malformed",
-   "message": "PG codes are retired. Use the ToG code your registry shows you."
+   "error": "malformed"
+  },
+  {
+   "input": "TOG-PG-PRAM-ZZZZ-K6X4-RZJB",
+   "result": "TOG-PG-PRAM-ZZZZ-K6X4-RZJB"
+  },
+  {
+   "input": "(TOG-PG-PRAM-ZZZZ-K6X4-RZJB)",
+   "error": "malformed"
+  },
+  {
+   "input": "\"TOG-PG-PRAM-ZZZZ-K6X4-RZJB\"",
+   "error": "malformed"
+  },
+  {
+   "input": "TO-PG-PRAM-ZZZZ-K6X4-RZJB",
+   "error": "malformed"
+  },
+  {
+   "input": "T0G-PG-PRAM-ZZZZ-K6X4-RZJB",
+   "result": "TOG-PG-PRAM-ZZZZ-K6X4-RZJB"
+  },
+  {
+   "input": "TPG-PG-PRAM-ZZZZ-K6X4-RZJB",
+   "error": "malformed"
+  },
+  {
+   "input": "TOG-LIC-PRAM-ZZZZ-HPG0-RJ0C",
+   "result": "TOG-LIC-PRAM-ZZZZ-HPG0-RJ0C"
+  },
+  {
+   "input": "(TOG-LIC-PRAM-ZZZZ-HPG0-RJ0C)",
+   "error": "malformed"
+  },
+  {
+   "input": "\"TOG-LIC-PRAM-ZZZZ-HPG0-RJ0C\"",
+   "error": "malformed"
+  },
+  {
+   "input": "TO-LIC-PRAM-ZZZZ-HPG0-RJ0C",
+   "error": "malformed"
+  },
+  {
+   "input": "T0G-LIC-PRAM-ZZZZ-HPG0-RJ0C",
+   "result": "TOG-LIC-PRAM-ZZZZ-HPG0-RJ0C"
+  },
+  {
+   "input": "TPG-LIC-PRAM-ZZZZ-HPG0-RJ0C",
+   "error": "malformed"
   }
  ],
  "code_for": [

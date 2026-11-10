@@ -306,6 +306,11 @@ it, and then show the result as "Did you mean …?". In order:
 4. **A `PG-` string stops here.** If what remains starts with `PG` and a dash or a space (`PG-…`, `pg-…`,
    `PG 000 042 *`, a Cyrillic `Р`, en dashes, a pasted `/v1/pg/` URL), the input is refused with the one
    message "PG codes are retired. Use the ToG code your registry shows you." **No TOG spelling is suggested.**
+   The same message is given when no reading is a code and the input begins, after wrapping characters and at
+   most one stray letter other than `T`, with `PG` and any separator. Only the start counts: a ToG code holding a
+   PG-looking group (`TOG-PG-…`, a tail group `HPG0`), wrapped or with its marker mistyped (`TO-`, `TPG-`), is
+   "not a code", never retired. Nor is an event code typed without its `TOG-` (`PG-PRAM-ZZZZ-K6X4-RZJB`): a typo,
+   refused as not a code, and the code is not suggested.
 5. Split on dashes and remove spaces inside groups. The display form `TOG 000 042 *` folds to `TOG-000042*`
    (a special case for PG-CODE §13's erratum, §18).
 6. **By slot:** `O`/`0` and `I`/`L`/`1`. Digits in serials and tails; letters in the marker, kinds and

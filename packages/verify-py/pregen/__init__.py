@@ -278,7 +278,7 @@ def describe(code: str) -> str:
     home = f" · home {p['home']}" if p["home"] else ""
     basis = {"licence": " under a licence", "terms": " under the person's terms"}.get(p.get("basis"), "")
     ex = " · EXAMPLE, never issued" if p["example"] else ""
-    return f"claims {p['kind']}{basis} · issued by {p['issuer'] or 'the bare namespace'}{home} · not checked{ex}"
+    return f"claims {p['kind']}{basis} · issued by {p['issuer'] or 'the bare legacy namespace'}{home} · not checked{ex}"
 
 
 def code_key(code: str) -> str:
@@ -318,9 +318,20 @@ def _readings(g, letters=True) -> set:
     return out
 
 
-# A PG string however it was typed: wrapped, prefixed by one letter, without a dash or with any separator, P G
-# spaced, Cyrillic Г. Only read when nothing else is a code, and never for a TOG string: it only picks the message.
-_PG_TYPED = re.compile(r"(?<![A-Z0-9])[A-Z]?P\s*[GГ](?![A-Z])[^A-Z0-9]*[A-Z0-9]")
+# A PG string however it was typed: wrapped, prefixed by one letter (not T: TPG is TOG mistyped), without a dash or
+# with any separator, P G spaced, Cyrillic Г. Matched at the start only, so a TOG string holding a PG-looking group
+# (TOG-PG-…, a licence tail '-HPG0') is never retired. Only read when nothing else is a code: it only picks the message.
+_PG_TYPED = re.compile(r"[^A-Z0-9]*[A-SU-Z]?P\s*[GГ](?![A-Z])[^A-Z0-9]*[A-Z0-9]")
+
+
+def _marker_dropped(s: str) -> bool:
+    """A ToG code typed without its 'TOG-' (PG-PRAM-ZZZZ-K6X4-RZJB): a typo, not a PG code, so not the retired message.
+    Only picks the message; the code is never suggested."""
+    try:
+        normalize_typed("TOG-" + s)
+        return True
+    except ValueError:
+        return False
 
 
 def normalize_typed(typed: str) -> str:
@@ -332,11 +343,12 @@ def normalize_typed(typed: str) -> str:
     if not isinstance(typed, str):
         raise NotACode("a code is a string")
     s = unicodedata.normalize("NFKC", typed).translate(_DASHES).translate(_DROP).translate(_LOOKALIKE).strip()
-    pg_typed = _PG_TYPED.search(s.upper())
+    pg_typed = _PG_TYPED.match(s.upper())
     if "/" in s:
         s = s.split("#")[0].rstrip("/").rsplit("/", 1)[-1]
     s = s.rstrip(".,;:)]\"'").upper()
-    if re.match(r"PG[-\s]", s):
+    pg_typed = (pg_typed or _PG_TYPED.match(s)) and not (s.startswith("PG-") and _marker_dropped(s))
+    if re.match(r"PG[-\s]", s) and pg_typed:
         raise NotACode(RETIRED)          # PG code is incompatible: one neutral message, no mapping to TOG
     if "-" in s:
         groups = ["".join(x.split()) for x in s.split("-")]
@@ -356,7 +368,7 @@ def normalize_typed(typed: str) -> str:
     if len(found) > 1:
         raise NotACode("more than one code fits: ask which", sorted(found))
     if not found:
-        if pg_typed and "TOG" not in _readings(groups[0]):
+        if pg_typed:
             raise NotACode(RETIRED)
         parse_code("-".join(groups))     # the honest error for the string as typed
         raise NotACode(f"not a code: {typed!r}")

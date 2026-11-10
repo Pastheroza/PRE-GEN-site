@@ -61,7 +61,7 @@ async function findByHash(directory, hash) {
 }
 
 // PG codes are retired: a PG- string is never shown, also not inside a library's error message.
-const noPg = (m) => String(m).replace(/\bPG-[0-9A-Z*~$=!-]+/g, "the person's code");
+const noPg = (m) => String(m).replace(/(?<![A-Za-z0-9-])PG-[0-9A-Z*~$=!-]+/g, "the person's code");
 // A record naming a PG- string: not a code, so the record is not accepted (TOG-CODE.md §1). One neutral message.
 const PG_RECORD = "a retired PG code";
 
