@@ -301,6 +301,9 @@ test("checkAnswer trusts an answer only through the directory (PRE-GEN-CORE.md r
   // A signed answer that breaks rule 4 is refused even with a valid signature.
   await assert.rejects(check(await answer(real, req, {}, ["basis"]), req), /must name its basis/);
   await assert.rejects(check(await answer(real, req, { basis: { kind: "grant", grant: { format: "pg.grant.v1", id: "x" } } }), req), /must name its basis/);
+  // An old licence is referenced by its message id only: a PG license_id in a new answer's basis is refused.
+  await assert.rejects(check(await answer(real, req, { basis: { kind: "grant", grant: { format: "pg.license.v2", id: "e".repeat(64),
+    license_id: "PG-STD-000001-K7M2QX9" } } }), req), /must name its basis/);
   await assert.rejects(check(await answer(real, req, { reason: "PG_NO_LICENSE" }), req), /carries no reason/);
   await assert.rejects(check(await answer(real, req, { status: "deny" }), req), /must give a reason/);
   await assert.rejects(check(await answer(real, req, { status: "maybe", reason: "x" }), req), /unknown status/);

@@ -190,8 +190,7 @@ so nothing it signs is ever accepted by the real directory.
 ## Other functions
 
 `verifyDecision` (signatures only), `verifyDirectory`,
-`Directory.checkSigner` / `registryFor` / `publicKey`, `verifyLicense` (subject
-signature plus operator countersignature), `verifySigned`, `canonicalJson`,
+`Directory.checkSigner` / `registryFor` / `publicKey`, `verifySigned`, `canonicalJson`,
 `fingerprint`, `checkPublicKey` (refuses keys no one can be held to), `issuerOf` (the registry to ask, from
 the shape only) and `normalizeCode` (deprecated: use `normalizeTyped`).
 

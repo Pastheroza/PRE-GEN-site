@@ -10,9 +10,12 @@ Usage:
 One subprocess per request (simple, robust, no persistent-process state to
 leak between cases — vector counts here are in the dozens, not thousands,
 so the per-call spawn cost doesn't matter). An adapter answers
-{"unsupported": true} for an op it doesn't implement (e.g. the SDKs never
-mint PG codes — spec/README.md documents this as backend-only); such cases
-are SKIPPED, not failed, and reported separately in the summary.
+{"unsupported": true} for an op it doesn't implement; such cases are
+SKIPPED, not failed, and reported separately in the summary.
+
+Vectors v3 (pregen 0.14): no verify_license and no pg_code cases. PG code is
+incompatible and a pg.license.v2 holds a PG id in its signed bytes, so no
+verifier accepts one; vectors v2 stay frozen at test-vectors/vectors.v2.json.
 """
 
 import argparse
@@ -101,26 +104,6 @@ def run(adapter_cmd: str, cwd: str | None, extra_env: dict | None = None,
             _check(f"signing_reject_tampered:{case['name']}", resp.get("valid") is False,
                    "" if resp.get("valid") is False else f"accepted a tampered body: {resp}", results)
 
-    # ── license: subject signature + operator countersignature (§1.2) ──
-    lc = vectors.get("license_countersignature")
-    if lc:
-        good = {"op": "verify_license", "body": lc["body"], "license_id": lc["license_id"],
-                "subject_public_key_hex": lc["subject_public_key_hex"],
-                "subject_signature_hex": lc["subject_signature_hex"],
-                "operator_public_key_hex": pubkey_hex,
-                "operator_signature_hex": lc["operator_signature_hex"]}
-        resp = _call(adapter_cmd, cwd, extra_env, good)
-        if resp.get("unsupported"):
-            _check("license_countersignature:valid", True, "skipped (unsupported)", results)
-        else:
-            ok = resp.get("subject_valid") is True and resp.get("operator_valid") is True
-            _check("license_countersignature:valid", ok, "" if ok else f"got {resp}", results)
-            # The countersignature covers the license id: another id must fail.
-            other = dict(good, license_id=lc["license_id"][:-1] + ("A" if lc["license_id"][-1] != "A" else "B"))
-            resp = _call(adapter_cmd, cwd, extra_env, other)
-            ok = resp.get("subject_valid") is True and resp.get("operator_valid") is False
-            _check("license_countersignature:binds_license_id", ok, "" if ok else f"got {resp}", results)
-
     # ── namespace: the signed registry directory and who may issue which codes (V-10, V-12) ──
     ns = vectors.get("namespace")
     if ns:
@@ -157,93 +140,6 @@ def run(adapter_cmd: str, cwd: str | None, extra_env: dict | None = None,
                 ok = resp.get("result") == case["result"]
                 _check(name, ok, "" if ok else f"got {resp}, want {case['result']!r}", results)
 
-    # ── pg_code: check_char, subject_code, license_id, rejects ──
-    pg = vectors["pg_code"]
-    for case in pg["check_char"]:
-        resp = _call(adapter_cmd, cwd, extra_env, {"op": "pg_check_char", "body": case["body"]})
-        if resp.get("unsupported"):
-            _check(f"pg_check_char:{case['body']}", True, "skipped (unsupported)", results)
-        else:
-            ok = resp.get("check_char") == case["check_char"]
-            _check(f"pg_check_char:{case['body']}", ok,
-                   "" if ok else f"got {resp}, want {case['check_char']!r}", results)
-
-    for case in pg["subject_code"]:
-        resp = _call(adapter_cmd, cwd, extra_env, {"op": "pg_subject_code", "serial": case["serial"]})
-        if resp.get("unsupported"):
-            _check(f"pg_subject_code:{case['serial']}", True, "skipped (unsupported)", results)
-        else:
-            ok = resp.get("code") == case["code"]
-            _check(f"pg_subject_code:{case['serial']}", ok,
-                   "" if ok else f"got {resp}, want {case['code']!r}", results)
-
-    for case in pg["license_id"]:
-        resp = _call(adapter_cmd, cwd, extra_env, {
-            "op": "pg_license_id", "license_class": case["license_class"],
-            "subject_serial": case["subject_serial"], "tail": case["tail"],
-        })
-        if resp.get("unsupported"):
-            _check(f"pg_license_id:{case['license_id']}", True, "skipped (unsupported)", results)
-        else:
-            ok = resp.get("license_id") == case["license_id"]
-            _check(f"pg_license_id:{case['license_id']}", ok,
-                   "" if ok else f"got {resp}, want {case['license_id']!r}", results)
-
-    for case in pg["rejects"]:
-        resp = _call(adapter_cmd, cwd, extra_env, {
-            "op": "pg_verify_check_char", "body": case["body"], "check_char": case["check_char"],
-        })
-        if resp.get("unsupported"):
-            _check(f"pg_rejects:{case['kind']}", True, "skipped (unsupported)", results)
-        else:
-            ok = resp.get("valid") is False
-            _check(f"pg_rejects:{case['kind']}", ok,
-                   "" if ok else f"expected a corrupted code to fail verification, got {resp}", results)
-
-    # ── issuer prefix (PG-CODE.md §9) ──
-    for case in pg.get("issuer_subject_code", []):
-        resp = _call(adapter_cmd, cwd, extra_env, {"op": "pg_issuer_subject_code",
-                                                   "issuer": case["issuer"], "serial": case["serial"]})
-        name = f"pg_issuer_subject_code:{case['code']}"
-        if resp.get("unsupported"):
-            _check(name, True, "skipped (unsupported)", results)
-        else:
-            ok = resp.get("code") == case["code"]
-            _check(name, ok, "" if ok else f"got {resp}, want {case['code']!r}", results)
-
-    for case in pg.get("issuer_license_id", []):
-        resp = _call(adapter_cmd, cwd, extra_env, {
-            "op": "pg_issuer_license_id", "issuer": case["issuer"], "license_class": case["license_class"],
-            "subject_serial": case["subject_serial"], "tail": case["tail"]})
-        name = f"pg_issuer_license_id:{case['license_id']}"
-        if resp.get("unsupported"):
-            _check(name, True, "skipped (unsupported)", results)
-        else:
-            ok = resp.get("license_id") == case["license_id"]
-            _check(name, ok, "" if ok else f"got {resp}, want {case['license_id']!r}", results)
-
-    for case in pg.get("issuer_rejects", []):
-        resp = _call(adapter_cmd, cwd, extra_env, {
-            "op": "pg_verify_check_char", "body": case["body"], "check_char": case["check_char"]})
-        name = f"pg_issuer_rejects:{case['kind']}"
-        if resp.get("unsupported"):
-            _check(name, True, "skipped (unsupported)", results)
-        else:
-            ok = resp.get("valid") is False
-            _check(name, ok, "" if ok else f"expected a corrupted prefix to fail verification, got {resp}", results)
-
-    # Maximum body length (PG-CODE.md §4.2): 36 passes, 37 fails even with the formula's check.
-    for want, key in ((True, "length_accepts"), (False, "length_rejects")):
-        for case in pg.get(key, []):
-            resp = _call(adapter_cmd, cwd, extra_env, {
-                "op": "pg_verify_check_char", "body": case["body"], "check_char": case["check_char"]})
-            name = f"pg_{key}:{case['kind']}"
-            if resp.get("unsupported"):
-                _check(name, True, "skipped (unsupported)", results)
-            else:
-                ok = resp.get("valid") is want
-                _check(name, ok, "" if ok else f"expected valid={want}, got {resp}", results)
-
     _run_v5(adapter_cmd, cwd, extra_env, results)
 
     # Probe each explicitly required operation using an existing valid vector.
@@ -252,8 +148,6 @@ def run(adapter_cmd: str, cwd: str | None, extra_env: dict | None = None,
         "verify_signature": {"op": "verify_signature", "message": vectors["signing"][0]["body"],
                              "public_key_hex": pubkey_hex, "signature_hex": vectors["signing"][0]["signature_hex"]},
     }
-    if lc:
-        probes["verify_license"] = good
     if ns:
         probes["verify_directory"] = {"op": "verify_directory", "directory": ns["directory"],
                                      "steward_public_key_hex": ns["steward_public_key_hex"], "min_sequence": 0}
@@ -274,12 +168,13 @@ def run(adapter_cmd: str, cwd: str | None, extra_env: dict | None = None,
         "check_answer": ("v5_check_answer:",),
         "canonical_json": ("canonical_json:", "signing_canonical:"),
         "verify_signature": ("signing_verify:", "signing_reject_tampered:"),
-        "verify_license": ("license_countersignature:",),
         "verify_directory": ("namespace_directory:",),
         "check_namespace": ("namespace_issuer:",),
     }
     for op in required_ops or []:
-        if op not in probes:
+        if op == "verify_license":
+            _check(f"required_op:{op}", False, "retired in vectors v3: no verifier accepts a pg.license.v2", results)
+        elif op not in probes:
             _check(f"required_op:{op}", False, "unknown required operation", results)
         else:
             resp = _call(adapter_cmd, cwd, extra_env, probes[op])

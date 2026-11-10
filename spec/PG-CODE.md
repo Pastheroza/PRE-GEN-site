@@ -4,7 +4,7 @@
 > code anywhere, not as input, not folded, not converted. Use the ToG code your registry shows you. This file
 > stays as a historical document only. Every code is specified by [`TOG-CODE.md`](TOG-CODE.md).
 
-**Part of:** PRE-GEN v5 ([`VERSIONS.md`](VERSIONS.md)) · **Status:** retired, not supported (historical; frozen as of 2026-08-20, issuer prefix added 2026-09-28) · **Vectors:** `spec/test-vectors/vectors.json` (`pg_code` section, vectors v2)  
+**Part of:** PRE-GEN v5 ([`VERSIONS.md`](VERSIONS.md)) · **Status:** retired, not supported (historical; frozen as of 2026-08-20, issuer prefix added 2026-09-28) · **Vectors:** `spec/test-vectors/vectors.v2.json` (`pg_code` section, vectors v2, frozen)  
 **License:** Apache License 2.0 — see [`spec/LICENSE`](LICENSE).
 
 > **Replaced by [`TOG-CODE.md`](TOG-CODE.md)** (ToG code; libraries 0.14.0, unreleased). The rules below are
@@ -513,7 +513,7 @@ fixes the directory checks and the issuer check in both directions.
 ## 10. Conformance
 
 An implementation conforms if it reproduces every case in the `pg_code`
-section of `spec/test-vectors/vectors.json`:
+section of `spec/test-vectors/vectors.v2.json`:
 
 - `check_char` — all **37** possible outputs, including all five overflow
   symbols;

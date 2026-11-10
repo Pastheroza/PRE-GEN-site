@@ -19,7 +19,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 __version__ = "0.14.0"
 __all__ = [
     "STEWARD_PUBLIC_KEY_HEX", "DIRECTORY_URL", "PregenError", "Directory", "canonical_json",
-    "fingerprint", "check_public_key", "verify_bytes", "verify_signed", "verify_license", "issuer_of", "normalize_code",
+    "fingerprint", "check_public_key", "verify_bytes", "verify_signed", "issuer_of", "normalize_code",
     "verify_directory", "load_directory", "verify_decision", "check_decision", "check_answer", "verify_answer", "message_id", "DIRECTORY_MAX_AGE", "decide_identity",
     "verify_anchors", "check_channel_proof", "wikidata_official_urls", "SETTLED_AFTER", "check_proof", "FLOOR_REASONS", "REPORT_GRACE", "STEWARD_SUCCESSOR_PUBLIC_KEY_HEX", "Simulator",
     "signing_input", "sign_envelope", "new_private_key_hex", "public_key_hex",
@@ -148,19 +148,8 @@ def verify_signed(obj: dict, public_key_hex: str, signature_field: str, exclude=
     return verify_bytes(public_key_hex, str(obj.get(signature_field, "")), canonical_json(body))
 
 
-def verify_license(body: dict, license_id: str, subject_public_key_hex: str, subject_signature_hex: str,
-                   operator_public_key_hex: str, operator_signature_hex: str) -> dict:
-    """A license (§1.2): subject signature over the body; operator countersignature over
-    canonical body || subject signature (64 raw bytes) || license id (ASCII)."""
-    body_bytes = canonical_json(body)
-    subject_valid = verify_bytes(subject_public_key_hex, subject_signature_hex, body_bytes)
-    try:
-        message = body_bytes + bytes.fromhex(subject_signature_hex) + str(license_id).encode("utf-8")
-        operator_valid = len(bytes.fromhex(subject_signature_hex)) == 64 and verify_bytes(
-            operator_public_key_hex, operator_signature_hex, message)
-    except (ValueError, TypeError):
-        operator_valid = False
-    return {"subject_valid": subject_valid, "operator_valid": operator_valid}
+# verify_license is retired in 0.14: every pg.license.v2 holds a PG id in its signed bytes, so no verifier accepts one
+# (TOG-CODE §6.11). An old licence answers by its TOG-LIC code at its registry's lookup only.
 
 
 # ── ToG code (spec/TOG-CODE.md) ──────────────────────────────────────────────────
@@ -329,6 +318,11 @@ def _readings(g, letters=True) -> set:
     return out
 
 
+# A PG string however it was typed: wrapped, prefixed by one letter, without a dash or with any separator, P G
+# spaced, Cyrillic Г. Only read when nothing else is a code, and never for a TOG string: it only picks the message.
+_PG_TYPED = re.compile(r"(?<![A-Z0-9])[A-Z]?P\s*[GГ](?![A-Z])[^A-Z0-9]*[A-Z0-9]")
+
+
 def normalize_typed(typed: str) -> str:
     """Only where a person types, pastes or scans a code (TOG-CODE §7.4), never on a code from a message: the one code
     meant, to show as "Did you mean ...?". Folds width, dashes, invisibles, Cyrillic and Greek look-alikes, case, a
@@ -338,6 +332,7 @@ def normalize_typed(typed: str) -> str:
     if not isinstance(typed, str):
         raise NotACode("a code is a string")
     s = unicodedata.normalize("NFKC", typed).translate(_DASHES).translate(_DROP).translate(_LOOKALIKE).strip()
+    pg_typed = _PG_TYPED.search(s.upper())
     if "/" in s:
         s = s.split("#")[0].rstrip("/").rsplit("/", 1)[-1]
     s = s.rstrip(".,;:)]\"'").upper()
@@ -361,6 +356,8 @@ def normalize_typed(typed: str) -> str:
     if len(found) > 1:
         raise NotACode("more than one code fits: ask which", sorted(found))
     if not found:
+        if pg_typed and "TOG" not in _readings(groups[0]):
+            raise NotACode(RETIRED)
         parse_code("-".join(groups))     # the honest error for the string as typed
         raise NotACode(f"not a code: {typed!r}")
     return found.pop()
@@ -1172,7 +1169,7 @@ def _check_status_shape(body: dict) -> None:
         policy = isinstance(basis, dict) and set(basis) == {"kind", "rule"} and basis["kind"] == "policy" \
             and isinstance(basis["rule"], str) and basis["rule"] != ""
         grant = isinstance(basis, dict) and set(basis) == {"kind", "grant"} and basis["kind"] == "grant" \
-            and isinstance(basis["grant"], dict) and {"format", "id"} <= set(basis["grant"]) <= {"format", "id", "license_id"} \
+            and isinstance(basis["grant"], dict) and set(basis["grant"]) == {"format", "id"} \
             and isinstance(basis["grant"]["format"], str) and isinstance(basis["grant"]["id"], str) \
             and bool(_HEX64.fullmatch(basis["grant"]["id"]))
         if not (policy or grant):

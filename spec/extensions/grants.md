@@ -49,8 +49,9 @@ provider, and anyone the registry's policy allows.
 ## Older licences
 
 A licence issued under the earlier interface is referenced, never re-wrapped:
-`{"format": "pg.license.v2", "license_id", "id"}`, where
-`id` = SHA-256(`canonical(body) || subject_signature || ASCII(license_id)`).
+`{"format": "pg.license.v2", "id"}`, where
+`id` = SHA-256(`canonical(body) || subject_signature || ASCII(license_id)`). The reference carries no
+`license_id`: that is a PG id, and an answer whose basis holds one is refused (libraries 0.14).
 
 **Its code is a `TOG-LIC` code, computed from that `id`** exactly like a grant's, in the flat
 model: issuer = its signer, tail = that id. If that gives a symbol check or a `ZZZZ` tail, the home

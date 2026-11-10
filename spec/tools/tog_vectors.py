@@ -64,7 +64,7 @@ def published():
            "PG-STD-000001-K7M2QX9", "PG-RND-000042-ZZZZZZ1", "PG-PRM-999999-0000000", "PG-NWRD-000042=",
            "PG-NWRD-RND-000042-ZZZZZZJ", "PG-PRAM-000037J", "PG-ZYXW-1234567R", "PG-ABCD-PRM-1234567-A1B2C3A",
            "PG-STD-000123", "PG-SUB-000123", "PG-TEST-000001N"]
-    v = json.load(open(Path(__file__).resolve().parents[1] / "test-vectors" / "vectors.json"))["pg_code"]
+    v = json.load(open(Path(__file__).resolve().parents[1] / "test-vectors" / "vectors.v2.json"))["pg_code"]
     out += [x["code"] for x in v["subject_code"] + v["issuer_subject_code"]]
     out += [x["license_id"] for x in v["license_id"] + v["issuer_license_id"]]
     return list(dict.fromkeys(out))
@@ -242,6 +242,8 @@ def main():
              tilu_h.replace("TILU", "T1LU").replace("UOLI", "U01I"), ones.lower(),
              ones2.replace("TOG", "T0G", 1).lower(), amb.replace("IILA", "111A"),
              "TOG-11111111-11111111-11111111-1"]
+    typed += ["(PG-ZYXW-1234567R)", '"PG-ZYXW-1234567R"', "-PG-ZYXW-1234567R", "XPG-0000016", "PG0000016",
+              "PG:0000016", "PG_0000016", "PG.0000016", "PG/0000016", "P G-0000016", "РГ-0000016", "photo.jpg"]
     typed += [lic_ex.replace("-LIC-", x) for x in ("-L1C-", "-LlC-", "-1IC-", "-lic-")]
     typed += [c.lower() for c in pinned] + [c[4:] for c in new if t.parse(c)["shape"] == "event"][:6]
     out["typed"] = [dict({"input": s}, **run(t.normalize_typed, s)) for s in dict.fromkeys(typed)]

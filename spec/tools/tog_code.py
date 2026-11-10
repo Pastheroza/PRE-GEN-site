@@ -322,12 +322,18 @@ def _group_variants(g: str, letters: bool = True) -> set:
     return out
 
 
+# A PG string however it was typed: wrapped, prefixed by one letter, without a dash or with any separator, P G
+# spaced, Cyrillic Г. Only read when nothing else is a code, and never for a TOG string: it only picks the message.
+_PG_TYPED = re.compile(r"(?<![A-Z0-9])[A-Z]?P\s*[GГ](?![A-Z])[^A-Z0-9]*[A-Z0-9]")
+
+
 def normalize_typed(typed: str) -> str:
     """Where a person types, pastes or scans: returns the one code meant, for a 'Did you mean ...?' prompt. Folds
     width, dashes, invisibles, look-alikes, case, display spaces, a resolver URL, trailing punctuation, then O/0 and
     I/L/1 by slot. Raises NotACode if no reading, or more than one, is a valid code; NotACode(RETIRED) for a PG- string,
     with no mapping to a TOG spelling."""
     s = unicodedata.normalize("NFKC", typed).translate(_DASHES).translate(_DROP).translate(_FOLD).strip()
+    pg_typed = _PG_TYPED.search(s.upper())
     if "/" in s:
         s = s.split("#")[0].rstrip("/").rsplit("/", 1)[-1]
     s = s.rstrip(".,;:)]\"'").upper()
@@ -351,6 +357,8 @@ def normalize_typed(typed: str) -> str:
     if len(found) > 1:
         raise NotACode(f"ambiguous: {sorted(found)}")    # both readings are the hints
     if not found:
+        if pg_typed and "TOG" not in _group_variants(groups[0]):
+            raise NotACode(RETIRED)
         parse("-".join(groups))                           # the honest error for the string as typed
         raise NotACode(typed)
     return found.pop()
@@ -808,7 +816,7 @@ def _self_check() -> dict:
                  "PG-STD-000001-K7M2QX9", "PG-RND-000042-ZZZZZZ1", "PG-PRM-999999-0000000", "PG-NWRD-000042=",
                  "PG-NWRD-RND-000042-ZZZZZZJ", "PG-PRAM-000037J", "PG-ZYXW-1234567R", "PG-ABCD-PRM-1234567-A1B2C3A",
                  "PG-STD-000123", "PG-SUB-000123"]
-    vec = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "test-vectors", "vectors.json")
+    vec = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "test-vectors", "vectors.v2.json")
     if os.path.exists(vec):
         v = json.load(open(vec))["pg_code"]
         published += [x["code"] for x in v["subject_code"] + v["issuer_subject_code"]]
@@ -851,7 +859,9 @@ def _self_check() -> dict:
                        (card_qr, "https://resolver.example", c), (registry_answer, c, {person_key(tp): tp}),
                        (proxy_path, c, False)):
             _expect(NotACode, fn, *a)
-        for typed in (c, c.lower(), f" {c}. ", f"https://api2.prampta.com/v1/pg/{c}"):
+        for typed in (c, c.lower(), f" {c}. ", f"https://api2.prampta.com/v1/pg/{c}", f"({c})", f'"{c}"', f"-{c}",
+                      f"X{c}", c.replace("-", "_"), c.replace("-", ":", 1),
+                      c.replace("-", ".", 1), c.replace("-", "/", 1), "P G" + c[2:], "РГ" + c[2:]):
             try:
                 normalize_typed(typed)
                 raise AssertionError(f"typed PG accepted: {typed}")

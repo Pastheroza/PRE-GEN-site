@@ -1,10 +1,10 @@
 // Level 1 conformance adapter (spec/conformance/README.md): one JSON request on stdin, one JSON answer on stdout.
 //   python3 spec/conformance/level1/run_conformance.py --adapter "node packages/verify-js/test/conformance-adapter.js" \
-//     --require-op canonical_json --require-op verify_signature --require-op verify_license \
+//     --require-op canonical_json --require-op verify_signature \
 //     --require-op verify_directory --require-op check_namespace
 // The v5 operations (message_id, signing_input, verify_envelope, check_answer) are required by default.
-import { canonicalJson, sha256Hex, verifySigned, verifyLicense, verifyDirectory, messageId, signingInput, verifyBytes,
-  checkAnswer, checkChar, CROCKFORD } from "../index.js";
+import { canonicalJson, sha256Hex, verifySigned, verifyDirectory, messageId, signingInput, verifyBytes,
+  checkAnswer } from "../index.js";
 
 const hex = (b) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
 
@@ -20,12 +20,6 @@ async function handle() {
     }
     case "verify_signature":
       return { valid: await verifySigned({ ...req.message, _sig: req.signature_hex }, req.public_key_hex, "_sig") };
-    case "verify_license": {
-      const r = await verifyLicense({ body: req.body, licenseId: req.license_id,
-        subjectPublicKeyHex: req.subject_public_key_hex, subjectSignatureHex: req.subject_signature_hex,
-        operatorPublicKeyHex: req.operator_public_key_hex, operatorSignatureHex: req.operator_signature_hex });
-      return { subject_valid: r.subjectValid, operator_valid: r.operatorValid };
-    }
     case "verify_directory":
       try {
         await verifyDirectory(req.directory, { stewardPublicKeyHex: req.steward_public_key_hex, minSequence: req.min_sequence });
@@ -57,11 +51,6 @@ async function handle() {
         await checkAnswer(req.answer, req.request, { directory, fetch, now: req.now, testing: req.testing });
         return { ok: true };
       } catch (e) { return { ok: false, error: String(e.message ?? e) }; }
-    // PG-CODE.md §4: the check character under the frozen PG table (TOG-CODE.md §4.1). Minting stays backend-only.
-    case "pg_check_char":
-      return { check_char: checkChar(req.body, CROCKFORD) };
-    case "pg_verify_check_char":
-      try { return { valid: checkChar(req.body, CROCKFORD) === req.check_char }; } catch { return { valid: false }; }
     default:
       return { unsupported: true };
   }

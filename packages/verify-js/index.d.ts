@@ -53,11 +53,6 @@ export const REPORT_GRACE: number;
 export function checkPublicKey(publicKeyHex: string): Uint8Array;
 export function verifyBytes(publicKeyHex: string, signatureHex: string, message: Uint8Array): Promise<boolean>;
 export function verifySigned(obj: Record<string, unknown>, publicKeyHex: string, signatureField: string, exclude?: string[]): Promise<boolean>;
-export function verifyLicense(license: {
-  body: Record<string, unknown>; licenseId: string;
-  subjectPublicKeyHex: string; subjectSignatureHex: string;
-  operatorPublicKeyHex: string; operatorSignatureHex: string;
-}): Promise<{ subjectValid: boolean; operatorValid: boolean }>;
 /** The registry to ask: a code's first prefix, "" for the bare namespace. Shape only (TOG-CODE.md §8); a PG- string is not a code. */
 export function issuerOf(code: string): string;
 /** @deprecated Use normalizeTyped. Trims ASCII spaces and raises lower case, nothing else; keeps the spelling typed. */

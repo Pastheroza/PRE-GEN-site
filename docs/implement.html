@@ -65,19 +65,16 @@
 <div class="table"><table><thead><tr><th>File</th><th>SHA-256</th></tr></thead><tbody><tr><td class="mono"><a href="https://github.com/Pastheroza/PRE-GEN-site/blob/pre-gen-v5-rc1/spec/PRE-GEN-SPEC.md">spec/PRE-GEN-SPEC.md</a></td><td class="mono">8cb4829148089820…d4d81722</td></tr><tr><td class="mono"><a href="https://github.com/Pastheroza/PRE-GEN-site/blob/pre-gen-v5-rc1/spec/PG-CODE.md">spec/PG-CODE.md</a></td><td class="mono">716822e3b41e2d67…89f6dc5c</td></tr><tr><td class="mono"><a href="https://github.com/Pastheroza/PRE-GEN-site/blob/pre-gen-v5-rc1/spec/test-vectors/vectors.json">spec/test-vectors/vectors.json</a></td><td class="mono">eaf94fa0af10507a…3f25010a</td></tr><tr><td class="mono"><a href="https://github.com/Pastheroza/PRE-GEN-site/blob/pre-gen-v5-rc1/spec/conformance/README.md">spec/conformance/README.md</a></td><td class="mono">23f0285d789936f8…9aaa69ea</td></tr><tr><td class="mono"><a href="https://github.com/Pastheroza/PRE-GEN-site/blob/pre-gen-v5-rc1/spec/conformance/level1/run_conformance.py">spec/conformance/level1/run_conformance.py</a></td><td class="mono">6cba49c4d80fabf5…ce1cf241</td></tr></tbody></table></div>
 
 <h2>Run it</h2>
-<p>Your implementation talks to the runner through a small adapter: one JSON request on stdin, one JSON answer on stdout, one process per call (<a href="/spec/conformance/README.md">conformance/README.md</a>, Level 1). Five operations:</p>
+<p>Your implementation talks to the runner through a small adapter: one JSON request on stdin, one JSON answer on stdout, one process per call (<a href="/spec/conformance/README.md">conformance/README.md</a>, Level 1). Four operations:</p>
 <pre><code>{"op": "canonical_json", "input": {…}}                  → {"canonical_utf8": "…", "sha256_hex": "…"}
 {"op": "verify_signature", "message": {…}, "public_key_hex": "…", "signature_hex": "…"}  → {"valid": true}
-{"op": "verify_license", "body": {…}, "license_id": "…", "subject_public_key_hex": "…",
- "subject_signature_hex": "…", "operator_public_key_hex": "…", "operator_signature_hex": "…"}
-                                                       → {"subject_valid": true, "operator_valid": true}
 {"op": "verify_directory", "directory": {…}, "steward_public_key_hex": "…", "min_sequence": 0}  → {"valid": true}
 {"op": "check_namespace", "directory": {…}, "steward_public_key_hex": "…", "code": "…", "signer_key_id": "…"}
                                                        → {"result": "valid" | "issuer_mismatch" | "unknown_issuer"}
 anything else                                          → {"unsupported": true}</code></pre>
 <pre><code>git clone https://github.com/Pastheroza/PRE-GEN-site.git && cd PRE-GEN-site && git checkout pre-gen-v5-rc1
 python3 spec/conformance/level1/run_conformance.py --adapter "&lt;command that runs your adapter&gt;" \
-  --require-op canonical_json --require-op verify_signature --require-op verify_license \
+  --require-op canonical_json --require-op verify_signature \
   --require-op verify_directory --require-op check_namespace</code></pre>
 
 <h2>Done when</h2>

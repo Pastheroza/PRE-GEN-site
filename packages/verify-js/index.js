@@ -111,22 +111,8 @@ export async function verifySigned(obj, publicKeyHex, signatureField, exclude = 
   return verifyBytes(publicKeyHex, obj[signatureField], utf8.encode(canonicalJson(body)));
 }
 
-/** A license (§1.2): subject signature over the body, operator countersignature over
- * canonical body || subject signature (64 raw bytes) || license id (ASCII). */
-export async function verifyLicense({ body, licenseId, subjectPublicKeyHex, subjectSignatureHex,
-  operatorPublicKeyHex, operatorSignatureHex }) {
-  const bodyBytes = utf8.encode(canonicalJson(body));
-  const subjectValid = await verifyBytes(subjectPublicKeyHex, subjectSignatureHex, bodyBytes);
-  let operatorValid = false;
-  try {
-    const sig = hexBytes(subjectSignatureHex, 64);
-    const id = utf8.encode(String(licenseId));
-    const message = new Uint8Array(bodyBytes.length + 64 + id.length);
-    message.set(bodyBytes); message.set(sig, bodyBytes.length); message.set(id, bodyBytes.length + 64);
-    operatorValid = await verifyBytes(operatorPublicKeyHex, operatorSignatureHex, message);
-  } catch { /* bad encoding: invalid */ }
-  return { subjectValid, operatorValid };
-}
+// verifyLicense is retired in 0.14: every pg.license.v2 holds a PG id in its signed bytes, so no verifier accepts one
+// (TOG-CODE §6.11). An old licence answers by its TOG-LIC code at its registry's lookup only.
 
 /** The registry to ask for a code: its first prefix, or "" for the bare namespace (TOG-CODE.md §8). Reads the
  *  shape only, never says a code is real; a PG- string is not a code. Anything else — lower case, spaces, invisible or non-ASCII characters — is
@@ -448,6 +434,9 @@ const DROP = /[­​‌‍⁠﻿\\]/g;
 const LOOKALIKE = Object.fromEntries([..."АВСЕНІКМОРТХаеорсхіктмΑΒΕΗΙΚΜΝΟΡΤΧΥΖ"].map((c, i) => [c, "ABCEHIKMOPTXAEOPCXIKTMABEHIKMNOPTXYZ"[i]]));
 const SPACE = "[\\s\\x1c-\\x1f\\x85]";   // Python's str.isspace: the reference model strips and splits on these
 const MAX_READINGS = 4096;
+// A PG string however it was typed: wrapped, prefixed by one letter, without a dash or with any separator, P G spaced,
+// Cyrillic Г. Only read when nothing else is a code, and never for a TOG string: it only picks the message.
+const PG_TYPED = new RegExp(`(?<![A-Z0-9])[A-Z]?P${SPACE}*[GГ](?![A-Z])[^A-Z0-9]*[A-Z0-9]`, "u");
 const asDigits = (g) => g.replace(/[OIL]/g, (c) => (c === "O" ? "0" : "1"));
 
 function groupVariants(g, letters = true) {
@@ -473,6 +462,7 @@ export function normalizeTyped(typed) {
   if (typeof typed !== "string") codeFail("malformed", "a code is a string");
   let s = typed.normalize("NFKC").replace(DASHES, "-").replace(DROP, "").replace(/./gsu, (c) => LOOKALIKE[c] ?? c)
     .replace(new RegExp(`^${SPACE}+|${SPACE}+$`, "gu"), "");
+  const pgTyped = PG_TYPED.test(s.toUpperCase());
   if (s.includes("/")) s = s.split("#")[0].replace(/\/+$/, "").split("/").at(-1);
   s = s.replace(/[.,;:)\]"']+$/, "").toUpperCase();
   if (new RegExp(`^PG(?:-|${SPACE})`, "u").test(s)) codeFail("malformed", RETIRED);   // no mapping to TOG
@@ -493,6 +483,7 @@ export function normalizeTyped(typed) {
   }
   if (found.size > 1) { const hints = [...found].sort(); codeFail("malformed", `ambiguous: ${hints.join(", ")}`, hints); }
   if (!found.size) {
+    if (pgTyped && !groupVariants(groups[0]).includes("TOG")) codeFail("malformed", RETIRED);
     parseCode(groups.join("-"));   // the honest error for the string as typed
     codeFail("malformed", `not a code: ${JSON.stringify(typed)}`);
   }
@@ -984,7 +975,7 @@ function checkStatusShape(body) {
     const policy = same(keys(basis), ["kind", "rule"]) && basis.kind === "policy" && typeof basis.rule === "string" && basis.rule !== "";
     const g = basis?.grant, gk = keys(g);
     const grant = same(keys(basis), ["grant", "kind"]) && basis.kind === "grant" && gk !== null
-      && gk.includes("format") && gk.includes("id") && gk.every((k) => ["format", "id", "license_id"].includes(k))
+      && same(gk, ["format", "id"])
       && typeof g.format === "string" && typeof g.id === "string" && /^[0-9a-f]{64}$/.test(g.id);
     if (!policy && !grant) fail("an allow must name its basis: a policy rule or a grant");
     if ("reason" in body) fail("an allow carries no reason");

@@ -12,7 +12,7 @@ from test_identity_market import World
 from test_registry import Provider, code, make
 
 from pregen_registry.app import create_app
-from pregen_registry.protocol import Key
+from pregen_registry.protocol import Key, ProtocolError
 from pregen_registry.registry import PURPOSES, Config, Registry
 
 VECTORS = json.loads((Path(__file__).parents[3] / "spec" / "test-vectors" / "tog-code.json").read_text())
@@ -67,16 +67,20 @@ def test_a_0_4_database_is_migrated_once_and_a_pg_string_is_refused_everywhere(t
     tog = reg.add_subject("Maya", level="verified", published=1, serial=42)
     reg.set_identity(tog, anchor="wikidata:Q1", proof_url="https://maya.example/p")
     gid = reg.add_grant(tog, purposes=["research"])
-    lic = reg._row("SELECT code FROM grants WHERE id = ?", (gid,))["code"]
     for table, col in (("subjects", "code"), ("grants", "subject_code")):              # as 0.4 stored them
         reg.db.execute(f"UPDATE {table} SET {col} = ? WHERE {col} = ?", (pg(tog), tog))
-    reg.db.execute("UPDATE grants SET code = NULL")
+    reg.db.execute("UPDATE grants SET code = NULL, envelope = replace(envelope, ?, ?)", (tog, pg(tog)))   # 0.4 bytes
     again = Registry(Config(prefix="TEST", name="T", api="https://t.example"), reg.key, db)
     assert [r[0] for r in again.db.execute("SELECT code FROM subjects")] == [tog]
+    env = json.loads(again._row("SELECT envelope FROM grants WHERE id = ?", (gid,))["envelope"])
+    lic = code_for({"type": env["type"], "id": message_id(env["type"], env["body"]), "signer": "TEST", "subject_ref": tog})
     assert [tuple(r) for r in again.db.execute("SELECT subject_code, code FROM grants")] == [(tog, lic)]
     c = TestClient(create_app(again))
     assert c.get(f"/v2/codes/{tog}").json()["code"] == tog
     assert c.get(f"/v2/codes/{lic}").json()["status"] == "active"
+    with pytest.raises(ProtocolError) as e:             # its signed bytes hold a PG id: never served
+        again.grant(gid)
+    assert (e.value.status, e.value.code) == (404, "PG_NOT_FOUND")
     r = c.get(f"/v2/codes/{pg(tog)}")
     assert (r.status_code, r.json()["error"], "hint" in r.json()) == (400, "invalid_format", False)
     assert c.get("/v2/anchors").json()["body"]["anchors"][0]["code"] == tog

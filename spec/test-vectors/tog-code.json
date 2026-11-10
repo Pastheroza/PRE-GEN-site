@@ -2566,6 +2566,65 @@
    "error": "malformed"
   },
   {
+   "input": "(PG-ZYXW-1234567R)",
+   "error": "malformed",
+   "message": "PG codes are retired. Use the ToG code your registry shows you."
+  },
+  {
+   "input": "\"PG-ZYXW-1234567R\"",
+   "error": "malformed",
+   "message": "PG codes are retired. Use the ToG code your registry shows you."
+  },
+  {
+   "input": "-PG-ZYXW-1234567R",
+   "error": "malformed",
+   "message": "PG codes are retired. Use the ToG code your registry shows you."
+  },
+  {
+   "input": "XPG-0000016",
+   "error": "malformed",
+   "message": "PG codes are retired. Use the ToG code your registry shows you."
+  },
+  {
+   "input": "PG0000016",
+   "error": "malformed",
+   "message": "PG codes are retired. Use the ToG code your registry shows you."
+  },
+  {
+   "input": "PG:0000016",
+   "error": "malformed",
+   "message": "PG codes are retired. Use the ToG code your registry shows you."
+  },
+  {
+   "input": "PG_0000016",
+   "error": "malformed",
+   "message": "PG codes are retired. Use the ToG code your registry shows you."
+  },
+  {
+   "input": "PG.0000016",
+   "error": "malformed",
+   "message": "PG codes are retired. Use the ToG code your registry shows you."
+  },
+  {
+   "input": "PG/0000016",
+   "error": "malformed",
+   "message": "PG codes are retired. Use the ToG code your registry shows you."
+  },
+  {
+   "input": "P G-0000016",
+   "error": "malformed",
+   "message": "PG codes are retired. Use the ToG code your registry shows you."
+  },
+  {
+   "input": "РГ-0000016",
+   "error": "malformed",
+   "message": "PG codes are retired. Use the ToG code your registry shows you."
+  },
+  {
+   "input": "photo.jpg",
+   "error": "malformed"
+  },
+  {
    "input": "TOG-AG-L1C-NWRD-PRAM-ZZZZ-ZGV5-SGDC",
    "result": "TOG-AG-LIC-NWRD-PRAM-ZZZZ-ZGV5-SGDC"
   },

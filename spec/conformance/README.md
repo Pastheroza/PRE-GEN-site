@@ -40,20 +40,10 @@ implementation in *any* language, not just the two libraries in this repository.
 {"op": "verify_signature", "message": {...}, "public_key_hex": "...", "signature_hex": "..."}
 → {"valid": true}
 
-{"op": "pg_check_char", "body": "000042"} → {"check_char": "*"}
-{"op": "pg_verify_check_char", "body": "000042", "check_char": "*"} → {"valid": true}
-{"op": "pg_subject_code", "serial": 42} → {"code": "PG-000042*"}
-{"op": "pg_license_id", "license_class": "STD", "subject_serial": 1, "tail": "K7M2QX"} → {"license_id": "..."}
-
-{"op": "verify_license", "body": {...}, "license_id": "PG-PRM-…",
- "subject_public_key_hex": "...", "subject_signature_hex": "...",
- "operator_public_key_hex": "...", "operator_signature_hex": "..."}
-→ {"subject_valid": true, "operator_valid": true}
-
 {"op": "verify_directory", "directory": {...}, "steward_public_key_hex": "...", "min_sequence": 0}
 → {"valid": true}
 
-{"op": "check_namespace", "directory": {...}, "code": "PG-NWRD-…", "signer_key_id": "pg-ed25519:…"}
+{"op": "check_namespace", "directory": {...}, "code": "TOG-NWRD-…", "signer_key_id": "pg-ed25519:…"}
 → {"result": "valid" | "issuer_mismatch" | "unknown_issuer"}
 ```
 
@@ -73,7 +63,11 @@ A pre-v5 implementation runs with `--allow-missing-v5` and is not v5 conformant.
 
 An adapter answers `{"unsupported": true}` for an op it doesn't implement.
 For release gates, require the operations your profile claims, for example
-`--require-op verify_signature --require-op verify_license --require-op verify_directory`.
+`--require-op verify_signature --require-op verify_directory`.
+
+Vectors v3 (libraries 0.14) dropped `verify_license` and the `pg_*` operations: PG code is incompatible, and a
+`pg.license.v2` holds a PG id in its signed bytes, so no verifier accepts one. Requiring `verify_license` fails
+the run. Vectors v2 stay frozen at `test-vectors/vectors.v2.json`.
 An unsupported required operation fails the run. Passes, failures and skips
 are counted separately; cryptographic checks include tampered-body rejection.
 `check_namespace` requests also carry the pinned `steward_public_key_hex` so

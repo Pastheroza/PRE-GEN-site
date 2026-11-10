@@ -41,6 +41,14 @@ def test_a_channel_line_with_a_pg_string_confirms_nothing():
                                           ["https://example.com"], page) is ok
 
 
+def test_an_old_licence_basis_holds_no_pg_id():
+    pregen._check_status_shape({"status": "allow", "basis": {"kind": "grant", "grant": {"format": "pg.license.v2",
+                                                                                       "id": "e" * 64}}})
+    with pytest.raises(pregen.PregenError, match="must name its basis"):
+        pregen._check_status_shape({"status": "allow", "basis": {"kind": "grant", "grant": {
+            "format": "pg.license.v2", "id": "e" * 64, "license_id": "PG-STD-000001-K7M2QX9"}}})
+
+
 def test_a_request_naming_a_pg_string_fails_closed():
     ok = next(c for c in V["cases"] if c["ok"] and not c["testing"])
     pregen.check_answer(ok["answer"], ok["request"], D, get_json, now=NOW)

@@ -41,11 +41,11 @@ globalThis.fetch = async (url) => {
   return { status, ok: status < 300, json: async () => structuredClone(body) };
 };
 
-async function lookup(code) {
+async function lookup(code, ip) {
   const out = {};
   const res = { setHeader() {}, status(s) { out.status = s; return this; }, json(b) { out.body = b; } };
   asked.length = 0;
-  await handler({ method: "GET", query: { code }, headers: {} }, res);
+  await handler({ method: "GET", query: { code }, headers: ip ? { "x-forwarded-for": ip } : {} }, res);
   return { ...out, asked: asked.filter((u) => !u.endsWith("/pg-policy")) };
 }
 const noPG = (body) => assert.doesNotMatch(JSON.stringify(body), /(^|[^O])PG-[A-Z0-9]/);
@@ -61,8 +61,9 @@ test("the shim: a person of the old shape is asked in PG at a registry not yet m
 });
 
 test("a PG string is not a code: one neutral message, no TOG suggestion, nothing asked", async () => {
-  for (const typed of ["PG-PRAM-000043R", "pg-pram-000043r", "PG-0000016", " pg-std-000001-k7m2qx9 ", "PG-PRAM-900000037K"]) {
-    retired(await lookup(typed));
+  for (const typed of ["PG-PRAM-000043R", "pg-pram-000043r", "PG-0000016", " pg-std-000001-k7m2qx9 ", "PG-PRAM-900000037K",
+    "PG–0000016", "(PG-0000016)", "PG0000016", "P G-0000016", "РГ-0000016"]) {
+    retired(await lookup(typed, "203.0.113.7"));   // its own address: the rate limit is per IP
   }
 });
 

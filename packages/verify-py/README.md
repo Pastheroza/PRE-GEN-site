@@ -181,8 +181,7 @@ real directory.
 ## Other functions
 
 `verify_decision` (signatures only), `verify_directory`,
-`Directory.check_signer` / `registry_for` / `public_key`, `verify_license`
-(subject signature plus operator countersignature), `verify_signed`,
+`Directory.check_signer` / `registry_for` / `public_key`, `verify_signed`,
 `canonical_json`, `fingerprint`, `check_public_key` (refuses keys no one can be held to), `issuer_of` (the registry
 to ask, from the shape only) and `normalize_code` (deprecated: use `normalize_typed`).
 

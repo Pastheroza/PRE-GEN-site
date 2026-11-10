@@ -139,6 +139,9 @@ def _tog(subject) -> str:
 
 
 # The columns that name one of this registry's own persons: respelled once, at the switch (TOG-CODE §6.2).
+# An envelope signed before the switch whose bytes hold a PG id (TOG-CODE §6.11): kept, never served, since no
+# verifier accepts it and no PG- string is shown. Its ToG code answers at /v2/codes.
+_PG_ID = re.compile(r"(?<![A-Za-z0-9-])PG-[A-Z0-9]")
 PERSON_COLUMNS = (("subjects", "code"), ("grants", "subject_code"), ("asks", "subject_ref"), ("terms", "subject_code"),
                   ("after_gen_requests", "subject_ref"), ("after_gen_records", "subject_ref"), ("mandates", "subject_ref"))
 
@@ -1188,6 +1191,8 @@ class Registry:
             out = []
             for gid in json.loads(b["grants"]):
                 g = self.db.execute("SELECT * FROM grants WHERE id = ?", (gid,)).fetchone()
+                if _PG_ID.search(g["envelope"]):
+                    continue                                     # signed with a PG id: never served
                 used = self._used(self.db, g)
                 out.append({"id": gid, "status": "active" if g["expires_at"] > now else "expired",
                             "remaining": None if g["max_uses"] is None else max(g["max_uses"] - used, 0),
@@ -1775,6 +1780,9 @@ class Registry:
         row = self._row("SELECT envelope FROM grants WHERE id = ?", (grant_id,))
         if not row:
             raise ProtocolError("PG_NOT_FOUND", "no such grant", status=404)
+        if _PG_ID.search(row["envelope"]):
+            raise ProtocolError("PG_NOT_FOUND", "signed before the switch with a PG id: not served; its ToG code "
+                                "answers at /v2/codes", status=404)
         return {"grant": json.loads(row["envelope"])}
 
     def lookup(self, code: str, media: str | None = None) -> dict:

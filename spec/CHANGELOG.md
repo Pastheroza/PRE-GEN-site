@@ -37,6 +37,8 @@ Needs `pregen` 0.14.
 - **Lookup** answers any ToG code with its kind (`extensions/lookup.md`); a `PG-` string is `400 invalid_format`.
 - **Anchor lists, catalog, terms and grants** write `TOG-`. Prefixes are 4 to 8 letters; a sandbox keeps 4 PG
   letters (old-shape test codes).
+- **A grant signed before 0.5 whose bytes hold a PG id is not served:** `GET /v2/grants/{id}` answers 404
+  `PG_NOT_FOUND`, and `GET /v2/grants?licensee_id=…` leaves it out. Its ToG code answers at `/v2/codes`.
 
 ## pregen 0.14.0, @pregen/verify 0.14.0 (unreleased): the ToG code
 
@@ -86,6 +88,16 @@ Both libraries implement it: `parse_code`, `kind_of`, `describe`, `issuer_of`, `
   issued), and the simulator's throwaway directory lists it under the `TEST` prefix instead of the bare namespace.
 - **Steward tool:** `false-claim` and `reverse-false-claim` write ToG codes into the signed directory; a mistyped
   code or a `PG-` string is refused.
+- **`verify_license` / `verifyLicense` are retired:** every `pg.license.v2` holds a PG id in its signed bytes, so no
+  verifier accepts one (`TOG-CODE.md` §6.11). An old licence answers by its `TOG-LIC` code at its registry's lookup.
+  An answer whose `basis.grant` carries a `license_id` is refused; an old licence is referenced as
+  `{"format": "pg.license.v2", "id"}` (`grants.md`, `schemas/answer.json`).
+- **Vectors v3:** `vectors.json` drops the `license_countersignature` and `pg_code` sections; Level 1 has no
+  `verify_license` and no `pg_*` operations, and requiring `verify_license` fails the run. Vectors v2, as published
+  with 0.13, stay frozen at `test-vectors/vectors.v2.json`.
+- **Typed input:** a PG string typed in any form (wrapped in brackets or quotes, a leading dash or letter, no dash,
+  `:` `_` `.` `/` as the separator, `P G`, a Cyrillic `РГ`) gets the retired message, never a TOG suggestion. The
+  pregen.org lookup proxy gives the same message on its own route.
 - **Old clients:** 0.13 refuses every TOG code (fails closed); 0.13.1 refuses an anchor list
   with a TOG line instead of dropping it. 0.14 reads it, and refuses a list with a `PG-` line the same way.
 

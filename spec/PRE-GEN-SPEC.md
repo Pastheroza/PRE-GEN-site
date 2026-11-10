@@ -279,7 +279,10 @@ signature proves depends on custody — see "Custody and consent" below.
    named by the license's `signing_key_fingerprint`, and MUST treat a
    license failing either as forged (`PG_INVALID_SIGNATURE`), not absent.
 
-The vector `license_countersignature` fixes these bytes.
+The vector `license_countersignature` fixes these bytes (vectors v2, frozen at
+`test-vectors/vectors.v2.json`). From libraries 0.14.0 no verifier accepts a
+`pg.license.v2`: its signed bytes hold a PG id (`TOG-CODE.md` §6.11), and an
+old licence answers by its `TOG-LIC` code at its registry's lookup only.
 
 **The licence envelope.** A licence travels as an object with these
 members, and a verifier checks it from them alone, without knowing the
@@ -552,7 +555,7 @@ regular expression meant to accept the same strings.
 **Scope.** The grammar describes *shape* only. Whether the check character
 is right is a separate arithmetic check (`PG-CODE.md` §4), so a mistyped
 code can be told apart from an unknown one (`PG-CODE.md` §7). Every vector
-in `pg_code.rejects` is shape-valid and checksum-invalid on purpose.
+in `pg_code.rejects` (vectors v2) is shape-valid and checksum-invalid on purpose.
 
 ### 4.1 ABNF (RFC 5234)
 
@@ -981,9 +984,9 @@ this repository yet. Everything marked "not checked" below rests on the implemen
 |---|---|
 | §2 canonical JSON, §2.1 fingerprint | Level 1: `canonical_json`, `signing` vectors |
 | V-2 decision signature | Level 1: `signing_verify:signed_decision_v1` |
-| V-9 / §1.2 license signatures | Level 1: `license_countersignature` (subject + operator, and that the countersignature binds the id) |
+| V-9 / §1.2 license signatures | Retired in vectors v3 (libraries 0.14): no verifier accepts a `pg.license.v2`. Vectors v2: `license_countersignature` |
 | §2.2 audit event bytes and chaining | Level 1: `audit_event_genesis`, `audit_event_chained`; Level 2: `10_audit_chain_valid` |
-| `PG-CODE.md` formatting and check character | Level 1: `pg_code` vectors |
+| `PG-CODE.md` formatting and check character | Retired, not supported; vectors v2 only (`pg_code`). ToG codes: `test-vectors/tog-code.json`, replayed by both libraries |
 | V-10, V-12, V-14 (who may issue which codes; the signed directory; revocation) | Level 1: `namespace` vectors — both directions of the issuer check, replayed and tampered directories, a revoked registry and a revoked key |
 | R-1 | Level 2: `02_refusal_missing_prompt_hash`, `04_refusal_no_subject` |
 | §5.1 caller authentication | Level 2: `03_refusal_no_pair` |

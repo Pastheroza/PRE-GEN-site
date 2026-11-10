@@ -12,7 +12,7 @@
   "files": ["index.js", "after-gen.js", "index.d.ts", "README.md", "LICENSE"],
   "engines": { "node": ">=20" },
   "scripts": {
-    "test": "node --test test/*.test.js && cd ../.. && python3 spec/conformance/level1/run_conformance.py --adapter \"node packages/verify-js/test/conformance-adapter.js\" --require-op canonical_json --require-op verify_signature --require-op verify_license --require-op verify_directory --require-op check_namespace"
+    "test": "node --test test/*.test.js && cd ../.. && python3 spec/conformance/level1/run_conformance.py --adapter \"node packages/verify-js/test/conformance-adapter.js\" --require-op canonical_json --require-op verify_signature --require-op verify_directory --require-op check_namespace"
   },
   "keywords": ["pre-gen", "pregen", "pre-generation authorization", "ed25519", "verification"],
   "homepage": "https://www.pregen.org",

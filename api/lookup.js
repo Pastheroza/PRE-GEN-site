@@ -14,14 +14,15 @@ const LIB = import("../packages/verify-js/index.js");
 
 /* Returns { code, shape, kind, issuer } or { error, detail, status }. Trimmed and case-folded as before; the page folds
    the rest of typed input. */
-function classify(raw, { parseCode, CodeError, RETIRED }) {
+function classify(raw, { parseCode, normalizeTyped, CodeError, RETIRED }) {
   const code = String(raw || "").trim().toUpperCase().replace(/\s+/g, "");
   if (!code) return { error: "missing_code", detail: "Provide ?code=TOG-…", status: 400 };
   if (code.length > 64) return { error: "invalid_code", detail: "Not a code.", status: 422 };
-  if (code.startsWith("PG-")) return { error: "invalid_code", detail: RETIRED, status: 422 };   // no mapping to TOG
   let p;
   try { p = parseCode(code); } catch (e) {
     if (!(e instanceof CodeError)) throw e;
+    // A PG string, however typed: the one retired message, as on the page; no mapping to TOG.
+    try { normalizeTyped(String(raw)); } catch (t) { if (t.message === RETIRED) return { error: "invalid_code", detail: RETIRED, status: 422 }; }
     return e.reason === "mistyped"
       ? { error: "check_mismatch", detail: "Mistyped code: the check character does not fit.", status: 422 }
       : { error: "invalid_code", detail: "Not a code.", status: 422 };
