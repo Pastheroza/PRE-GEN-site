@@ -62,7 +62,7 @@ function renderAnswer(d) {
   return '<article class="pg-card">'
     + '<div class="pg-card-head"><span class="pg-code">' + esc(d.code || "") + "</span>"
     + badge(d.status || "unknown", d.status === "active" || d.status === "valid" ? "ok" : "")
-    + (d.visibility ? badge(d.visibility) : d.kind ? badge(d.kind) : "") + "</div>"
+    + (d.visibility ? badge(d.visibility) : d.kind && d.kind !== "subject" ? badge(d.kind) : "") + "</div>"   // a person needs no kind word
     + '<dl class="pg-rows">' + rows + "</dl>"
     + '<div class="pg-card-foot">Resolved live from the registry that holds the code. Everything above is what the registry says. Identity: not confirmed on the person’s own channel by pregen.org. This is public metadata — it is not a generation permission. Providers need a signed allow from <span class="mono">POST /v2/requests</span>.</div>'
     + "</article>";
