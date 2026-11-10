@@ -538,6 +538,9 @@ is the safer wrong answer.
 
 ## 4. PG-code grammar
 
+> **From libraries 0.14.0 every code is written `TOG-`: see [`TOG-CODE.md`](TOG-CODE.md).** This
+> section stays as it was. It describes PG strings, which are now legacy input only.
+
 The full identifier specification — alphabet, check-character algorithm,
 worked examples, and the "resolved, never parsed" resolution rule — lives
 in **[`spec/PG-CODE.md`](PG-CODE.md)**. This section adds a formal grammar

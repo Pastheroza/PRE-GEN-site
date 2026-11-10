@@ -10,19 +10,27 @@ An **anchor** is the person's identifier in an independent public source:
 `wikidata:Q11571`, `isni:0000000123456789`, or `domain:example.com`.
 
 - A registry MUST give an anchor for every public person it registers. Registering a public
-  person without one is ground for revocation (`PG-CODE.md` §9.1).
+  person without one is ground for revocation (`PG-CODE.md` §9.1, kept by directory v3,
+  `TOG-CODE.md` §9.2).
 - Private persons have no anchor and are never listed.
 
 `GET {api}/v2/anchors` → `pg.anchors.v1`, signed by `registry`:
 
 | Member | Rule |
 |---|---|
-| `registry` | the registry's prefix |
+| `registry` | the registry's prefix (4 to 8 letters, `TOG-CODE.md` §9) |
 | `issued_at` | integer time; a client refuses a list more than 24 hours old, so an old copy cannot hide a new opt-out |
 | `anchors` | `[{anchor, code, level, proof_url, status}]`; `status` is `active`, `opted_out`, or the subject's unavailable status |
 
 Schema: `schemas/anchors.json`. A client collects every listed registry's list, at least
 daily, and for a public person asks **every** code its anchor names.
+
+**Codes in their TOG spelling.** A list writes each `code` in its TOG spelling (`TOG-CODE.md`
+§7.3). A client that knows the ToG code reads a `PG-` line of an older list as legacy input: it
+folds it by `code_key` and keeps the TOG spelling. Every comparison here uses `code_key`: an
+entry's code against the list's registry, two entries of one list, an entry against a false
+claim, a reversal or a confirmation line. So `PG-ZYXW-1234567R` and `TOG-ZYXW-1234567R` are one
+code: listed twice, the list is refused; a false claim under one spelling drops the other.
 
 A client drops a list entry that names another registry's code (the rest of the list stands),
 and refuses a list that names one code twice. **An entry of unknown shape fails the whole list.**
@@ -149,6 +157,10 @@ as before (rule 2).
 - The steward, in the directory: `freezes: [{anchor, at, until, reason}]`, each at most 7 days
   from `at` to `until`. A longer freeze is a new entry with its own reason. A freeze is in
   effect while `at` ≤ now < `until`.
+
+**Where the steward writes.** `freezes`, `false_claims` and `false_claim_reversals` stand in the
+directory v3 (`TOG-CODE.md` §9.2) as in v2, with their codes in the TOG spelling. A client compares
+them by `code_key`.
 
 **False claims.** The steward records the outcome of a complaint in the directory:
 `false_claims: [{anchor, code, at, reason}]`, every member required. A client drops a claim

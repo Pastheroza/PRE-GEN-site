@@ -3,6 +3,11 @@
 **Part of:** PRE-GEN v5 ([`VERSIONS.md`](VERSIONS.md)) · **Status:** frozen as of 2026-08-20, issuer prefix added 2026-09-28 · **Vectors:** `spec/test-vectors/vectors.json` (`pg_code` section, vectors v2)  
 **License:** Apache License 2.0 — see [`spec/LICENSE`](LICENSE).
 
+> **Superseded for every code written from the switch on by [`TOG-CODE.md`](TOG-CODE.md)** (ToG code,
+> formerly PG code; libraries 0.14.0, unreleased). The rules below stay frozen and unchanged. Their grammar is
+> read only as legacy input, folded to its one TOG spelling (`TOG-CODE.md` §7.3). Errata found since:
+> `TOG-CODE.md` §18.
+
 This document specifies the PRE-GEN identifier format completely enough to
 implement from scratch, without reading any PRAMPTA source code. The text is
 normative; the `pg_code` vectors are its conformance test, and a

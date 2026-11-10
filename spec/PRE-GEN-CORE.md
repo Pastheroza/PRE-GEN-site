@@ -23,16 +23,22 @@ Everything else in PRE-GEN is an optional extension that builds on this.
 ## The core, in five rules
 
 **1. A code names the subject and its registry.**
-A subject has a PG code (`PG-CODE.md`): `PG-<prefix>-<number><check>`, for example
-`PG-TEST-000001N`.
-- The four-letter prefix names the registry. Every registry has one, and every new code
+A subject has a ToG code (`TOG-CODE.md`): `TOG-<prefix>-<number><check>`, for example
+`TOG-TEST-000001N`.
+- The prefix (4 to 8 letters) names the registry. Every registry has one, and every new code
   carries it.
-- Codes without a prefix (`PG-000042*`) were issued before v5 by the first registry. They
+- **Every code is written `TOG-`.** A code issued as `PG-…` is written `TOG-…`, with the same
+  number and check (`PG-TEST-000001N` is `TOG-TEST-000001N`). A `PG-` string is legacy input
+  only: it folds to its one TOG spelling and is never written (`TOG-CODE.md` §7.3).
+- Codes without a prefix (`TOG-000042*`) were issued before v5 by the first registry. They
   keep their meaning forever; no registry issues new ones.
-- Software may read the prefix, and nothing else, from a code.
+- Software may read the marker, the kind and the prefixes, and nothing else, from a code.
+  The first prefix is the registry to ask.
 
 **2. The directory says whom to trust.**
-The steward signs one directory, `https://www.pregen.org/registries.json`. Each entry maps
+The steward signs one directory, `https://www.pregen.org/registries.v3.json` (`TOG-CODE.md`
+§9.2); the PG-era v2 file at `https://www.pregen.org/registries.json` stays frozen for older
+clients. Each entry maps
 a prefix to a registry: `name`, `prefix`, `api`, `keys` (its key set URL) and
 `key_fingerprints`. A verifier:
 - accepts the directory only if its `signature` verifies with the **published steward
@@ -50,7 +56,8 @@ a prefix to a registry: `name`, `prefix`, `api`, `keys` (its key set URL) and
 A registry not in the directory is not refused by anyone's opinion; it simply cannot sign
 anything a verifier accepts. Steward key: `pg-ed25519:dcdd244659e6d0e2426f2b504cb11590`,
 public key `5cb949aab04186e3e216ec541b847c912fc3f78138c0ec3cb2560b2dad0d1f1b`, also in DNS
-at `_pregen-steward.pregen.org`. Admission, revocation and key handover: `PG-CODE.md` §9.1.
+at `_pregen-steward.pregen.org`. Admission, revocation and key handover: `PG-CODE.md` §9.1;
+prefixes and directory v3: `TOG-CODE.md` §9.
 
 **3. Ask.**
 The provider sends the registry one request about one subject.
@@ -62,7 +69,7 @@ The provider sends the registry one request about one subject.
 
 ```json
 {"type": "pg.request.v1", "signatures": [],
- "body": {"subject_ref": "PG-TEST-000001…", "provider_id": "frame-ai",
+ "body": {"subject_ref": "TOG-TEST-000001…", "provider_id": "frame-ai",
           "profile": "likeness/1", "use": {"purpose": "commercial"},
           "job_id": "job-8841", "job_hash": "<sha-256 of what the provider fixed about the job>"}}
 ```

@@ -18,6 +18,38 @@ Text only: no message format, required schema member or vector changes.
 - **`licensee`:** a licensee not bound to a provider URL gets 403 `PG_NOT_BOUND` (`bind` B-5), not 401.
 - **Conformance:** two profiles for the message interface (`PRE-GEN-SPEC.md` §8.1).
 
+## pregen 0.14.0, @pregen/verify 0.14.0 (unreleased): the ToG code
+
+A core change (ToG code design, all decisions approved; decision 4 replaced by the hard switch).
+The libraries do not implement it yet; this entry records the specification.
+- **`TOG-CODE.md` (new):** the ToG code, formerly PG code. Every code is written `TOG-`. Persons
+  `TOG-<PREFIX>-<9 random digits><check>`; licences and acts `TOG-<KIND>-<ISSUER>[-<HOME>]-XXXX-XXXX-XXXX`
+  with the kinds `PG`, `PG-LIC`, `AG`, `AG-LIC` and `LIC`. The tail is 55 bits of the message id
+  of the object the home signed for the act (the act itself in the flat model); no counter. The
+  check covers two prefix-length digits and a kind digit; I, L, O, U take 32–35 in a TOG-only
+  value table. Prefixes are 4–8 letters A–Z, never with `LIC` at either end, admitted under
+  §9.1. Readable copies of a file's codes are recomputed and refused on any mismatch (§14).
+- **The hard switch:** PG-born persons are respelled by the marker only (same number, same
+  check); old licences get their `TOG-LIC` code from the signed licence's id. A `PG-` string is
+  legacy input only: `code_key` folds it to its one TOG spelling, used by every comparison, and
+  nothing writes `PG-`. A PG person string with no valid TOG spelling is not a code.
+- **Directory v3** at `https://www.pregen.org/registries.v3.json`: entity, group, dated roles,
+  government, provider domains, `void_from`, `closed`, `resolver`, `min_library`. v2 stays
+  frozen at its URL for 0.10–0.13 clients.
+- **`PRE-GEN-CORE.md`** rules 1 and 2; **`identity`:** codes in their TOG spelling, compared by
+  `code_key`; **`lookup`:** `kind`, `moved`, `alias`, answers in TOG, an over-padded number gets
+  `PG_MALFORMED` with a hint; **`grants`:** a licence's `TOG-LIC` code, old licences included;
+  **`proof`:** each subject's `PG` or `PG-LIC` code, readable copies `code`, `licence` and the
+  `grant` they are recomputed from.
+- **Schemas:** `subject_ref` accepts `TOG-` (request, grant, terms); prefixes 4–8 letters
+  (anchors, registry document, key set); `proof.json` entries may carry `code`, `licence`,
+  `grant`. The registry's vendored copies follow.
+- **`PG-CODE.md`** frozen, with a pointer to `TOG-CODE.md`; its errata are in `TOG-CODE.md` §18.
+- **Vectors:** `test-vectors/tog-code.json`, generated from the reference model
+  `tools/tog_code.py` by `tools/tog_vectors.py`.
+- **Old clients:** 0.13 refuses every TOG code (fails closed); 0.13.1 refuses an anchor list
+  with a TOG line instead of dropping it.
+
 ## pregen 0.13.1, @pregen/verify 0.13.1 (unreleased)
 
 A patch that changes published behaviour (ToG code design, decision 14, approved):

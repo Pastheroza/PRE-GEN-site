@@ -17,7 +17,8 @@ it without asking permission.
 | `schemas/`, `test-vectors/messages.json` | JSON Schemas and byte vectors for the v5 messages |
 | `PRE-GEN-SPEC.md` | Foundations the core builds on (canonical bytes, keys, refusal codes) and the earlier interface (`/v1/verify`, receipts), still valid |
 | `PRE-GEN-EXTENSIONS.md` | What a registry adds; the first registry's (PRAMPTA) extensions |
-| `PG-CODE.md` | Identifier format, check character, issuer prefixes (§9) |
+| `TOG-CODE.md` | **ToG code** (formerly PG code): every code written from 0.14.0 on, prefixes, directory v3 (draft, unreleased) |
+| `PG-CODE.md` | PG identifier format, check character, issuer prefixes (§9); frozen, read as legacy input |
 | `REFUSAL-CODES.md` | The first registry's reason codes, core codes marked |
 | `VERSIONS.md` | Every version, numbered as on Zenodo, and what changed |
 | `PRE-GEN-v5.pdf` | Version 5 as a paper (source: `paper/`) |
@@ -25,8 +26,8 @@ it without asking permission.
 | `test-vectors/vectors.json` | Byte-level vectors every implementation must reproduce |
 | `conformance/` | The level-1 runner that replays the vectors against an implementation |
 
-**Normative:** the text of `PRE-GEN-CORE.md`, `PRE-GEN-SPEC.md` and
-`PG-CODE.md`, the extensions a party declares, the profile it answers under,
+**Normative:** the text of `PRE-GEN-CORE.md`, `PRE-GEN-SPEC.md`,
+`TOG-CODE.md` and `PG-CODE.md`, the extensions a party declares, the profile it answers under,
 and the test vectors; `PRE-GEN-EXTENSIONS.md` and `REFUSAL-CODES.md` for an
 implementation that claims an extension. The text defines the requirements
 (written in BCP 14 language, `PRE-GEN-SPEC.md` §0); the vectors are its

@@ -1,6 +1,6 @@
 # Extension `proof` — the record travels with the output
 
-**Solves:** a PG code printed on a video proves nothing. A platform needs the signed record
+**Solves:** a code printed on a video proves nothing. A platform needs the signed record
 of *this* output, even after re-encoding.
 
 **Requires:** [`reports`](reports.md).
@@ -18,6 +18,41 @@ The report names the output by its SHA-256 (`output_hash`) and may add `bindings
 C2PA soft-binding algorithm name). A binding fingerprints the output file, never a person.
 Its `value` is opaque to PRE-GEN: registries store it, and the libraries neither compute nor
 compare it.
+
+## The code under the output
+
+Each subject's entry has one act code (`TOG-CODE.md` §6.1), computed from its answer, never read
+off a caption:
+
+- **`TOG-PG-…`** when the answer was made under the person's terms; **`TOG-PG-LIC-…`** when its
+  `basis` names a licence (a `pg.grant.v1` or an old `pg.license.v2`).
+- **Issuer:** the registry that signed the answer. **Tail:** from the message id of the object
+  the home signed for it: its countersignature in the home model, the answer itself in the flat
+  model. In the flat model the answer's signer must be the registry the person's code was born
+  at; otherwise the entry has no code.
+- **One allow, one code.** Every output reported under one allow shows the same code.
+- A registry does not issue an `allow` whose code would end in a symbol or whose tail would start
+  `ZZZZ`: it signs it again with a changed body. It refuses a code it has already issued.
+
+A file approved after it was made gets an `AG` or `AG-LIC` code the same way, from its AFTER-GEN
+record. A caption shows the code; a verifier checks the caption against the record, never the
+other way round (`TOG-CODE.md` §15). Vectors: `test-vectors/tog-code.json`, `code_for`,
+`verdict`.
+
+## Readable copies
+
+A subject's entry may carry two readable copies (`TOG-CODE.md` §14):
+
+| Member | Value |
+|---|---|
+| `code` | the entry's act code, `TOG-PG-…` or `TOG-PG-LIC-…` |
+| `licence` | the licence's `TOG-LIC` code, only when the answer's `basis` names one |
+| `grant` | the `pg.grant.v1` envelope the `basis` names, so that `licence` can be recomputed |
+
+**Copies, never authority.** A platform recomputes both copies from the signed parts and refuses
+the bundle on any mismatch. A `licence` copy on an answer whose basis is not a licence is a
+mismatch; so is one that cannot be recomputed because the licence is not in the entry. A missing
+copy is not an error. Vectors: `metadata`.
 
 ## Carrying it
 
@@ -39,7 +74,8 @@ A platform accepts the bundle when, for every subject:
    it is checked as of then, not today;
 2. the acknowledgement is signed by a key the directory lists for the subject's prefix, and
    names this report and this answer; the report's outcome is `generated`;
-3. the acknowledgement's `received_at` is **no later than 24 hours after the answer's
+3. any readable copy (`code`, `licence`) equals the code recomputed from the signed parts;
+4. the acknowledgement's `received_at` is **no later than 24 hours after the answer's
    `expires_at`**. `occurred_at` is the provider's word; the registry's `received_at` is not.
    A report that arrives later is still recorded (`reports` has no deadline), but it proves
    nothing: one old allow must not buy a "permitted" output at any later time;
