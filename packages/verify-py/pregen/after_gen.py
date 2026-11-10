@@ -3,6 +3,7 @@ media/1 hash of an ISO base media file, the record carried in C2PA or XMP, and t
 status. A record is never a PRE-GEN permission given before generation, and says nothing about whether the content is
 AI-generated."""
 
+import bisect
 import hashlib
 import io
 import json
@@ -62,31 +63,6 @@ def _boxes(f, start, end, top=False, who="media/1"):
         pos += size
 
 
-def _parts(m, box, read):
-    """The children of `box` that media/1 reads, by type, and every other one kept as is, in file order (Read, or kept
-    as is): an element xbox holding an element of the box's type, its value the bytes after its size and type."""
-    kids, kept = {}, []
-    for t, _, cs, ce in _boxes(m, *box):
-        if t in read:
-            kids.setdefault(t, []).append((cs, ce))
-        else:
-            m.seek(cs)
-            kept.append(_el(b"xbox", _el(t, m.read(ce - cs))))
-    return kids, b"".join(kept)
-
-
-def _one(kids, t, where):
-    if len(kids.get(t, ())) != 1:
-        raise PregenError(f"media/1: {where} needs exactly one {t.decode('latin-1')}")
-    return kids[t][0]
-
-
-def _opt(kids, t, where):
-    if len(kids.get(t, ())) > 1:
-        raise PregenError(f"media/1: {where} has more than one {t.decode('latin-1')}")
-    return kids[t][0] if t in kids else None
-
-
 def _el(code, value: bytes) -> bytes:
     """An element: four-byte code, u64 length, value."""
     return code + len(value).to_bytes(8, "big") + value
@@ -99,155 +75,111 @@ def _i(*xs) -> bytes:
         raise PregenError("media/1: a value does not fit in a signed 64-bit integer") from None
 
 
-def _full(m, box, layout=None):
-    """A full box's version and its bytes; `layout` (version 0, version 1) is the length of its fixed fields."""
-    m.seek(box[0])
-    b = m.read(box[1] - box[0])
-    if len(b) < 4:
-        raise PregenError("media/1: a box is too short")
-    if layout and b[0] not in (0, 1):
-        raise PregenError("media/1: a version that is not read")
-    if layout and len(b) < layout[b[0]]:
-        raise PregenError("media/1: a box shorter than its version's layout")
-    return b[0], b
+_PIECE = 1 << 20
+_PATH = {b"moov": b"trak", b"trak": b"mdia", b"mdia": b"minf", b"minf": b"stbl"}   # a value of its children's elements
+_NOT_HASHED = (b"free", b"skip", b"wide")                                          # padding, besides the two carriers
+_PCM = {b"raw ", b"twos", b"sowt", b"in24", b"in32", b"fl32", b"fl64", b"lpcm", b"ipcm", b"fpcm", b"ulaw", b"alaw"}
 
 
-def _table(m, box, entry, where):
-    """A table box: version, then (count, entries); the entries must fill the box exactly."""
-    v, b = _full(m, box)
-    (n,) = struct.unpack_from(">I", b, 4)
-    size = struct.calcsize(entry)
-    if len(b) != 8 + n * size:
-        raise PregenError(f"media/1: the {where} table's count does not agree with its size")
-    return v, list(struct.iter_unpack(entry, b[8:]))
+def _u(b, at, n=4):
+    if len(b) < at + n:
+        raise PregenError("media/1: a box shorter than its own fields")
+    return int.from_bytes(b[at:at + n], "big")
 
 
-def _track(m, trak, file_size):
-    """One trak: (track_ID, handler, the fields of its first leaf except tref, tref ids, samples)."""
-    k, kept = _parts(m, trak, (b"tkhd", b"tref", b"edts", b"mdia"))
-    v, tkhd = _full(m, _one(k, b"tkhd", "trak"), (84, 96))
-    tid = struct.unpack_from(">I", tkhd, 20 if v else 12)[0]
-    layer, alt, vol, _, *rest = struct.unpack_from(">hhhH9iII", tkhd, 44 if v else 32)
-    tkhd_el = _el(b"tkhd", _i(tkhd[3] & 1, layer, alt, vol, *rest))
-    edits = []
-    edts = _opt(k, b"edts", "trak")
-    if edts:
-        ek, more = _parts(m, edts, (b"elst",))
-        kept += more
-        elst = _opt(ek, b"elst", "edts")
-        if elst:
-            if _full(m, elst)[0] not in (0, 1):
-                raise PregenError("media/1: unknown elst version")
-            for row in _table(m, elst, ">Qqhh" if _full(m, elst)[0] == 1 else ">Iihh", "elst")[1]:
-                edits += row
-    tref = []
-    tr = _opt(k, b"tref", "trak")
-    if tr:
-        for t, _, cs, ce in _boxes(m, *tr):
-            m.seek(cs)
-            b = m.read(ce - cs)
-            if len(b) % 4:
-                raise PregenError("media/1: a tref box is not a list of track ids")
-            tref.append((t, [x for (x,) in struct.iter_unpack(">I", b)]))
-    mk, more = _parts(m, _one(k, b"mdia", "trak"), (b"mdhd", b"hdlr", b"minf"))
-    kept += more
-    v, mdhd = _full(m, _one(mk, b"mdhd", "mdia"), (24, 36))
-    mdts = struct.unpack_from(">I", mdhd, 20 if v else 12)[0]
-    hdlr = _full(m, _one(mk, b"hdlr", "mdia"))[1][8:12]
-    if len(hdlr) != 4:
-        raise PregenError("media/1: a box is too short")
-    nk, more = _parts(m, _one(mk, b"minf", "mdia"), (*_MEDIA_HEADERS, b"dinf", b"stbl"))
-    kept += more
-    heads = [(t, box) for t in _MEDIA_HEADERS for box in nk.get(t, ())]
-    if len(heads) > 1:
-        raise PregenError("media/1: two media headers in minf")
-    head = b""
-    for t, (cs, ce) in heads:
-        m.seek(cs)
-        b = m.read(ce - cs)
-        if len(b) < _MEDIA_HEADERS[t]:
-            raise PregenError("media/1: a media header shorter than its layout")
-        head = _el(t, b if t == b"gmhd" else b[4:])         # gmhd has no version and flags
-    dinf = _opt(nk, b"dinf", "minf")
-    if dinf:
-        refs = list(_boxes(m, *dinf))
-        if [t for t, *_ in refs] != [b"dref"]:
-            raise PregenError("media/1: a dinf holding anything but one dref")
-        dref = refs[0][2:]
-        (n,) = struct.unpack_from(">I", _full(m, dref)[1], 4)
-        refs = list(_boxes(m, dref[0] + 8, dref[1]))
-        if len(refs) != n:
-            raise PregenError("media/1: the dref count does not agree with its entries")
-        for t, _, cs, ce in refs:
-            if t not in (b"url ", b"urn ") or not _full(m, (cs, ce))[1][3] & 1:
-                raise PregenError("media/1: a data reference that is not a self-contained url or urn")
-    sk, more = _parts(m, _one(nk, b"stbl", "minf"), (b"stsd", b"stts", b"ctts", b"stsc", b"stsz", b"stz2", b"stco",
-                                                     b"co64"))
-    kept += more
-    stsd = _one(sk, b"stsd", "stbl")
-    _, b = _full(m, stsd)
-    (n,) = struct.unpack_from(">I", b, 4)
-    entries = list(_boxes(m, stsd[0] + 8, stsd[1]))
-    if len(entries) != n:
-        raise PregenError("media/1: the stsd count does not agree with its entries")
-    sents = b""
-    for t, s, _, e in entries:
-        m.seek(s + 8)
-        body = m.read(e - s - 8)
-        if t in (b"encv", b"enca", b"encs") or b"sinf" in body:
-            raise PregenError("media/1: encrypted samples")
-        sents += _el(b"sent", _el(t, body))
-    if b"stz2" in sk:
-        raise PregenError("media/1: stz2 is not read")
-    _, b = _full(m, _one(sk, b"stsz", "stbl"))
-    fixed, count = struct.unpack_from(">II", b, 4)
-    if len(b) != 12 + (0 if fixed else 4 * count):
-        raise PregenError("media/1: the stsz count does not agree with its size")
-    if fixed * count > file_size:            # before a list of `count` sizes is made
-        raise PregenError("media/1: a sample range falls outside the file")
-    sizes = [fixed] * count if fixed else [x for (x,) in struct.iter_unpack(">I", b[12:])]
-
-    def expand(rows):                          # counted before expanded: a table cannot claim 2^32 samples for free
-        if sum(c for c, _ in rows) != count:
-            raise PregenError("media/1: stts, ctts and stsz count different samples")
-        return [x for c, x in rows for _ in range(c)]
-    durs = expand(_table(m, _one(sk, b"stts", "stbl"), ">II", "stts")[1])
-    ctts = _opt(sk, b"ctts", "stbl")
-    offs = [0] * count
-    if ctts:
-        if _full(m, ctts)[0] not in (0, 1):
-            raise PregenError("media/1: unknown ctts version")
-        offs = expand(_table(m, ctts, ">Ii" if _full(m, ctts)[0] == 1 else ">II", "ctts")[1])
-    stco, co64 = _opt(sk, b"stco", "stbl"), _opt(sk, b"co64", "stbl")
-    if (stco is None) == (co64 is None):
-        raise PregenError("media/1: stbl needs exactly one stco or co64")
-    chunks = [c for (c,) in _table(m, stco or co64, ">I" if stco else ">Q", "chunk offset")[1]]
-    runs = _table(m, _one(sk, b"stsc", "stbl"), ">III", "stsc")[1]
-    pos, sdis = [], []
-    for j, (first, per, sdi) in enumerate(runs):
-        last = runs[j + 1][0] if j + 1 < len(runs) else len(chunks) + 1
-        if not (j or first == 1) or first >= last or last > len(chunks) + 1 or per < 1 or not 1 <= sdi <= n:
-            raise PregenError("media/1: the stsc table does not agree with the chunks")
-        for c in range(first - 1, last - 1):
-            o = chunks[c]
-            for _ in range(per):
-                if len(pos) == count:
-                    raise PregenError("media/1: stsc and stsz count different samples")
-                pos.append(o)
-                sdis.append(sdi)
-                o += sizes[len(pos) - 1]
-    if len(pos) != count or (chunks and not runs):
-        raise PregenError("media/1: stsc and stsz count different samples")
-    samples, t = [], 0
-    for j in range(count):
-        samples.append((sdis[j], t, offs[j], durs[j], pos[j], sizes[j]))
-        t += durs[j]
-    first = head + _el(b"mdts", _i(mdts)) + sents + tkhd_el + _el(b"elst", _i(*edits)) + kept
-    return tid, hdlr, first, tref, samples
+def _sizes(t, b):
+    """A sample size table (stsz or stz2): (count, the fixed size or 0, the sizes)."""
+    count = _u(b, 8)
+    if t == b"stsz":
+        fixed = _u(b, 4)
+        if fixed:
+            return count, fixed, []
+        if len(b) < 12 + 4 * count:
+            raise PregenError("media/1: a box shorter than its own fields")
+        return count, 0, [x for (x,) in struct.iter_unpack(">I", b[12:12 + 4 * count])]
+    bits = _u(b, 7, 1)
+    if bits not in (4, 8, 16) or len(b) < 12 + (count * bits + 7) // 8:
+        raise PregenError("media/1: an stz2 table shorter than its count, or a field size other than 4, 8 or 16")
+    if bits == 4:
+        return count, 0, [b[12 + j // 2] >> (0 if j % 2 else 4) & 15 for j in range(count)]
+    w = bits // 8
+    return count, 0, [int.from_bytes(b[12 + w * j:12 + w * j + w], "big") for j in range(count)]
 
 
-_MEDIA_HEADERS = {b"vmhd": 12, b"smhd": 8, b"sthd": 4, b"hmhd": 20, b"nmhd": 4, b"gmhd": 0}  # each: its layout's length
-_NOT_KEPT = (b"ftyp", b"moov", b"mdat", b"free", b"skip", b"wide")     # top-level boxes, besides the two carriers
+def _chunk_lengths(n, runs, sizes):
+    """The bytes of each of n chunks, by stsc and the sample sizes; samples past the size table count none."""
+    count, fixed, table = sizes
+    out, e, s = [], 0, 0
+    for c in range(1, n + 1):
+        while e + 1 < len(runs) and runs[e + 1][0] <= c:
+            e += 1
+        k = max(0, min(runs[e][1] if runs and runs[e][0] <= c else 0, count - s))
+        out.append(fixed * k if fixed else sum(table[s:s + k]))
+        s += k
+    return out
+
+
+def _stbl(m, mv, kids, mdats):
+    """Checks an stbl on the path and returns its chunk offset tables as hashed, by start: per offset, the position of
+    the mdat whose data holds it and the offset within that data (The stream; One reading only)."""
+    first = {}
+    for t, _, cs, ce in kids:
+        first.setdefault({b"stz2": b"stsz", b"co64": b"stco"}.get(t, t), (t, mv[cs:ce]))
+    sizes = _sizes(*first[b"stsz"]) if b"stsz" in first else (0, 0, [])
+    runs = []
+    if b"stsc" in first:
+        b = first[b"stsc"][1]
+        if len(b) < 8 + 12 * _u(b, 4):
+            raise PregenError("media/1: a box shorter than its own fields")
+        runs = [(f, k) for f, k, _ in struct.iter_unpack(">III", b[8:8 + 12 * _u(b, 4)])]
+    starts = [s for s, _ in mdats]
+    out = {}
+    for t, _, cs, ce in kids:
+        if t == b"stsd":
+            for et, _, ecs, ece in _boxes(m, cs + 8, ce):
+                e = mv[ecs:ece]
+                if et in (b"encv", b"enca", b"encs") or b"sinf" in e:
+                    raise PregenError("media/1: encrypted samples")
+                if et in _PCM:
+                    v = _u(e, 8, 2)
+                    bpf = _u(e, 36) if v == 1 else _u(e, 56) if v == 2 else _u(e, 16, 2) * _u(e, 18, 2) // 8
+                    if sizes[1] and sizes[1] != bpf or any(x != bpf for x in sizes[2]):
+                        raise PregenError("media/1: an uncompressed sound track whose stsz is not its bytes per frame")
+        if t in (b"stco", b"co64"):
+            b, w = mv[cs:ce], 4 if t == b"stco" else 8
+            n = _u(b, 4)
+            if len(b) != 8 + w * n:
+                raise PregenError("media/1: a chunk offset table whose count does not agree with its size")
+            value = [b[:4], _i(n)]
+            for o, length in zip((int.from_bytes(b[8 + w * j:8 + w * j + w], "big") for j in range(n)),
+                                 _chunk_lengths(n, runs, sizes)):
+                j = bisect.bisect_right(starts, o) - 1
+                if j < 0 or o >= mdats[j][1]:
+                    raise PregenError("media/1: a chunk offset outside the data of an mdat")
+                if o + length > mdats[j][1]:
+                    raise PregenError("media/1: a chunk whose samples run past its mdat's data")
+                value.append(_i(j, o - starts[j]))
+            out[cs] = b"".join(value)
+    return out
+
+
+def _value(m, mv, t, s, e, mdats):
+    """The value of the element of a box on the path moov/trak/mdia/minf/stbl: its children's elements."""
+    kids = list(_boxes(m, s, e))
+    names = {k for k, *_ in kids}
+    if t == b"moov" and b"mvex" in names:
+        raise PregenError("media/1: a fragmented file (mvex)")
+    if t == b"moov" and b"cmov" in names:
+        raise PregenError("media/1: a compressed movie (cmov)")
+    if t == b"minf":
+        for _, _, cs, ce in (k for k in kids if k[0] == b"dinf"):
+            for _, _, rcs, rce in (k for k in _boxes(m, cs, ce) if k[0] == b"dref"):
+                for et, _, ecs, ece in _boxes(m, rcs + 8, rce):
+                    if et not in (b"url ", b"urn ") or ece - ecs < 4 or not mv[ecs + 3] & 1:
+                        raise PregenError("media/1: a data reference that is not a self-contained url or urn")
+    offsets = _stbl(m, mv, kids, mdats) if t == b"stbl" else {}
+    return b"".join(_el(k, _value(m, mv, k, cs, ce, mdats) if _PATH.get(t) == k else offsets.get(cs, mv[cs:ce]))
+                    for k, _, cs, ce in kids)
 
 
 def _root(f):
@@ -270,11 +202,24 @@ def _leaf(data: bytes) -> bytes:
     return hashlib.sha256(b"\x00" + data).digest()
 
 
+def _pieces(chunks):
+    """The leaf hashes of the stream cut into pieces of 1 MiB, the last one shorter."""
+    buf = b""
+    for c in chunks:
+        buf += c
+        while len(buf) >= _PIECE:
+            yield _leaf(buf[:_PIECE])
+            buf = buf[_PIECE:]
+    if buf:
+        yield _leaf(buf)
+
+
 def media_hash(f) -> dict:
-    """media/1 of an ISO base media file (MP4, MOV, M4V): the RFC 6962 root over the movie, each listed track and each
-    of its samples (spec/drafts/after-gen.md, Which bytes the hash covers). `f` is a path or a seekable binary file;
-    sample data is read with seek/read, never the whole file. Refuses, with the reason, every file "One reading only"
-    lists. Returns {"binding": "media/1", "hash", "leaves"}."""
+    """media/1 of an ISO base media file (MP4, MOV, M4V): the RFC 6962 root over the 1 MiB pieces of the stream of
+    every top-level box but padding and the two carriers, chunk offsets counted within their mdat (spec/drafts/
+    after-gen.md, Which bytes the hash covers). `f` is a path or a seekable binary file; the movie box is read whole,
+    the rest in ranges. Refuses, with the reason, every file "One reading only" lists. Returns {"binding": "media/1",
+    "hash", "leaves"}."""
     if isinstance(f, (str, os.PathLike)):
         with open(f, "rb") as fh:
             return media_hash(fh)
@@ -288,61 +233,31 @@ def media_hash(f) -> dict:
         raise PregenError("media/1: more than one moov box")
     if any(b[0] == b"moof" for b in top):
         raise PregenError("media/1: a fragmented file (moof)")
+    mdats = [(cs, ce) for t, _, cs, ce in top if t == b"mdat"]
     _, _, cs, ce = moovs[0]
     f.seek(cs)
-    m = io.BytesIO(f.read(ce - cs))
-    try:
-        mk, kept = _parts(m, (0, ce - cs), (b"mvhd", b"trak", b"mvex", b"cmov"))
-        if b"mvex" in mk:
-            raise PregenError("media/1: a fragmented file (mvex)")
-        if b"cmov" in mk:
-            raise PregenError("media/1: a compressed movie (cmov)")
-        v, mvhd = _full(m, _one(mk, b"mvhd", "moov"), (100, 112))
-        tmsc = struct.unpack_from(">I", mvhd, 20 if v else 12)[0]
-        rate, volu, *mtrx = struct.unpack_from(">ih10x9i", mvhd, 32 if v else 20)
-        tracks = [_track(m, t, size) for t in mk.get(b"trak", [])]
-    except struct.error:
-        raise PregenError("media/1: a box is too short") from None
-    for t, _, bs, be in top:                    # every other top-level box a player could read, kept as is
-        f.seek(bs)
-        if t not in _NOT_KEPT and not (t == b"uuid" and f.read(16) in (_XMP_UUID, _C2PA_UUID)):
-            f.seek(bs)
-            kept += _el(b"xbox", _el(t, f.read(be - bs)))
-    if len({t[0] for t in tracks}) != len(tracks):
-        raise PregenError("media/1: two tracks with one track_ID")
-    tracks = sorted(tracks, key=lambda t: t[0])                     # every track, whatever its handler
-    where = {t[0]: i for i, t in enumerate(tracks)}
-    ranges = sorted((s[4], s[4] + s[5]) for t in tracks for s in t[4] if s[5])
-    for j, (a, b) in enumerate(ranges):
-        if b > size:
-            raise PregenError("media/1: a sample range falls outside the file")
-        if j and a < ranges[j - 1][1]:
-            raise PregenError("media/1: sample ranges overlap")
-    movie = b"PREGEN-MEDIA\x00media/1\x00" + _el(b"FRMT", b"isobmff") + _el(b"tmsc", _i(tmsc)) \
-        + _el(b"rate", _i(rate)) + _el(b"volu", _i(volu)) + _el(b"mtrx", _i(*mtrx)) + kept
-    trefs = []
-    for tid, hdlr, first, tref, _ in tracks:
-        if any(x not in where for _, ids in tref for x in ids):
-            raise PregenError("media/1: a tref names a track that is not in the file")
-        trefs.append(_el(b"hdlr", hdlr) + _el(b"tref", b"".join(_el(t, _i(*(where[x] for x in ids))) for t, ids in tref))
-                     + first)
+    mv = f.read(ce - cs)
+    moov = _el(b"moov", _value(io.BytesIO(mv), mv, b"moov", 0, len(mv), mdats))
 
-    def leaves():
-        yield _leaf(movie)
-        for (_, _, _, _, samples), head in zip(tracks, trefs):
-            yield _leaf(head)
-            for sdi, dt, ct, dur, off, n in samples:
-                h = hashlib.sha256(b"\x00" + _el(b"sdsc", _i(sdi)) + _el(b"dtim", _i(dt)) + _el(b"ctso", _i(ct))
-                                   + _el(b"sdur", _i(dur)) + b"data" + n.to_bytes(8, "big"))
-                f.seek(off)
-                while n:
-                    chunk = f.read(min(n, 1 << 20))
-                    if not chunk:
-                        raise PregenError("media/1: a sample range falls outside the file")
-                    h.update(chunk)
-                    n -= len(chunk)
-                yield h.digest()
-    root, n = _root(leaves())
+    def stream():
+        yield b"PREGEN-MEDIA\x00media/1\x00"
+        for t, bs, cs, be in top:
+            f.seek(cs)
+            if t in _NOT_HASHED or t == b"uuid" and f.read(16) in (_XMP_UUID, _C2PA_UUID):
+                continue
+            if t == b"moov":
+                yield moov
+                continue
+            yield t + (be - cs).to_bytes(8, "big")
+            f.seek(cs)
+            n = be - cs
+            while n:
+                chunk = f.read(min(n, _PIECE))
+                if not chunk:
+                    raise PregenError("media/1: a box runs past the file")
+                yield chunk
+                n -= len(chunk)
+    root, n = _root(_pieces(stream()))
     return {"binding": "media/1", "hash": root.hex(), "leaves": n}
 
 

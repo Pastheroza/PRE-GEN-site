@@ -20,8 +20,8 @@
    "subject_ref": "PG-TEST-000001N",
    "content": {
     "binding": "media/1",
-    "hash": "158d60f3503264939de56ffd78b94856c737d745d7015a78ea98cc2765cd2fe1",
-    "leaves": 58
+    "hash": "61944b2a4d47067a12e423f65a95e36ed9808a98d6399c54e6566a27f843d254",
+    "leaves": 1
    },
    "request": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
    "holder": "https://studio.example",
@@ -61,7 +61,7 @@
    "issued_at": 1789999900
   },
   "signatures": [
-   "1fa217f81b99a86091c1fd605303f1f4ba4793d9217dbd777c00d0dfb0d342a1af144bf24b2320f5ddf61940bdae12ba45fa89633a291397de50d973bfc3af03"
+   "344f5caac3b1a75fa51cfda568385cd0d8d98d342399a1048e5472b7896ccdfeff82c05702bf94c0a7cf01fdf68b8f4909e7883a0d75d87babeffd58462e2f0f"
   ]
  },
  "files": [
@@ -69,113 +69,117 @@
    "file": "a-c2pa-cbor.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "158d60f3503264939de56ffd78b94856c737d745d7015a78ea98cc2765cd2fe1",
-    "leaves": 58
+    "hash": "61944b2a4d47067a12e423f65a95e36ed9808a98d6399c54e6566a27f843d254",
+    "leaves": 1
    }
   },
   {
    "file": "a-c2pa-earlier.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "158d60f3503264939de56ffd78b94856c737d745d7015a78ea98cc2765cd2fe1",
-    "leaves": 58
+    "hash": "61944b2a4d47067a12e423f65a95e36ed9808a98d6399c54e6566a27f843d254",
+    "leaves": 1
    }
   },
   {
    "file": "a-c2pa-json.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "158d60f3503264939de56ffd78b94856c737d745d7015a78ea98cc2765cd2fe1",
-    "leaves": 58
+    "hash": "61944b2a4d47067a12e423f65a95e36ed9808a98d6399c54e6566a27f843d254",
+    "leaves": 1
    }
   },
   {
    "file": "a-flip.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "c33108bb717daff14423abe97915af647fc8bb94333a75ccdacd9e8d032cb91c",
-    "leaves": 58
+    "hash": "857e6ad54a5d1b126fcfff49e621077e77efedab149ab18a7bd452f759cd0d22",
+    "leaves": 1
    }
   },
   {
    "file": "a-meta.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "8dbdd55e8c04801c7dd5ea6f5c52594cd6737e30e286d48c134b8cb67125ee9d",
-    "leaves": 58
+    "hash": "e2e60b1ca705f3fd7a189e76e733f0b48991bbb4b6b9ca1e0492b2ad7181025a",
+    "leaves": 1
    }
   },
   {
    "file": "a-remux-faststart.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "0ba367a0e96853affdf573abc3499062a17868ed0527c48c0eb9edc5612952ae",
-    "leaves": 58
+    "hash": "d0d4f395086eb6e2aa91d551df72fd2b13aad7dc1f8e152fd6ce248b826e1948",
+    "leaves": 1
    }
   },
   {
    "file": "a-remux.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "0ba367a0e96853affdf573abc3499062a17868ed0527c48c0eb9edc5612952ae",
-    "leaves": 58
+    "hash": "19c8da198ff5f03d79bb9fa91850d64df591f8dcec48a272cf256c47b7ca6a66",
+    "leaves": 1
    }
   },
   {
    "file": "a-xmp-foreign-pg.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "158d60f3503264939de56ffd78b94856c737d745d7015a78ea98cc2765cd2fe1",
-    "leaves": 58
+    "hash": "61944b2a4d47067a12e423f65a95e36ed9808a98d6399c54e6566a27f843d254",
+    "leaves": 1
    }
   },
   {
    "file": "a-xmp-foreign.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "158d60f3503264939de56ffd78b94856c737d745d7015a78ea98cc2765cd2fe1",
-    "leaves": 58
+    "hash": "61944b2a4d47067a12e423f65a95e36ed9808a98d6399c54e6566a27f843d254",
+    "leaves": 1
    }
   },
   {
    "file": "a-xmp.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "158d60f3503264939de56ffd78b94856c737d745d7015a78ea98cc2765cd2fe1",
-    "leaves": 58
+    "hash": "61944b2a4d47067a12e423f65a95e36ed9808a98d6399c54e6566a27f843d254",
+    "leaves": 1
    }
   },
   {
    "file": "a.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "158d60f3503264939de56ffd78b94856c737d745d7015a78ea98cc2765cd2fe1",
-    "leaves": 58
+    "hash": "61944b2a4d47067a12e423f65a95e36ed9808a98d6399c54e6566a27f843d254",
+    "leaves": 1
    }
   },
   {
    "file": "attack-c2pa-nested.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "e3be5e27f2b21c4959c32bda7f7e3829fca1183a6e1fb1344c894daeb8af51b9",
-    "leaves": 4
+    "hash": "372d26236e0918222ce8bcb2760dc59e7127c504c4339f0acb98ffe93b5ae57e",
+    "leaves": 1
    }
   },
   {
    "file": "attack-c2pa-not-canonical.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "e3be5e27f2b21c4959c32bda7f7e3829fca1183a6e1fb1344c894daeb8af51b9",
-    "leaves": 4
+    "hash": "372d26236e0918222ce8bcb2760dc59e7127c504c4339f0acb98ffe93b5ae57e",
+    "leaves": 1
    }
   },
   {
    "file": "attack-c2pa-older-bad.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "e3be5e27f2b21c4959c32bda7f7e3829fca1183a6e1fb1344c894daeb8af51b9",
-    "leaves": 4
+    "hash": "372d26236e0918222ce8bcb2760dc59e7127c504c4339f0acb98ffe93b5ae57e",
+    "leaves": 1
    }
+  },
+  {
+   "file": "attack-chunk-past-mdat.mp4",
+   "refused": "media/1: a chunk whose samples run past its mdat's data"
   },
   {
    "file": "attack-cmov.mp4",
@@ -183,11 +187,15 @@
   },
   {
    "file": "attack-dinf-extra.mp4",
-   "refused": "media/1: a dinf holding anything but one dref"
+   "media": {
+    "binding": "media/1",
+    "hash": "f05eaf3acb2ba71f9b729c17b831830060d31b21cb53ecaf946f7d90785e9766",
+    "leaves": 1
+   }
   },
   {
    "file": "attack-dos.mp4",
-   "refused": "media/1: a sample range falls outside the file"
+   "refused": "media/1: a chunk whose samples run past its mdat's data"
   },
   {
    "file": "attack-dref-alis.mp4",
@@ -201,41 +209,81 @@
    "file": "attack-elst-in-udta.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "4e46edcc573765d96c68277475b2843b7cf4015bcea729829d79c3c3d38a5f48",
-    "leaves": 4
+    "hash": "b086489e090ba621719b080eee6c6d79efab7bc2585fc8adcf6959fd2fd2d8b7",
+    "leaves": 1
+   }
+  },
+  {
+   "file": "attack-ftyp-qt.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "1623f434b44f1e02de06c71321d5f7aea933f31ab681816c82486d4f0a314893",
+    "leaves": 1
    }
   },
   {
    "file": "attack-glbl.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "2e2ab6b68cd7ced3109fa6a01a4ab2036aeb1c4ec814921504c0c987af0db47d",
-    "leaves": 4
+    "hash": "f3c9603b7abb38cd2ee8f9b0d0f45abbdb1219878bd21a06bc1b8986cf83c21a",
+    "leaves": 1
    }
   },
   {
    "file": "attack-hidden-track.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "b7890264c12ddc45e5b5f467bcc2aa1549da11acd5f049d3aa80296823e1e764",
-    "leaves": 6
+    "hash": "378ebaf6c35d554f2423785a67342a1fdda527b8955465bd86c8d41ab4dc742d",
+    "leaves": 1
+   }
+  },
+  {
+   "file": "attack-mdhd-language.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "7b8a132a5651c51139b1b4a9bb65741e5629111081f3bfaece69fed7b1a30781",
+    "leaves": 1
    }
   },
   {
    "file": "attack-meta-blue.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "3a3466149607d2aee1e2cd89f45c2df076e13bbdb012e1002d5eec3ca3c3ed21",
-    "leaves": 3
+    "hash": "064361b61df7d563c41576e5c360af58d27f4bcda1e8951aacb9ba857f154013",
+    "leaves": 1
    }
   },
   {
    "file": "attack-meta-red.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "6a11a2bb72dc4d2970a3654c064e2c5b9922d0aaa7567280f1b1240f4b0ba47c",
-    "leaves": 3
+    "hash": "395b2ac0c57ec4280cf955ef9a4e2b99e2bb16843d2a005961e6e87a7d914165",
+    "leaves": 1
    }
+  },
+  {
+   "file": "attack-mvhd-duration.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "e01870d6921a3a1feea7458a9048a1446b7242cb2fd39344c51cfd504a8e102d",
+    "leaves": 1
+   }
+  },
+  {
+   "file": "attack-offset-in-moov.mp4",
+   "refused": "media/1: a chunk offset outside the data of an mdat"
+  },
+  {
+   "file": "attack-pcm-ok.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "72bde7f261b7a003592266e0ff7cce5fb410455971917bca617ccfa60f0a123c",
+    "leaves": 1
+   }
+  },
+  {
+   "file": "attack-pcm-stsz1.mp4",
+   "refused": "media/1: an uncompressed sound track whose stsz is not its bytes per frame"
   },
   {
    "file": "attack-short-uuid.mp4",
@@ -245,180 +293,200 @@
    "file": "attack-st3d-clli.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "e6447878b9440c21fd0022445ddd8c0c3d5d423d7a32655aba2e02d364c8d291",
-    "leaves": 4
+    "hash": "6c2c89a60eed79ee2248fc8eae2895ca80d4f31d780f0b340e10bb259a540f78",
+    "leaves": 1
    }
   },
   {
    "file": "attack-stray-stco.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "015ab8eea2cb214cef9932a21b7c1f520a4315b882716565b1c5d5b7d98efabc",
-    "leaves": 4
+    "hash": "271f41f3cb428a24d51c78d8bf5689148cf04daf5584008b0c057d0d6d54e92e",
+    "leaves": 1
    }
   },
   {
    "file": "attack-stss.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "6e99c88d854102845b9167c5b9b2ae891279f32eba815fdea9cc81474c967613",
-    "leaves": 4
+    "hash": "c52843a837a194b966b2507086fbaae35b057cf86e343b29aac7bd9f35e86008",
+    "leaves": 1
    }
   },
   {
    "file": "attack-top-cmov.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "e7828c5edf50f8967b025ca284051470a857f057857d19b21c3965239f37a5e4",
-    "leaves": 4
+    "hash": "c5060254176d8d4f2e07f9d1cbed91ed3b4318f21a99103e4b73b3d454d71449",
+    "leaves": 1
    }
   },
   {
    "file": "attack-top-trak.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "7171ad425a623c9dd1551b8c2579236ff46df801fdd035f3a7c3b42c2c2c1b37",
-    "leaves": 4
+    "hash": "176be370b386555fef28e129d3c9c5899b871293a6cc6c4dbf22a9c2a2151175",
+    "leaves": 1
    }
   },
   {
    "file": "attack-top-udta-trak.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "3b855c944638e3ea3105e2307084a323d657ffd2b97497e410c2d10fb9e63105",
-    "leaves": 4
+    "hash": "cd1610eb067573ea73c46978a0410d9803eaa204b004529ded91836c7c27c981",
+    "leaves": 1
+   }
+  },
+  {
+   "file": "attack-trak-order.mp4",
+   "media": {
+    "binding": "media/1",
+    "hash": "005d0ed9c372a4fcac22457286650ae3edf95459d56b2a46e7cda0c3aaabedee",
+    "leaves": 1
    }
   },
   {
    "file": "attack-two-media-headers.mp4",
-   "refused": "media/1: two media headers in minf"
+   "media": {
+    "binding": "media/1",
+    "hash": "28c7236b6c3fbd9bbea0ead2a6131679f8fc4e52c225ed434f49f2c865a27aa7",
+    "leaves": 1
+   }
   },
   {
    "file": "attack-two-stco.mp4",
-   "refused": "media/1: stbl has more than one stco"
+   "media": {
+    "binding": "media/1",
+    "hash": "02bc71621f01394a2a1fbd5191a8f6ec26be4e037691fe488ff0373b05fdea29",
+    "leaves": 1
+   }
   },
   {
    "file": "attack-two-tkhd.mp4",
-   "refused": "media/1: trak needs exactly one tkhd"
+   "media": {
+    "binding": "media/1",
+    "hash": "ff5d50b957e5a62c079bd1ba76b4b82b3dbf690c40ec7cfc3b577c0c5b4a69fd",
+    "leaves": 1
+   }
   },
   {
    "file": "attack-udta-cmov.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "1e608046eed0ec87a0887c545dd2ae1707894231de2ba2a61a3c2604182bc3a0",
-    "leaves": 4
+    "hash": "834eda6f70c55b3db787873b4926e5eeb2fd8f437636f064189f2e1715128b37",
+    "leaves": 1
    }
   },
   {
    "file": "attack-udta-mvex-moof.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "450a50c9f6b2ba1cbd83add856af5ec04782d3ac8e799867aea8d300c1d57953",
-    "leaves": 4
+    "hash": "f55b90e236437dc2e58e2ea34a8d5c46ca7f39619fa82188f0d21daf3554862d",
+    "leaves": 1
    }
   },
   {
    "file": "attack-xmp-attribute.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "e3be5e27f2b21c4959c32bda7f7e3829fca1183a6e1fb1344c894daeb8af51b9",
-    "leaves": 4
+    "hash": "372d26236e0918222ce8bcb2760dc59e7127c504c4339f0acb98ffe93b5ae57e",
+    "leaves": 1
    }
   },
   {
    "file": "attack-xmp-comment.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "e3be5e27f2b21c4959c32bda7f7e3829fca1183a6e1fb1344c894daeb8af51b9",
-    "leaves": 4
+    "hash": "372d26236e0918222ce8bcb2760dc59e7127c504c4339f0acb98ffe93b5ae57e",
+    "leaves": 1
    }
   },
   {
    "file": "attack-xmp-ns-twice.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "e3be5e27f2b21c4959c32bda7f7e3829fca1183a6e1fb1344c894daeb8af51b9",
-    "leaves": 4
+    "hash": "372d26236e0918222ce8bcb2760dc59e7127c504c4339f0acb98ffe93b5ae57e",
+    "leaves": 1
    }
   },
   {
    "file": "attack-xmp-pi.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "e3be5e27f2b21c4959c32bda7f7e3829fca1183a6e1fb1344c894daeb8af51b9",
-    "leaves": 4
+    "hash": "372d26236e0918222ce8bcb2760dc59e7127c504c4339f0acb98ffe93b5ae57e",
+    "leaves": 1
    }
   },
   {
    "file": "attack-xmp-rebound.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "e3be5e27f2b21c4959c32bda7f7e3829fca1183a6e1fb1344c894daeb8af51b9",
-    "leaves": 4
+    "hash": "372d26236e0918222ce8bcb2760dc59e7127c504c4339f0acb98ffe93b5ae57e",
+    "leaves": 1
    }
   },
   {
    "file": "b-copied-record.mov",
    "media": {
     "binding": "media/1",
-    "hash": "2192e5120dba06765787b7ca5bbfcce8da7bdd59070e2238b3031542f463f13c",
-    "leaves": 60
+    "hash": "47b67f6d8165c55851f2507f5bb147291c37e9db24e10cb0174c6855c85ad58f",
+    "leaves": 1
    }
   },
   {
    "file": "b-remux-faststart.mov",
    "media": {
     "binding": "media/1",
-    "hash": "9658f5dcccd1ee4fac7c4055e1e4e741d9a8a7030130750a9afbae6e0d04b7d8",
-    "leaves": 60
+    "hash": "dbef8b09a3594f1f0814eb7f6e9c6a814f36831a656cf7d4da953def0968ced1",
+    "leaves": 1
    }
   },
   {
    "file": "b-remux.mov",
    "media": {
     "binding": "media/1",
-    "hash": "9658f5dcccd1ee4fac7c4055e1e4e741d9a8a7030130750a9afbae6e0d04b7d8",
-    "leaves": 60
+    "hash": "de4de5456b704a1a691fb3e60061f51c26fcbb00caa1a2c61c49b7e6887d5c71",
+    "leaves": 1
    }
   },
   {
    "file": "b.mov",
    "media": {
     "binding": "media/1",
-    "hash": "2192e5120dba06765787b7ca5bbfcce8da7bdd59070e2238b3031542f463f13c",
-    "leaves": 60
+    "hash": "47b67f6d8165c55851f2507f5bb147291c37e9db24e10cb0174c6855c85ad58f",
+    "leaves": 1
    }
   },
   {
    "file": "c.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "a6d95c6b5f5a026772a29da53cecd4a30d914e5fcdcc9b9e6ac5809c5d46b8cc",
-    "leaves": 7
+    "hash": "5b20493bd9dee1a6235d12d36546f2b6d8ace9f11c0cc34a59c5d820f8fa7f4c",
+    "leaves": 1
    }
   },
   {
    "file": "tiny-kept.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "6d2106610bf752f1bdf9978fee95d1697c6e4afe54f601675b3d2b2fc3ac8d3d",
-    "leaves": 4
+    "hash": "5a23ea1889370ed001d64bfbbafa88336245ea9a3134136539ede15514e16c3a",
+    "leaves": 1
    }
   },
   {
    "file": "tiny-tref.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "5341394f45dea7c44b7f74a518e33bd6f9f49319b49b3be9c127693f337bf474",
-    "leaves": 10
+    "hash": "dafa1b3d343bb2e7283ce31f94052091ae4165ac075208ec86d56eea767e4192",
+    "leaves": 1
    }
   },
   {
    "file": "tiny.mp4",
    "media": {
     "binding": "media/1",
-    "hash": "e3be5e27f2b21c4959c32bda7f7e3829fca1183a6e1fb1344c894daeb8af51b9",
-    "leaves": 4
+    "hash": "372d26236e0918222ce8bcb2760dc59e7127c504c4339f0acb98ffe93b5ae57e",
+    "leaves": 1
    }
   },
   {
@@ -443,11 +511,15 @@
   },
   {
    "file": "x-overlap.mp4",
-   "refused": "media/1: sample ranges overlap"
+   "media": {
+    "binding": "media/1",
+    "hash": "4f00575929ab588483b2468046a0065655b13f1ea17f8376efcabad8e8a28de1",
+    "leaves": 1
+   }
   },
   {
    "file": "x-past-eof.mp4",
-   "refused": "media/1: a sample range falls outside the file"
+   "refused": "media/1: a chunk offset outside the data of an mdat"
   },
   {
    "file": "x-sinf.mp4",
@@ -455,15 +527,27 @@
   },
   {
    "file": "x-stts-stsz.mp4",
-   "refused": "media/1: stts, ctts and stsz count different samples"
+   "media": {
+    "binding": "media/1",
+    "hash": "6818c4e6ec0a808188b64470edee0a469cb8b5b3211d33adf13d2c427077ecbc",
+    "leaves": 1
+   }
   },
   {
    "file": "x-stz2.mp4",
-   "refused": "media/1: stz2 is not read"
+   "media": {
+    "binding": "media/1",
+    "hash": "aa97dd28b767790c9e95ecb2552aa1ff91f093b4672727fdacc437ee00a13607",
+    "leaves": 1
+   }
   },
   {
    "file": "x-tref-unlisted.mp4",
-   "refused": "media/1: a tref names a track that is not in the file"
+   "media": {
+    "binding": "media/1",
+    "hash": "ac421e6a588e768046a322c748a45c79e315f327750ae269ec45a5a22782863c",
+    "leaves": 1
+   }
   },
   {
    "file": "x-two-moov.mp4",
@@ -473,10 +557,10 @@
  "read": [
   {
    "file": "a-c2pa-cbor.mp4",
-   "c2pa": "ce43c05ebb813899383176ab7c7ea1d44cf7e18d86285b6a40f725c5bd961840",
+   "c2pa": "1f789285b923084229b7b54590df27d56e66b942e9699d6a53ec20bfd476b5f5",
    "xmp": null,
    "check": {
-    "c2pa": "ce43c05ebb813899383176ab7c7ea1d44cf7e18d86285b6a40f725c5bd961840"
+    "c2pa": "1f789285b923084229b7b54590df27d56e66b942e9699d6a53ec20bfd476b5f5"
    }
   },
   {
@@ -487,18 +571,18 @@
   },
   {
    "file": "a-c2pa-json.mp4",
-   "c2pa": "ce43c05ebb813899383176ab7c7ea1d44cf7e18d86285b6a40f725c5bd961840",
+   "c2pa": "1f789285b923084229b7b54590df27d56e66b942e9699d6a53ec20bfd476b5f5",
    "xmp": null,
    "check": {
-    "c2pa": "ce43c05ebb813899383176ab7c7ea1d44cf7e18d86285b6a40f725c5bd961840"
+    "c2pa": "1f789285b923084229b7b54590df27d56e66b942e9699d6a53ec20bfd476b5f5"
    }
   },
   {
    "file": "a-xmp-foreign-pg.mp4",
    "c2pa": null,
-   "xmp": "ce43c05ebb813899383176ab7c7ea1d44cf7e18d86285b6a40f725c5bd961840",
+   "xmp": "1f789285b923084229b7b54590df27d56e66b942e9699d6a53ec20bfd476b5f5",
    "check": {
-    "xmp": "ce43c05ebb813899383176ab7c7ea1d44cf7e18d86285b6a40f725c5bd961840"
+    "xmp": "1f789285b923084229b7b54590df27d56e66b942e9699d6a53ec20bfd476b5f5"
    }
   },
   {
@@ -510,9 +594,9 @@
   {
    "file": "a-xmp.mp4",
    "c2pa": null,
-   "xmp": "ce43c05ebb813899383176ab7c7ea1d44cf7e18d86285b6a40f725c5bd961840",
+   "xmp": "1f789285b923084229b7b54590df27d56e66b942e9699d6a53ec20bfd476b5f5",
    "check": {
-    "xmp": "ce43c05ebb813899383176ab7c7ea1d44cf7e18d86285b6a40f725c5bd961840"
+    "xmp": "1f789285b923084229b7b54590df27d56e66b942e9699d6a53ec20bfd476b5f5"
    }
   },
   {
@@ -560,7 +644,7 @@
   {
    "file": "b-copied-record.mov",
    "c2pa": null,
-   "xmp": "ce43c05ebb813899383176ab7c7ea1d44cf7e18d86285b6a40f725c5bd961840",
+   "xmp": "1f789285b923084229b7b54590df27d56e66b942e9699d6a53ec20bfd476b5f5",
    "check": {
     "xmp": "not for this file"
    }

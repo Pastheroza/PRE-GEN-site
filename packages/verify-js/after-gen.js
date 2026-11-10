@@ -1,6 +1,7 @@
 // AFTER-GEN (spec/drafts/after-gen.md): a registry's record that the rights holder approved one existing file.
-// media/1 hashes what plays in an ISO base media file; readAfterGen and embedXmp carry the record; checkAfterGen and
-// checkAfterGenStatus check it. No Node-only API: Web Crypto, Uint8Array and DataView, so it runs in browsers too.
+// media/1 hashes every byte of an ISO base media file a player could read; readAfterGen and embedXmp carry the record;
+// checkAfterGen and checkAfterGenStatus check it. No Node-only API: Web Crypto, Uint8Array and DataView, so it runs in
+// browsers too.
 // Bindings of index.js are used only inside functions: index.js re-exports this module, so neither runs the other first.
 import { PregenError, canonicalJson, messageId, issuerOf, checkProviderUrl, loadDirectory, registrySigned, CATEGORIES,
   INTIMATE, DIRECTORY_MAX_AGE } from "./index.js";
@@ -72,22 +73,10 @@ function boxesIn(b, err = M) {
   const out = [];
   for (let at = 0; at < b.length;) {
     const h = head(b.subarray(at, at + 32), b.length - at, false, err);
-    out.push({ ...h, start: at, data: b.subarray(at + h.hdr, at + h.size), whole: b.subarray(at, at + h.size) });
+    out.push({ ...h, start: at, data: b.subarray(at + h.hdr, at + h.size) });
     at += h.size;
   }
   return out;
-}
-
-function one(boxes, type, where, optional = false) {
-  const found = boxes.filter((x) => x.type === type);
-  if (found.length > 1) M(`two ${type} boxes in ${where}`);
-  if (!found.length && !optional) M(`no ${type} in ${where}`);
-  return found[0] ?? null;
-}
-
-function need(box, length) {
-  if (box.data.length < length) M(`${box.type} is too short`);
-  return view(box.data);
 }
 
 // ── media/1 elements and the RFC 6962 tree ──
@@ -134,236 +123,155 @@ async function root(stack) {
   return h;
 }
 
-const MEDIA_HEADERS = { vmhd: 12, smhd: 8, sthd: 4, hmhd: 20, nmhd: 4, gmhd: 0 }; // each with its layout's length
-const NOT_KEPT = ["ftyp", "moov", "mdat", "free", "skip", "wide"]; // top-level boxes, besides the two carriers
-const READ_LIMIT = 8 * 1024 * 1024; // a chunk larger than this is read sample by sample
-
-// A full box of version 0 or 1; `layout` (version 0, version 1) is the length of its fixed fields.
-function fullBox(box, layout = [4, 4]) {
-  const v = need(box, 4), version = box.data[0];
-  if (version > 1) M(`${box.type} version ${version} is not read`);
-  need(box, layout[version]);
-  return { v, version, flags: v.getUint32(0) & 0xffffff };
-}
-
-function table(box, header, entry, where) {
-  const v = need(box, header), n = v.getUint32(header - 4);
-  if (box.data.length !== header + n * entry) M(`the ${box.type} count in ${where} does not agree with its size`);
-  return { v, n };
-}
-
-// The children of a box that media/1 reads, and every other one kept as is, in file order (Read, or kept as is): an
-// element xbox holding an element of the box's type, its value the bytes after its size and type.
-function parts(data, read) {
-  const kids = boxesIn(data);
-  return { kids: kids.filter((k) => read.includes(k.type)),
-    kept: concat(kids.filter((k) => !read.includes(k.type)).map((k) => el("xbox", el(k.type, k.data)))) };
-}
-
-// A track's boxes, its id and its handler.
-function trackHead(trak) {
-  const { kids, kept } = parts(trak.data, ["tkhd", "tref", "edts", "mdia"]);
-  const tkhd = one(kids, "tkhd", "trak"), mdia = one(kids, "mdia", "trak");
-  const { v, version, flags } = fullBox(tkhd, [84, 96]);
-  const { kids: mk, kept: keptMdia } = parts(mdia.data, ["mdhd", "hdlr", "minf"]), hdlr = one(mk, "hdlr", "mdia");
-  need(hdlr, 12);
-  const tref = one(kids, "tref", "trak", true);
-  const refs = tref ? boxesIn(tref.data).map((b) => {
-    if (b.data.length % 4) M(`tref ${b.type} is not a list of track ids`);
-    return { type: b.type, ids: Array.from({ length: b.data.length / 4 }, (_, i) => view(b.data).getUint32(4 * i)) };
-  }) : [];
-  return { kids, mk, kept, keptMdia, tkhd: { v, version, flags }, id: v.getUint32(version ? 20 : 12),
-    hdlrBytes: hdlr.data.subarray(8, 12), refs, edts: one(kids, "edts", "trak", true) };
-}
-
-// A track's first leaf and its samples as chunks, {off, len, sdi, n, first}, added to `ranges`; its tables must agree.
-function trackBody(t, position, ranges, fileSize) {
-  const where = `track ${t.id}`;
-  const mdhd = fullBox(one(t.mk, "mdhd", "mdia"), [24, 36]);
-  const timescale = mdhd.v.getUint32(mdhd.version ? 20 : 12);
-  const { kids: nk, kept: keptMinf } = parts(one(t.mk, "minf", "mdia").data, [...Object.keys(MEDIA_HEADERS), "dinf", "stbl"]);
-  const heads = nk.filter((b) => Object.hasOwn(MEDIA_HEADERS, b.type)), mhd = heads[0];
-  if (heads.length > 1) M("two media headers in minf");
-  if (mhd && mhd.data.length < MEDIA_HEADERS[mhd.type]) M(`${mhd.type} is too short`);
-  const dinf = one(nk, "dinf", "minf", true), refsIn = dinf && boxesIn(dinf.data);
-  if (dinf) {
-    if (refsIn.length !== 1 || refsIn[0].type !== "dref") M("a dinf holding anything but one dref");
-    const dref = refsIn[0], n = need(dref, 8).getUint32(4), refs = boxesIn(dref.data.subarray(8));
-    if (refs.length !== n) M(`the dref count in ${where} does not agree with its entries`);
-    if (refs.some((x) => !["url ", "urn "].includes(x.type) || !(need(x, 4) && x.data[3] & 1))) {
-      M("a data reference that is not a self-contained url or urn");
-    }
-  }
-  const { kids: sk, kept: keptStbl } = parts(one(nk, "stbl", "minf").data,
-    ["stsd", "stts", "ctts", "stsc", "stsz", "stz2", "stco", "co64"]);
-  if (sk.some((b) => b.type === "stz2")) M("stz2 is not read");
-
-  const stsd = one(sk, "stsd", "stbl"), sv = need(stsd, 8);
-  const entries = boxesIn(stsd.data.subarray(8));
-  if (entries.length !== sv.getUint32(4)) M(`stsd in ${where} holds ${entries.length} entries, not ${sv.getUint32(4)}`);
-  for (const e of entries) {
-    const body = e.whole.subarray(8);
-    if (["encv", "enca", "encs"].includes(e.type) || body.some((_, i) => latin1(body, i, 4) === "sinf")) {
-      M("encrypted samples");
-    }
-  }
-
-  // tkhd: enabled, layer, alternate group, volume, matrix, width, height (signed except width and height).
-  const tv = t.tkhd.v, base = t.tkhd.version ? 44 : 32;
-  const tk = [t.tkhd.flags & 1, tv.getInt16(base), tv.getInt16(base + 2), tv.getInt16(base + 4),
-    ...Array.from({ length: 9 }, (_, i) => tv.getInt32(base + 8 + 4 * i)), tv.getUint32(base + 44), tv.getUint32(base + 48)];
-
-  const edits = [], edts = t.edts ? parts(t.edts.data, ["elst"]) : { kids: [], kept: new Uint8Array(0) };
-  if (t.edts) {
-    const elst = one(edts.kids, "elst", "edts", true);
-    if (elst) {
-      const { version } = fullBox(elst), size = version ? 20 : 12, { v, n } = table(elst, 8, size, where);
-      for (let i = 0, at = 8; i < n; i++, at += size) {
-        edits.push(...(version ? [v.getBigUint64(at), v.getBigInt64(at + 8)] : [v.getUint32(at), v.getInt32(at + 4)]),
-          v.getInt16(at + size - 4), v.getInt16(at + size - 2));
-      }
-    }
-  }
-
-  const leaf = concat([
-    el("hdlr", t.hdlrBytes),
-    el("tref", concat(t.refs.map((r) => el(r.type, ints(r.ids.map((id) => position.get(id))))))),
-    ...(mhd ? [el(mhd.type, mhd.data.subarray(mhd.type === "gmhd" ? 0 : 4))] : []), // gmhd has no version and flags
-    el("mdts", ints([timescale])),
-    ...entries.map((e) => el("sent", el(e.type, e.whole.subarray(8)))),
-    el("tkhd", ints(tk)),
-    el("elst", ints(edits)),
-    t.kept, edts.kept, t.keptMdia, keptMinf, keptStbl,
-  ]);
-
-  // Sample tables. Counts must agree everywhere: one reading only.
-  const stszBox = one(sk, "stsz", "stbl"), zv = need(stszBox, 12), fixed = zv.getUint32(4), count = zv.getUint32(8);
-  if (stszBox.data.length !== 12 + (fixed ? 0 : 4 * count)) M(`the stsz count in ${where} does not agree with its size`);
-  if (fixed * count > fileSize) M("a sample range falls outside the file"); // before any loop over the samples
-  const sizeOf = fixed ? () => fixed : (i) => zv.getUint32(12 + 4 * i);
-  const stts = table(one(sk, "stts", "stbl"), 8, 8, where);
-  let total = 0;
-  for (let i = 0; i < stts.n; i++) total += stts.v.getUint32(8 + 8 * i);
-  if (total !== count) M("stts, ctts and stsz count different samples");
-  const cttsBox = one(sk, "ctts", "stbl", true);
-  const ctts = cttsBox ? { ...table(cttsBox, 8, 8, where), signed: fullBox(cttsBox).version === 1 } : null;
-  if (ctts) {
-    let c = 0;
-    for (let i = 0; i < ctts.n; i++) c += ctts.v.getUint32(8 + 8 * i);
-    if (c !== count) M("stts, ctts and stsz count different samples");
-  }
-  const stco = one(sk, "stco", "stbl", true), co64 = one(sk, "co64", "stbl", true);
-  if (!stco === !co64) M(`${where} needs exactly one of stco and co64`);
-  const co = table(stco || co64, 8, stco ? 4 : 8, where);
-  const offset = stco ? (i) => co.v.getUint32(8 + 4 * i) : (i) => Number(co.v.getBigUint64(8 + 8 * i));
-  const stsc = table(one(sk, "stsc", "stbl"), 8, 12, where);
-  const sc = (i, k) => stsc.v.getUint32(8 + 12 * i + 4 * k);
-  if (co.n && !stsc.n) M(`stsc in ${where} is empty`);
-  for (let i = 0; i < stsc.n; i++) {
-    if ((i === 0 ? sc(0, 0) !== 1 : sc(i, 0) <= sc(i - 1, 0)) || sc(i, 0) > co.n) M(`stsc in ${where} names chunks out of order`);
-    if (sc(i, 1) < 1) M(`stsc in ${where} names a chunk without samples`);
-    if (sc(i, 2) < 1 || sc(i, 2) > entries.length) M(`stsc in ${where} names a sample entry stsd does not have`);
-  }
-  const chunks = [];
-  let s = 0;
-  for (let c = 0, e = 0; c < co.n; c++) {
-    while (e + 1 < stsc.n && sc(e + 1, 0) - 1 <= c) e++;
-    const n = sc(e, 1);
-    if (s + n > count) M("stsc and stsz count different samples");
-    let len = fixed * n;
-    if (!fixed) for (let j = 0; j < n; j++) len += sizeOf(s + j);
-    chunks.push({ off: offset(c), len, n, sdi: sc(e, 2), first: s });
-    s += n;
-  }
-  if (s !== count) M("stsc and stsz count different samples");
-  ranges.push(...chunks);
-  return { leaf, chunks, sizeOf, stts, ctts };
-}
-
-// A cursor over a run-length table (stts, ctts): value for each sample in turn.
-function runs(t, signed) {
-  let i = 0, left = 0;
-  return () => {
-    while (left === 0) { left = t.v.getUint32(8 + 8 * i); i++; }
-    left--;
-    return signed ? t.v.getInt32(8 * i + 4) : t.v.getUint32(8 * i + 4);
-  };
-}
-
 const bytesText = (b) => { // one character per byte
   let s = "";
   for (let i = 0; i < b.length; i += 8192) s += String.fromCharCode(...b.subarray(i, i + 8192));
   return s;
 };
 
-/** media/1 of an ISO base media file (MP4, MOV, M4V): {binding: "media/1", hash, leaves}. `source` is a Uint8Array, a
- * Blob or File, or {size, read(offset, length) -> Promise<Uint8Array>}; boxes and samples are read in ranges, never the
- * whole file at once. Throws PregenError("media/1: <reason>") for every file "One reading only" refuses. */
+const PIECE = 1 << 20;
+const PATH = { moov: "trak", trak: "mdia", mdia: "minf", minf: "stbl" }; // a value of its children's elements
+const NOT_HASHED = ["free", "skip", "wide"]; // padding, besides the two carriers
+const PCM = ["raw ", "twos", "sowt", "in24", "in32", "fl32", "fl64", "lpcm", "ipcm", "fpcm", "ulaw", "alaw"];
+
+// An unsigned big-endian field of a box's bytes.
+function u(b, at, n = 4) {
+  if (b.length < at + n) M("a box shorter than its own fields");
+  let x = 0;
+  for (let i = 0; i < n; i++) x = x * 256 + b[at + i];
+  return x;
+}
+
+// A sample size table (stsz or stz2): {count, fixed size or 0, table}.
+function sizes(type, b) {
+  const count = u(b, 8);
+  if (type === "stsz") {
+    const fixed = u(b, 4);
+    if (fixed) return { count, fixed, table: [] };
+    if (b.length < 12 + 4 * count) M("a box shorter than its own fields");
+    return { count, fixed: 0, table: Array.from({ length: count }, (_, j) => u(b, 12 + 4 * j)) };
+  }
+  const bits = u(b, 7, 1);
+  if (![4, 8, 16].includes(bits) || b.length < 12 + Math.ceil(count * bits / 8)) {
+    M("an stz2 table shorter than its count, or a field size other than 4, 8 or 16");
+  }
+  return { count, fixed: 0, table: Array.from({ length: count },
+    (_, j) => (bits === 4 ? (b[12 + (j >> 1)] >> (j % 2 ? 0 : 4)) & 15 : u(b, 12 + (bits / 8) * j, bits / 8))) };
+}
+
+// The bytes of each of n chunks, by stsc and the sample sizes; samples past the size table count none.
+function chunkLengths(n, runs, { count, fixed, table }) {
+  const out = [];
+  for (let c = 1, e = 0, s = 0; c <= n; c++) {
+    while (e + 1 < runs.length && runs[e + 1][0] <= c) e++;
+    const k = Math.max(0, Math.min(runs.length && runs[e][0] <= c ? runs[e][1] : 0, count - s));
+    let len = fixed * k;
+    if (!fixed) for (let j = s; j < s + k; j++) len += table[j];
+    out.push(len);
+    s += k;
+  }
+  return out;
+}
+
+// Checks an stbl on the path and returns its chunk offset tables as hashed, by start: per offset, the position of the
+// mdat whose data holds it and the offset within that data (The stream; One reading only).
+function stbl(kids, mdats) {
+  const sz = kids.find((k) => k.type === "stsz" || k.type === "stz2"), sc = kids.find((k) => k.type === "stsc");
+  const z = sz ? sizes(sz.type, sz.data) : { count: 0, fixed: 0, table: [] }, runs = [];
+  if (sc) {
+    const n = u(sc.data, 4);
+    if (sc.data.length < 8 + 12 * n) M("a box shorter than its own fields");
+    for (let i = 0; i < n; i++) runs.push([u(sc.data, 8 + 12 * i), u(sc.data, 12 + 12 * i)]);
+  }
+  const out = new Map();
+  for (const k of kids) {
+    if (k.type === "stsd") {
+      for (const e of boxesIn(k.data.subarray(8))) {
+        if (["encv", "enca", "encs"].includes(e.type) || bytesText(e.data).includes("sinf")) M("encrypted samples");
+        if (PCM.includes(e.type)) {
+          const v = u(e.data, 8, 2);
+          const bpf = v === 1 ? u(e.data, 36) : v === 2 ? u(e.data, 56) : Math.floor(u(e.data, 16, 2) * u(e.data, 18, 2) / 8);
+          if ((z.fixed && z.fixed !== bpf) || z.table.some((x) => x !== bpf)) {
+            M("an uncompressed sound track whose stsz is not its bytes per frame");
+          }
+        }
+      }
+    }
+    if (k.type === "stco" || k.type === "co64") {
+      const b = k.data, w = k.type === "stco" ? 4 : 8, n = u(b, 4);
+      if (b.length !== 8 + w * n) M("a chunk offset table whose count does not agree with its size");
+      const lengths = chunkLengths(n, runs, z), value = [b.subarray(0, 4), ints([n])];
+      for (let i = 0; i < n; i++) {
+        const o = u(b, 8 + w * i, w);
+        let lo = 0, hi = mdats.length; // the last mdat whose data starts at or before o
+        while (lo < hi) { const mid = (lo + hi) >> 1; if (mdats[mid][0] <= o) lo = mid + 1; else hi = mid; }
+        const j = lo - 1;
+        if (j < 0 || o >= mdats[j][1]) M("a chunk offset outside the data of an mdat");
+        if (o + lengths[i] > mdats[j][1]) M("a chunk whose samples run past its mdat's data");
+        value.push(ints([j, o - mdats[j][0]]));
+      }
+      out.set(k.start, concat(value));
+    }
+  }
+  return out;
+}
+
+// The value of the element of a box on the path moov/trak/mdia/minf/stbl: its children's elements.
+function value(data, type, mdats) {
+  const kids = boxesIn(data);
+  if (type === "moov" && kids.some((k) => k.type === "mvex")) M("a fragmented file (mvex)");
+  if (type === "moov" && kids.some((k) => k.type === "cmov")) M("a compressed movie (cmov)");
+  if (type === "minf") {
+    for (const d of kids.filter((k) => k.type === "dinf")) {
+      for (const r of boxesIn(d.data).filter((k) => k.type === "dref")) {
+        for (const e of boxesIn(r.data.subarray(8))) {
+          if (!["url ", "urn "].includes(e.type) || e.data.length < 4 || !(e.data[3] & 1)) {
+            M("a data reference that is not a self-contained url or urn");
+          }
+        }
+      }
+    }
+  }
+  const offsets = type === "stbl" ? stbl(kids, mdats) : new Map();
+  return concat(kids.map((k) => el(k.type, PATH[type] === k.type ? value(k.data, k.type, mdats) : offsets.get(k.start) ?? k.data)));
+}
+
+/** media/1 of an ISO base media file (MP4, MOV, M4V): {binding: "media/1", hash, leaves}, the RFC 6962 root over the 1 MiB
+ * pieces of the stream of every top-level box but padding and the two carriers, chunk offsets counted within their mdat.
+ * `source` is a Uint8Array, a Blob or File, or {size, read(offset, length) -> Promise<Uint8Array>}; the movie box is read
+ * whole, the rest in ranges. Throws PregenError("media/1: <reason>") for every file "One reading only" refuses. */
 export async function mediaHash(source) {
   const r = reader(source);
   const top = await topBoxes(r, M);
-  if (top.some((b) => b.type === "moof")) M("a fragmented file (moof)");
   const moovs = top.filter((b) => b.type === "moov");
   if (moovs.length !== 1) M(moovs.length ? "more than one moov box" : "no moov box");
-  const moovBox = moovs[0], moovBytes = await r.read(moovBox.start, moovBox.size);
-  const { kids: moov, kept } = parts(moovBytes.subarray(moovBox.hdr), ["mvhd", "trak", "mvex", "cmov"]);
-  if (moov.some((b) => b.type === "mvex")) M("a fragmented file (mvex)");
-  if (moov.some((b) => b.type === "cmov")) M("a compressed movie (cmov)");
-  const outer = []; // every other top-level box a player could read, kept as is
+  if (top.some((b) => b.type === "moof")) M("a fragmented file (moof)");
+  const mdats = top.filter((b) => b.type === "mdat").map((b) => [b.start + b.hdr, b.start + b.size]);
+  const mv = await r.read(moovs[0].start + moovs[0].hdr, moovs[0].size - moovs[0].hdr);
+  const moov = el("moov", value(mv, "moov", mdats));
+
+  const stack = [], buf = new Uint8Array(PIECE); // the stream, cut into pieces of 1 MiB: a leaf each
+  let fill = 0, leaves = 0;
+  const add = async (b) => {
+    for (let at = 0; at < b.length;) {
+      const n = Math.min(PIECE - fill, b.length - at);
+      buf.set(b.subarray(at, at + n), fill);
+      fill += n;
+      at += n;
+      if (fill === PIECE) { await push(stack, await leafHash(buf)); leaves++; fill = 0; }
+    }
+  };
+  await add(utf8.encode("PREGEN-MEDIA\0media/1\0"));
   for (const b of top) {
-    if (!NOT_KEPT.includes(b.type) && b.uuid !== XMP_UUID && b.uuid !== C2PA_UUID) {
-      outer.push(el("xbox", el(b.type, await r.read(b.start + b.hdr, b.size - b.hdr))));
-    }
+    if (NOT_HASHED.includes(b.type) || b.uuid === XMP_UUID || b.uuid === C2PA_UUID) continue;
+    if (b.type === "moov") { await add(moov); continue; }
+    const end = b.start + b.size, h = new Uint8Array(12);
+    h.set(code(b.type));
+    view(h).setBigUint64(4, BigInt(end - b.start - b.hdr));
+    await add(h);
+    for (let at = b.start + b.hdr; at < end; at += PIECE) await add(await r.read(at, Math.min(PIECE, end - at)));
   }
-
-  const mvhd = fullBox(one(moov, "mvhd", "moov"), [100, 112]);
-  const mv = mvhd.v, ts = mvhd.version ? 20 : 12, rate = ts + (mvhd.version ? 12 : 8);
-  const movie = concat([utf8.encode("PREGEN-MEDIA\0media/1\0"), el("FRMT", utf8.encode("isobmff")),
-    el("tmsc", ints([mv.getUint32(ts)])), el("rate", ints([mv.getInt32(rate)])), el("volu", ints([mv.getInt16(rate + 4)])),
-    el("mtrx", ints(Array.from({ length: 9 }, (_, i) => mv.getInt32(rate + 16 + 4 * i)))), kept, ...outer]);
-
-  // Every track, whatever its handler: a player may play a track whose handler says meta or hint.
-  const tracks = moov.filter((b) => b.type === "trak").map(trackHead);
-  if (new Set(tracks.map((t) => t.id)).size !== tracks.length) M("two tracks with one track_ID");
-  const listed = [...tracks].sort((a, b) => a.id - b.id);
-  const position = new Map(listed.map((t, i) => [t.id, i]));
-  for (const t of listed) {
-    for (const ref of t.refs) if (ref.ids.some((id) => !position.has(id))) M("a tref names a track that is not in the file");
-  }
-  const ranges = [], bodies = listed.map((t) => trackBody(t, position, ranges, r.size));
-
-  // Every sample inside the file, none sharing a byte with another (a chunk's samples are contiguous). An empty sample
-  // has no byte to place or share.
-  const spans = ranges.filter((c) => c.len > 0).sort((a, b) => a.off - b.off);
-  for (const c of spans) if (c.off + c.len > r.size) M("a sample range falls outside the file");
-  for (let i = 1; i < spans.length; i++) if (spans[i].off < spans[i - 1].off + spans[i - 1].len) M("sample ranges overlap");
-
-  const stack = [];
-  let leaves = 1;
-  await push(stack, await leafHash(movie));
-  for (const b of bodies) {
-    await push(stack, await leafHash(b.leaf));
-    leaves++;
-    const dur = runs(b.stts, false), cto = b.ctts ? runs(b.ctts, b.ctts.signed) : () => 0;
-    let dtim = 0n;
-    for (const c of b.chunks) {
-      const whole = c.len <= READ_LIMIT ? await r.read(c.off, c.len) : null;
-      const pending = [];
-      for (let j = 0, at = 0; j < c.n; j++) {
-        const size = b.sizeOf(c.first + j);
-        const data = whole ? whole.subarray(at, at + size) : await r.read(c.off + at, size);
-        const sdur = dur();
-        const leaf = concat([new Uint8Array([0]), el("sdsc", ints([c.sdi])), el("dtim", ints([dtim])),
-          el("ctso", ints([cto()])), el("sdur", ints([sdur])), el("data", data)]);
-        pending.push(sha256(leaf));
-        if (!whole) await pending.at(-1); // a large chunk: one sample in memory at a time
-        dtim += BigInt(sdur);
-        at += size;
-      }
-      for (const h of await Promise.all(pending)) await push(stack, h);
-      leaves += c.n;
-    }
-  }
+  if (fill) { await push(stack, await leafHash(buf.subarray(0, fill))); leaves++; }
   return { binding: "media/1", hash: hex(await root(stack)), leaves };
 }
 

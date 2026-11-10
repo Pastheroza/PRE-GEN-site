@@ -116,88 +116,60 @@ no second factor. A mandate that does not list `after_gen` gives no power to app
 ## Which bytes the hash covers: `media/1`
 
 Putting a record into a file changes the file's bytes, so a plain hash of the file could not
-both be in the record and stay true. `media/1` hashes only what plays: the coded samples and
-the parameters that change how they decode or are shown, and keeps every other box a player
-could read. Adding, removing or rewriting the record's carriers (the top-level XMP and C2PA
-boxes) or padding, or moving the movie box, leaves it unchanged. Changing one coded byte, or
-any other box, changes it: metadata inside the movie box, such as a title, is hashed, so it is
-edited before asking. `after-gen/1` defines `media/1` for ISO base media files
-(MP4, MOV, M4V).
+both be in the record and stay true. `media/1` hashes **every byte of the file a player could
+read**, and leaves out only the record's two carriers and padding. Two files with one `media/1`
+hash therefore hold the same bytes wherever a player looks, and play the same. `after-gen/1`
+defines `media/1` for ISO base media files (MP4, MOV, M4V).
+
+An earlier design hashed only the coded samples and the parameters thought to matter, so that
+remuxing would keep the hash. Review showed that players act on many more fields than any such
+list names (durations, the file type, the order of tracks, a track's language, how uncompressed
+audio is chunked), so a file could play differently under the same hash. `media/1` gives up
+that convenience for that guarantee.
 
 **Elements.** An element is written as a four-byte ASCII code, its value's length as an
 unsigned 64-bit big-endian integer, then its value. An integer value is eight bytes,
-big-endian, two's complement. A list of integers is their eight-byte forms joined. A value the
-file holds as bytes is those bytes. A value made of elements is those elements joined.
+big-endian, two's complement. A value made of elements is those elements joined.
 
-**The tree.** The hash is the root of an RFC 6962 Merkle tree (leaf hash
-`SHA-256(0x00 ‖ leaf)`, node `SHA-256(0x01 ‖ left ‖ right)`, split at the largest power of
-two smaller than the count), as 64 lowercase hex characters. `leaves` is the number of
-leaves. The leaves, in order:
+**The stream.** The ASCII bytes `PREGEN-MEDIA`, `0x00`, `media/1`, `0x00`, then one element
+for each top-level box in file order, leaving out `free`, `skip`, `wide` and the two carrier
+boxes (the C2PA and XMP `uuid` boxes of "Carrying the record"). A box's element has the box's
+type as its code. Its value is the box's bytes after its size and type fields (after the
+64-bit size too, where it has one; a `uuid` box's value begins with its 16-byte user type),
+except for `moov`, `trak`, `mdia`, `minf` and `stbl` on the path `moov`/`trak`/`mdia`/`minf`/
+`stbl`, whose value is the elements of their children, built by the same rule; and except for
+`stco` and `co64` inside such an `stbl`, whose value is version and flags (4 bytes), the entry
+count as an integer, and, for each chunk offset, two integers: the position (from 0) of the
+top-level `mdat` box whose data holds the offset, and the offset counted from the first byte
+of that box's data. Everything else, `mdat` data included, is hashed as the file holds it.
 
-1. **The movie.** The ASCII bytes `PREGEN-MEDIA`, `0x00`, `media/1`, `0x00`, then the
-   elements `FRMT` = the ASCII bytes `isobmff`; from `mvhd`: `tmsc` = timescale, `rate` =
-   rate, `volu` = volume, `mtrx` = the nine matrix values as a list, each as the integer the
-   file stores; then each child of `moov` other than `mvhd` and `trak`, kept as is (below), in
-   file order; then each top-level box other than `ftyp`, `moov`, `mdat`, `free`, `skip`,
-   `wide` and the two carrier boxes (the C2PA and XMP `uuid` boxes of "Carrying the record"),
-   kept as is, in file order.
-2. **Each track,** in increasing `track_ID`, every track whatever its handler: a player may
-   play a track whose handler says `meta` or `hint`, so none is left out. The track's first leaf
-   is these elements:
-   - `hdlr` = the handler type of `mdia`'s `hdlr` (4 bytes);
-   - `tref` = for each box inside `tref`, in file order, an element whose code is that box's
-     type and whose value lists the positions (from 0, in this order of tracks) of the tracks
-     it names; `tref` with an empty value when the track has none;
-   - the first media header box inside `minf` (`vmhd`, `smhd`, `sthd`, `hmhd`, `nmhd` or
-     `gmhd`), as an element of its own code whose value is its bytes after its four bytes of
-     version and flags (all of its bytes for `gmhd`, which has none);
-   - `mdts` = the timescale of `mdhd`;
-   - for each sample entry of `stsd`, in order, `sent` whose value is one element: the entry's
-     own code, holding the entry's bytes after its eight-byte box header;
-   - `tkhd` = a list: the enabled flag (bit 0 of the flags, 0 or 1), layer, alternate group,
-     volume, the nine matrix values, width, height;
-   - `elst` = a list: for each edit, segment duration, media time, media rate integer and
-     media rate fraction (empty when there is no edit list);
-   - then every other box inside `trak`, `edts`, `mdia`, `minf` and `stbl`, kept as is, parent
-     by parent in that order and in file order within each.
-3. **Each sample of that track,** in decoding order, one leaf each, these elements:
-   `sdsc` = sample description index, `dtim` = decoding time (the sum of earlier durations),
-   `ctso` = composition offset (signed in version 1 of `ctts`, unsigned in version 0; 0 with no
-   `ctts`), `sdur` = duration, `data` = the sample's bytes.
+**The tree.** The stream is cut into pieces of 1 048 576 bytes, the last one shorter (at least
+one piece). The hash is the root of an RFC 6962 Merkle tree over the pieces (leaf hash
+`SHA-256(0x00 ‖ piece)`, node `SHA-256(0x01 ‖ left ‖ right)`, split at the largest power of
+two smaller than the count), as 64 lowercase hex characters; `leaves` is the number of pieces.
+A verifier never needs the whole file in memory.
 
-Every track's leaves (its first leaf, then its samples) come before the next track's.
-
-**Read, or kept as is.** `media/1` reads these boxes and nothing else: in `moov`, `mvhd` and
-`trak`; in `trak`, `tkhd`, `tref`, `edts` and `mdia`; in `edts`, `elst`; in `mdia`, `mdhd`,
-`hdlr` and `minf`; in `minf`, the media header, `dinf` and `stbl`; in `dinf`, `dref`; in
-`stbl`, `stsd`, `stts`, `ctts`, `stsc`, `stsz`, `stco` and `co64`. Every other box in those
-places, whatever it is (`udta`, `meta`, `stss`, `sgpd`, a second `hdlr` in `minf`, a box no one
-has named yet), and every box at the top level other than those listed in leaf 1, is **kept as
-is**: an element `xbox` whose value is one element, the box's own type as its code holding the
-box's bytes after its size and type fields (after the 64-bit size too, where it has one; a
-`uuid` box's value begins with its 16-byte user type). A player may act on a box wherever it
-finds one, so nothing a player could read is left out: adding, removing or changing any box
-other than `free`, `skip`, `wide`, `mdat` and the two carriers changes the hash. What
-`media/1` reads is normalised, so that moving the movie box, which rewrites chunk offsets, and
-rewriting creation times leave the hash unchanged.
+**What keeps the hash, and what changes it.** Appending, removing or rewriting the XMP box,
+inserting or removing the C2PA box (a C2PA tool rewrites the chunk offsets when it inserts its
+box before the movie, and the offsets are hashed by position within `mdat`), and padding keep
+the hash. Any other change changes it: a remux, moving the movie box, a new title or chapters,
+a tool's own tag in `udta`, new creation times. So a production asks for approval of the file
+it will publish, after its last remux and metadata edit, and adds only the record afterwards.
 
 **One reading only.** A verifier refuses `media/1`, and says why, for a file with no `moov` or
-more than one; a fragmented file (`mvex` in `moov`, or a `moof` at the top level); a compressed
-movie (`cmov` in `moov`); encrypted samples (an `encv`, `enca` or `encs` entry, or a `sinf` in
-any entry); `stz2`; two of a box it reads in one parent; a `tref` naming a track that is not in
-the file; a box whose size runs past its parent, or a box shorter than its own fixed fields (a
-`uuid` box under 24 bytes, an `mvhd`, `tkhd`, `mdhd`, media header or table shorter than its
-version's layout); a table whose counts do not agree (more samples in `stsz` than `stts`
-describes, or the reverse), or that claims more bytes than the file holds; a value that does
-not fit a signed 64-bit integer; sample ranges that fall outside the file or overlap; a `dinf`
-holding anything but one `dref`, or a `dref` entry that is not a self-contained `url ` or
-`urn ` (its data is in another file).
-
-**Final file first.** A remux may rewrite a hashed part: a tool may change the movie
-timescale, and with it the edit list, the bit rates a sample entry records, or the tag naming
-the tool and its version that it writes into `udta`; adding a title or chapters changes the
-hash too. Moving the movie box alone changes nothing. So a production asks for approval of the
-file it will publish, after its last remux and metadata edit.
+more than one; a box whose size runs past its parent, or that is shorter than its own header
+(a `uuid` box under 24 bytes); a fragmented file (`mvex` in `moov`, or a `moof` at the top
+level), whose offsets are not chunk offsets; encrypted samples (an `encv`, `enca` or `encs`
+entry, or a `sinf` in any entry), whose auxiliary offsets are absolute; a compressed movie
+(`cmov` in `moov`); a data reference that is not in the same file (a `dref` entry that is not
+a self-contained `url ` or `urn `); a chunk offset that does not fall inside the data of a
+top-level `mdat`, or a chunk whose samples (by `stsc` and `stsz`) run past the end of that
+data; an uncompressed sound track (a sample entry `raw `, `twos`, `sowt`, `in24`, `in32`,
+`fl32`, `fl64`, `lpcm`, `ipcm`, `fpcm`, `ulaw` or `alaw`) whose `stsz` gives a size per sample
+other than the bytes per frame its entry states (version 0: channels × sample size ÷ 8;
+version 1: its bytes-per-frame field; version 2: its bytes-per-packet field), because players
+then read its chunks by that entry, not by `stsz`; and a value that does not fit a signed
+64-bit integer.
 
 **Re-encoded copies.** A transcoded copy has other coded samples and does not match. A later
 version may carry soft bindings (C2PA soft-binding algorithm names with opaque values) for a

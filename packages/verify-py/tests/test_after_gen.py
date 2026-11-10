@@ -252,9 +252,7 @@ HUGE = {b"stsz": full(b"stsz", 0, 0, U(1, 2**32 - 1)), b"stts": full(b"stts", 0,
 
 
 CMOV = box(b"cmov", box(b"dcom", b"zlib"), box(b"cmvd", U(0)))
-KEPT = ("attack-stray-stco.mp4", "attack-elst-in-udta.mp4", "attack-top-trak.mp4", "attack-top-udta-trak.mp4",
-        "attack-top-cmov.mp4", "attack-udta-cmov.mp4", "attack-udta-mvex-moof.mp4", "attack-glbl.mp4", "attack-stss.mp4",
-        "attack-st3d-clli.mp4")
+PCM = box(b"sowt", bytes(6), b"\x00\x01", struct.pack(">HHIHH", 0, 0, 0, 2, 16), bytes(8))     # 4 bytes a frame
 
 
 GMHD_KEPT = mp4(({"tref": box(b"tapt", b"t") + box(b"edts", box(b"x123", b"e")), "minf": box(b"hdlr", b"h"),
@@ -322,6 +320,16 @@ def derived():
         "attack-two-media-headers.mp4": mp4(({"minf": full(b"smhd", 0, 0, bytes(4))},)),
         "attack-dinf-extra.mp4": mp4(({"minf": box(b"dinf", full(b"dref", 0, 0, U(1), full(b"url ", 0, 1)), box(b"udta"))},)),
         "attack-dref-alis.mp4": mp4(({"minf": box(b"dinf", full(b"dref", 0, 0, U(1), full(b"alis", 0, 1)))},)),
+        # round 4: fields players act on (track order, the file type, durations, language) are hashed like any byte
+        "attack-trak-order.mp4": mp4(({"tid": 2}, {"tid": 1})),
+        "attack-ftyp-qt.mp4": mp4().replace(b"ftypisom", b"ftypqt  ", 1),
+        "attack-mvhd-duration.mp4": mp4().replace(b"mvhd" + bytes(4) + U(0, 0, 1000, 20), b"mvhd" + bytes(4) + U(0, 0, 1000, 5)),
+        "attack-mdhd-language.mp4": mp4().replace(b"mdhd" + bytes(4) + U(0, 0, 1000, 20) + bytes(4),
+                                                  b"mdhd" + bytes(4) + U(0, 0, 1000, 20) + b"\x15\xc7\x00\x00"),
+        "attack-pcm-ok.mp4": mp4(({"hdlr": b"soun", "entry": PCM, "samples": (b"abcd", b"efgh")},)),
+        "attack-pcm-stsz1.mp4": mp4(({"hdlr": b"soun", "entry": PCM, "samples": (b"a", b"b")},)),
+        "attack-offset-in-moov.mp4": mp4(({"stbl": {b"stco": full(b"stco", 0, 0, U(1, DATA_AT + 13))}},)),
+        "attack-chunk-past-mdat.mp4": mp4(({"stbl": {b"stco": full(b"stco", 0, 0, U(1, DATA_AT + 3))}},)),
         "attack-xmp-pi.mp4": mp4(top=xmp_box(ag._packet(None, rec).replace(b"<x:xmpmeta", b"<?note ?><x:xmpmeta", 1))),
         "attack-xmp-ns-twice.mp4": mp4(top=xmp_box(ag._packet(None, rec).replace(
             b"</rdf:RDF>", b'<rdf:Description xmlns:p2="https://pregen.org/ns/after-gen/1/"/></rdf:RDF>'))),
@@ -389,73 +397,98 @@ def media(n):
     return pregen.media_hash(DIR / n)
 
 
-def test_leaves_are_the_movie_each_track_and_each_sample():
-    assert media("a.mp4")["leaves"] == 58 and media("b.mov")["leaves"] == 60 and media("c.mp4")["leaves"] == 7
-    with open(DIR / "c.mp4", "rb") as f:                   # a file object too; c.mp4 has B-frames (ctts)
+NEST = {b"moov": b"trak", b"trak": b"mdia", b"mdia": b"minf", b"minf": b"stbl"}
+
+
+def kids(d, s, e):
+    out = []
+    while s < e:
+        size, t = struct.unpack_from(">I4s", d, s)
+        h = 8
+        if size == 1:
+            size, h = struct.unpack_from(">Q", d, s + 8)[0], 16
+        elif size == 0:
+            size = e - s
+        out.append((t, s + h, s + size))
+        s += size
+    return out
+
+
+def ref_value(d, t, s, e, mdats):
+    out = b""
+    for k, cs, ce in kids(d, s, e):
+        if NEST.get(t) == k:
+            v = ref_value(d, k, cs, ce, mdats)
+        elif t == b"stbl" and k in (b"stco", b"co64"):
+            w, n = 4 if k == b"stco" else 8, int.from_bytes(d[cs + 4:cs + 8], "big")
+            v = d[cs:cs + 4] + i64(n)
+            for j in range(n):
+                o = int.from_bytes(d[cs + 8 + w * j:cs + 8 + w * j + w], "big")
+                m = max(i for i, (a, _) in enumerate(mdats) if a <= o)
+                v += i64(m, o - mdats[m][0])
+        else:
+            v = d[cs:ce]
+        out += el(k, v)
+    return out
+
+
+def ref_stream(d):
+    """media/1's stream, from the spec, apart from the library and without its checks."""
+    top = kids(d, 0, len(d))
+    mdats = [(s, e) for t, s, e in top if t == b"mdat"]
+    return b"PREGEN-MEDIA\x00media/1\x00" + b"".join(
+        el(t, ref_value(d, t, s, e, mdats) if t == b"moov" else d[s:e]) for t, s, e in top
+        if t not in (b"free", b"skip", b"wide") and not (t == b"uuid" and d[s:s + 16] in (ag._XMP_UUID, ag._C2PA_UUID)))
+
+
+def ref_hash(d):
+    s = ref_stream(d)
+    pieces = [s[i:i + (1 << 20)] for i in range(0, len(s), 1 << 20)]
+    return {"binding": "media/1", "hash": mth(pieces).hex(), "leaves": len(pieces)}
+
+
+def test_the_stream_by_hand():
+    for n in sorted(set(FFMPEG_FILES) | set(derived()[0])):
+        d = (DIR / n).read_bytes()
+        try:
+            got = H(d)
+        except pregen.PregenError:
+            continue
+        assert got == ref_hash(d), n
+    with open(DIR / "c.mp4", "rb") as f:                                    # a file object too
         assert pregen.media_hash(f) == media("c.mp4")
+    # pieces of 1 MiB, the last one shorter; a stream of exactly one piece has no empty second one
+    big = lambda n: mp4(top=box(b"mdat", bytes(n)))
+    exact = (1 << 20) - len(ref_stream(big(0))) % (1 << 20)
+    assert len(ref_stream(big(exact))) == 1 << 20
+    assert [H(big(3 << 20))["leaves"], H(big(exact))["leaves"], media("a.mp4")["leaves"]] == [4, 1, 1]
+    assert H(big(3 << 20)) == ref_hash(big(3 << 20)) and H(big(exact)) == ref_hash(big(exact))
 
 
-def test_moving_the_movie_box_or_metadata_leaves_the_hash():
-    assert media("a-remux.mp4") == media("a-remux-faststart.mp4")
-    assert media("b-remux.mov") == media("b-remux-faststart.mov")
-    for n in ("a-xmp.mp4", "a-xmp-foreign-pg.mp4", "a-c2pa-json.mp4", "a-c2pa-cbor.mp4"):
-        assert media(n) == media("a.mp4"), n
-    assert media("a-meta.mp4")["hash"] != media("a.mp4")["hash"]           # a top-level meta box: a player may read it
-    # ffmpeg's first stream copy of a file it encoded rewrites listed parameters: the movie timescale (mvhd, and so the
-    # edit list's durations, which are in it) and the bitrates of the btrt box inside the sample entry. Those decide how
-    # the samples play, so the hash changes; a second stream copy keeps them, and the hash (above).
-    assert media("a.mp4")["hash"] != media("a-remux.mp4")["hash"]
-    assert media("b.mov")["hash"] != media("b-remux.mov")["hash"]
-
-
-def test_one_coded_byte_changes_it():
-    assert media("a-flip.mp4")["hash"] != media("a.mp4")["hash"]
-    assert media("a-flip.mp4")["leaves"] == media("a.mp4")["leaves"]
-
-
-def test_replacing_a_top_level_metadata_box():
+def test_what_keeps_the_hash_and_what_changes_it():
+    for n in ("a-xmp.mp4", "a-xmp-foreign-pg.mp4", "a-c2pa-json.mp4", "a-c2pa-cbor.mp4", "a-c2pa-earlier.mp4"):
+        assert media(n) == media("a.mp4"), n                                 # the carriers
     a = (DIR / "a.mp4").read_bytes()
     _, p, size = next(b for b in top_boxes(a) if b[0] == b"free")          # ffmpeg's free box before mdat
-    assert H(a[:p] + box(b"skip", bytes(size - 8)) + a[p + size:]) == H(a)
+    assert H(a[:p] + box(b"skip", bytes(size - 8)) + a[p + size:]) == H(a)  # padding
+    f = (DIR / "a-remux-faststart.mp4").read_bytes()                      # moov before mdat: every offset moves
+    assert H(insert_after_ftyp(f, c2pa_box(manifest(1)))) == H(f) == H(insert_after_ftyp(f, box(b"free", bytes(3))))
+    big = bytearray(mp4())                                                  # a size-0 last box runs to EOF
+    struct.pack_into(">I", big, top_boxes(bytes(big))[-1][1], 0)
+    assert H(bytes(big)) == H(mp4())
+    # a remux, moving the movie box, metadata, any other byte: another hash
+    hashes = [media(n)["hash"] for n in ("a.mp4", "a-remux.mp4", "a-remux-faststart.mp4", "a-meta.mp4", "a-flip.mp4")]
+    assert len(set(hashes)) == 5
+    assert media("b-remux.mov")["hash"] != media("b-remux-faststart.mov")["hash"]
+    assert media("a-flip.mp4")["leaves"] == media("a.mp4")["leaves"]
 
 
 @pytest.mark.skipif(not FFMPEG, reason="ffmpeg not installed")
 def test_a_remux_by_ffmpeg_now(tmp_path):
-    for src, ext in (("a-remux.mp4", ".mp4"), ("b-remux.mov", ".mov")):
-        dst = tmp_path / ("out" + ext)
-        subprocess.run([FFMPEG, "-v", "error", "-y", "-i", str(DIR / src), "-c", "copy", "-movflags", "+faststart",
-                        "-fflags", "+bitexact", "-map_metadata", "-1", str(dst)], check=True)  # no encoder tag in udta
-        assert pregen.media_hash(dst) == media(src)
-    dst = tmp_path / "out.mov"               # into another format: MOV writes other sample entries and handlers
-    subprocess.run([FFMPEG, "-v", "error", "-y", "-i", str(DIR / "a-remux.mp4"), "-c", "copy", str(dst)], check=True)
+    dst = tmp_path / "out.mp4"
+    subprocess.run([FFMPEG, "-v", "error", "-y", "-i", str(DIR / "a-remux.mp4"), "-c", "copy", "-movflags", "+faststart",
+                    str(dst)], check=True)
     assert pregen.media_hash(dst)["hash"] != media("a-remux.mp4")["hash"]
-
-
-LEAVES = (b"PREGEN-MEDIA\x00media/1\x00" + el(b"FRMT", b"isobmff") + el(b"tmsc", i64(1000))
-          + el(b"rate", i64(0x10000)) + el(b"volu", i64(0x100)) + el(b"mtrx", i64(*MATRIX)),
-          el(b"hdlr", b"vide") + el(b"tref", b"") + el(b"vmhd", bytes(8)) + el(b"mdts", i64(1000))
-          + el(b"sent", el(b"avc1", bytes(78))) + el(b"tkhd", i64(1, 0, 0, 0, *MATRIX, 64 << 16, 48 << 16)) + el(b"elst", b""),
-          [el(b"sdsc", i64(1)) + el(b"dtim", i64(t)) + el(b"ctso", i64(0)) + el(b"sdur", i64(10)) + el(b"data", d)
-           for t, d in ((0, b"abc"), (10, b"de"))])
-
-
-def test_the_leaves_by_hand():
-    movie, track, samples = LEAVES
-    assert H(mp4()) == {"binding": "media/1", "hash": mth([movie, track, *samples]).hex(), "leaves": 4}
-    # gmhd, a media header without version and flags, is hashed whole; other boxes of the track are kept in the order
-    # trak, edts, mdia, minf, stbl
-    gm = media("tiny-kept.mp4")
-    kept = el(b"xbox", el(b"tapt", b"t")) + el(b"xbox", el(b"x123", b"e")) + el(b"xbox", el(b"hdlr", b"h")) \
-        + el(b"xbox", el(b"stss", bytes(8)))
-    gtrack = track.replace(el(b"vmhd", bytes(8)), el(b"gmhd", b"\x00\x00\x00\x01" + bytes(8))) + kept
-    assert gm == {"binding": "media/1", "hash": mth([movie, gtrack, *samples]).hex(), "leaves": 4}
-    # tracks by track_ID, every one whatever its handler (meta too), tref by position among them
-    a = mp4(({"tid": 5, "hdlr": b"soun", "tref": box(b"tref", box(b"sync", U(2)))}, {"tid": 2, "hdlr": b"meta"}, {}))
-    rest = track[len(el(b"hdlr", b"vide") + el(b"tref", b"")):]
-    sound = el(b"hdlr", b"soun") + el(b"tref", el(b"sync", i64(1))) + rest
-    meta = el(b"hdlr", b"meta") + el(b"tref", b"") + rest
-    assert H(a) == {"binding": "media/1", "hash": mth([movie, track, *samples, meta, *samples, sound, *samples]).hex(),
-                    "leaves": 10}
 
 
 @pytest.mark.parametrize("n", [1, 2, 3, 5, 8, 13])
@@ -474,21 +507,14 @@ def test_the_tree_by_hand():
     assert ag._root(iter([l0, l1, l2, l3, l4]))[0] == node(node(node(l0, l1), node(l2, l3)), l4)
 
 
-def test_inserting_a_c2pa_box_before_the_movie_moves_nothing_that_plays():
-    a = (DIR / "a-remux-faststart.mp4").read_bytes()                      # moov before mdat: every offset moves
-    assert H(insert_after_ftyp(a, c2pa_box(manifest(1)))) == H(a)
-    assert H(insert_after_ftyp(a, box(b"free", bytes(3)))) == H(a)
-
-
 REFUSALS = [
     ("x-no-moov.mp4", "no moov"), ("x-two-moov.mp4", "more than one moov"), ("x-moof.mp4", "fragmented"),
-    ("x-mvex.mp4", "fragmented"), ("x-encv.mp4", "encrypted"), ("x-sinf.mp4", "encrypted"), ("x-stz2.mp4", "stz2"),
-    ("x-overlap.mp4", "overlap"), ("x-past-eof.mp4", "outside the file"), ("x-box-past-parent.mp4", "past its parent"),
-    ("x-tref-unlisted.mp4", "not in the file"), ("x-stts-stsz.mp4", "count different samples"),
+    ("x-mvex.mp4", "fragmented"), ("x-encv.mp4", "encrypted"), ("x-sinf.mp4", "encrypted"),
+    ("x-past-eof.mp4", "outside the data of an mdat"), ("x-box-past-parent.mp4", "past its parent"),
     ("attack-short-uuid.mp4", "shorter than its header"), ("attack-dref-external.mp4", "self-contained"),
-    ("attack-dos.mp4", "outside the file"), ("attack-cmov.mp4", "compressed movie"), ("attack-two-stco.mp4", "stco"),
-    ("attack-two-tkhd.mp4", "tkhd"), ("attack-two-media-headers.mp4", "two media headers"),
-    ("attack-dinf-extra.mp4", "one dref"), ("attack-dref-alis.mp4", "self-contained")]
+    ("attack-dos.mp4", "run past"), ("attack-cmov.mp4", "compressed movie"), ("attack-dref-alis.mp4", "self-contained"),
+    ("attack-pcm-stsz1.mp4", "bytes per frame"), ("attack-offset-in-moov.mp4", "outside the data of an mdat"),
+    ("attack-chunk-past-mdat.mp4", "run past")]
 
 
 @pytest.mark.parametrize("name,why", REFUSALS)
@@ -497,74 +523,34 @@ def test_one_reading_only(name, why):
     assert msg.startswith("media/1: ") and why in msg
 
 
-def test_every_track_whatever_its_handler():
-    assert media("attack-meta-red.mp4")["hash"] != media("attack-meta-blue.mp4")["hash"]       # meta plays: it counts
-    assert media("attack-hidden-track.mp4")["leaves"] == media("tiny.mp4")["leaves"] + 2
-    assert media("tiny-tref.mp4")["leaves"] == 10
-
-
-def test_every_other_box_kept_as_is():
-    plain = H(mp4())
-    for name in KEPT:                                       # a player may read any of them: each changes the hash
-        assert media(name)["hash"] != plain["hash"], name
-    entry = box(b"avc1", bytes(78), box(b"avcC", b"stco"), box(b"colr", b"nclx"))         # inside a hashed entry
-    assert H(mp4(({"entry": entry},)))["hash"] != plain["hash"]
-    for where in ({"moov_extra": box(b"udta", box(b"\xa9nam", b"Spring"))}, {"top": box(b"udta", b"x")},
-                  {"top": box(b"uuid", bytes(16), b"x")}, {"tracks": ({"tref": box(b"udta")},)},
-                  {"tracks": ({"minf": full(b"hdlr", 0, 0, b"dhlr", b"url ", bytes(12), b"\x0bDataHandler")},)},
-                  {"tracks": ({"stbl": {b"stss": full(b"stss", 0, 0, U(1, 1))}},)}):
-        assert H(mp4(**where))["hash"] != plain["hash"], where
-    for where in ({"top": box(b"free", b"x") + box(b"skip") + box(b"wide") + box(b"mdat", b"y")},
-                  {"top": xmp_box(b"<x/>") + box(b"uuid", ag._C2PA_UUID, bytes(4), b"other\0")},
-                  {"tracks": ({"minf": box(b"dinf", full(b"dref", 0, 0, U(2), full(b"url ", 0, 1), full(b"urn ", 0, 1)))},)}):
-        assert H(mp4(**where)) == plain, where                # padding, media data, the carriers, a dinf: not kept
-    # an xbox by hand: its value is one element of the box's type, the bytes after its size and type
-    udta, top = box(b"udta", box(b"\xa9nam", b"x")), struct.pack(">I4sQ", 1, b"PROF", 20) + b"abcd"
-    want = mp4(moov_extra=udta, top=top)
-    movie, track, samples = LEAVES
-    kept = el(b"xbox", el(b"udta", udta[8:])) + el(b"xbox", el(b"PROF", b"abcd"))
-    assert H(want) == {"binding": "media/1", "hash": mth([movie + kept, track, *samples]).hex(), "leaves": 4}
-
-
-def test_short_fixed_layouts_and_values_beyond_64_bits():
-    def patched(code, size):
-        """mp4() with the box `code` cut to `size` bytes of content, its parents' sizes fixed."""
-        data = bytearray(mp4())
-        at = data.index(code) - 4
-        cut = struct.unpack_from(">I", data, at)[0] - 8 - size
-        del data[at + 8 + size:at + 8 + size + cut]
-        struct.pack_into(">I", data, at, 8 + size)
-        for parent in (b"moov", b"trak", b"mdia", b"minf"):
-            p = data.index(parent) - 4
-            if p < at:
-                struct.pack_into(">I", data, p, struct.unpack_from(">I", data, p)[0] - cut)
-        return bytes(data)
-    for code, size in ((b"mvhd", 99), (b"mvhd", 72), (b"tkhd", 83), (b"mdhd", 23), (b"vmhd", 11), (b"vmhd", 0)):
-        assert "short" in refused(patched(code, size)), code
-    assert "shorter than its header" in refused(mp4(moov_extra=box(b"uuid", bytes(8))))
-    elst = box(b"edts", full(b"elst", 1, 0, U(1), struct.pack(">Qqhh", 2**63, 0, 1, 0)))
-    assert "signed 64-bit" in refused(mp4(({"tref": elst},)))
+def test_every_byte_a_player_could_read_counts():
+    tiny = media("tiny.mp4")["hash"]
+    hashed = [n for n in derived()[0] if n.startswith("attack-") and "xmp" not in n and "c2pa" not in n
+              and n not in {r[0] for r in REFUSALS}]
+    assert len({media(n)["hash"] for n in hashed} | {tiny}) == len(hashed) + 1, hashed   # each its own hash
+    assert media("attack-pcm-ok.mp4")["leaves"] == 1
 
 
 def test_more_refusals():
     assert "past its parent" in refused(mp4() + b"\x00\x00\x00")                       # a trailing partial header
     assert "past its parent" in refused(FTYP + struct.pack(">I4s", 1 << 20, b"mdat"))
-    assert "count different" in refused(mp4(({"stbl": {b"stsc": full(b"stsc", 0, 0, U(1, 1, 1, 1))}},)))
-    assert "stsc" in refused(mp4(({"stbl": {b"stsc": full(b"stsc", 0, 0, U(1, 2, 2, 2))}},)))  # no sample entry 2
-    assert "ctts" in refused(mp4(({"stbl": {b"ctts": full(b"ctts", 0, 0, U(1, 1, 0))}},)))
-    assert "track_ID" in refused(mp4(({}, {"samples": (b"x",)})))
-    assert "co64" in refused(mp4(({"stbl": {b"co64": full(b"co64", 0, 0, U(1), struct.pack(">Q", DATA_AT))}},)))
-    assert "exactly one stsz" in refused(mp4(({"stbl": {b"stsz": None}},)))
-    assert "too short" in refused(mp4(({"stbl": {b"stsd": full(b"stsd", 0, 0)}},)))
     assert "count does not agree" in refused(mp4(({"stbl": {b"stco": full(b"stco", 0, 0, U(2, DATA_AT))}},)))
-    # tables that claim billions of samples are refused before they are expanded
-    assert "count different" in refused(mp4(({"stbl": {b"stts": full(b"stts", 0, 0, U(2, 2, 10, 2**32 - 1, 10))}},)))
-    assert "outside the file" in refused(mp4(({"stbl": {b"stsz": full(b"stsz", 0, 0, U(1, 2**32 - 1))}},)))
-    co64 = mp4(({"stbl": {b"stco": None, b"co64": full(b"co64", 0, 0, U(1), struct.pack(">Q", DATA_AT))}},))
-    assert H(co64) == H(mp4())                                                       # 32- or 64-bit offsets alike
-    big = bytearray(mp4())                                                           # a size-0 last box runs to EOF
-    struct.pack_into(">I", big, top_boxes(bytes(big))[-1][1], 0)
-    assert H(bytes(big)) == H(mp4())
+    assert "run past" in refused(mp4(({"stbl": HUGE},)))                              # 2^32 samples: at once
+    assert "run past" in refused(mp4(({"stbl": {b"stsz": None, b"stz2": full(b"stz2", 0, 0, bytes(3) + b"\x04", U(2),
+                                                                              b"\x3f")}},)))     # 3 and 15 bytes
+    assert H(mp4(({"stbl": {b"stsz": None, b"stz2": full(b"stz2", 0, 0, bytes(3) + b"\x04", U(2), b"\x32")}},)))
+    assert "field size" in refused(mp4(({"stbl": {b"stsz": None, b"stz2": full(b"stz2", 0, 0, bytes(3) + b"\x05", U(0))}},)))
+    assert "outside the data" in refused(mp4(({"stbl": {b"stco": None, b"co64": full(b"co64", 0, 0, U(1), struct.pack(">Q", 2**64 - 1))}},)))
+    assert "shorter than its own fields" in refused(mp4(({"stbl": {b"stsc": full(b"stsc", 0, 0, U(2, 1, 2, 1))}},)))
+    assert "shorter than its header" in refused(mp4(moov_extra=box(b"uuid", bytes(8))))
+    for v, fields in ((0, struct.pack(">HHIHH", 0, 0, 0, 2, 16) + bytes(8)),           # 2 channels of 16 bits: 4 bytes
+                      (1, struct.pack(">HHIHH", 1, 0, 0, 1, 8) + bytes(8) + U(1, 4, 4, 2)),
+                      (2, struct.pack(">HHIHH", 2, 0, 0, 3, 16) + bytes(8) + U(72) + bytes(8) + U(1, 0x7F000000, 16, 0, 4, 1))):
+        pcm = lambda *samples: mp4(({"hdlr": b"soun", "entry": box(b"lpcm", bytes(6), b"\x00\x01", fields),
+                                     "samples": samples},))
+        assert H(pcm(b"abcd", b"efgh"))["leaves"] == 1, v
+        assert "bytes per frame" in refused(pcm(b"ab", b"cd")), v
+    assert "shorter than its own fields" in refused(mp4(({"entry": box(b"twos", bytes(8), b"\x00\x01")},)))
 
 
 # ── read_after_gen and embed_xmp ────────────────────────────────────────────────

@@ -68,70 +68,71 @@ function mp4({ tracks = [], extraTop = [], moovExtra = [] } = {}) {
   return new Uint8Array(B(ftyp, mdat, box("moov", mvhd, ...traks, ...moovExtra), ...extraTop));
 }
 
-// media/1 of a file mp4() built, computed from what was put in (spec, "The tree").
-function expected(tracks) {
-  const leaves = [B("PREGEN-MEDIA\0media/1\0", el("FRMT", B("isobmff")), el("tmsc", ints([1000])), el("rate", ints([0x10000])),
-    el("volu", ints([0x100])), el("mtrx", ints(MATRIX)))];
-  const listed = [...tracks].sort((a, b) => a.id - b.id); // every track, whatever its handler
-  for (const t of listed) {
-    const soun = t.handler === "soun";
-    const entry = t.entry ?? box(soun ? "mp4a" : "avc1", Buffer.alloc(6), u16(1), "entry-bytes");
-    leaves.push(B(el("hdlr", B(t.handler ?? "vide")),
-      el("tref", B(...(t.tref ?? []).map((r) => el(r.type, ints(r.ids.map((id) => listed.findIndex((x) => x.id === id))))))),
-      soun ? el("smhd", B(i16(0), u16(0))) : el("vmhd", B(u16(0), u16(0), u16(0), u16(0))),
-      el("mdts", ints([t.timescale ?? 90000])),
-      el("sent", el(entry.subarray(4, 8).toString("latin1"), entry.subarray(8))),
-      el("tkhd", ints([1, 0, 0, soun ? 0x100 : 0, ...MATRIX, 64 << 16, 48 << 16])),
-      el("elst", ints((t.edits ?? []).flat()))));
-    let dtim = 0;
-    t.samples.forEach((s, j) => {
-      const d = (t.durations ?? [])[j] ?? 100;
-      leaves.push(B(el("sdsc", ints([1])), el("dtim", ints([dtim])), el("ctso", ints([(t.ctts ?? [])[j] ?? 0])),
-        el("sdur", ints([d])), el("data", s)));
-      dtim += d;
-    });
+// media/1 from the spec, apart from the library and without its checks: the stream, its 1 MiB pieces, their root.
+const NEST = { moov: "trak", trak: "mdia", mdia: "minf", minf: "stbl" };
+function kids(b, s, e) {
+  const out = [];
+  while (s < e) {
+    let size = b.readUInt32BE(s), h = 8;
+    if (size === 1) { size = Number(b.readBigUInt64BE(s + 8)); h = 16; } else if (size === 0) size = e - s;
+    out.push([b.toString("latin1", s + 4, s + 8), s + h, s + size]);
+    s += size;
   }
-  return { binding: "media/1", hash: rfc6962(leaves.map((l) => sha(B([0], l)))).toString("hex"), leaves: leaves.length };
+  return out;
+}
+function refValue(b, type, s, e, mdats) {
+  return B(...kids(b, s, e).map(([k, cs, ce]) => {
+    if (NEST[type] === k) return el(k, refValue(b, k, cs, ce, mdats));
+    if (type !== "stbl" || (k !== "stco" && k !== "co64")) return el(k, b.subarray(cs, ce));
+    const w = k === "stco" ? 4 : 8, n = b.readUInt32BE(cs + 4), parts = [b.subarray(cs, cs + 4), ints([n])];
+    for (let j = 0; j < n; j++) {
+      const o = Number(w === 4 ? b.readUInt32BE(cs + 8 + 4 * j) : b.readBigUInt64BE(cs + 8 + 8 * j));
+      const m = mdats.findLastIndex(([a]) => a <= o);
+      parts.push(ints([m, o - mdats[m][0]]));
+    }
+    return el(k, B(...parts));
+  }));
+}
+function refStream(file) {
+  const b = Buffer.from(file), top = kids(b, 0, b.length), mdats = top.filter(([t]) => t === "mdat").map(([, s, e]) => [s, e]);
+  return B("PREGEN-MEDIA\0media/1\0", ...top.filter(([t, s]) => !["free", "skip", "wide"].includes(t)
+    && !(t === "uuid" && [XMP_UUID, C2PA_UUID].includes(b.toString("hex", s, s + 16))))
+    .map(([t, s, e]) => el(t, t === "moov" ? refValue(b, t, s, e, mdats) : b.subarray(s, e))));
+}
+function expected(file) {
+  const stream = refStream(file), pieces = [];
+  for (let i = 0; i < stream.length; i += 1 << 20) pieces.push(stream.subarray(i, i + (1 << 20)));
+  return { binding: "media/1", hash: rfc6962(pieces.map((p) => sha(B([0], p)))).toString("hex"), leaves: pieces.length };
 }
 
 const VIDEO = { id: 1, handler: "vide", samples: [B("frame-one"), B("frame-two!"), B("f3")], durations: [100, 200, 100],
   ctts: [200, -100, 0], edits: [[400, 0, 1, 0], [100, -1, 1, 0]] };
 const AUDIO = { id: 2, handler: "soun", samples: [B("audio-a"), B("audio-bb")], timescale: 48000, tref: [{ type: "sync", ids: [1] }] };
+const DATA = 28; // where mp4()'s mdat data starts
 
-test("media/1: 1, 2, 3 and 5 leaves match an independent RFC 6962 tree", async () => {
-  for (const tracks of [[], [{ id: 1, samples: [] }], [{ id: 1, samples: [B("x")] }], [VIDEO]]) {
-    const want = expected(tracks);
-    assert.deepEqual(await mediaHash(mp4({ tracks })), want);
+test("media/1: the stream of the top-level boxes, chunk offsets within their mdat, in pieces of 1 MiB", async () => {
+  const big = (n) => mp4({ tracks: [VIDEO], extraTop: [box("mdat", Buffer.alloc(n, 7))] });
+  const exact = (1 << 20) - ((refStream(big(0)).length) % (1 << 20)); // a stream of exactly one piece: no empty last one
+  for (const file of [mp4(), mp4({ tracks: [VIDEO] }), mp4({ tracks: [VIDEO, AUDIO] }), big(3 << 20), big(exact)]) {
+    assert.deepEqual(await mediaHash(file), expected(file));
   }
-  assert.deepEqual((await Promise.all([[], [{ id: 1, samples: [] }], [{ id: 1, samples: [B("x")] }], [VIDEO]]
-    .map((tracks) => mediaHash(mp4({ tracks }))))).map((r) => r.leaves), [1, 2, 3, 5]);
-});
-
-test("media/1: tracks in track_ID order, tref by position, every track whatever its handler", async () => {
-  const meta = { id: 3, handler: "meta", samples: [B("timed metadata")], tref: [{ type: "cdsc", ids: [1] }] };
-  const tracks = [{ ...AUDIO, id: 7, tref: [{ type: "sync", ids: [1] }] }, meta, VIDEO];
-  assert.deepEqual(await mediaHash(mp4({ tracks })), expected(tracks));
-  assert.equal((await mediaHash(mp4({ tracks }))).leaves, 1 + 4 + 2 + 3);
-  // a video track relabelled meta or hint still counts: other footage under it changes the hash
-  const relabelled = (handler, frame) => mediaHash(mp4({ tracks: [{ ...VIDEO, handler, samples: [frame, B("frame-two!"), B("f3")] }] }));
-  for (const h of ["meta", "hint"]) assert.notEqual((await relabelled(h, B("frame-one"))).hash, (await relabelled(h, B("frame-ONE"))).hash);
-  const hint = [VIDEO, { ...AUDIO, tref: [{ type: "hint", ids: [5] }] }, { id: 5, handler: "hint", samples: [] }];
-  assert.deepEqual(await mediaHash(mp4({ tracks: hint })), expected(hint));
+  assert.deepEqual([(await mediaHash(big(3 << 20))).leaves, (await mediaHash(big(exact))).leaves], [4, 1]);
+  assert.equal(refStream(big(exact)).length, 1 << 20);
 });
 
 test("media/1: the same from a Uint8Array, a Blob and a reader, without reading the whole file", async () => {
-  const file = mp4({ tracks: [VIDEO, AUDIO] });
+  const file = mp4({ tracks: [VIDEO, AUDIO], extraTop: [box("mdat", Buffer.alloc(3 << 20))] });
   let largest = 0;
   const reader = { size: file.length, read: async (o, n) => { largest = Math.max(largest, n); return file.slice(o, o + n); } };
   const want = await mediaHash(file);
   assert.deepEqual(await mediaHash(new Blob([file])), want);
   assert.deepEqual(await mediaHash(reader), want);
-  assert.ok(largest < file.length);
+  assert.ok(largest <= 1 << 20);
   await assert.rejects(mediaHash({ size: 10, read: async () => new Uint8Array(3) }), PregenError);
   await assert.rejects(mediaHash("not a file"), PregenError);
 });
 
-test("media/1: one changed coded byte changes it; padding and the carriers do not", async () => {
+test("media/1: every byte a player could read counts; padding and the carriers do not", async () => {
   const file = mp4({ tracks: [VIDEO, AUDIO] }), want = await mediaHash(file);
   const flipped = Uint8Array.from(file);
   flipped[file.indexOf(0x2d, 30)] ^= 1; // a byte of "frame-one" in mdat
@@ -139,8 +140,13 @@ test("media/1: one changed coded byte changes it; padding and the carriers do no
   const more = mp4({ tracks: [VIDEO, AUDIO], extraTop: [box("free", "padding"), box("skip"), box("wide"), uuidBox(XMP_UUID, "<x/>"),
     uuidBox(C2PA_UUID, Buffer.alloc(4), "other\0")] });
   assert.deepEqual(await mediaHash(more), want);
-  const titled = mp4({ tracks: [VIDEO, AUDIO], moovExtra: [box("udta", box("name", "a title"))] }); // metadata in moov is hashed
-  assert.notEqual((await mediaHash(titled)).hash, want.hash);
+  for (const other of [mp4({ tracks: [AUDIO, VIDEO] }), mp4({ tracks: [{ ...VIDEO, handler: "meta" }, AUDIO] }),
+    mp4({ tracks: [VIDEO, { ...AUDIO, timescale: 44100 }] }), mp4({ tracks: [VIDEO, AUDIO], moovExtra: [box("udta", box("name", "a title"))] }),
+    mp4({ tracks: [VIDEO, AUDIO], extraTop: [box("udta", "x")] }), mp4({ tracks: [VIDEO, AUDIO], extraTop: [box("trak", "x")] }),
+    mp4({ tracks: [{ ...VIDEO, extraStbl: [full("stss", 0, 0, u32(1), u32(1)), box("glbl", "x")] }, AUDIO] }),
+    mp4({ tracks: [{ ...VIDEO, extraMinf: [box("dinf", full("dref", 0, 0, u32(1), full("url ", 0, 1)))] }, AUDIO] })]) {
+    assert.notEqual((await mediaHash(other)).hash, want.hash);
+  }
 });
 
 // Every refusal of "One reading only", each with its reason.
@@ -155,72 +161,35 @@ const bump = (bytes, type, delta, nth = 0) => { // add delta to the size of the 
 const plain = mp4({ tracks: [VIDEO] });
 const mvhdOnly = box("moov", full("mvhd", 0, 0, u32(0), u32(0), u32(1000), u32(0), i32(0x10000), i16(0x100), Buffer.alloc(10),
   ...MATRIX.map(i32), Buffer.alloc(24), u32(2)));
+const sowt = box("sowt", Buffer.alloc(6), u16(1), u16(0), u16(0), u32(0), u16(2), u16(16), Buffer.alloc(8)); // 4 bytes a frame
 const REFUSED = [
   ["no moov", new Uint8Array(box("ftyp", "isom", u32(0))), /no moov/],
   ["two moov", new Uint8Array(B(plain, mvhdOnly)), /more than one moov/],
   ["a moof", new Uint8Array(B(plain, box("moof", full("mfhd", 0, 0, u32(1))))), /fragmented/],
   ["mvex in moov", mp4({ tracks: [VIDEO], moovExtra: [box("mvex", full("trex", 0, 0, Buffer.alloc(20)))] }), /fragmented/],
+  ["a cmov in moov", mp4({ tracks: [VIDEO], moovExtra: [box("cmov", box("dcom", "zlib"), box("cmvd", u32(0)))] }), /compressed movie/],
   ["an encv entry", mp4({ tracks: [{ ...VIDEO, entry: box("encv", Buffer.alloc(6), u16(1)) }] }), /encrypted/],
   ["a sinf in an entry", mp4({ tracks: [{ ...VIDEO, entry: box("avc1", Buffer.alloc(6), u16(1), Buffer.alloc(70), box("sinf", box("frma", "avc1"))) }] }), /encrypted/],
-  ["stz2", mp4({ tracks: [{ ...VIDEO, extraStbl: [full("stz2", 0, 0, u32(8), u32(0))] }] }), /stz2/],
-  ["overlapping samples", mp4({ tracks: [{ ...VIDEO }, { ...AUDIO, offset: 30 }] }), /overlap/],
-  ["a sample past the end of the file", mp4({ tracks: [{ ...VIDEO, offset: 1e6 }] }), /outside the file/],
+  ["a chunk past the end of the file", mp4({ tracks: [{ ...VIDEO, offset: 1e6 }] }), /outside the data of an mdat/],
+  ["a chunk offset into moov", mp4({ tracks: [{ ...VIDEO, offset: DATA + 21 + 8 }] }), /outside the data of an mdat/],
+  ["a chunk running past its mdat", mp4({ tracks: [{ ...VIDEO, offset: DATA + 5 }] }), /run past/],
+  ["a meta track past the end of the file", mp4({ tracks: [VIDEO, { id: 2, handler: "meta", samples: [B("m")], offset: 1e6 }] }), /outside the data/],
   ["a top-level box past the file", bump(plain, "moov", 1), /past its parent/],
   ["a box past its parent", bump(plain, "stco", 1), /past its parent/],
-  ["a tref to a track that is not in the file", mp4({ tracks: [VIDEO, { ...AUDIO, tref: [{ type: "sync", ids: [9] }] }] }), /not in the file/],
-  ["more samples in stsz than stts describes", mp4({ tracks: [{ ...VIDEO, stszCount: 4, samples: [...VIDEO.samples, B("4")], durations: [100, 200, 100] }] }), /stts, ctts and stsz count different samples/],
-  ["more samples in stts than stsz", mp4({ tracks: [{ ...VIDEO, stszCount: 2, samples: VIDEO.samples.slice(0, 2), durations: [100, 200, 100], ctts: undefined }] }), /stts, ctts and stsz count different samples/],
-  ["two tracks with one id", mp4({ tracks: [VIDEO, { ...AUDIO, id: 1, tref: undefined }] }), /one track_ID/],
-  ["a cmov in moov", mp4({ tracks: [VIDEO], moovExtra: [box("cmov", box("dcom", "zlib"), box("cmvd", u32(0)))] }), /compressed movie/],
-  ["two stco in one stbl", mp4({ tracks: [{ ...VIDEO, extraStbl: [full("stco", 0, 0, u32(1), u32(40))] }] }), /two stco/],
-  ["two tkhd in one trak", mp4({ tracks: [{ ...VIDEO, extraTrak: [full("tkhd", 0, 3, Buffer.alloc(80))] }] }), /two tkhd/],
-  ["two media headers", mp4({ tracks: [{ ...VIDEO, extraMinf: [full("smhd", 0, 0, u32(0))] }] }), /two media headers/],
-  ["a dinf holding more than its dref", mp4({ tracks: [{ ...VIDEO, extraMinf: [box("dinf", full("dref", 0, 0, u32(1), full("url ", 0, 1)), box("udta"))] }] }), /one dref/],
+  ["a uuid box under 24 bytes", mp4({ tracks: [VIDEO], moovExtra: [box("uuid", Buffer.alloc(8))] }), /shorter than its header/],
   ["an alis data reference", mp4({ tracks: [{ ...VIDEO, extraMinf: [box("dinf", full("dref", 0, 0, u32(1), full("alis", 0, 1)))] }] }), /self-contained/],
   ["a data reference elsewhere", mp4({ tracks: [{ ...VIDEO, extraMinf: [box("dinf", full("dref", 0, 0, u32(1), full("url ", 0, 0, "https://x.example/a\0")))] }] }), /self-contained/],
-  ["a uuid box under 24 bytes", mp4({ tracks: [VIDEO], moovExtra: [box("uuid", Buffer.alloc(8))] }), /shorter than its header/],
-  ["an elst duration of 2^63", mp4({ tracks: [{ ...VIDEO, edits: undefined, extraTrak: [box("edts", full("elst", 1, 0, u32(1), u64(2n ** 63n), u64(0), i16(1), i16(0)))] }] }), /signed 64-bit/],
-  ["a meta track past the end of the file", mp4({ tracks: [VIDEO, { id: 2, handler: "meta", samples: [B("m")], offset: 1e6 }] }), /outside the file/],
+  ["uncompressed sound whose stsz is not its bytes per frame", mp4({ tracks: [{ id: 1, handler: "soun", entry: sowt, samples: [B("a")] }] }), /bytes per frame/],
 ];
 
-// A box media/1 reads is refused anywhere but its one place (Every box in its place); what it reads is skipped.
-// Read, or kept as is: a box media/1 does not read is hashed whole, wherever a player could find it.
-test("media/1: every other box is kept as is", async () => {
-  const want = await mediaHash(mp4({ tracks: [VIDEO] }));
-  for (const file of [mp4({ tracks: [VIDEO], moovExtra: [box("udta", box("\xa9nam", "Spring"))] }),
-    mp4({ tracks: [VIDEO], extraTop: [box("udta", "x")] }), mp4({ tracks: [VIDEO], extraTop: [box("trak", "x")] }),
-    mp4({ tracks: [VIDEO], extraTop: [uuidBox("00".repeat(16), "x")] }),
-    mp4({ tracks: [VIDEO], moovExtra: [box("udta", box("cmov", "x"), box("mvex", "y"), box("moof", "z"))] }),
-    mp4({ tracks: [{ ...VIDEO, extraTrak: [box("udta"), full("stco", 0, 0, u32(0))] }] }),
-    mp4({ tracks: [{ ...VIDEO, extraMinf: [full("hdlr", 0, 0, "dhlr", "url ", Buffer.alloc(12), "\x0bDataHandler")] }] }),
-    mp4({ tracks: [{ ...VIDEO, extraStbl: [full("stss", 0, 0, u32(1), u32(1)), box("glbl", "x"), full("st3d", 0, 0, [1])] }] }),
-    mp4({ tracks: [{ ...VIDEO, entry: box("avc1", Buffer.alloc(6), u16(1), box("avcC", "x")) }] })]) {
-    assert.notEqual((await mediaHash(file)).hash, want.hash);
-  }
-  const dinf = box("dinf", full("dref", 0, 0, u32(2), full("url ", 0, 1), full("urn ", 0, 1)));
-  assert.deepEqual(await mediaHash(mp4({ tracks: [{ ...VIDEO, extraMinf: [dinf] }], extraTop: [box("mdat", "y")] })), want);
-});
-
-test("media/1: a header shorter than its version's layout is refused", async () => {
-  const cut = (file, type, size) => { // the box `type` cut to `size` bytes of content, its parents' sizes fixed
-    const b = Buffer.from(file), at = b.indexOf(type) - 4, gone = b.readUInt32BE(at) - 8 - size;
-    for (const parent of ["moov", "trak", "mdia", "minf"]) {
-      const p = b.indexOf(parent) - 4;
-      if (p < at) b.writeUInt32BE(b.readUInt32BE(p) - gone, p);
-    }
-    b.writeUInt32BE(8 + size, at);
-    return new Uint8Array(Buffer.concat([b.subarray(0, at + 8 + size), b.subarray(at + 8 + size + gone)]));
-  };
-  const file = mp4({ tracks: [VIDEO] });
-  for (const [type, size] of [["mvhd", 99], ["mvhd", 72], ["tkhd", 83], ["mdhd", 23], ["vmhd", 11], ["vmhd", 0]]) {
-    await assert.rejects(mediaHash(cut(file, type, size)), (e) => e instanceof PregenError && /short/.test(e.message), type);
-  }
+test("media/1: uncompressed sound whose stsz is its bytes per frame hashes", async () => {
+  await mediaHash(mp4({ tracks: [{ id: 1, handler: "soun", entry: sowt, samples: [B("abcd"), B("efgh")] }] }));
 });
 
 test("media/1: tracks claiming billions of samples are refused at once", async () => {
   const file = new Uint8Array(readFileSync(new URL("../../../spec/test-vectors/after-gen/attack-dos.mp4", import.meta.url)));
   const start = performance.now();
-  await assert.rejects(mediaHash(file), /outside the file/);
+  await assert.rejects(mediaHash(file), /run past/);
   assert.ok(performance.now() - start < 2000);
 });
 for (const [name, file, reason] of REFUSED) {
@@ -615,7 +584,7 @@ function insertBeforeMoov(file, extra) {
   return new Uint8Array(B(buf.subarray(0, moov), extra, buf.subarray(moov)));
 }
 
-test("media/1 of an ffmpeg file: unchanged by a faststart remux, XMP, a C2PA box; changed by one sample byte", { skip: !FFMPEG && "ffmpeg not found" }, async () => {
+test("media/1 of an ffmpeg file: unchanged by XMP and a C2PA box; changed by a faststart remux and by one sample byte", { skip: !FFMPEG && "ffmpeg not found" }, async () => {
   const dir = mkdtempSync(join(tmpdir(), "after-gen-"));
   try {
     const p = (f) => join(dir, f);
@@ -625,17 +594,17 @@ test("media/1 of an ffmpeg file: unchanged by a faststart remux, XMP, a C2PA box
     ffmpeg("-i", p("encoded.mp4"), "-c", "copy", p("a.mp4"));
     ffmpeg("-i", p("a.mp4"), "-c", "copy", "-movflags", "+faststart", p("fast.mp4"));
     const a = new Uint8Array(readFileSync(p("a.mp4"))), fast = new Uint8Array(readFileSync(p("fast.mp4")));
-    const want = await mediaHash(a);
-    assert.ok(want.leaves > 100);
-    assert.deepEqual(await mediaHash(fast), want);
+    const want = await mediaHash(a), fastWant = await mediaHash(fast);
+    assert.deepEqual(want, expected(a));
+    assert.notEqual(fastWant.hash, want.hash); // moving the movie box is a change like any other
     assert.deepEqual(await mediaHash(await embedXmp(a, RECORD)), want);
     const c2pa = insertBeforeMoov(fast, c2paBox(manifest(assertion("org.pregen.after_gen", cborBox(RECORD)))));
-    assert.deepEqual(await mediaHash(c2pa), want);
+    assert.deepEqual(await mediaHash(c2pa), fastWant); // the chunk offsets move with it, and are hashed within mdat
     assert.deepEqual((await readAfterGen(c2pa)).c2pa, RECORD);
-    assert.deepEqual(await mediaHash(new Blob([fast])), want);
+    assert.deepEqual(await mediaHash(new Blob([fast])), fastWant);
     let largest = 0;
-    assert.deepEqual(await mediaHash({ size: fast.length, read: async (o, n) => { largest = Math.max(largest, n); return fast.slice(o, o + n); } }), want);
-    assert.ok(largest < fast.length / 2);
+    assert.deepEqual(await mediaHash({ size: fast.length, read: async (o, n) => { largest = Math.max(largest, n); return fast.slice(o, o + n); } }), fastWant);
+    assert.ok(largest <= 1 << 20); // the movie box whole, the rest in pieces of at most 1 MiB
     // one coded byte: the last byte of mdat is the last byte of a sample
     const mdatEnd = (() => { const v = new DataView(a.buffer); let at = 0;
       while (true) { const s = v.getUint32(at); if (Buffer.from(a.subarray(at + 4, at + 8)).toString() === "mdat") return at + s; at += s; } })();
