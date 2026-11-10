@@ -186,14 +186,14 @@ open(${JSON.stringify(key)}, "wb").write(k.private_bytes(serialization.Encoding.
   }
   const statement = async () => (await call(`${REG}/v2/statement`, { headers: { "X-Provider-ID": PROVIDER,
     "PG-Access": await pg.pgAccess(PROVIDER, providerKey, REG, "GET", "/v2/statement") } })).json();
-  const CODE1 = "PG-TEST-000001N", CODE9 = "PG-TEST-000009V", CODE12 = "PG-TEST-0000123";
+  const CODE1 = "TOG-TEST-000001N", CODE9 = "TOG-TEST-000009V", CODE12 = "TOG-TEST-0000123";
 
   const a = browser();
   let c;                                      // the connected creator of step 5, used for code 9
   await t.test("sign in and connect a licence", async () => {
     await a.signUp("a@example.test");
     await a.connect();
-    assert.match((await a.go(`${APP}/`)).text, /licence on <b>PG-TEST-0000123<\/b>: purposes research;\s+active, 3 uses left/);
+    assert.match((await a.go(`${APP}/`)).text, /licence on <b>TOG-TEST-0000123<\/b>: purposes research;\s+active, 3 uses left/);
     // The session is read from the exact cookie name only, and two values of it are no session (a planted cookie).
     const [name, value] = a.cookie().split("=");
     assert.equal(name, "sid");                // no TLS here; behind TLS it is __Host-sid

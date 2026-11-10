@@ -50,8 +50,8 @@ business, joined later and separately (the section "Selling and connected users"
    them: a secrets manager, environment variables, or a file readable only by the service.
 6. **A sandbox answer is never accepted in production.** It carries `ext: {"sandbox": true}`;
    the libraries refuse it unless you pass `testing`.
-7. **Copy codes exactly.** A person's code ends with a check character that may be `*`, `~`,
-   `$`, `=` or `!`: quote codes in a shell (`'PG-ABCD-000001$'`) and encode them in a URL
+7. **Copy codes exactly.** An older person's code may end with a check character `*`, `~`,
+   `$`, `=` or `!`: quote codes in a shell (`'TOG-TEST-000006$'`) and encode them in a URL
    path (`%24` for `$`).
 8. **Ask the person** who runs the product before you accept terms or store secrets. Their
    request to integrate PRE-GEN covers what this guide makes and stores: your provider key,
@@ -185,7 +185,8 @@ stop, never check sandbox answers without it, and report it through the steward'
 
 ## 4. Ask
 
-A person's code looks like `PG-ABCD-000001K`; its four letters name the registry.
+A person's code looks like `TOG-ABCD-418207365E`; its letters name the registry. Old `PG-` codes are still
+accepted and become `TOG-` (`PG-TEST-000001N` is `TOG-TEST-000001N`).
 `directory.registry_for(code)` / `directory.registryFor(code)` gives that registry's entry
 (`prefix`, `api`, `keys` = the URL of its key set, `key_fingerprints`, …). If it gives
 `None` / `null`, no listed registry holds the code: you have no `allow`: do not generate
@@ -198,7 +199,7 @@ X-Provider-ID: https://frame.example
 
 {"type": "pg.request.v1", "signatures": ["<ed25519 hex, by your current key>"],
  "body": {"signers": [{"role": "provider", "key_id": "pg-ed25519:…"}],
-          "subject_ref": "PG-ABCD-000001K", "provider_id": "https://frame.example",
+          "subject_ref": "TOG-ABCD-418207365E", "provider_id": "https://frame.example",
           "profile": "likeness/1", "use": {"purpose": "commercial"},
           "job_id": "job-8841", "job_hash": "<sha-256 hex of what you fixed about the job>",
           "licensee_id": "<the licensee id that registry gave your customer>"}}
@@ -665,9 +666,9 @@ The test network is a sandbox registry and a test directory, open to everyone:
   key `78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0` (step 3). It lists
   sandboxes only. Never in production.
 - **The PRE-GEN Test Registry:** prefix `TEST`, `api` `https://sandbox.pregen.org`, codes 1 to 12:
-  `PG-TEST-000001N` `PG-TEST-000002Z` `PG-TEST-0000034` `PG-TEST-000004E` `PG-TEST-000005R`
-  `PG-TEST-000006$` `PG-TEST-0000077` `PG-TEST-000008H` `PG-TEST-000009V` `PG-TEST-000010M`
-  `PG-TEST-000011Y` `PG-TEST-0000123` (copy them; the last character is a check character). Any registry's own sandbox works the same way: a separate registry with its
+  `TOG-TEST-000001N` `TOG-TEST-000002Z` `TOG-TEST-0000034` `TOG-TEST-000004E` `TOG-TEST-000005R`
+  `TOG-TEST-000006$` `TOG-TEST-0000077` `TOG-TEST-000008H` `TOG-TEST-000009V` `TOG-TEST-000010M`
+  `TOG-TEST-000011Y` `TOG-TEST-0000123` (copy them; the last character is a check character). Any registry's own sandbox works the same way: a separate registry with its
   own prefix (`ABCE` beside `ABCD`), listed in the test directory, whose document says
   `"sandbox": true`.
 
@@ -728,7 +729,7 @@ one use, for you only. No money moves. Each purchase adds one use. A give-back c
 within the give-back window. `GET {sandbox api}/v2/statement`, with the headers of "The
 credential path" item 4, then shows that grant `billed` 1, `given_back` 1. Code 11 holds a grant for every purpose
 and category, signed by the person, yet still refuses: a minor's protection comes first. The
-code 10 terms are at `GET {sandbox api}/v2/codes/PG-TEST-000010M` (section "Accepting a
+code 10 terms are at `GET {sandbox api}/v2/codes/TOG-TEST-000010M` (section "Accepting a
 person's terms").
 
 Code 12 is a creator's licence that only the creator's own connection reaches. List a callback in
@@ -886,7 +887,7 @@ PROVIDER = "https://frame.example"                                        # your
 NAME = "Frame"                                                             # what a consent screen shows beside your domain
 KEY = open("provider.key").read().strip()                                 # step 2: from your secret store, never in code
 DIRECTORY_URL, TEST_STEWARD = pregen.DIRECTORY_URL, None                    # testing: the test directory and its key
-CODES = ["PG-ABCD-000001K"]                                                # the people in this job
+CODES = ["TOG-ABCD-418207365E"]                                            # the people in this job
 FOLDER = "pregen-test" if TEST_STEWARD else "pregen"                       # test and production never share a file (step 8)
 TESTING = False                                                            # True only for a job whose every code is at a sandbox, under a test directory
 UA = {"User-Agent": "frame-ai (https://frame-ai.example/contact)"}        # who you are: Wikidata refuses anonymous clients
@@ -1124,7 +1125,7 @@ print(pregen.check_proof(bundle, directory, output_sha256=output_hash, testing=T
 json.dump(bundle, open("output.bin.proof.json", "w"))                    # kept with the file
 ```
 
-It prints `{'output_hash': '…', 'job_id': 'job-…', 'subjects': [{'code': 'PG-ABCD-000001K',
+It prints `{'output_hash': '…', 'job_id': 'job-…', 'subjects': [{'code': 'TOG-ABCD-418207365E',
 'level': 'verified', 'basis': {'kind': 'grant', …}}]}`. Not shown, in either example: the
 `answer: null` report of rule 2 after an answer that never arrived (step 7), the directory reload on `issuer_mismatch` (step 3),
 `verify_answer` to log why a refusal refused (step 5), and saving the key sets for offline
@@ -1147,7 +1148,7 @@ const PROVIDER = "https://frame.example";                                      /
 const NAME = "Frame";                                                           // what a consent screen shows beside your domain
 const KEY = readFileSync("provider.key", "utf8").trim();                       // step 2: from your secret store, never in code
 const [url, TEST_STEWARD] = [DIRECTORY_URL, null];                              // testing: the test directory and its key
-const CODES = ["PG-ABCD-000001K"];                                              // the people in this job
+const CODES = ["TOG-ABCD-418207365E"];                                          // the people in this job
 const FOLDER = TEST_STEWARD ? "pregen-test" : "pregen";                       // test and production never share a file (step 8)
 const TESTING = false;                                                          // true only for a job whose every code is at a sandbox, under a test directory
 const UA = "frame-ai (https://frame-ai.example/contact)";                       // who you are: Wikidata refuses anonymous clients

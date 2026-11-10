@@ -90,6 +90,6 @@ alone. A subject not in the catalog: 404 `PG_NOT_FOUND`.
 
 ## Example
 
-The **PRE-GEN Test Registry** (prefix `TEST`): serial 1 is `PG-TEST-000001` plus its check
-character. Serials 9, 10 and 11 are `PG-TEST-000009V`, `PG-TEST-000010M` and `PG-TEST-000011Y`. Serial 12 is
-`PG-TEST-0000123`.
+The **PRE-GEN Test Registry** (prefix `TEST`): serial 1 is `TOG-TEST-000001` plus its check
+character. Serials 9, 10 and 11 are `TOG-TEST-000009V`, `TOG-TEST-000010M` and `TOG-TEST-000011Y`. Serial 12 is
+`TOG-TEST-0000123`.

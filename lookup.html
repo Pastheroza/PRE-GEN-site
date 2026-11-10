@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Look up a PG code — PRE-GEN</title>
+<title>Look up a code — PRE-GEN</title>
 <meta name="description" content="Resolve any PRE-GEN subject or licence code. Public, read-only, no account.">
-<meta property="og:title" content="Look up a PG code — PRE-GEN">
+<meta property="og:title" content="Look up a code — PRE-GEN">
 <meta property="og:description" content="Resolve any PRE-GEN subject or licence code. Public, read-only, no account.">
 <meta property="og:image" content="https://www.pregen.org/assets/og-image.png">
 <meta property="og:type" content="website">
@@ -27,16 +27,16 @@
 </div>
 </div></header>
 <main><div class="wrap">
-<h1>Look up a PG code</h1>
+<h1>Look up a code</h1>
 <p class="lede">Every person, work and licence in a registry has a permanent code. Enter one to see what the registry says about it. No account needed.</p>
 <form class="search" id="pgForm" autocomplete="off">
-<input id="pgInput" type="text" name="code" placeholder="PG-PRAM-000037J" aria-label="PG code" spellcheck="false" autocapitalize="characters" maxlength="32">
+<input id="pgInput" type="text" name="code" placeholder="TOG-PRAM-000037J" aria-label="Code" spellcheck="false" autocapitalize="characters" maxlength="256">
 <button type="submit">Look up</button>
 </form>
-<p class="meta">Character <span class="mono">PG-PRAM-000037J</span> · brand, before v5 <span class="mono">PG-0000016</span> · format of another registry’s code <span class="mono">PG-NWRD-000042=</span> (example, not listed)</p>
+<p class="meta">Character <span class="mono">TOG-PRAM-000037J</span> · brand, before v5 <span class="mono">TOG-0000016</span> · format of a new code at another registry <span class="mono">TOG-NWRD-900000042R</span> (example, not listed) · old <span class="mono">PG-</span> codes are still accepted and become <span class="mono">TOG-</span></p>
 <div id="pgResult" class="pg-result" aria-live="polite"></div>
-<p class="meta">Looking up a code permits nothing. An AI service needs a signed yes from the registry before it generates (<a href="/docs/sdk">how to ask</a>). Format: <a href="/docs/pg-code">PG codes</a>.</p>
-<script src="/lookup.js"></script>
+<p class="meta">Looking up a code permits nothing. An AI service needs a signed yes from the registry before it generates (<a href="/docs/sdk">how to ask</a>). Format: <a href="/spec/TOG-CODE.md">ToG codes</a>.</p>
+<script type="module" src="/lookup.js"></script>
 
 </div></main>
 <footer class="foot"><div class="wrap">

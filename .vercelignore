@@ -1,2 +1,7 @@
-packages/
+packages/*
+!packages/verify-js/
+packages/verify-js/*
+!packages/verify-js/index.js
+!packages/verify-js/package.json
 .github/
+test/*.test.mjs

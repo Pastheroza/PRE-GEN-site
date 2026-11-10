@@ -28,8 +28,8 @@ test steward key, and the PRE-GEN Test Registry (prefix `TEST`). It makes a thro
 and listens on port 8443. Your provider id is bound to that key, `https://<32 hex of the key id>.localhost:8443`, so it
 never collides with anyone else's test (`sandboxProviderUrl` in the library).
 
-Open `http://localhost:8443`, create an account, and generate on any test code, for example `PG-TEST-000001N` (allow) or
-`PG-TEST-000002Z` (refused). Connecting a licence needs a registry whose document lists `bind`.
+Open `http://localhost:8443`, create an account, and generate on any test code, for example `TOG-TEST-000001N` (allow) or
+`TOG-TEST-000002Z` (refused). Connecting a licence needs a registry whose document lists `bind`.
 
 For now, connecting a licence works only against a local reference registry: the public sandbox.pregen.org does not
 serve `bind` yet, and will once it runs the new version of `packages/registry`. Until then, on the public sandbox the

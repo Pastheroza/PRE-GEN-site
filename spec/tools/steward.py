@@ -155,7 +155,7 @@ def _sign_and_write(key, path: Path, d: dict, previous, old_pub: str, handover=F
 
 def _print_listing(d: dict) -> None:
     for r in d["registries"]:
-        print(f"  {r.get('name')}: {('PG-' + r['prefix'] + '-…') if r['prefix'] else 'bare PG-… codes'}"
+        print(f"  {r.get('name')}: {('TOG-' + r['prefix'] + '-…') if r['prefix'] else 'bare TOG-… codes'}"
               f" — {len(r['key_fingerprints'])} key(s){'  REVOKED ' + r['revoked']['at'] if r.get('revoked') else ''}")
     for k in d.get("revoked_keys") or []:
         print(f"  revoked key {k['key_id']} at {k['at']}")

@@ -43,7 +43,7 @@ binds only systems that choose to ask.
 | Generates images, video, voice or text that may show a real person or a protected work | **Part A** (provider) and **Part B** (messages) |
 | A platform or distributor that wants to check a file's permission | **Part C** |
 | Wants to run a registry for the people or works it represents | **Part D** |
-| Only wants to look up a PG code | `https://www.pregen.org/lookup` |
+| Only wants to look up a code | `https://www.pregen.org/lookup` |
 
 ---
 
@@ -101,12 +101,13 @@ hours ago are refused.
 
 ### A4. Find the registry for a subject
 
-A PG code looks like `PG-<prefix>-<number><check>`, e.g. `PG-TEST-000001N`. The four-letter
-prefix names the registry; it is the only part of a code software may read. Codes without
-a prefix (`PG-000042*`) were issued before v5 by the first registry.
+A person's code looks like `TOG-<prefix>-<number><check>`, e.g. `TOG-TEST-000001N`. The prefix
+names the registry; it is the only part of a code software may read. Codes without a prefix
+(`TOG-000042*`) were issued before v5 by the first registry. Old `PG-` codes are still accepted
+and become `TOG-` (`PG-TEST-000001N` is `TOG-TEST-000001N`); never write them.
 
 ```js
-const entry = directory.registryFor("PG-TEST-000001N");   // null = no listed registry holds it
+const entry = directory.registryFor("TOG-TEST-000001N");   // null = no listed registry holds it
 const api = entry.api;
 ```
 
@@ -119,7 +120,7 @@ Content-Type: application/json
 
 {"type": "pg.request.v1", "signatures": ["<ed25519 hex, by your current key>"],
  "body": {"signers": [{"role": "provider", "key_id": "pg-ed25519:…"}],
-          "subject_ref": "PG-TEST-000001N", "provider_id": "https://your.domain",
+          "subject_ref": "TOG-TEST-000001N", "provider_id": "https://your.domain",
           "profile": "likeness/1", "use": {"purpose": "commercial"},
           "job_id": "job-8841", "job_hash": "<sha-256 hex of what you fixed about the job>"}}
 ```
@@ -249,7 +250,7 @@ categories need the person's own signed grant).
   expected. The shared test directory is online: `https://www.pregen.org/test/registries.json`,
   signed by the test steward key `78c95e45a79c5e271fdec762b92c2ec1b27d6d08e512b7a94779de2429868ef0`. It lists PRE-GEN's own
   sandbox, the PRE-GEN Test Registry (`https://sandbox.pregen.org`, prefix `TEST`, codes
-  `PG-TEST-000001N` to `PG-TEST-0000123`): with it, `checkAnswer(…, { directory: testDir, testing: true })`
+  `TOG-TEST-000001N` to `TOG-TEST-0000123`): with it, `checkAnswer(…, { directory: testDir, testing: true })`
   accepts sandbox answers end to end. Post your party document to
   `https://sandbox.pregen.org/v2/sandbox/party` first (an `https://<domain>` id: lower case, no path, query or trailing slash; a sandbox also
   takes a port, and on your machine `https://<32 hex of your key id>.localhost:<port>`, which
@@ -260,27 +261,27 @@ categories need the person's own signed grant).
 
   | Code | Tests | Ask | Answer |
   |---|---|---|---|
-  | `PG-TEST-000001N` | the whole flow | ask, check, generate, report, proof | `allow` |
-  | `PG-TEST-000002Z` | no licence | ask | `deny` `PG_NO_LICENSE` |
-  | `PG-TEST-0000034` | an opt-out | ask | `deny` `PG_SUBJECT_OPTED_OUT` |
-  | `PG-TEST-000004E` | a used-up grant | ask | `deny` `PG_USAGE_LIMIT` |
-  | `PG-TEST-000005R` | a fixed protection | ask | `deny` `PG_PROHIBITED_USE` |
-  | `PG-TEST-000006$` | held for a person | ask | `review` `PG_REVIEW_REQUIRED` |
-  | `PG-TEST-0000077` | nothing blocks, nothing grants | ask | `not_blocked` `PG_NO_LICENSE` |
-  | `PG-TEST-000008H` | a code no one holds | ask | `deny` `PG_UNKNOWN_SUBJECT` |
-  | `PG-TEST-000009V` | payment: buy first | ask before buying | `deny` `PG_NO_LICENSE` |
-  | `PG-TEST-000009V` | one use per purchase | buy one use, then ask; ask again | `allow`; then `deny` `PG_USAGE_LIMIT` |
-  | `PG-TEST-000009V` | a race | buy one use, then two jobs at once | one `allow`, one `deny` `PG_USAGE_LIMIT` |
-  | `PG-TEST-000009V` | a give-back | after an allow, report `not_generated`, then ask | `allow` again |
-  | `PG-TEST-000010M` | the person's terms | no `terms`, or `terms` = the current id | `deny` `PG_NO_LICENSE`: terms grant nothing |
-  | `PG-TEST-000010M` | a stale id | `terms` = any other id, or any id on the credential path | `deny` `PG_TERMS_NOT_ACCEPTED` |
-  | `PG-TEST-000010M` | an excluded use | `purpose: "commercial"`, or `categories: ["advertising"]` | `deny` `PG_TERMS_EXCLUDED` |
-  | `PG-TEST-000011Y` | a minor: the floor | no `categories`, or `["fashion"]` | `allow` |
-  | `PG-TEST-000011Y` | a minor: the floor | `["violence"]`, `["sexual"]`, `["adult"]`, or an unknown word such as `["nsfw-art"]` | `deny` `PG_PROHIBITED_USE` |
-  | `PG-TEST-0000123` | a creator's licence, through `bind` | connect (`bind`), then ask with the binding's `licensee_id` | `allow`; `ext.bind` names the binding |
-  | `PG-TEST-0000123` | outside the licence | the same, `purpose: "commercial"` | `deny` `PG_SCOPE_VIOLATION` |
-  | `PG-TEST-0000123` | not connected | no `licensee_id` | `deny` `PG_NO_LICENSE` |
-  | `PG-TEST-0000123` | a `licensee_id` not bound to you | another app's, a replaced or revoked one, or a made-up one | HTTP 403 `PG_NOT_BOUND`: show "connect your licence", not a refusal |
+  | `TOG-TEST-000001N` | the whole flow | ask, check, generate, report, proof | `allow` |
+  | `TOG-TEST-000002Z` | no licence | ask | `deny` `PG_NO_LICENSE` |
+  | `TOG-TEST-0000034` | an opt-out | ask | `deny` `PG_SUBJECT_OPTED_OUT` |
+  | `TOG-TEST-000004E` | a used-up grant | ask | `deny` `PG_USAGE_LIMIT` |
+  | `TOG-TEST-000005R` | a fixed protection | ask | `deny` `PG_PROHIBITED_USE` |
+  | `TOG-TEST-000006$` | held for a person | ask | `review` `PG_REVIEW_REQUIRED` |
+  | `TOG-TEST-0000077` | nothing blocks, nothing grants | ask | `not_blocked` `PG_NO_LICENSE` |
+  | `TOG-TEST-000008H` | a code no one holds | ask | `deny` `PG_UNKNOWN_SUBJECT` |
+  | `TOG-TEST-000009V` | payment: buy first | ask before buying | `deny` `PG_NO_LICENSE` |
+  | `TOG-TEST-000009V` | one use per purchase | buy one use, then ask; ask again | `allow`; then `deny` `PG_USAGE_LIMIT` |
+  | `TOG-TEST-000009V` | a race | buy one use, then two jobs at once | one `allow`, one `deny` `PG_USAGE_LIMIT` |
+  | `TOG-TEST-000009V` | a give-back | after an allow, report `not_generated`, then ask | `allow` again |
+  | `TOG-TEST-000010M` | the person's terms | no `terms`, or `terms` = the current id | `deny` `PG_NO_LICENSE`: terms grant nothing |
+  | `TOG-TEST-000010M` | a stale id | `terms` = any other id, or any id on the credential path | `deny` `PG_TERMS_NOT_ACCEPTED` |
+  | `TOG-TEST-000010M` | an excluded use | `purpose: "commercial"`, or `categories: ["advertising"]` | `deny` `PG_TERMS_EXCLUDED` |
+  | `TOG-TEST-000011Y` | a minor: the floor | no `categories`, or `["fashion"]` | `allow` |
+  | `TOG-TEST-000011Y` | a minor: the floor | `["violence"]`, `["sexual"]`, `["adult"]`, or an unknown word such as `["nsfw-art"]` | `deny` `PG_PROHIBITED_USE` |
+  | `TOG-TEST-0000123` | a creator's licence, through `bind` | connect (`bind`), then ask with the binding's `licensee_id` | `allow`; `ext.bind` names the binding |
+  | `TOG-TEST-0000123` | outside the licence | the same, `purpose: "commercial"` | `deny` `PG_SCOPE_VIOLATION` |
+  | `TOG-TEST-0000123` | not connected | no `licensee_id` | `deny` `PG_NO_LICENSE` |
+  | `TOG-TEST-0000123` | a `licensee_id` not bound to you | another app's, a replaced or revoked one, or a made-up one | HTTP 403 `PG_NOT_BOUND`: show "connect your licence", not a refusal |
 
   To buy, `POST https://sandbox.pregen.org/v2/sandbox/purchases` with the same signed
   `pg.request.v1` you would ask with (any `job_id`): HTTP 200 `{"grant": …}`, one use, yours

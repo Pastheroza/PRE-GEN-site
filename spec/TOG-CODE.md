@@ -96,7 +96,7 @@ from the PG table for a PG body. On every Crockford body the two give the same c
 ### 4.2 Limits
 
 A new body is at most 35 characters. At 36 the last body character swapped with the check always passes
-(an erratum to PG-CODE §4.2, §17). The longest event body is 30, the longest person body 17.
+(an erratum to PG-CODE §4.2, §18). The longest event body is 30, the longest person body 17.
 
 ### 4.3 What the check covers
 

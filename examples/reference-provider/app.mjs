@@ -305,7 +305,7 @@ async function home(res, s) {
 <h2>Your licence</h2>${await licencePanel(s)}
 <form method=post action=/connect>${csrfField(s)}<button>Connect your licence at ${h(cfg.authority)}</button></form>
 <h2>Generate</h2><form method=post action=/jobs>${csrfField(s)}
-<p><input name=code required placeholder="PG code, e.g. PG-TEST-0000123"></p>
+<p><input name=code required placeholder="code, e.g. TOG-TEST-0000123"></p>
 <p><select name=product>${Object.entries(PRODUCTS).map(([k, p]) => `<option value=${k}>${h(p.label)}</option>`).join("")}</select></p>
 <p><textarea name=prompt rows=3 cols=60 maxlength=2000 placeholder=Prompt></textarea></p><button>Generate</button></form>
 <h2>Jobs</h2>${jobs.map((j) => `<p><a href="/jobs/${h(j.id)}">${h(j.id)}</a> ${h(JSON.parse(j.input).asks[0].subject_ref)}
@@ -372,7 +372,7 @@ async function handle(req, res) {
     }
     if (path === "/jobs") {
       let id;
-      try { id = await createJob(s, pg.normalizeCode(String(f.code ?? "")), f.product, String(f.prompt ?? "").slice(0, 2000)); }
+      try { id = await createJob(s, pg.normalizeTyped(String(f.code ?? "")), f.product, String(f.prompt ?? "").slice(0, 2000)); }
       catch (e) { return page(res, "Generate", `<p class=msg>${h(e.message)}</p><p><a href=/>Back</a></p>`, 400); }
       return redirect(res, `/jobs/${id}`);
     }
