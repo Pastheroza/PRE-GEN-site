@@ -28,7 +28,7 @@
 </div></header>
 <main><div class="wrap">
 <div class="doc"><aside><ul><li><a href="/docs">How it works</a></li><li><a href="/docs/two-layers">Two layers</a></li><li><a href="/docs/tog-code" aria-current="page">ToG codes</a></li><li><a href="/docs/versions">Versions</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Add it to your service</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Build it</a></li></ul></aside><article><h1>ToG codes</h1>
-    <p class="meta">Status: draft, libraries 0.14.0 · The full rule: <a href="/spec/TOG-CODE.md">TOG-CODE.md</a> · Test vectors: <a href="/spec/test-vectors/tog-code.json">tog-code.json</a> · License: Apache-2.0 · The text is the rule; a vector that disagrees with it gets fixed.</p>
+    <p class="meta">Status: draft, for libraries 0.14.0 (not released yet) · The full rule: <a href="/spec/TOG-CODE.md">TOG-CODE.md</a> · Test vectors: <a href="/spec/test-vectors/tog-code.json">tog-code.json</a> · License: Apache-2.0 · The text is the rule; a vector that disagrees with it gets fixed.</p>
 
     <p>
       A ToG code is the number of a person, a licence or an act in a registry. Every code is written
@@ -152,7 +152,7 @@ check = "0123456789ABCDEFGHJKMNPQRSTVWXYZ*~$=!"[sum mod 37]</code></pre>
     <p>Which registry may sign for a prefix is decided by the <a href="/registries">directory</a>, signed by the steward key. A prefix printed in a code proves nothing by itself.</p>
 
     <h2>9 · Testing an implementation</h2>
-    <p>An implementation is correct when it reproduces every case in <a href="/spec/test-vectors/tog-code.json"><span class="mono">tog-code.json</span></a>: check characters, the reading of each string, must-reject strings, the TOG spelling of old codes, typed input, codes computed from records, and copies in a file's metadata. The file is generated from the reference model, never edited by hand. <a href="/docs/sdk"><span class="mono">@pregen/verify</span> and <span class="mono">pregen</span></a> 0.14.0 implement it.</p>
+    <p>An implementation is correct when it reproduces every case in <a href="/spec/test-vectors/tog-code.json"><span class="mono">tog-code.json</span></a>: check characters, the reading of each string, must-reject strings, the TOG spelling of old codes, typed input, codes computed from records, and copies in a file's metadata. The file is generated from the reference model, never edited by hand. <a href="/docs/sdk"><span class="mono">@pregen/verify</span> and <span class="mono">pregen</span></a> implement it from version 0.14.0, which is not released yet; 0.13 reads only <span class="mono">PG-</span> codes.</p>
     <nav class="pager" aria-label="Pages"><a href="/docs">← How it works</a><a href="/docs/versions">Versions →</a></nav></article></div>
 </div></main>
 <footer class="foot"><div class="wrap">
