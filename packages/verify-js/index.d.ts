@@ -168,8 +168,9 @@ export function verifyAnchors(envelope: Record<string, unknown>, prefix: string,
   options: { directory: Directory; fetch?: Fetch; now?: number }): Promise<AnchorEntry[]>;
 /** Not who came first, but who proved it (identity.md). Generate only on status "allow". `answer` null: none to weigh
  * (no valid answer, or its registry's anchor list failed); throws PregenError (no decision) when such a claim is
- * confirmed or refusal-only and no such claim refuses the person. Only a `settled` claim's allow permits (its channel
- * was official SETTLED_AFTER earlier too; missing: not settled); a `refusal_only` claim counts for a refusal of the
+ * confirmed or refusal-only and no such claim refuses the person. A person has one home registry: two confirmed
+ * claims are a duplicate and the stricter answer decides; an allow permits only when every confirmed claim allows on a
+ * `settled` channel (official SETTLED_AFTER earlier too; missing: not settled); a `refusal_only` claim counts for a refusal of the
  * person only. `frozen` (directory.frozen(anchor)) denies first, PG_SUBJECT_UNAVAILABLE. */
 export function decideIdentity(claims: { code: string; confirmed: boolean; answer: Record<string, unknown> | null;
   settled?: boolean; refusal_only?: boolean }[],

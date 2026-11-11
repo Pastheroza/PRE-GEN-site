@@ -102,6 +102,13 @@ Both libraries implement it: `parse_code`, `kind_of`, `describe`, `issuer_of`, `
   pregen.org lookup proxy gives the same message on its own route.
 - **Old clients:** 0.13 refuses every TOG code (fails closed); 0.13.1 refuses an anchor list
   with a TOG line instead of dropping it. 0.14 reads it, and refuses a list with a `PG-` line the same way.
+- **`identity`: one home registry per person** (founder, 2026-11-11). Only the home registers a person; other
+  registries and providers use and pass the code. Two confirmed claims for one anchor are a duplicate, examined under
+  Disputes; until one home remains the stricter answer decides: rule 5 now takes the strongest refusal among the
+  confirmed claims first, and an `allow` permits only when every confirmed claim allows on a settled channel (0.13 let
+  one settled allow permit beside another home's refusal). `decide_identity` / `decideIdentity` follow;
+  `identity_cases.json` changes one case and adds two. Duplicates are never searched for by face or voice
+  (`extensions/identity.md`, `PRE-GEN-SPEC.md` P-10, `PRE-GEN-CORE.md`).
 
 ## pregen 0.13.1, @pregen/verify 0.13.1 (unreleased)
 

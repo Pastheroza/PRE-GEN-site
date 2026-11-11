@@ -1,8 +1,18 @@
-# Extension `identity` — one person, several registries
+# Extension `identity` — one person, one home registry
 
-**Solves:** the same public person can be claimed by several registries — by right (they
-registered twice), or by an impostor. A name never decides; a refusal by the person must hold
-everywhere; **who came first never wins — who proved it does.**
+**Solves:** a person has **one home registry**, the only one that registers them; other
+registries and providers use and pass the person's code (ToG 1.0 §13(c)). Yet the same public
+person can still be claimed by several registries — by mistake (they registered twice), or by
+an impostor. A name never decides; a refusal by the person must hold everywhere; **who came
+first never wins — who proved it does.** Two confirmed homes for one person are a
+**duplicate**: the stricter answer decides until one home remains.
+
+**Duplicates are found without face or voice search.** No registry, client or steward runs a
+1:N face or voice search to find a person's other codes, and nothing here uses a watermark.
+Duplicates are found by one ToG per account at a registry, by anchor lists that name two codes
+for one anchor, by complaints, and by a registry's own records. The only face comparison a
+registry may make is an identity provider's one-to-one check of the person who registers
+against their own document, with nothing kept for comparison.
 
 ## Anchors
 
@@ -125,8 +135,9 @@ For one anchor, over the claims that remain after the steward's false claims are
 0. **A steward freeze decides first.** While the directory freezes the anchor (below), the
    result is `deny`, `PG_SUBJECT_UNAVAILABLE`.
 1. **Confirmed claims silence unconfirmed ones.** Only confirmed claims, and claims that count
-   for rule 2 under "A recent refusal survives", count. Codes confirmed by the same person are
-   one person in several registries.
+   for rule 2 under "A recent refusal survives", count. A person has one home registry
+   (ToG 1.0 §13(c)). Two or more confirmed claims for one anchor are a duplicate, examined
+   under Disputes until one home remains.
 2. **A refusal of the person holds everywhere.** If any counted answer refuses with a floor
    reason (`PG_SUBJECT_OPTED_OUT`, `PG_SUBJECT_UNAVAILABLE`, `PG_PROHIBITED_USE`,
    `PG_IMMUTABLE_DENIAL`, `PG_PERSONAL_SIGNATURE_REQUIRED`), the result is that refusal. "No
@@ -137,10 +148,12 @@ For one anchor, over the claims that remain after the steward's false claims are
    turns an unconfirmed claim into a permission.
 4. A confirmed claim with no valid answer (its registry failed, or its list did) leaves no
    decision: generate nothing for this person.
-5. Otherwise an `allow` from a confirmed claim on a settled channel permits; with none, the
-   strongest refusal among the confirmed claims (`deny`, then `review`), whatever the order of
-   the claims; if they only allowed, and none is settled, `not_blocked`,
-   `PG_IDENTITY_UNCONFIRMED`.
+5. Otherwise the strongest refusal among the confirmed claims decides (`deny`, then
+   `review`), whatever the order of the claims; with none, an `allow` permits only when every
+   confirmed claim allows on a settled channel (the result names the smallest code); else
+   `not_blocked`, `PG_IDENTITY_UNCONFIRMED`. With one home this is that home's answer; with a
+   duplicate it is the stricter answer (ToG 1.0 §2(f)). (0.13 let one settled allow permit
+   beside another home's refusal; 0.14 does not.)
 
 An impostor can neither permit nor freeze a person who never confirmed anything; an edit to
 the person's Wikidata item refuses only while it stands, and permits only after a week.
@@ -150,8 +163,9 @@ The libraries implement the rule as `decideIdentity` / `decide_identity`.
 
 **A complaint is not a refusal of the person.** While a registry examines a complaint about one
 of its codes, the code is `disputed`: that registry answers `deny`, `PG_SUBJECT_DISPUTED`,
-before any grant. It holds at that registry only; the person's other confirmed claims decide
-as before (rule 2).
+before any grant. The person's other confirmed claims decide under rule 5, so while a person
+has two homes, a dispute at either blocks the duplicate; a person with one home is decided by
+that home alone.
 
 **Only the person or the steward freezes a person everywhere.**
 - The person, through a claim they confirmed: an opt-out or a pause (`PG_SUBJECT_OPTED_OUT`,

@@ -1109,15 +1109,16 @@ export function decideIdentity(claims, { allowUnconfirmed = false, frozen = null
   // It may hold the person's refusal: unknown is not unconfirmed.
   if (counted.some((c) => c.answer == null)) fail("no decision: a claim the person confirmed has no answer");
   const group = counted.filter((c) => !c.refusal_only);
-  const allowed = group.find((c) => c.answer.status === "allow" && c.settled);
-  if (allowed) return { status: "allow", reason: null, code: allowed.code };
   const refusals = group.filter((c) => c.answer.status !== "allow");
-  if (!refusals.length) { // nobody confirmed, or only on channels younger than a week
-    return { status: "not_blocked", reason: claims.length ? "PG_IDENTITY_UNCONFIRMED" : "PG_UNKNOWN_SUBJECT", code: null };
+  if (refusals.length) { // one home per person: two confirmed claims are a duplicate, the stricter wins
+    const severity = (c) => ({ deny: 0, review: 1 })[c.answer.status] ?? 2; // the strongest refusal, ties by code
+    const worst = refusals.reduce((w, c) => (severity(c) < severity(w) ? c : w));
+    return { status: worst.answer.status, reason: worst.answer.reason ?? null, code: worst.code };
   }
-  const severity = (c) => ({ deny: 0, review: 1 })[c.answer.status] ?? 2; // the strongest refusal, ties by code
-  const worst = refusals.reduce((w, c) => (severity(c) < severity(w) ? c : w));
-  return { status: worst.answer.status, reason: worst.answer.reason ?? null, code: worst.code };
+  // An allow permits only when every confirmed claim allows on a settled channel.
+  if (group.length && group.every((c) => c.settled)) return { status: "allow", reason: null, code: group[0].code };
+  // nobody confirmed, or an allow on a channel younger than a week
+  return { status: "not_blocked", reason: claims.length ? "PG_IDENTITY_UNCONFIRMED" : "PG_UNKNOWN_SUBJECT", code: null };
 }
 
 // A proof URL or official channel, exactly as written: https, a lower-case ASCII host, no credentials, port, query,

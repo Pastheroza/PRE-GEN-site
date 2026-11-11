@@ -38,7 +38,7 @@ hdr = pregen.pg_access("https://app.example", key, registry_api, "GET", path)  #
 
 Also exported: `check_provider_url`, `signing_input`, `public_key_hex`, `message_id`, `verify_answer`.
 
-## One person in several registries, and proof in a video
+## One person, one home registry, and proof in a video
 
 - `verify_anchors(list, prefix, directory)` — a registry's signed anchor list (`extensions/identity.md`). Another
   registry's codes are dropped, and so is an entry the steward found false under its own anchor. Kept entries come back
@@ -53,8 +53,9 @@ Also exported: `check_provider_url`, `signing_input`, `public_key_hex`, `message
   unconfirmed, unless you saw it confirmed at the last check (`seen_confirmed=True`): then it raises, no decision.
 - `decide_identity(claims, frozen=directory.frozen(anchor))` — "who proved it, not who came first"; generate only on
   `allow`. A steward freeze denies first (`PG_SUBJECT_UNAVAILABLE`). Each claim is `{"code", "confirmed", "settled",
-  "refusal_only", "answer"}`: only a `settled` claim's allow permits (its channel stood on Wikidata 7 days ago too;
-  missing means not settled), and a `refusal_only` claim counts only for a refusal of the person. An `answer` of `None`
+  "refusal_only", "answer"}`. A person has one home registry: two confirmed claims are a duplicate, the stricter
+  answer decides, and an allow permits only when every confirmed claim allows on a `settled` channel (it stood on
+  Wikidata 7 days ago too; missing means not settled), and a `refusal_only` claim counts only for a refusal of the person. An `answer` of `None`
   (no valid answer, or its registry's anchor list failed: pass that list's last verified entries) raises, no
   decision, only when that claim is confirmed or refusal-only and no such claim refuses the person. For one claim:
 

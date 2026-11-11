@@ -202,7 +202,7 @@ extension may turn a refusal the core or a profile requires into a permission.
 | [`observe`](extensions/observe.md) | Trial mode: generate and record, without blocking |
 | [`sandbox`](extensions/sandbox.md) | Standard test subjects and a test directory |
 | [`lookup`](extensions/lookup.md) | Public lookup of a code, with the subject's current terms |
-| [`identity`](extensions/identity.md) | One person in several registries: anchors, confirmation on the person's own channel, "who proved it, not who came first", disputes |
+| [`identity`](extensions/identity.md) | One person, one home registry: anchors, confirmation on the person's own channel, "who proved it, not who came first", the stricter answer for a duplicate, disputes |
 | [`proof`](extensions/proof.md) | The signed record travels with the output (C2PA manifest and the file's SHA-256); platforms check it |
 | [`catalog`](extensions/catalog.md) | Providers sell what registries offer: catalog, resale right, billing by issued allows |
 | [`provider-identity`](extensions/provider-identity.md) | A provider known by its domain and key: party document at `/.well-known/pregen-party.json`, signed requests, no account at any registry |

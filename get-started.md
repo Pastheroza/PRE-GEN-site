@@ -375,7 +375,8 @@ rights.
 4. **Listed** means the steward signed a new directory with your prefix and keys. A listing
    can be revoked; a prefix is never reassigned.
 
-**One person in several registries** (extension `identity`): a claim the person confirmed
+**One person, one home registry** (extension `identity`): two confirmed homes are a duplicate and the
+stricter answer decides; a claim the person confirmed
 on their own official channel silences unconfirmed claims; a refusal of the person holds in
 all their registries; an unconfirmed claim neither permits nor refuses (with no confirmed claim:
 `not_blocked`, `PG_IDENTITY_UNCONFIRMED`). A matching name is never evidence.

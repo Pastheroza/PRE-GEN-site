@@ -122,12 +122,13 @@ def test_i4_one_person_in_two_registries_a_refusal_in_either_holds_everywhere():
 
 
 @pytest.mark.parametrize("flags,verdict,here", [
-    ({"status": "disputed"}, ("allow", None, "BBBB"), "PG_SUBJECT_DISPUTED"),   # a complaint holds where it was made
+    # one home per person: two confirmed homes are a duplicate, the stricter answer (the dispute) decides
+    ({"status": "disputed"}, ("deny", "PG_SUBJECT_DISPUTED", "AAAA"), "PG_SUBJECT_DISPUTED"),
     ({"status": "disputed", "opted_out": 1}, ("deny", "PG_SUBJECT_OPTED_OUT", "AAAA"), "PG_SUBJECT_OPTED_OUT"),
     ({"status": "paused"}, ("deny", "PG_SUBJECT_UNAVAILABLE", "AAAA"), "PG_SUBJECT_UNAVAILABLE")])
 def test_a_dispute_is_not_a_refusal_of_the_person(flags, verdict, here):
-    """Stress round C: a disputed code answers PG_SUBJECT_DISPUTED, outside the floor, so one complaint at one
-    registry does not freeze the person at every other."""
+    """A disputed code answers PG_SUBJECT_DISPUTED, outside the floor: it is not the person's refusal. A person has
+    one home, so a second confirmed home is a duplicate and the stricter answer decides until one remains."""
     w = World()
     codes = {"AAAA": w.person("AAAA", confirmed=True, **flags), "BBBB": w.person("BBBB", confirmed=True)}
     d = decide_identity(w.claims(page(*codes.items())))

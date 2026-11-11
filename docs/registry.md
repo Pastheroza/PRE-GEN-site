@@ -342,12 +342,14 @@ pregen-registry subject anchor --dir ./data --code 'TOG-ABCD-418207365E' \
 TOG-ABCD-418207365E anchored to wikidata:Q42; GET /v2/anchors lists it
 ```
 
-When several registries claim the same person, a client counts only a record whose anchor
-the person confirmed on their own channel (the libraries' `decide_identity`). A matching
+A person has one home registry: register only people whose home you are. When several
+registries claim the same person, a client counts only a record whose anchor the person
+confirmed on their own channel (the libraries' `decide_identity`), and two confirmed homes
+are a duplicate in which the stricter answer decides. Never look for duplicates by face or voice. A matching
 name is never evidence. A complaint about one of your codes follows the procedure in
 `spec/extensions/identity.md` ("Complaints"): decide within 7 days. While you examine it, the
-code is `disputed` and refused with `PG_SUBJECT_DISPUTED` at your registry only; it does not
-refuse the person anywhere else.
+code is `disputed` and refused with `PG_SUBJECT_DISPUTED` at your registry; it is not a refusal
+of the person, and refuses them elsewhere only while another registry holds a duplicate.
 
 **Grant a use** the person agreed to. It prints the grant id (64 hex):
 

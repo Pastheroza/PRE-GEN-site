@@ -254,11 +254,11 @@ X-Provider-ID: https://frame.example
 
 The registry answers HTTP 200 `{"answer": {"type": "pg.answer.v1", "body": {…}, "signatures": […]}}`.
 
-**A public person** (extension `identity`, `https://www.pregen.org/spec/extensions/identity.md`) may be claimed by
-several registries. A refusal of the person (`PG_SUBJECT_OPTED_OUT`, `PG_SUBJECT_UNAVAILABLE`,
+**A public person** (extension `identity`, `https://www.pregen.org/spec/extensions/identity.md`) has one home
+registry, yet may be claimed by several. Two confirmed homes are a duplicate: the stricter answer decides. A refusal of the person (`PG_SUBJECT_OPTED_OUT`, `PG_SUBJECT_UNAVAILABLE`,
 `PG_PROHIBITED_USE`, `PG_IMMUTABLE_DENIAL`, `PG_PERSONAL_SIGNATURE_REQUIRED`) by any registry
 whose claim the person confirmed holds everywhere; "no licence here" does not, and neither does a
-dispute (`PG_SUBJECT_DISPUTED`, which holds only at the registry examining it). So:
+dispute (`PG_SUBJECT_DISPUTED`; it refuses the person elsewhere only through a duplicate). So:
 
 1. At least daily, fetch every listed registry's anchor list and check it:
 

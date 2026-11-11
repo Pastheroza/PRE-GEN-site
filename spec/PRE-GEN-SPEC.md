@@ -784,8 +784,9 @@ and human review (`PG_HELD_FOR_REVIEW`, disposition `review`).
   present the output as licensed while it knows of an unresolved refusal.
   The registries resolve the conflict between themselves (R-15). For a public
   person whose registries publish anchors, the `identity` extension's rule
-  decides instead: only claims the person confirmed count, and a dispute holds
-  only at the registry that examines it (`extensions/identity.md`).
+  decides instead: only claims the person confirmed count; a person has one
+  home registry, and two confirmed homes are a duplicate in which the stricter
+  answer decides until one home remains (`extensions/identity.md`).
 - **P-9** When one output involves several subjects — a person, a voice, a
   brand, a work — the provider MUST ask for each subject, with one
   `generation_id` for all of them, MUST NOT generate on the registries'
@@ -1092,7 +1093,9 @@ before hitting one in production.
   between themselves (R-15), and the steward revokes a registry that
   misstates who holds the rights. `subject_authority` is each registry's own
   statement, not something a provider can check. Nothing tells a provider that two registries hold the same
-  person: there is no shared identifier across registries.
+  person: there is no shared identifier across registries. A person has one home registry (ToG 1.0 §13(c));
+  duplicates are found by anchor lists, complaints and each registry's records, never by a face or voice
+  search (`extensions/identity.md`).
 - **An opt-out waits before it takes effect.** A new opt-out is `pending`
   for the registry's cooling period (reference: `COOLING_PERIOD_DAYS` = 14)
   and has no effect on decisions until `effective_from`

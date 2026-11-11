@@ -1573,7 +1573,7 @@
    }
   },
   {
-   "name": "of two allows, the settled one permits",
+   "name": "of two allows, one unsettled: one home, a duplicate permits nothing until both are settled",
    "claims": [
     {
      "code": "A",
@@ -1593,9 +1593,62 @@
     }
    ],
    "expect": {
+    "status": "not_blocked",
+    "reason": "PG_IDENTITY_UNCONFIRMED",
+    "code": null
+   }
+  },
+  {
+   "name": "a settled allow beside a confirmed licence refusal: the stricter answer",
+   "claims": [
+    {
+     "code": "A",
+     "confirmed": true,
+     "settled": true,
+     "answer": {
+      "status": "allow"
+     }
+    },
+    {
+     "code": "B",
+     "confirmed": true,
+     "settled": true,
+     "answer": {
+      "status": "deny",
+      "reason": "PG_NO_LICENSE"
+     }
+    }
+   ],
+   "expect": {
+    "status": "deny",
+    "reason": "PG_NO_LICENSE",
+    "code": "B"
+   }
+  },
+  {
+   "name": "two settled allows permit, named by the smaller code",
+   "claims": [
+    {
+     "code": "B",
+     "confirmed": true,
+     "settled": true,
+     "answer": {
+      "status": "allow"
+     }
+    },
+    {
+     "code": "A",
+     "confirmed": true,
+     "settled": true,
+     "answer": {
+      "status": "allow"
+     }
+    }
+   ],
+   "expect": {
     "status": "allow",
     "reason": null,
-    "code": "B"
+    "code": "A"
    }
   },
   {

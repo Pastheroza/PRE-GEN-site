@@ -1303,9 +1303,10 @@ def verify_anchors(envelope: dict, prefix: str, directory: Directory, get_json=_
 def decide_identity(claims: list, allow_unconfirmed: bool = False, frozen=None) -> dict:
     """One public person, held by several registries (spec/extensions/identity.md). `claims` lists, for every
     code the anchor lists name (false claims already removed), {"code", "confirmed", "answer", "settled",
-    "refusal_only"}: `confirmed` is whether the person confirmed this code on a current official channel;
-    `settled` whether that channel was also official SETTLED_AFTER (7 days) earlier: only a settled claim's allow
-    permits, so a fresh Wikidata edit can refuse at once and permit only after a week (missing: not settled);
+    "refusal_only"}. A person has one home registry: two confirmed claims are a duplicate, and the stricter
+    answer decides until one home remains. `confirmed` is whether the person confirmed this code on a current official channel;
+    `settled` whether that channel was also official SETTLED_AFTER (7 days) earlier: an allow permits only when
+    every confirmed claim allows on a settled channel, so a fresh Wikidata edit can refuse at once and permit only after a week (missing: not settled);
     `refusal_only` that it still counts, for a refusal of the person only, because its line stands at a channel
     official 7 days earlier and no longer, or you saw it confirmed in the last 7 days and its line is gone (a recent
     refusal survives a channel change); `answer` is the body
@@ -1328,15 +1329,14 @@ def decide_identity(claims: list, allow_unconfirmed: bool = False, frozen=None) 
     if any(c.get("answer") is None for c in counted):  # it may hold the person's refusal: unknown is not unconfirmed
         raise PregenError("no decision: a claim the person confirmed has no answer")
     group = [c for c in counted if not c.get("refusal_only")]
-    allowed = next((c for c in group if c["answer"].get("status") == "allow" and c.get("settled")), None)
-    if allowed:
-        return {"status": "allow", "reason": None, "code": allowed["code"]}
     refusals = [c for c in group if c["answer"].get("status") != "allow"]
-    if not refusals:                     # nobody confirmed, or only on channels younger than a week
-        return {"status": "not_blocked", "reason": "PG_IDENTITY_UNCONFIRMED" if claims else "PG_UNKNOWN_SUBJECT",
-                "code": None}
-    worst = min(refusals, key=lambda c: _SEVERITY.get(c["answer"].get("status"), len(_SEVERITY)))
-    return {"status": worst["answer"].get("status"), "reason": worst["answer"].get("reason"), "code": worst["code"]}
+    if refusals:                         # one home per person: two confirmed claims are a duplicate, the stricter wins
+        worst = min(refusals, key=lambda c: _SEVERITY.get(c["answer"].get("status"), len(_SEVERITY)))
+        return {"status": worst["answer"].get("status"), "reason": worst["answer"].get("reason"), "code": worst["code"]}
+    if group and all(c.get("settled") for c in group):  # every confirmed claim allows on a settled channel
+        return {"status": "allow", "reason": None, "code": group[0]["code"]}
+    return {"status": "not_blocked", "reason": "PG_IDENTITY_UNCONFIRMED" if claims else "PG_UNKNOWN_SUBJECT",
+            "code": None}                # nobody confirmed, or an allow on a channel younger than a week
 
 
 _SEVERITY = {"deny": 0, "review": 1}     # no allow: the strongest refusal, ties by code, never by claim order
