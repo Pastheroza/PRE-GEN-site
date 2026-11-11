@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { validate, rulesFromAnswers, card, cardCompany, companyRules, encodeAnswers, decodeFragment, companyFiles,
-  offeredRegistries, defaultNever, NEVER, FOR } from "../tog.js";
+  companyDomain, offeredRegistries, defaultNever, NEVER, FOR } from "../tog.js";
 
 const V = JSON.parse(readFileSync(new URL("../../../spec/test-vectors/tog-generator.json", import.meta.url)));
 
@@ -64,6 +64,15 @@ test("company: card and statement body", () => {
   }
   assert.throws(() => companyFiles("https://northwind.example", "N", { decision: "no" }));
   assert.match(companyFiles("a.example", "<b>&", { decision: "no" }).page_html, /&#60;b&#62;&#38;/);
+});
+
+test("company domain: what the page accepts, companyFiles() takes", () => {
+  for (const [typed, want] of [["northwind.example", "northwind.example"], ["https://Northwind.Example/about", "northwind.example"],
+    ["пример.рф", "xn--e1afmkfd.xn--p1ai"], ["xn--e1afmkfd.xn--p1ai", "xn--e1afmkfd.xn--p1ai"],
+    ["shop.123", null], ["a-.com", null], ["localhost", null], ["a b.com", null], ["", null]]) {
+    assert.equal(companyDomain(typed), want, typed);
+    if (want) assert.equal(companyFiles(want, "N", { decision: "no" }).handle, `tog:${want}`, typed);
+  }
 });
 
 test("chooser: offered registries", () => {

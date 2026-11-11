@@ -231,7 +231,14 @@ export function offeredRegistries(directory, { local = false } = {}) {
 }
 
 // ---- the company's site files (tog-licence §2.1, unsigned draft) --------------------------------------------------
-const DOMAIN = /^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
+// The top label is letters or punycode (xn--p1ai is .рф); type the Unicode name and companyDomain() converts it.
+const DOMAIN = /^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+([a-z]{2,63}|xn--[a-z0-9-]{1,59})$/;
+/** What a person types (a URL, a Unicode name, capitals) -> the domain companyFiles() takes, or null. */
+export function companyDomain(typed) {
+  let host;
+  try { host = new URL(/^https?:\/\//i.test(typed) ? typed : `https://${typed}`).hostname; } catch { return null; }
+  return DOMAIN.test(host) ? host : null;
+}
 export const LICENCE_B = "ToG-B-1.0";
 const esc = (s) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 export const strong = (line) => esc(line).replace(/\*\*(.+?)\*\*/, "<strong>$1</strong>");

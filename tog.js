@@ -1,8 +1,8 @@
 // /tog: the ToG generator (UNRELEASED draft; PRE-GEN-Drafts/tog-funnel/PLAN.md). One question per screen; the
-// letter key picks an answer, Enter answers. Nothing leaves the browser until the person picks a registry: then
-// only the closed answers travel, in the URL fragment (#tog=v1.…), which browsers never send to a server.
+// letter key picks an answer, Enter answers or confirms the one already chosen. Nothing leaves the browser until the
+// person picks a registry: then only the closed answers travel, in the URL fragment (#tog=v1.…), which browsers never send to a server.
 // The year of birth stays in this page's memory: never in a URL, never in storage.
-import { rulesFromAnswers, card, companyRules, cardCompany, encodeAnswers, companyFiles, offeredRegistries,
+import { rulesFromAnswers, card, companyRules, cardCompany, encodeAnswers, companyFiles, companyDomain, offeredRegistries,
   defaultNever, loadDirectory, NEVER } from "/packages/verify-js/tog.js";
 
 const LETTERS = "ABCDEFGHIJ";
@@ -211,9 +211,14 @@ const SCREENS = {
       el("p", { class: "actions" }, el("button", { type: "button", class: "btn primary", on: () => { reset("me"); render(); } }, "Start as a person"))] };
   },
   domain() {
-    const done = () => { S.domain = S.domain.toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, ""); if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(S.domain)) go("name"); };
+    const err = el("p", { class: "tf-err", role: "alert" });
+    const done = () => {
+      const d = companyDomain(S.domain);
+      if (d) { S.domain = d; return go("name"); }
+      if (S.domain) err.textContent = "This domain cannot be used. Type the name of your website, like northwind.example.";
+    };
     return { title: "Your company's website", hint: "Its domain, like northwind.example. **AI apps will look for your answer there.**",
-      body: [field(S.domain, (v) => (S.domain = v), { inputmode: "url", placeholder: "northwind.example", "aria-label": "Domain" }, done), ok("OK", done)], ok: done };
+      body: [field(S.domain, (v) => (S.domain = v), { inputmode: "url", placeholder: "northwind.example", "aria-label": "Domain" }, done), err, ok("OK", done)], ok: done };
   },
   name() {
     const done = () => { if (S.name) go("decision"); };
@@ -274,7 +279,9 @@ document.addEventListener("keydown", (e) => {
   if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
   if (e.key === "Enter") {
     if (t && t.closest && t.closest("button, a")) return;   // Enter on a focused control presses it
-    if (current.ok) { e.preventDefault(); current.ok(); }
+    // A screen with OK/Next runs it; a one-answer screen confirms the answer already chosen (after Back, say).
+    const chosen = current.ok || current.options && $("tf-stage").querySelector(".tf-choice[data-on]");
+    if (chosen) { e.preventDefault(); current.ok ? current.ok() : chosen.click(); }
     return;
   }
   // The physical key where there is one (a Russian layout types ф on A); a soft keyboard may send no code.
