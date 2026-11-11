@@ -394,6 +394,7 @@ v3 keeps every member and acceptance rule of v2 (PG-CODE §9.1) and adds:
 | `provider_domains` | provider domains of its group, each `{domain, from, until}`. An undeclared one is ground for revocation |
 | `void_from` | set on revocation: the time from which its acts fail. It equals `revoked.at`, or an earlier time after a compromise |
 | `closed` | the date a registry stopped; its acts stand; ask the home |
+| `tog_start` | **UNRELEASED draft** (`drafts/tog-funnel.md`). The registry's ToG generator entry URL: `https:`, the same origin as the entry's `website`, no credentials, query or fragment. Also an optional v2 entry member, which v2 readers ignore. Listing it is a steward signing act |
 | top-level `resolver` | the steward's neutral resolver for card and recovery QRs (§13) |
 | top-level `min_library` | the oldest library version that understands `TOG-` (`0.14.0`) |
 

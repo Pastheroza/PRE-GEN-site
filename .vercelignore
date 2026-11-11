@@ -3,3 +3,5 @@ packages/registry/
 packages/verify-js/test/
 .github/
 test/*.test.mjs
+test/tog-local/
+test/tog-local.mjs

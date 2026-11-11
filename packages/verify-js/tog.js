@@ -1,0 +1,272 @@
+// ToG generator, profile likeness/2 (UNRELEASED, PRIVATE DRAFT 2026-11-10): the rules, the English card, the
+// company card, the `tog=v1` fragment and the registry chooser of PRE-GEN-Drafts/tog-funnel/PLAN.md §2-§3.
+// A port of spec/tools/tog_generator.py (+ tog_generator_vectors.py); spec/test-vectors/tog-generator.json is the
+// judge (test/tog.test.js). A disagreement is an erratum in the port, never a local fix of the vectors.
+// ponytail: English card only (pregen.org is English); the Russian card lives in PRAMPTA's port.
+import { canonicalJson } from "./index.js";
+export { loadDirectory } from "./index.js";
+
+export const VOCAB = ["adult", "advertising", "alcohol", "cannabis", "drugs", "endorsement", "fashion", "financial",
+  "gambling", "health", "political", "religion", "sexual", "tobacco", "violence", "weapons"];
+const FLOOR = ["adult", "sexual"];
+const REGISTRY_LOCK = ["political"];
+const PURPOSES = ["commercial", "editorial", "educational", "personal", "research"];
+const MODES = ["approve", "open"];
+const MODALITIES = ["3d", "image", "video", "voice"];
+const MEMBERS = ["excluded_categories", "modalities", "training", "uses"];
+
+export const FOR = { fun: ["personal"], news: ["editorial", "educational", "research"], paid: ["commercial"] };
+export const NEVER = { vice: ["alcohol", "cannabis", "drugs", "tobacco"], weapons: ["weapons"], violence: ["violence"],
+  gambling: ["gambling"], money: ["financial"], health: ["health"], religion: ["religion"], ads: ["advertising"],
+  endorse: ["endorsement"], fashion: ["fashion"] };
+export const AGES = ["18+", "13-17"];
+export const DECISIONS = ["no", "approve_all", "rules"];
+export const FLOORS = ["each", "project", "video"];
+export const MAX_FRAGMENT = 1024;
+
+const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+const sortedSet = (xs) => [...new Set(xs)].sort();
+
+export function no() {
+  return { uses: {}, modalities: [], excluded_categories: [...FLOOR], training: false };
+}
+
+function sortedSetOf(v, vocab) {
+  return Array.isArray(v) && v.every((c) => typeof c === "string" && vocab.includes(c)) && same(v, sortedSet(v));
+}
+
+/** likeness/2 `rules`, or throws. Never repaired, never normalised (rule 6). */
+export function validate(r) {
+  const bad = (why) => { throw new Error(why); };
+  if (!isObj(r) || !same(Object.keys(r).sort(), MEMBERS)) bad("members");
+  const { uses: u, modalities: m, excluded_categories: x, training: t } = r;
+  if (!isObj(u) || Object.entries(u).some(([k, v]) => !PURPOSES.includes(k) || typeof v !== "string" || !MODES.includes(v))) bad("uses");
+  if (!sortedSetOf(m, MODALITIES)) bad("modalities");
+  if (!sortedSetOf(x, VOCAB)) bad("excluded_categories");
+  if (typeof t !== "boolean") bad("training");
+  if (!FLOOR.every((c) => x.includes(c))) bad("floor");
+  const empty = Object.keys(u).length === 0;
+  if (empty && (m.length || !same(x, FLOOR) || t)) bad("no has one spelling");
+  if (!empty && !m.length) bad("uses without modalities");
+  return r;
+}
+
+export function defaultNever(for_) {
+  return Object.keys(NEVER).filter((k) => k !== "fashion" && !(k === "ads" && for_.includes("paid")));
+}
+
+/** Answers {decision, for, never, voice} (age and floor ignored) -> rules. Nothing ticked is the "no". */
+export function rulesFromAnswers(a) {
+  if (a.decision === "no" || !a.for.length) return no();
+  const uses = {};
+  for (const p of a.for.flatMap((k) => FOR[k]).sort()) {
+    uses[p] = a.decision === "approve_all" || p === "commercial" ? "approve" : "open";
+  }
+  return validate({ uses, training: false, modalities: a.voice ? ["image", "video", "voice"] : ["image", "video"],
+    excluded_categories: sortedSet([...FLOOR, ...REGISTRY_LOCK, ...a.never.flatMap((k) => NEVER[k])]) });
+}
+
+// ---- the card (English, first person) -----------------------------------------------------------------------------
+const EN = {
+  personal: "fun and fan content", editorial: "news, commentary and satire", educational: "teaching",
+  research: "research", rnd: "news, commentary and satire, teaching and research", commercial: "ads and paid work",
+  and: "and", image: "pictures", video: "video", "3d": "3D avatars", voice: "my voice",
+  adult: "adult content", sexual: "sexual content", "adult+sexual": "sexual or adult content", political: "politics",
+  advertising: "ads", endorsement: "\"I recommend it\" (endorsements)",
+  "advertising+endorsement": "ads and \"I recommend it\" (endorsements)", alcohol: "alcohol", cannabis: "cannabis",
+  drugs: "drugs", tobacco: "tobacco", "alcohol+cannabis+drugs+tobacco": "alcohol, tobacco, cannabis and drugs",
+  gambling: "gambling", weapons: "weapons", violence: "violence", religion: "religion", health: "medicine and health",
+  financial: "money and investing", fashion: "fashion and beauty",
+  no: "**No AI generation of me.**",
+  no2: "Not for fun, not for news, not for ads, and no training of AI models on me.",
+  all_approve: "AI may make me **only with my approval of each one**.",
+  only: "AI may make me **only for {list}**.",
+  mixed: "AI may make me for {open}, and **for {approve} only with my approval of each one**.",
+  for: "For: {list}.", paid: "Ads and paid work: only under a deal I sign.", as: "As: {list}.",
+  no_voice: "Not my voice.", never: "Never: {list}.", train_no: "Training AI models on me: no.",
+  train_yes: "Training AI models on me: allowed. Each later use must still ask.",
+  except: "Exceptions only by a deal I sign myself, and never for sexual or adult content.",
+  real: "Never presented as a real recording of me.",
+  binds: "These rules bind AI companies that accept them. They never limit my rights under the law.",
+  binds_yes: "This yes is only for AI companies that accept these rules. It gives no one else permission.",
+};
+const CO = "our marks, products and characters";
+const COMPANY = { ...EN,
+  no: "**No AI generation of our marks, products or characters.**",
+  no2: "Not for fun, not for news, not for ads, and no training of AI models on our marks.",
+  all_approve: `AI may make ${CO} **only with our approval of each one**.`,
+  only: `AI may make ${CO} **only for {list}**.`,
+  mixed: `AI may make ${CO} for {open}, and **for {approve} only with our approval of each one**.`,
+  paid: "Ads and paid work: only under a deal we sign.",
+  endorsement: "\"we recommend it\" (endorsements)",
+  "advertising+endorsement": "ads and \"we recommend it\" (endorsements)", "3d": "3D",
+  train_no: "Training AI models on our marks: no.",
+  real: "Never presented as our own advertising or statement.",
+  except: "Exceptions only by a deal we sign, and never for sexual or adult content.",
+  binds: "This covers only what we own. It never licenses any real person shown with it. It does not stop uses the "
+    + "law allows without a licence.",
+  unsigned: "Unsigned draft: until signed with your passkey, AI apps read this as a no." };
+const PURPOSE_ORDER = [["personal"], ["editorial", "educational", "research"], ["commercial"]];
+const MODALITY_ORDER = [["image"], ["video"], ["3d"], ["voice"]];
+const CATEGORY_ORDER = [["adult", "sexual"], ["political"], ["alcohol", "cannabis", "drugs", "tobacco"], ["weapons"],
+  ["violence"], ["gambling"], ["financial"], ["health"], ["religion"], ["advertising", "endorsement"], ["fashion"]];
+
+function items(present, order, t, key = (g) => g.join("+")) {
+  return order.flatMap((g) => (g.length > 1 && g.every((c) => present.has(c)) ? [t[key(g)]]
+    : g.filter((c) => present.has(c)).map((c) => t[c])));
+}
+function join(xs, t, sep = "; ") {
+  return sep === "; " || xs.length === 1 ? xs.join(sep) : xs.slice(0, -1).join(", ") + ` ${t.and} ` + xs.at(-1);
+}
+const fill = (s, v) => s.replace(/\{(\w+)\}/g, (_, k) => v[k]);
+
+// The lines both cards share, up to and including the Never line.
+function head(r, t, voiceLine) {
+  const ps = (mode) => join(items(new Set(Object.keys(r.uses).filter((p) => r.uses[p] === mode)), PURPOSE_ORDER, t,
+    (g) => (g.length === 3 ? "rnd" : g[0])), t);
+  const modes = new Set(Object.values(r.uses));
+  const lines = modes.size === 2 ? [fill(t.mixed, { open: ps("open"), approve: ps("approve") })]
+    : modes.has("approve") ? [t.all_approve, fill(t.for, { list: ps("approve") })]
+    : [fill(t.only, { list: ps("open") })];
+  if ("commercial" in r.uses) lines.push(t.paid);
+  const as = fill(t.as, { list: join(items(new Set(r.modalities), MODALITY_ORDER, t), t, ", ") });
+  lines.push(voiceLine && !r.modalities.includes("voice") ? `${as} ${t.no_voice}` : as);
+  lines.push(fill(t.never, { list: join(items(new Set(r.excluded_categories), CATEGORY_ORDER, t), t) }));
+  return lines;
+}
+
+/** The card's body lines from the rules alone (English, first person); `**` marks the one bold phrase. */
+export function card(r) {
+  validate(r);
+  const t = EN;
+  if (!Object.keys(r.uses).length) return [t.no, t.no2, t.except, t.binds];
+  return [...head(r, t, true), r.training ? t.train_yes : t.train_no, t.real, t.except, t.binds_yes];
+}
+
+/** Company answers {decision, for, never} -> rules: forms are always pictures, video and 3D, never voice. */
+export function companyRules(a) {
+  const r = rulesFromAnswers({ ...a, voice: false });
+  return Object.keys(r.uses).length ? validate({ ...r, modalities: ["3d", "image", "video"] }) : r;
+}
+
+/** The company card (profile marks/1, draft wording of PLAN §3.1). */
+export function cardCompany(r) {
+  validate(r);
+  const t = COMPANY;
+  if (r.training || r.modalities.includes("voice")) throw new Error("marks/1 has no training and no voice");
+  if (!Object.keys(r.uses).length) return [t.no, t.no2, t.except, t.binds, t.unsigned];
+  return [...head(r, t, false), t.train_no, t.real, t.except, t.binds, t.unsigned];
+}
+
+// ---- the fragment `tog=v1` (PLAN §2.1) ----------------------------------------------------------------------------
+function ordered(v, keys) {
+  return Array.isArray(v) && v.every((x) => typeof x === "string" && keys.includes(x)) && same(v, keys.filter((k) => v.includes(k)));
+}
+
+/** The exact member set for the decision and every value in its closed set (the age rule is decodeFragment's). */
+export function answersOk(a) {
+  if (!isObj(a) || typeof a.age !== "string" || !AGES.includes(a.age)
+      || typeof a.decision !== "string" || !DECISIONS.includes(a.decision)) return false;
+  const keys = Object.keys(a).sort();
+  if (a.decision === "no") return same(keys, ["age", "decision"]);
+  const f = a.for;
+  if (!ordered(f, Object.keys(FOR)) || !f.length || !ordered(a.never, Object.keys(NEVER)) || typeof a.voice !== "boolean") return false;
+  const paid = f.includes("paid");
+  if (!same(keys, ["age", "decision", ...(paid ? ["floor"] : []), "for", "never", "voice"])) return false;
+  return !paid || (typeof a.floor === "string" && FLOORS.includes(a.floor));
+}
+
+const b64url = (s) => btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const minorYes = (a) => a.age === "13-17" && a.decision !== "no";
+
+/** Answers -> the fragment without its leading '#'. Never makes a minor's yes. */
+export function encodeAnswers(a) {
+  if (!answersOk(a) || minorYes(a)) throw new Error("these answers cannot be handed off");
+  return "tog=v1." + b64url(canonicalJson(a));   // closed ASCII values only, so canonical JSON is the plan's bytes
+}
+
+/** location.hash without the '#' -> {result: "ok", answers} | {result: "unknown_version" | "malformed" | "minor"}.
+ *  Strict, never repairs (rule 6): the answers must re-encode to exactly the input. */
+export function decodeFragment(f) {
+  const bad = { result: "malformed" };
+  if (typeof f !== "string" || f.length > MAX_FRAGMENT || !f.startsWith("tog=")) return bad;
+  if (!f.startsWith("tog=v1.")) return { result: "unknown_version" };
+  const p = f.slice("tog=v1.".length);
+  if (!/^[A-Za-z0-9_-]*$/.test(p)) return bad;
+  let a;
+  try {
+    const bin = atob(p.replace(/-/g, "+").replace(/_/g, "/"));
+    a = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))));
+  } catch {
+    return bad;
+  }
+  if (!answersOk(a) || "tog=v1." + b64url(canonicalJson(a)) !== f) return bad;
+  if (minorYes(a)) return { result: "minor" };
+  return { result: "ok", answers: a };
+}
+
+// ---- the registry chooser (PLAN §2.2) -----------------------------------------------------------------------------
+const LOCAL_HOSTS = ["localhost", "127.0.0.1"];
+
+function origin(u, local) {
+  // Printable ASCII only: the WHATWG parser would otherwise drop tabs and spaces that urlsplit keeps.
+  if (typeof u !== "string" || !/^[\x21-\x7e]+$/.test(u) || u.includes("\\")) return null;
+  let s;
+  try { s = new URL(u); } catch { return null; }
+  if (!s.hostname || s.username || s.password) return null;
+  if (!(s.protocol === "https:" || (local && s.protocol === "http:" && LOCAL_HOSTS.includes(s.hostname)))) return null;
+  return s.origin;   // the default port is dropped and the host lowercased, as urlsplit's (scheme, host, port)
+}
+
+/** The registries a person may be handed to, in directory order: {name, prefix, start}. `directory` is a Directory
+ *  from loadDirectory() or its list of entries; `local` allows http://localhost (the e2e stand only). */
+export function offeredRegistries(directory, { local = false } = {}) {
+  const list = Array.isArray(directory) ? directory : directory.registries;
+  return list.filter((e) => {
+    const o = origin(e.tog_start, local);
+    return e.prefix && e.revoked == null && o && o === origin(e.website, local)
+      && !new URL(e.tog_start).search && !e.tog_start.includes("#");
+  }).map((e) => ({ name: e.name, prefix: e.prefix, start: e.tog_start }));
+}
+
+// ---- the company's site files (tog-licence §2.1, unsigned draft) --------------------------------------------------
+const DOMAIN = /^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
+export const LICENCE_B = "ToG-B-1.0";
+const esc = (s) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+export const strong = (line) => esc(line).replace(/\*\*(.+?)\*\*/, "<strong>$1</strong>");
+
+/** The files a company uploads: /terms-of-generation, /.well-known/tog.json, the <link> line, the footer link.
+ *  Unsigned: no keys, no signers, no witness; the legal text is not published yet (draft), so `legal` is null. */
+export function companyFiles(domain, name, answers) {
+  if (typeof domain !== "string" || !DOMAIN.test(domain)) throw new Error("domain");
+  if (typeof name !== "string" || !name.trim()) throw new Error("name");
+  const rules = companyRules(answers);
+  const lines = cardCompany(rules);
+  const url = `https://${domain}/.well-known/tog.json`;
+  const body = { subject_ref: `domain:${domain}#marks`, profile: "marks/1", version: 1, licence: LICENCE_B, rules,
+    assent: "self", signers: [], legal: null, witness: null, issued_at: null };
+  const tog_json = JSON.stringify({ tog: 1, unsigned_draft: true, holder: { kind: "company", name, domain },
+    page: `https://${domain}/terms-of-generation`, keys: null, statements: [{ type: "pg.terms.v1", body }],
+    registered: [], commitment: null, output_licence: null }, null, 2) + "\n";
+  const link_tag = `<link rel="tog" href="${url}">`;
+  const page_html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terms of Generation · ${esc(name)}</title>
+${link_tag}
+</head>
+<body>
+<h1>Terms of Generation · ${esc(name)}</h1>
+<p>tog:${domain} · version 1 · unsigned draft</p>
+<h2>[01] What AI may do with us</h2>
+${lines.map((l) => `<p>${strong(l)}</p>`).join("\n")}
+<h2>[02] Legal code</h2>
+<p>${LICENCE_B} (draft, not final). A summary: the signed rules govern.</p>
+</body>
+</html>
+`;
+  return { page_html, tog_json, link_tag, footer: `<a href="/terms-of-generation">Terms of Generation</a>`, handle: `tog:${domain}` };
+}
