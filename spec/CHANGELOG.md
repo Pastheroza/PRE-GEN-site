@@ -17,6 +17,14 @@ Text only: no message format, required schema member or vector changes.
   otherwise the licence's `terms`, unsigned.
 - **`licensee`:** a licensee not bound to a provider URL gets 403 `PG_NOT_BOUND` (`bind` B-5), not 401.
 - **Conformance:** two profiles for the message interface (`PRE-GEN-SPEC.md` §8.1).
+- **ToG codes are issued pending** (founder, 2026-11-11; `extensions/lookup.md`). A holder's home registry issues
+  the code at once; a pending code answers lookup `pending` with no name, level or terms, signs nothing, and answers
+  a request `not_blocked`, `PG_SUBJECT_PENDING` (`profiles/likeness-1.md`; no longer the floor's "pending"). It
+  becomes `active` when the holder proves control of a public account or domain, or their identity; an email alone
+  never does. Not verified in 7 days (a reminder on day 3), it is deleted and answers `expired`; its serial is never
+  issued again (`TOG-CODE.md` §5). Lookup adds `holder` (`person` | `company`) and, for a company, `domain`; a
+  company's code has a person's form. A licence, allow or AFTER-GEN record answers with `subject`, the ToG code it is
+  tied to, and `subject_level`. New level `channel`.
 
 ## pregen-registry 0.5.0 (unreleased): the registry writes ToG codes
 

@@ -46,7 +46,7 @@ These refusals are never overridden by a grant, an extension or a registry polic
 | Case | Reason |
 |---|---|
 | An opt-out in effect | `PG_SUBJECT_OPTED_OUT` |
-| The subject is pending, paused or withdrawn | `PG_SUBJECT_UNAVAILABLE` |
+| The subject is paused or withdrawn, or awaits the registry's own review | `PG_SUBJECT_UNAVAILABLE` |
 | A fixed protection forbids the use — a minor's likeness in a sexualised or otherwise prohibited category, or in a category outside the closed vocabulary | `PG_PROHIBITED_USE` |
 | An immutable denial | `PG_IMMUTABLE_DENIAL` |
 | An intimate category (`sexual`, `adult`) without the person's own signature — see below | `PG_PERSONAL_SIGNATURE_REQUIRED` |
@@ -64,6 +64,7 @@ This is not a ban: it is consent the registry cannot fake, where the harm is gre
 
 | Reason | Meaning |
 |---|---|
+| `PG_SUBJECT_PENDING` | with status `not_blocked`: a ToG code not yet verified ([`lookup`](../extensions/lookup.md)); it permits nothing and forbids nothing, and is not a refusal of the person |
 | `PG_NO_LICENSE` | no grant covers this licensee and use |
 | `PG_USAGE_LIMIT` | the grant's uses are spent |
 | `PG_SCOPE_VIOLATION` | outside the grant's scope |

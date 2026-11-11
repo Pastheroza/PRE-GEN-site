@@ -58,7 +58,7 @@ answer, not on retryable-by-default.
 | `PG_SUBJECT_NOT_LICENSABLE` |  | subject_trust | Hard | 2025-10-01 | The subject's trust-lifecycle state (suspended/disputed/revoked/archived) permits no licensing at all. |
 | `PG_SUBJECT_OPTED_OUT` | core | subject_trust | Hard | 2025-01-01 | The subject's rules_text refuses this request's category outright. |
 | `PG_SUBJECT_PAUSED` | core | subject_trust | Soft | 2025-01-01 | The subject's owner temporarily paused licensing. |
-| `PG_SUBJECT_PENDING` | core | subject_trust | Soft | 2025-01-01 | The subject is awaiting operator review before it may license at all (reserved/high-profile name). |
+| `PG_SUBJECT_PENDING` | core | subject_trust | Soft | 2025-01-01 | The subject is awaiting operator review before it may license at all (reserved/high-profile name). Under v5 (`profiles/likeness-1.md`) it answers a ToG code not yet verified, with status `not_blocked`: it permits nothing and forbids nothing, and is never the person's refusal. |
 | `PG_SUBJECT_WITHDRAWN` | core | subject_trust | Hard | 2025-01-01 | The subject was withdrawn by its owner or on moderation takedown. |
 | `PG_TIER_VIOLATION` |  | license | Soft | 2025-05-01 | The declared use case ranks above what this license's tier authorizes. |
 | `PG_USAGE_LIMIT` | core | license | Soft | 2025-05-01 | The license's purchased quantity (max_uses) is exhausted. |

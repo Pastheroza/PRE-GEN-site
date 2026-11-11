@@ -42,7 +42,7 @@ code".
 
 | Thing | Code | Example |
 |---|---|---|
-| Person (subject) | no kind | `TOG-PRAM-900000037K` |
+| Holder, a person or a company (subject) | no kind | `TOG-PRAM-900000037K` |
 | Licence | `LIC` | `TOG-LIC-NWRD-PRAM-ZZZZ-84RN-RT04` |
 | Generated under a yes before generation | `PG`, or `PG-LIC` under a licence | `TOG-PG-PRAM-ZZZZ-K6X4-RZJB`, `TOG-PG-LIC-NWRD-PRAM-ZZZZ-VGDY-WCWV` |
 | Approved after it was made (AFTER-GEN) | `AG`, or `AG-LIC` under a licence | `TOG-AG-PRAM-ZZZZ-T8JE-WDJX`, `TOG-AG-LIC-NWRD-PRAM-ZZZZ-ZJGH-HQH3` |
@@ -142,7 +142,8 @@ TOG-<PREFIX>-<serial><check>
 ```
 
 - **The serial is exactly 9 digits**, not starting with 0, drawn at random among the registry's unused
-  serials below 900 000 000. A gap means nothing; there is no registration order to read. A dropped or doubled
+  serials below 900 000 000. **A serial once issued is never issued again**, even after its record is deleted (a
+  ToG code not verified within 7 days, `extensions/lookup.md`): a registry keeps every serial it ever issued. A gap means nothing; there is no registration order to read. A dropped or doubled
   digit gives 8 or 10 digits: not a code.
 - **The check is a letter or digit.** A registry skips any serial whose check would be a symbol (about 1 in 7).
 - **A PG-born person or release work is migrated by its registry, by the marker only** (`registry_migrate` in
@@ -153,7 +154,9 @@ TOG-<PREFIX>-<serial><check>
   digits, a leading zero, a class other than `STD` and `SUB`) is not migrated.
 - **The migration is the registry's own, once, over its own rows.** It is never applied to anything from
   outside: from outside, the `PG-` string is not a code.
-- One person never has two codes.
+- One person never has two codes, and one domain one code. **A company registered at a registry gets a code of
+  this same shape**; lookup's `holder` says whether a code names a person or a company (`extensions/lookup.md`). The
+  shape keeps its name `person` in the vectors.
 
 ---
 
@@ -535,7 +538,8 @@ from the record type and the licence it names, never from the letters or the cap
 | not a code (a `PG-` string included) | "Not a code." |
 | a record whose signed bytes hold a `PG-` id | "The code does not match its record." |
 
-**A verifier never prints a person's code from a bundle** unless the live lookup says the person is published.
+**A verifier never prints a person's code from a bundle** unless the live lookup says the person is published, or
+the live lookup of the act or licence names the ToG code it is tied to (`extensions/lookup.md`).
 Offline it never prints it. Party names are the directory's full names, never a bare prefix.
 
 Vectors: `verdict`. There, `fits: …` stands for "the record fits this file and this code: now verify the
