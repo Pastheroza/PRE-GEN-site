@@ -51,6 +51,8 @@ SANDBOX_HOLDER = "account:holder"   # sandbox.md serial 12: the test creator; an
 # extensions/sandbox.md, serial 10: a test template; its text governs nothing
 SANDBOX_TEMPLATE = {"id": "pregen-sandbox", "version": 1, "jurisdiction": "US"}
 TOG_PENDING = 7 * 86400         # lookup.md: a ToG code not verified within 7 days is deleted, its serial retired
+DOMAIN_GRACE = 30 * 86400       # lookup.md: a company's domain stops showing its tog.json: a notice, 30 days its no holds
+DOMAIN_RECHECK = 86400          # ... and its domain is checked again at most once a day
 CONDITIONS_MAX = 1000           # ToG 1.0 §6(f): the person's own words, at most 1,000 characters (code points)
 # Never in conditions (spec/drafts/tog-funnel.md): C0/C1 controls but LF, U+2028/9, bidi controls
 # (U+202A-U+202E, U+2066-U+2069), lone surrogates; the card would otherwise show other text than the bytes.
@@ -81,7 +83,7 @@ CREATE TABLE IF NOT EXISTS subjects (
   fixed_refusal TEXT, immutable_denials TEXT NOT NULL DEFAULT '[]', no_grant_status TEXT NOT NULL DEFAULT 'deny',
   custody TEXT NOT NULL DEFAULT 'managed', key_public TEXT NOT NULL, key_private TEXT,
   anchor TEXT, proof_url TEXT, offer TEXT, holder TEXT NOT NULL DEFAULT 'person', domain TEXT,
-  tog_issued_at INTEGER, proved_at INTEGER, conditions TEXT);
+  tog_issued_at INTEGER, proved_at INTEGER, conditions TEXT, domain_lapsed_at INTEGER, domain_checked_at INTEGER);
 CREATE TABLE IF NOT EXISTS retired (serial INTEGER PRIMARY KEY, code TEXT NOT NULL, retired_at INTEGER NOT NULL,
   reason TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS grants (
@@ -259,7 +261,8 @@ class Registry:
             self.db.execute("ALTER TABLE asks ADD COLUMN signatures TEXT NOT NULL DEFAULT '[]'")
         have = {r["name"] for r in self.db.execute("PRAGMA table_info(subjects)")}
         for col, decl in (("holder", "TEXT NOT NULL DEFAULT 'person'"), ("domain", "TEXT"), ("tog_issued_at", "INTEGER"),
-                          ("proved_at", "INTEGER"), ("conditions", "TEXT")):   # 0.5: ToG codes issued pending (lookup.md)
+                          ("proved_at", "INTEGER"), ("conditions", "TEXT"), ("domain_lapsed_at", "INTEGER"),
+                          ("domain_checked_at", "INTEGER")):   # 0.5: ToG codes issued pending (lookup.md)
             if col not in have:
                 self.db.execute(f"ALTER TABLE subjects ADD COLUMN {col} {decl}")
         self.db.execute("CREATE UNIQUE INDEX IF NOT EXISTS subjects_domain ON subjects (domain)")   # one domain, one code
@@ -523,8 +526,27 @@ class Registry:
             s = self._own(db, code)
             if s["tog_issued_at"] is None:
                 raise ValueError(f"{code} was not issued as a pending ToG code")
-            db.execute("UPDATE subjects SET proved_at = COALESCE(proved_at, ?), level = ? WHERE code = ?",
-                       (self.clock(), "verified" if "verified" in (level, s["level"]) else level, s["code"]))
+            db.execute("UPDATE subjects SET proved_at = COALESCE(proved_at, ?), level = ?, domain_lapsed_at = NULL "
+                       "WHERE code = ?", (self.clock(), "verified" if "verified" in (level, s["level"]) else level, s["code"]))
+
+    def domain_check(self, code: str, shows: bool) -> dict:
+        """lookup.md: the registry's check that a proved company's https://<domain>/.well-known/tog.json still names its
+        record, at most once a day (a check sooner is not recorded). When it stops, the company gets a notice and 30
+        days of grace in which its answer stays in force; then the code answers `pending` until the file is back.
+        Returns {"domain", "shows", "grace_until"?}: the notice to send names grace_until."""
+        now = self.clock()
+        with self.tx() as db:
+            s = self._own(db, code)
+            if s["holder"] != "company" or s["proved_at"] is None:
+                raise ValueError(f"{code} is not a proved company's code")
+            if s["domain_checked_at"] is None or now - s["domain_checked_at"] >= DOMAIN_RECHECK:
+                lapsed = None if shows else (s["domain_lapsed_at"] or now)
+                db.execute("UPDATE subjects SET domain_lapsed_at = ?, domain_checked_at = ? WHERE code = ?",
+                           (lapsed, now, s["code"]))
+            else:
+                lapsed = s["domain_lapsed_at"]
+        return {"domain": s["domain"], "shows": lapsed is None,
+                **({"grace_until": lapsed + DOMAIN_GRACE} if lapsed is not None else {})}
 
     def _tog_expire(self):
         """lookup.md: a ToG code not proved within 7 days is deleted and its serial retired for good, so lookup answers
@@ -536,9 +558,10 @@ class Registry:
                 db.execute("INSERT INTO retired VALUES (?, ?, ?, 'expired')", (r["serial"], r["code"], self.clock()))
                 db.execute("DELETE FROM subjects WHERE serial = ?", (r["serial"],))
 
-    @staticmethod
-    def _pending(s) -> bool:
-        return s["tog_issued_at"] is not None and s["proved_at"] is None
+    def _pending(self, s) -> bool:
+        """Never proved, or a company whose domain stopped showing its tog.json more than 30 days ago (lookup.md)."""
+        return s["tog_issued_at"] is not None and (s["proved_at"] is None or s["domain_lapsed_at"] is not None
+                                                   and self.clock() - s["domain_lapsed_at"] >= DOMAIN_GRACE)
 
     def _signable(self, db, code: str):
         """The subject row a licence or terms may be signed for: never a pending ToG code (it signs nothing), and a ToG
@@ -1965,8 +1988,8 @@ class Registry:
 
     def anchors(self) -> dict:
         """identity.md: every anchored subject, signed, with its status, so a refusal is visible across registries."""
-        rows = self._q("SELECT * FROM subjects WHERE anchor IS NOT NULL AND NOT (tog_issued_at IS NOT NULL AND proved_at IS NULL) "
-                       "ORDER BY serial")      # a pending code forbids nothing, so it is never listed
+        rows = [s for s in self._q("SELECT * FROM subjects WHERE anchor IS NOT NULL ORDER BY serial")
+                if not self._pending(s)]      # a pending code forbids nothing, so it is never listed
         status = lambda s: "opted_out" if s["opted_out"] else (s["status"] if s["status"] in UNAVAILABLE else "active")  # noqa: E731
         return seal("pg.anchors.v1", {"registry": self.config.prefix, "issued_at": self.clock(), "anchors": [
             {"anchor": s["anchor"], "code": _tog(s), "level": s["level"], "proof_url": s["proof_url"] or "",

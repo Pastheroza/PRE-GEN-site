@@ -63,8 +63,13 @@ code and a company's code have the same form (`TOG-CODE.md` §5).
   redirects), or the registry verified their identity. **An email address alone never verifies a
   code.** From then on the code answers `active` with `holder`, `level` and, when in force, `terms`
   and `status_url`, whether the holder is published or not; `name` and `subject_key` only if the
-  holder chose to publish them. A verified code never returns to pending by itself; a company whose
-  domain stops naming the record answers `pending` until it does again.
+  holder chose to publish them. A verified code never returns to pending by itself, with one
+  exception for a company. **Its home re-checks the company's `tog.json` at most once a day.** When the file stops
+  naming the record, the home sends the company a notice and gives it **30 days of grace**, in which its answer (its
+  no) stays in force and the code still answers `active`. Then, until the file names the record again, the code
+  answers `pending`, like a code never proved (it permits and forbids nothing, and is not deleted). The next check
+  that finds the file, or a new proof, ends the lapse at once. A site outage therefore never cancels a company's no
+  on the day it happens.
 - **Conditions** (ToG 1.0 public draft 1, Section 6(f)): a person's own words, in any language, at most 1,000
   characters, that only narrow their rules. An `active` code's answer carries them as `"conditions": "<text>"`,
   the exact string the holder gave (the form of `spec/drafts/tog-funnel.md`: non-empty NFC, at most 1,000 code

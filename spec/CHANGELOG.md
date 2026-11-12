@@ -32,6 +32,11 @@ Text only: no message format, required schema member or vector changes.
 - **The proof line is `ToG: <code>`** (founder's recommendation, 2026-11-11; `extensions/identity.md`). The earlier
   `PRE-GEN: <code>` still confirms and is never emitted; `pregen.proof_line()` / `proofLine()`, `PROOF_PREFIX`,
   `LEGACY_PROOF_PREFIXES`; `identity_cases.json` now spells the line `ToG:` and adds six cases.
+- **A company's domain lapse** (founder's recommendation, 2026-11-11; `extensions/lookup.md`). Its `tog.json` is
+  re-checked at most daily; when it stops naming the record the company gets a notice and 30 days in which its
+  answer stays in force, then its code answers `pending` until the file is back. Replaces "answers `pending` until
+  it does again", which no implementation followed and which let an outage cancel a company's no.
+  `pregen-registry subject domain-check [--gone]`, `Registry.domain_check()`.
 
 ## pregen-registry 0.5.0 (unreleased): the registry writes ToG codes
 

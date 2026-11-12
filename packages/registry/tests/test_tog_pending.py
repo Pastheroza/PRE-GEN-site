@@ -9,7 +9,7 @@ from pregen_registry import registry as registry_module
 from pregen_registry.app import create_app
 from pregen_registry.cli import load, main as cli
 from pregen_registry.protocol import Key, parse_code
-from pregen_registry.registry import TOG_PENDING, Config, Registry
+from pregen_registry.registry import DOMAIN_GRACE, DOMAIN_RECHECK, TOG_PENDING, Config, Registry
 from test_registry import Clock, Provider
 
 DAY = 86400
@@ -182,7 +182,7 @@ def test_a_database_from_before_pending_codes_gains_the_columns(tmp_path):
     reg, *_ = make(str(db))
     older = reg.add_subject("Before", published=1)
     reg.db.execute("DROP INDEX subjects_domain")
-    for col in ("holder", "domain", "tog_issued_at", "proved_at", "conditions"):
+    for col in ("holder", "domain", "tog_issued_at", "proved_at", "conditions", "domain_lapsed_at", "domain_checked_at"):
         reg.db.execute(f"ALTER TABLE subjects DROP COLUMN {col}")
     reg.db.close()
     again, *_ = make(str(db))
@@ -265,3 +265,75 @@ def test_cli_adds_a_pending_code_with_conditions(tmp_path, capsys):
     code = capsys.readouterr().out.strip()
     cli(["subject", "prove", "--dir", str(tmp_path), "--code", code])
     assert load(str(tmp_path)).lookup(code)["conditions"] == "No horror films."
+
+
+# ── lookup.md: a company's domain stops showing its tog.json: a notice, 30 days of grace, then pending ──────────────
+def company(reg):
+    code = reg.add_subject("Northwind", pending=True, domain="northwind.example")
+    reg.set_identity(code, anchor="northwind.example")
+    reg.opt_out(code)                                               # its no, listed for every registry
+    reg.prove(code)
+    return code
+
+
+def test_a_company_whose_domain_stops_showing_its_file_keeps_its_answer_30_days_then_answers_pending():
+    reg, c, clock, p = make()
+    code = company(reg)
+    assert DOMAIN_GRACE == 30 * DAY and DOMAIN_RECHECK == DAY
+    notice = reg.domain_check(code, shows=False)
+    assert notice == {"domain": "northwind.example", "shows": False, "grace_until": clock.t + DOMAIN_GRACE}
+    clock.t += DOMAIN_GRACE - 1
+    assert reg.domain_check(code, shows=False)["grace_until"] == notice["grace_until"]   # the first lapse counts
+    assert c.get(f"/v2/codes/{code}").json()["status"] == "active"
+    assert p.answer(p.body(code))["body"]["reason"] == "PG_SUBJECT_OPTED_OUT"         # its no is in force
+    assert [a["status"] for a in c.get("/v2/anchors").json()["body"]["anchors"]] == ["opted_out"]
+    clock.t += 1
+    assert c.get(f"/v2/codes/{code}").json() == {"code": code, "kind": "subject", "registry": "TEST",
+                                                 "status": "pending"}
+    b = p.answer(p.body(code, job="job-2"))["body"]               # a new job: job-1's refusal stays its own
+    assert (b["status"], b["reason"]) == ("not_blocked", "PG_SUBJECT_PENDING")
+    assert c.get("/v2/anchors").json()["body"]["anchors"] == []
+    clock.t += 60 * DAY                                             # never deleted like an unproved code
+    assert reg.lookup(code)["status"] == "pending"
+    assert reg.domain_check(code, shows=True) == {"domain": "northwind.example", "shows": True}
+    assert reg.lookup(code)["status"] == "active"
+    assert p.answer(p.body(code, job="job-3"))["body"]["reason"] == "PG_SUBJECT_OPTED_OUT"
+
+
+def test_a_domain_is_checked_at_most_once_a_day_and_a_new_proof_ends_the_grace():
+    reg, _, clock, _ = make()
+    code = company(reg)
+    reg.domain_check(code, shows=False)
+    clock.t += DOMAIN_RECHECK - 1
+    assert reg.domain_check(code, shows=True)["shows"] is False    # too soon: not recorded
+    clock.t += 1
+    assert reg.domain_check(code, shows=True)["shows"] is True
+    clock.t += DOMAIN_RECHECK
+    reg.domain_check(code, shows=False)
+    reg.prove(code)                                                 # the file is back, proved again
+    clock.t += DOMAIN_GRACE
+    assert reg.lookup(code)["status"] == "active"
+
+
+def test_only_a_proved_companys_domain_is_checked():
+    reg, *_ = make()
+    person = reg.add_subject("Lena", pending=True)
+    reg.prove(person)
+    unproved = reg.add_subject("Northwind", pending=True, domain="northwind.example")
+    for code in (person, unproved):
+        with pytest.raises(ValueError, match="not a proved company"):
+            reg.domain_check(code, shows=False)
+
+
+def test_cli_domain_check_prints_the_notice(tmp_path, capsys):
+    cli(["init", "--dir", str(tmp_path), "--prefix", "ABCD", "--name", "R", "--api", "https://r.example"])
+    capsys.readouterr()
+    cli(["subject", "add", "--dir", str(tmp_path), "--name", "Northwind", "--pending", "--domain", "northwind.example"])
+    code = capsys.readouterr().out.strip()
+    cli(["subject", "prove", "--dir", str(tmp_path), "--code", code])
+    capsys.readouterr()
+    cli(["subject", "domain-check", "--dir", str(tmp_path), "--code", code, "--gone"])
+    out = capsys.readouterr().out
+    assert out.startswith("notice to northwind.example: its tog.json no longer names this record") and "pending" in out
+    with pytest.raises(SystemExit, match="needs --code"):
+        cli(["subject", "domain-check", "--dir", str(tmp_path)])

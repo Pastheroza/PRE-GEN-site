@@ -76,4 +76,6 @@ On `localhost` only, the page reads `/test/tog-local/registries.json`, signed by
 A company answers the same questions without voice and goes to a registry like a person. It gets a code of the same
 form (`TOG-CODE.md` §5), pending until it proves its domain: the registry gives it the `/.well-known/tog.json` to
 place at `https://<domain>`, naming the registry's record for the code, read without redirects. Lookup says
-`holder: "company"`.
+`holder: "company"`. When the file later stops naming the record, the company gets a notice and 30 days of grace, then
+its code answers `pending` until the file is back; the home re-checks at most daily (`extensions/lookup.md`;
+`DOMAIN_GRACE` and `DOMAIN_RECHECK` in the reference registry, a founder's recommendation not yet confirmed).

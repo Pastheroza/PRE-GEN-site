@@ -19,6 +19,7 @@
   pregen-registry subject opt-out --dir DATA --code TOG-…  (the person opted out or withdrew: refused from the next answer)
   pregen-registry subject level --dir DATA --code TOG-… --level verified   (after you checked identity and authority)
   pregen-registry subject publish --dir DATA --code TOG-… [--off]   (name and level public at /v2/codes, by the person's choice)
+  pregen-registry subject domain-check --dir DATA --code TOG-… [--gone]   (at most daily: a company's tog.json shows, or is gone)
   pregen-registry after-gen show --dir DATA REQUEST_ID        (a request the person has not decided and its viewing link)
   pregen-registry after-gen approve --dir DATA REQUEST_ID --instruction-sha256 HEX --factor authenticator|email [--purposes …]
   pregen-registry after-gen refuse --dir DATA REQUEST_ID
@@ -36,6 +37,7 @@ import json
 import re
 import os
 import sys
+import time
 from pathlib import Path
 
 from pregen import code_key
@@ -107,7 +109,7 @@ def main(argv=None):
             p.add_argument("--ssl-certfile", help="serve HTTPS directly (a local test); in production, use a TLS proxy")
             p.add_argument("--ssl-keyfile")
         elif name == "subject":
-            p.add_argument("action", choices=["add", "anchor", "list", "opt-out", "level", "publish", "prove"])
+            p.add_argument("action", choices=["add", "anchor", "list", "opt-out", "level", "publish", "prove", "domain-check"])
             p.add_argument("--name", help="add: the subject's name")
             p.add_argument("--code", help="anchor, opt-out, level, publish: the subject's ToG code (a PG- string is not a code)")
             p.add_argument("--anchor", help="anchor: wikidata:Q…, isni:…, or a domain (identity.md)")
@@ -122,6 +124,8 @@ def main(argv=None):
             p.add_argument("--domain", help="add: the holder is a company with this domain (one domain, one code)")
             p.add_argument("--conditions", help="add: the person's conditions in their own words, at most 1,000 "
                                                 "characters (ToG 1.0 §6(f)); lookup returns them once the code is active")
+            p.add_argument("--gone", action="store_true", help="domain-check: the company's tog.json no longer names "
+                                                               "its record (30 days of grace, lookup.md)")
             p.add_argument("--by", default="channel", choices=["channel", "verified"],
                            help="prove: channel (ToG: <code> at an account or domain they control) or verified "
                                 "(identity); never an email alone")
@@ -234,6 +238,16 @@ def main(argv=None):
         except ValueError as e:
             sys.exit(str(e))
         print(f"{a.code} is active ({a.by})")
+    elif a.cmd == "subject" and a.action == "domain-check":
+        if not a.code:
+            sys.exit("subject domain-check needs --code")
+        try:
+            r = load(a.dir).domain_check(a.code, not a.gone)
+        except ValueError as e:
+            sys.exit(str(e))
+        print(f"{r['domain']} shows its tog.json" if r["shows"] else
+              f"notice to {r['domain']}: its tog.json no longer names this record; its answer stays in force until "
+              f"{time.strftime('%Y-%m-%d %H:%M UTC', time.gmtime(r['grace_until']))}, then the code answers pending")
     elif a.cmd == "subject" and a.action == "publish":
         if not a.code:
             sys.exit("subject publish needs --code")
