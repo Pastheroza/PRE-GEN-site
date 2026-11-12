@@ -63,14 +63,21 @@ async function page() {
   return { stage, press, type, out, text: () => stage.text };
 }
 
-function registryStep(t) {
+function registryStep(t, co = false) {
   assert.match(t, /Get your ToG code at your home registry/);
   assert.match(t, /You need one home only:/);
   assert.match(t, /The code is pending for 7 days\. It permits nothing and forbids nothing until you confirm it is you/);
   assert.match(t, /An email alone does not\. Your registry reminds you on day 3; on day 7 an unconfirmed code is deleted and never issued again\./);
   assert.match(t, /After verification, your YES or NO becomes global for every registry that integrated PRE-GEN\./);
+  if (co) {   // ToG 1.0 covers a natural person's likeness only: a company's card cites no licence text
+    assert.match(t, /No licence text applies to a company: its ToG code records its answer/);
+    assert.doesNotMatch(t, /Legal code ToG-1\.0|Read the legal code/);
+    assert.match(t, /publish the file \/\.well-known\/tog\.json on your company's domain/);
+    return;
+  }
   assert.match(t, new RegExp(`Legal code ToG-1\\.0 · SHA-256 ${LEGAL.sha256} · the same text for everyone`));
   assert.match(t, /Read the legal code.*Read it in plain words/);
+  assert.match(t, /put the line “PRE-GEN: <your code>” on a public account or website you control/);   // the exact proof line
 }
 
 test("a person's no: the card, tog:no first, then the registry; the year never leaves the page", async () => {
@@ -122,7 +129,6 @@ test("a company gets a code of the same form at its registry, proved by its tog.
   const t = p.text();
   assert.match(t, /YOUR COMPANY'S TOG · CODE FROM YOUR REGISTRY/);
   assert.match(t, /No AI generation of our marks, products or characters\./);
-  assert.match(t, /\(a company: the file \/\.well-known\/tog\.json on its domain\)/);
-  registryStep(t);
+  registryStep(t, true);
   assert.deepEqual(await p.out(), { result: "ok", answers: { who: "company", decision: "no" } });
 });
