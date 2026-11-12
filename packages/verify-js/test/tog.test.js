@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { validate, rulesFromAnswers, card, cardCompany, companyRules, encodeAnswers, decodeFragment, offeredRegistries,
-  defaultNever, NEVER, FOR, WHO, LEGAL } from "../tog.js";
+  defaultNever, conditionsOk, NEVER, FOR, WHO, LEGAL, MAX_FRAGMENT, CONDITIONS_MAX } from "../tog.js";
 
 const V = JSON.parse(readFileSync(new URL("../../../spec/test-vectors/tog-generator.json", import.meta.url)));
 
@@ -58,6 +58,21 @@ test("fragment.encode and decode", () => {
   assert.throws(() => encodeAnswers({ who: "child", decision: "rules", for: ["fun"], never: [] }));
   assert.throws(() => encodeAnswers({ who: "company", decision: "no", domain: "northwind.example" }));
   assert.equal(V.fragment.encode.filter((e) => e.answers.who).length, 4);
+});
+
+test("conditions: the person's own words ride a person's yes only, code points counted, never repaired", () => {
+  assert.equal(MAX_FRAGMENT, V.meta.fragment.max_length);
+  assert.equal(CONDITIONS_MAX, V.meta.fragment.conditions_max);
+  const withC = V.fragment.encode.filter((e) => "conditions" in e.answers);
+  assert.equal(withC.length, 3);
+  const longest = withC.find((e) => e.name.includes("longest"));
+  assert.equal([...longest.answers.conditions].length, 1000);   // 2,000 UTF-16 units: a code point is a character
+  assert.equal(longest.fragment.length, V.meta.fragment.longest_encoded);
+  assert.equal(V.fragment.decode.filter((d) => /^conditions/.test(d.name)).every((d) => d.result === "malformed"), true);
+  assert.ok(conditionsOk("ü\nok") && !conditionsOk("u\u0308") && !conditionsOk("\ud800") && !conditionsOk("x".repeat(1001)));
+  const ads = V.fragment.encode.find((e) => e.name === "ADS").answers;
+  for (const bad of [{ ...ads, conditions: "" }, { age: "18+", decision: "no", conditions: "x" },
+    { who: "company", decision: "no", conditions: "x" }]) assert.throws(() => encodeAnswers(bad), JSON.stringify(bad));
 });
 
 test("company: rules and card; a company gets its ToG code at a registry, like a person", () => {

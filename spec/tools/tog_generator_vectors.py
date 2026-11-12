@@ -3,7 +3,8 @@
 reference spec/tools/tog_generator.py; contract: spec/drafts/tog-funnel.md.
 
 Every rule and card value is computed by the reference; this file adds only what the funnel defines on top of it:
-the `tog=v1` fragment (encode / strict decode: a person, a company, a minor's representative), the company card, the
+the `tog=v1` fragment (encode / strict decode: a person, a company, a minor's representative; a person's yes may carry
+the person's own-words `conditions`, ToG 1.0 §6(f)), the company card, the
 common legal text every card links to (tog/1.0/legal-code.txt) and the registry chooser. Deterministic, no dependencies, about 25 s (the reference's own exhaustive check):
 
     python3 -I spec/tools/tog_generator_vectors.py > spec/test-vectors/tog-generator.json
@@ -14,6 +15,7 @@ import json
 import random
 import re
 import sys
+import unicodedata
 from itertools import product
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -34,11 +36,22 @@ LEGAL = {"id": "ToG-1.0", "label": "ToG 1.0 public draft 1", "sha256": hashlib.s
          .hexdigest(), "url": "https://www.pregen.org/tog/1.0"}
 DECISIONS = ("no", "approve_all", "rules")
 FLOORS = ("each", "project", "video")
-MAX_FRAGMENT = 1024
+MAX_FRAGMENT = 6144                 # the longest answers with 1,000 four-byte characters of conditions encode to 5,629
+CONDITIONS_MAX = 1000               # ToG 1.0 §6(f): at most 1,000 characters (Unicode code points), any language
+# Never in conditions: C0 and C1 controls but LF, the line and paragraph separators, bidi embeddings, overrides and
+# isolates (they would make the card show other text than the bytes), and lone surrogates.
+_COND_BAD = re.compile("[\x00-\x09\x0b-\x1f\x7f-\x9f\u2028\u2029\u202a-\u202e\u2066-\u2069\ud800-\udfff]")
+
+
+def conditions_ok(c) -> bool:
+    """The person's own words: a non-empty NFC string of at most 1,000 code points, LF the only control."""
+    return type(c) is str and 0 < len(c) <= CONDITIONS_MAX and unicodedata.normalize("NFC", c) == c \
+        and not _COND_BAD.search(c)
 
 
 def _canon(a) -> str:
-    return json.dumps(a, separators=(",", ":"), sort_keys=True, ensure_ascii=True)
+    """Keys sorted, no spaces, non-ASCII as raw UTF-8 (never \\u escapes): byte-identical to before for ASCII."""
+    return json.dumps(a, separators=(",", ":"), sort_keys=True, ensure_ascii=False)
 
 
 def _b64(s: str) -> str:
@@ -75,7 +88,9 @@ def answers_ok(a) -> bool:
     if not _ordered(f, g.FOR) or not f or not _ordered(a.get("never"), g.NEVER) or type(a.get("voice")) is not bool:
         return False
     paid = "paid" in f
-    if set(a) != {"age", "decision", "for", "never", "voice"} | ({"floor"} if paid else set()):
+    if set(a) - {"conditions"} != {"age", "decision", "for", "never", "voice"} | ({"floor"} if paid else set()):
+        return False
+    if "conditions" in a and not conditions_ok(a["conditions"]):
         return False
     return not paid or (type(a["floor"]) is str and a["floor"] in FLOORS)
 
@@ -293,6 +308,13 @@ def main():
         enc.append({"name": n, "answers": a, "fragment": encode(a)})
     biggest = {"age": "18+", "decision": "approve_all", "for": L(g.FOR), "never": L(g.NEVER), "voice": True,
                "floor": "project"}
+    # The person's own words (ToG 1.0 §6(f)): any language, raw UTF-8 in the canonical JSON, code points counted.
+    longest = {**biggest, "conditions": "\U0001F600" * CONDITIONS_MAX}       # 4 UTF-8 bytes, 2 UTF-16 units each
+    for n, a in [("conditions: English", {**ads, "conditions": "Never in a horror film. No changes to my face."}),
+                 ("conditions: Russian and Japanese", {**ads, "conditions": "Не в рекламе казино.\nホラー映画には使わないで。"}),
+                 ("conditions: 1,000 four-byte characters, the longest fragment", longest)]:
+        enc.append({"name": n, "answers": a, "fragment": encode(a)})
+    assert len(encode(longest)) <= MAX_FRAGMENT
 
     no = encode({"age": "18+", "decision": "no"})
     p_no = no[len("tog=v1."):]
@@ -327,8 +349,8 @@ def main():
         ("paid without floor", raw(ads_wo(drop=("floor",)))), ("floor amount", raw(ads_wo(floor="50"))),
         ("decision maybe", raw('{"age":"18+","decision":"maybe"}')), ("age 12", raw('{"age":"12","decision":"no"}')),
         ("teen yes", raw(_canon({**ads, "age": "13-17"}))),
-        ("1025 chars, v1", "tog=v1." + "A" * (MAX_FRAGMENT + 1 - len("tog=v1."))),
-        ("1025 chars, v2", "tog=v2." + "A" * (MAX_FRAGMENT + 1 - len("tog=v2."))),
+        (f"{MAX_FRAGMENT + 1} chars, v1", "tog=v1." + "A" * (MAX_FRAGMENT + 1 - len("tog=v1."))),
+        (f"{MAX_FRAGMENT + 1} chars, v2", "tog=v2." + "A" * (MAX_FRAGMENT + 1 - len("tog=v2."))),
         ("ok: company no", encode({"who": "company", "decision": "no"})), ("ok: company ADS", encode(co_ads)),
         ("ok: a minor's representative, no", encode({"who": "child", "decision": "no"})),
         ("a minor's representative: a yes", raw(_canon({**co_ads, "who": "child"}))),
@@ -340,11 +362,28 @@ def main():
         ("company yes, for: []", raw(_canon({**co_ads, "for": []}))),
         ("company yes without never", raw(_canon({k: v for k, v in co_ads.items() if k != "never"}))),
         ("who: brand", raw('{"decision":"no","who":"brand"}')), ("who: me", raw('{"decision":"no","who":"me"}')),
+        ("ok: conditions, 1,000 four-byte characters", encode(longest)),
+        ("ok: conditions with a line break and quotes", encode({**ads, "conditions": 'Not "me" at 3 a.m.\nNo blood.'})),
+        ("conditions: 1,001 characters", raw(ads_wo(conditions="x" * 1001))),
+        ("conditions: empty", raw(ads_wo(conditions=""))), ("conditions: a number", raw(ads_wo(conditions=7))),
+        ("conditions: a list", raw(ads_wo(conditions=["no blood"]))),
+        ("conditions: not NFC", raw(ads_wo(conditions="Rene\u0301e"))),
+        ("conditions: a carriage return", raw(ads_wo(conditions="a\r\nb"))),
+        ("conditions: a tab", raw(ads_wo(conditions="a\tb"))), ("conditions: NUL", raw(ads_wo(conditions="a\x00b"))),
+        ("conditions: a C1 control", raw(ads_wo(conditions="a\x85b"))),
+        ("conditions: a right-to-left override", raw(ads_wo(conditions="no \u202eads"))),
+        ("conditions: a line separator", raw(ads_wo(conditions="a\u2028b"))),
+        ("conditions: a lone surrogate", raw(_canon({**ads, "conditions": "x"}).replace('"x"', '"\\ud800"'))),
+        ("conditions: escaped, not raw UTF-8", raw(_canon({**ads, "conditions": "é"}).replace("é", "\\u00e9"))),
+        ("conditions on a no", raw('{"age":"18+","conditions":"no blood","decision":"no"}')),
+        ("conditions on a company's yes", raw(_canon({**co_ads, "conditions": "no blood"}))),
+        ("conditions on a minor's representative's no", raw('{"conditions":"no blood","decision":"no","who":"child"}')),
     ]
     dec = [{"name": n, "fragment": f, **decode(f)} for n, f in cases]
-    want = {"ok": 6, "unknown_version": 4, "minor": 2}
+    want = {"ok": 8, "unknown_version": 4, "minor": 2}
     got = {r: sum(d["result"] == r for d in dec) for r in ("ok", "unknown_version", "minor", "malformed")}
-    assert all(got[k] == v for k, v in want.items()) and got["malformed"] == len(cases) - 12, got
+    assert all(got[k] == v for k, v in want.items()) and got["malformed"] == len(cases) - 14, got
+    assert all(len(f) > MAX_FRAGMENT for n, f in cases if n.startswith(f"{MAX_FRAGMENT + 1} chars"))
     assert all(decode(e["fragment"]) == {"result": "ok", "answers": e["answers"]} for e in enc)
 
     co_sets = [("NO", {"decision": "no"}), ("nothing ticked on Q2 is no", {"decision": "rules", "for": [], "never": []})]
@@ -411,7 +450,8 @@ def main():
                  "modes": L(g.MODES), "modalities": L(g.MODALITIES),
                  "for": {k: L(v) for k, v in g.FOR.items()}, "never": {k: L(v) for k, v in g.NEVER.items()},
                  "fragment": {"prefix": "tog=", "version": "v1.", "max_length": MAX_FRAGMENT,
-                              "longest_encoded": len(encode(biggest)), "ages": L(AGES), "who": L(WHO),
+                              "longest_encoded": len(encode(longest)), "conditions_max": CONDITIONS_MAX,
+                              "ages": L(AGES), "who": L(WHO),
                               "decisions": L(DECISIONS), "floors": L(FLOORS)},
                  "company": {"profile": "marks/1", "modalities": CO_MODALITIES}, "legal": LEGAL},
         "answers": answers, "never_lines": never_lines, "frames": frames,

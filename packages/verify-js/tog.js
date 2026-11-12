@@ -1,5 +1,6 @@
 // ToG generator, profile likeness/2 (UNRELEASED library 0.14.0): the rules, the English card, the company card, the
-// `tog=v1` fragment (a person, a company, a minor's representative) and the registry chooser (spec/drafts/tog-funnel.md).
+// `tog=v1` fragment (a person, a company, a minor's representative; a person's yes may carry their own-words
+// `conditions`, ToG 1.0 §6(f)) and the registry chooser (spec/drafts/tog-funnel.md).
 // A port of spec/tools/tog_generator.py (+ tog_generator_vectors.py); spec/test-vectors/tog-generator.json is the
 // judge (test/tog.test.js). A disagreement is an erratum in the port, never a local fix of the vectors.
 // ponytail: English card only (pregen.org is English); the Russian card lives in PRAMPTA's port.
@@ -23,7 +24,17 @@ export const AGES = ["18+", "13-17"];   // 13-17 only ever decodes as "minor": a
 export const WHO = ["company", "child"];  // a person answering for themself has no `who` (byte-identical to before)
 export const DECISIONS = ["no", "approve_all", "rules"];
 export const FLOORS = ["each", "project", "video"];
-export const MAX_FRAGMENT = 1024;
+export const MAX_FRAGMENT = 6144;   // the longest answers with 1,000 four-byte characters of conditions: 5,629
+export const CONDITIONS_MAX = 1000;  // ToG 1.0 §6(f): at most 1,000 characters (Unicode code points), any language
+// Never in conditions: C0 and C1 controls but LF, the line and paragraph separators, bidi embeddings, overrides and
+// isolates (the card would show other text than the bytes); lone surrogates fail isWellFormed().
+const COND_BAD = /[\x00-\x09\x0b-\x1f\x7f-\x9f\u2028\u2029\u202a-\u202e\u2066-\u2069]/;
+
+/** The person's own words: a non-empty NFC string of at most 1,000 code points, LF the only control. */
+export function conditionsOk(c) {
+  return typeof c === "string" && c.isWellFormed() && c.length > 0 && [...c].length <= CONDITIONS_MAX
+    && c.normalize("NFC") === c && !COND_BAD.test(c);
+}
 /** The one common licence text every card links to, the same for everyone (tog/1.0/legal-code.txt), and the label
  *  every card that cites it shows: public draft 1, whose brackets are not yet completed (its §16(a)). */
 export const LEGAL = { id: "ToG-1.0", label: "ToG 1.0 public draft 1",
@@ -189,17 +200,18 @@ export function answersOk(a) {
   const f = a.for;
   if (!ordered(f, Object.keys(FOR)) || !f.length || !ordered(a.never, Object.keys(NEVER)) || typeof a.voice !== "boolean") return false;
   const paid = f.includes("paid");
-  if (!same(keys, ["age", "decision", ...(paid ? ["floor"] : []), "for", "never", "voice"])) return false;
+  if (!same(keys.filter((k) => k !== "conditions"), ["age", "decision", ...(paid ? ["floor"] : []), "for", "never", "voice"])) return false;
+  if ("conditions" in a && !conditionsOk(a.conditions)) return false;
   return !paid || (typeof a.floor === "string" && FLOORS.includes(a.floor));
 }
 
-const b64url = (s) => btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const b64url = (s) => btoa(String.fromCharCode(...new TextEncoder().encode(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 const minor = (a) => a.age === "13-17";   // a minor registers only through a parent, guardian or representative
 
 /** Answers -> the fragment without its leading '#'. Never a minor's own answers. */
 export function encodeAnswers(a) {
   if (!answersOk(a) || minor(a)) throw new Error("these answers cannot be handed off");
-  return "tog=v1." + b64url(canonicalJson(a));   // closed ASCII values only, so canonical JSON is the plan's bytes
+  return "tog=v1." + b64url(canonicalJson(a));   // UTF-8 of canonical JSON: conditions as raw UTF-8, never \u escapes
 }
 
 /** location.hash without the '#' -> {result: "ok", answers} | {result: "unknown_version" | "malformed" | "minor"}.

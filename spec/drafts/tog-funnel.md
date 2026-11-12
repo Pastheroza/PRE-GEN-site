@@ -20,28 +20,45 @@ it opens only after identity verification.
 ## The fragment `tog=v1`
 
 ```
-{tog_start}#tog=v1.<base64url, no padding, of the canonical JSON of the answers>
+{tog_start}#tog=v1.<base64url, no padding, of the UTF-8 bytes of the canonical JSON of the answers>
 ```
 
-- Canonical JSON: keys sorted, no spaces, ASCII only; arrays in the generator's own order, never sorted.
+- Canonical JSON: keys sorted, no spaces; arrays in the generator's own order, never sorted; a string's non-ASCII
+  characters as raw UTF-8, never `\u` escapes (the only escapes are `\"`, `\\` and `\n`). Every value but
+  `conditions` is ASCII, so a fragment without conditions is byte for byte what it was before conditions existed.
 - A person answering for themself — members: `age` (`"18+"`, always; `"13-17"` decodes as `minor`), `decision` (`"no"` | `"approve_all"` | `"rules"`, always);
   if the decision is not no: `for` (non-empty, ⊆ `fun, news, paid` in that order), `never` (⊆ `vice, weapons,
   violence, gambling, money, health, religion, ads, endorse, fashion` in that order), `voice` (boolean); `floor`
-  (`"each"` | `"project"` | `"video"`, the kind of lowest price, never an amount) iff `paid` is in `for`.
+  (`"each"` | `"project"` | `"video"`, the kind of lowest price, never an amount) iff `paid` is in `for`;
+  optionally `conditions` (below).
+- **`conditions`** (ToG 1.0 public draft 1, Section 6(f)): the person's own words, in any language, which only
+  narrow what they allow. Optional, and only on a person's yes: never on a no (a no has nothing to narrow), a
+  company's answer or a representative's. When present it is a JSON string that is:
+  - non-empty, and at most **1,000 Unicode code points** (`CONDITIONS_MAX`; a code point is a character, so an
+    emoji counts 1 although JavaScript's `length` says 2); a longer text is refused, never cut;
+  - in Unicode NFC (`s.normalize("NFC") === s`), never normalised for the person: the page normalises before encoding;
+  - free of every C0 and C1 control but LF (U+0000–U+0009, U+000B–U+001F, U+007F–U+009F), of U+2028 and U+2029,
+    of the bidi embeddings, overrides and isolates (U+202A–U+202E, U+2066–U+2069), and of lone surrogates. LF is the
+    one line break. These would let the card show other text than the bytes that were signed.
+  The page trims the text and omits the member when nothing is left. The card shows the conditions **first**, as
+  plain text exactly as written (never parsed for markup), under the line "They can only narrow what you allow."
+  They do not enter the rules (`rules_from_answers` ignores them). Vectors: `fragment.encode` and `fragment.decode`
+  entries named `conditions…`; `meta.fragment.conditions_max`.
 - A company: exactly `{"who": "company", "decision"}` for a no, `{"who": "company", "decision", "for", "never"}` for
   a yes, the same closed sets. Never an age, a voice, a floor, a domain or a name: the domain is typed at the registry.
 - A minor's parent, guardian or other legal representative: exactly `{"who": "child", "decision": "no"}`. A minor
   is registered only by them, and only with a no for now.
 - Under 18 is never encoded for a person themself.
-- Decode is strict and never repairs: at most 1024 characters; `tog=` then `v1.`; base64url alphabet only, no `=`;
+- Decode is strict and never repairs: at most 6,144 characters (`meta.fragment.max_length`; the longest possible
+  fragment, 1,000 four-byte characters of conditions, is 5,629); `tog=` then `v1.`; base64url alphabet only, no `=`;
   UTF-8 JSON; the exact member set; every value in its closed set; and re-encoding the answers gives back exactly
   the input (this rejects padding, non-canonical bits, key order, spaces, duplicate keys and escapes).
 - Results: `ok` with the answers; `unknown_version` (anything after `tog=` but `v1.`); `minor` (any `age` 13-17);
   `malformed` (everything else). The person sees every answer and the card again at the registry before anything
   is signed, so a corrupted link costs nothing.
 
-**Privacy.** The answers are closed codes, not personal data. They ride only in the fragment, which browsers never
-send in a request or a Referer. The year of birth, a name and an email never enter it; the query string is never
+**Privacy.** The answers are closed codes, not personal data, except `conditions`, the person's own words. All of it
+rides only in the fragment, which browsers never send in a request or a Referer. The year of birth, a name and an email never enter it; the query string is never
 used. The registry reads the fragment and removes it from the address at once.
 
 ## The registry chooser
