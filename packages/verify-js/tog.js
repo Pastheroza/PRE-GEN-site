@@ -1,5 +1,5 @@
-// ToG generator, profile likeness/2 (UNRELEASED, PRIVATE DRAFT 2026-11-10): the rules, the English card, the
-// company card, the `tog=v1` fragment and the registry chooser of PRE-GEN-Drafts/tog-funnel/PLAN.md §2-§3.
+// ToG generator, profile likeness/2 (UNRELEASED library 0.14.0): the rules, the English card, the company card, the
+// `tog=v1` fragment (a person, a company, a minor's representative) and the registry chooser (spec/drafts/tog-funnel.md).
 // A port of spec/tools/tog_generator.py (+ tog_generator_vectors.py); spec/test-vectors/tog-generator.json is the
 // judge (test/tog.test.js). A disagreement is an erratum in the port, never a local fix of the vectors.
 // ponytail: English card only (pregen.org is English); the Russian card lives in PRAMPTA's port.
@@ -19,10 +19,14 @@ export const FOR = { fun: ["personal"], news: ["editorial", "educational", "rese
 export const NEVER = { vice: ["alcohol", "cannabis", "drugs", "tobacco"], weapons: ["weapons"], violence: ["violence"],
   gambling: ["gambling"], money: ["financial"], health: ["health"], religion: ["religion"], ads: ["advertising"],
   endorse: ["endorsement"], fashion: ["fashion"] };
-export const AGES = ["18+", "13-17"];
+export const AGES = ["18+", "13-17"];   // 13-17 only ever decodes as "minor": a representative registers a minor
+export const WHO = ["company", "child"];  // a person answering for themself has no `who` (byte-identical to before)
 export const DECISIONS = ["no", "approve_all", "rules"];
 export const FLOORS = ["each", "project", "video"];
 export const MAX_FRAGMENT = 1024;
+/** The one common licence text every card links to, the same for everyone (tog/1.0/legal-code.txt). */
+export const LEGAL = { id: "ToG-1.0", sha256: "2fd26018b920325994cb61ae42deaf93acd5ea00756ad92a373a72408e2d7122",
+  url: "https://www.pregen.org/tog/1.0" };
 
 const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
@@ -105,8 +109,7 @@ const COMPANY = { ...EN,
   real: "Never presented as our own advertising or statement.",
   except: "Exceptions only by a deal we sign, and never for sexual or adult content.",
   binds: "This covers only what we own. It never licenses any real person shown with it. It does not stop uses the "
-    + "law allows without a licence.",
-  unsigned: "Unsigned draft: until signed with your passkey, AI apps read this as a no." };
+    + "law allows without a licence." };
 const PURPOSE_ORDER = [["personal"], ["editorial", "educational", "research"], ["commercial"]];
 const MODALITY_ORDER = [["image"], ["video"], ["3d"], ["voice"]];
 const CATEGORY_ORDER = [["adult", "sexual"], ["political"], ["alcohol", "cannabis", "drugs", "tobacco"], ["weapons"],
@@ -155,8 +158,8 @@ export function cardCompany(r) {
   validate(r);
   const t = COMPANY;
   if (r.training || r.modalities.includes("voice")) throw new Error("marks/1 has no training and no voice");
-  if (!Object.keys(r.uses).length) return [t.no, t.no2, t.except, t.binds, t.unsigned];
-  return [...head(r, t, false), t.train_no, t.real, t.except, t.binds, t.unsigned];
+  if (!Object.keys(r.uses).length) return [t.no, t.no2, t.except, t.binds];
+  return [...head(r, t, false), t.train_no, t.real, t.except, t.binds];
 }
 
 // ---- the fragment `tog=v1` (PLAN §2.1) ----------------------------------------------------------------------------
@@ -164,8 +167,20 @@ function ordered(v, keys) {
   return Array.isArray(v) && v.every((x) => typeof x === "string" && keys.includes(x)) && same(v, keys.filter((k) => v.includes(k)));
 }
 
+/** A company's or a representative's answers: `who` names which; never an age, a domain or a name. A minor's
+ *  representative may only say no (founder, 2026-11-11). */
+function whoOk(a) {
+  const keys = Object.keys(a).sort();
+  if (a.who === "child") return same(keys, ["decision", "who"]) && a.decision === "no";
+  if (a.who !== "company" || typeof a.decision !== "string" || !DECISIONS.includes(a.decision)) return false;
+  if (a.decision === "no") return same(keys, ["decision", "who"]);
+  return same(keys, ["decision", "for", "never", "who"]) && ordered(a.for, Object.keys(FOR)) && a.for.length > 0
+    && ordered(a.never, Object.keys(NEVER));
+}
+
 /** The exact member set for the decision and every value in its closed set (the age rule is decodeFragment's). */
 export function answersOk(a) {
+  if (isObj(a) && "who" in a) return whoOk(a);
   if (!isObj(a) || typeof a.age !== "string" || !AGES.includes(a.age)
       || typeof a.decision !== "string" || !DECISIONS.includes(a.decision)) return false;
   const keys = Object.keys(a).sort();
@@ -178,11 +193,11 @@ export function answersOk(a) {
 }
 
 const b64url = (s) => btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-const minorYes = (a) => a.age === "13-17" && a.decision !== "no";
+const minor = (a) => a.age === "13-17";   // a minor registers only through a parent, guardian or representative
 
-/** Answers -> the fragment without its leading '#'. Never makes a minor's yes. */
+/** Answers -> the fragment without its leading '#'. Never a minor's own answers. */
 export function encodeAnswers(a) {
-  if (!answersOk(a) || minorYes(a)) throw new Error("these answers cannot be handed off");
+  if (!answersOk(a) || minor(a)) throw new Error("these answers cannot be handed off");
   return "tog=v1." + b64url(canonicalJson(a));   // closed ASCII values only, so canonical JSON is the plan's bytes
 }
 
@@ -202,7 +217,7 @@ export function decodeFragment(f) {
     return bad;
   }
   if (!answersOk(a) || "tog=v1." + b64url(canonicalJson(a)) !== f) return bad;
-  if (minorYes(a)) return { result: "minor" };
+  if (minor(a)) return { result: "minor" };
   return { result: "ok", answers: a };
 }
 
@@ -228,52 +243,4 @@ export function offeredRegistries(directory, { local = false } = {}) {
     return e.prefix && e.revoked == null && o && o === origin(e.website, local)
       && !new URL(e.tog_start).search && !e.tog_start.includes("#");
   }).map((e) => ({ name: e.name, prefix: e.prefix, start: e.tog_start }));
-}
-
-// ---- the company's site files (tog-licence §2.1, unsigned draft) --------------------------------------------------
-// The top label is letters or punycode (xn--p1ai is .рф); type the Unicode name and companyDomain() converts it.
-const DOMAIN = /^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+([a-z]{2,63}|xn--[a-z0-9-]{1,59})$/;
-/** What a person types (a URL, a Unicode name, capitals) -> the domain companyFiles() takes, or null. */
-export function companyDomain(typed) {
-  let host;
-  try { host = new URL(/^https?:\/\//i.test(typed) ? typed : `https://${typed}`).hostname; } catch { return null; }
-  return DOMAIN.test(host) ? host : null;
-}
-export const LICENCE_B = "ToG-B-1.0";
-const esc = (s) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-export const strong = (line) => esc(line).replace(/\*\*(.+?)\*\*/, "<strong>$1</strong>");
-
-/** The files a company uploads: /terms-of-generation, /.well-known/tog.json, the <link> line, the footer link.
- *  Unsigned: no keys, no signers, no witness; the legal text is not published yet (draft), so `legal` is null. */
-export function companyFiles(domain, name, answers) {
-  if (typeof domain !== "string" || !DOMAIN.test(domain)) throw new Error("domain");
-  if (typeof name !== "string" || !name.trim()) throw new Error("name");
-  const rules = companyRules(answers);
-  const lines = cardCompany(rules);
-  const url = `https://${domain}/.well-known/tog.json`;
-  const body = { subject_ref: `domain:${domain}#marks`, profile: "marks/1", version: 1, licence: LICENCE_B, rules,
-    assent: "self", signers: [], legal: null, witness: null, issued_at: null };
-  const tog_json = JSON.stringify({ tog: 1, unsigned_draft: true, holder: { kind: "company", name, domain },
-    page: `https://${domain}/terms-of-generation`, keys: null, statements: [{ type: "pg.terms.v1", body }],
-    registered: [], commitment: null, output_licence: null }, null, 2) + "\n";
-  const link_tag = `<link rel="tog" href="${url}">`;
-  const page_html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Terms of Generation · ${esc(name)}</title>
-${link_tag}
-</head>
-<body>
-<h1>Terms of Generation · ${esc(name)}</h1>
-<p>tog:${domain} · version 1 · unsigned draft</p>
-<h2>[01] What AI may do with us</h2>
-${lines.map((l) => `<p>${strong(l)}</p>`).join("\n")}
-<h2>[02] Legal code</h2>
-<p>${LICENCE_B} (draft, not final). A summary: the signed rules govern.</p>
-</body>
-</html>
-`;
-  return { page_html, tog_json, link_tag, footer: `<a href="/terms-of-generation">Terms of Generation</a>`, handle: `tog:${domain}` };
 }

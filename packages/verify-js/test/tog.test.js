@@ -3,14 +3,19 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { validate, rulesFromAnswers, card, cardCompany, companyRules, encodeAnswers, decodeFragment, companyFiles,
-  companyDomain, offeredRegistries, defaultNever, NEVER, FOR } from "../tog.js";
+import { createHash } from "node:crypto";
+import { validate, rulesFromAnswers, card, cardCompany, companyRules, encodeAnswers, decodeFragment, offeredRegistries,
+  defaultNever, NEVER, FOR, WHO, LEGAL } from "../tog.js";
 
 const V = JSON.parse(readFileSync(new URL("../../../spec/test-vectors/tog-generator.json", import.meta.url)));
 
-test("meta: the chip and purpose tables are the reference's", () => {
+test("meta: the chip and purpose tables are the reference's; every card links the one common legal text", () => {
   assert.deepEqual(FOR, V.meta.for);
   assert.deepEqual(NEVER, V.meta.never);
+  assert.deepEqual(WHO, V.meta.fragment.who);
+  assert.deepEqual(LEGAL, V.meta.legal);
+  const text = readFileSync(new URL("../../../tog/1.0/legal-code.txt", import.meta.url));
+  assert.equal(createHash("sha256").update(text).digest("hex"), LEGAL.sha256);
 });
 
 test("answers: rules and the English card, byte for byte", () => {
@@ -48,30 +53,18 @@ test("fragment.encode and decode", () => {
     assert.deepEqual(decodeFragment(fragment), answers ? { result, answers } : { result }, name);
   }
   assert.throws(() => encodeAnswers({ age: "13-17", decision: "rules", for: ["fun"], never: [], voice: false }));
+  // A minor registers only through a parent, guardian or representative, who may only say no.
+  assert.throws(() => encodeAnswers({ age: "13-17", decision: "no" }));
+  assert.throws(() => encodeAnswers({ who: "child", decision: "rules", for: ["fun"], never: [] }));
+  assert.throws(() => encodeAnswers({ who: "company", decision: "no", domain: "northwind.example" }));
+  assert.equal(V.fragment.encode.filter((e) => e.answers.who).length, 4);
 });
 
-test("company: card and statement body", () => {
-  for (const { name, answers, rules, card: c, statement_body } of V.company) {
+test("company: rules and card; a company gets its ToG code at a registry, like a person", () => {
+  for (const { name, answers, rules, card: c } of V.company) {
     assert.deepEqual(companyRules(answers), rules, name);
     assert.equal(JSON.stringify(cardCompany(rules)), JSON.stringify(c.en), name);
-    const f = companyFiles(V.meta.company.domain, "Northwind Coffee", answers);
-    const body = JSON.parse(f.tog_json).statements[0].body;
-    assert.deepEqual(Object.fromEntries(Object.keys(statement_body).map((k) => [k, body[k]])), statement_body, name);
-    assert.equal(f.handle, "tog:northwind.example");
-    assert.doesNotMatch(f.page_html + f.tog_json, /TOG-/, name);   // a company has no registry code
-    assert.match(f.page_html, /ToG-B-1\.0 \(draft, not final\)/);
-    assert.match(f.page_html, /<link rel="tog" href="https:\/\/northwind\.example\/\.well-known\/tog\.json">/);
-  }
-  assert.throws(() => companyFiles("https://northwind.example", "N", { decision: "no" }));
-  assert.match(companyFiles("a.example", "<b>&", { decision: "no" }).page_html, /&#60;b&#62;&#38;/);
-});
-
-test("company domain: what the page accepts, companyFiles() takes", () => {
-  for (const [typed, want] of [["northwind.example", "northwind.example"], ["https://Northwind.Example/about", "northwind.example"],
-    ["пример.рф", "xn--e1afmkfd.xn--p1ai"], ["xn--e1afmkfd.xn--p1ai", "xn--e1afmkfd.xn--p1ai"],
-    ["shop.123", null], ["a-.com", null], ["localhost", null], ["a b.com", null], ["", null]]) {
-    assert.equal(companyDomain(typed), want, typed);
-    if (want) assert.equal(companyFiles(want, "N", { decision: "no" }).handle, `tog:${want}`, typed);
+    assert.doesNotMatch(c.en.join("\n"), /passkey|[Uu]nsigned/, name);
   }
 });
 

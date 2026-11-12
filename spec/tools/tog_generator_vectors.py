@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Generate spec/test-vectors/tog-generator.json (the ToG funnel's shared vectors, UNRELEASED) from the approved
-reference spec/tools/tog_generator.py. PRIVATE DRAFT, 2026-11-10; contract: PRE-GEN-Drafts/tog-funnel/PLAN.md §2-§3.
+reference spec/tools/tog_generator.py; contract: spec/drafts/tog-funnel.md.
 
-Every rule and card value is computed by the reference; this file adds only what the plan defines on top of it:
-the `tog=v1` fragment (encode / strict decode, §2.1), the company card and statement body (§3.1, draft wording) and
-the registry chooser (§2.2). Deterministic, no dependencies, about 25 s (the reference's own exhaustive check):
+Every rule and card value is computed by the reference; this file adds only what the funnel defines on top of it:
+the `tog=v1` fragment (encode / strict decode: a person, a company, a minor's representative), the company card, the
+common legal text every card links to (tog/1.0/legal-code.txt) and the registry chooser. Deterministic, no dependencies, about 25 s (the reference's own exhaustive check):
 
     python3 -I spec/tools/tog_generator_vectors.py > spec/test-vectors/tog-generator.json
 """
@@ -28,7 +28,10 @@ if hashlib.sha256(_ref).hexdigest() != REFERENCE_SHA256:
     sys.exit("spec/tools/tog_generator.py is not the approved reference; copy it again, do not edit it here")
 
 # ---- the fragment `tog=v1` (PLAN §2.1) ----------------------------------------------------------------------------
-AGES = ("18+", "13-17")
+AGES = ("18+", "13-17")             # 13-17 only ever decodes as "minor": a representative registers a minor
+WHO = ("company", "child")          # a person answering for themself has no `who`
+LEGAL = {"id": "ToG-1.0", "sha256": hashlib.sha256((HERE.parents[1] / "tog" / "1.0" / "legal-code.txt").read_bytes())
+         .hexdigest(), "url": "https://www.pregen.org/tog/1.0"}
 DECISIONS = ("no", "approve_all", "rules")
 FLOORS = ("each", "project", "video")
 MAX_FRAGMENT = 1024
@@ -47,8 +50,22 @@ def _ordered(v, keys) -> bool:
     return type(v) is list and all(type(x) is str and x in keys for x in v) and v == [k for k in keys if k in v]
 
 
+def who_ok(a) -> bool:
+    """A company's or a minor's representative's answers: never an age, a domain or a name; a minor's only a no."""
+    if a["who"] == "child":
+        return set(a) == {"who", "decision"} and a["decision"] == "no"
+    if a["who"] != "company" or type(a.get("decision")) is not str or a["decision"] not in DECISIONS:
+        return False
+    if a["decision"] == "no":
+        return set(a) == {"who", "decision"}
+    return set(a) == {"who", "decision", "for", "never"} and _ordered(a["for"], g.FOR) and bool(a["for"]) \
+        and _ordered(a["never"], g.NEVER)
+
+
 def answers_ok(a) -> bool:
     """The exact member set for the decision, every value in its closed set (age rule not applied here)."""
+    if type(a) is dict and "who" in a:
+        return who_ok(a)
     if type(a) is not dict or type(a.get("age")) is not str or a["age"] not in AGES \
             or type(a.get("decision")) is not str or a["decision"] not in DECISIONS:
         return False
@@ -64,8 +81,8 @@ def answers_ok(a) -> bool:
 
 
 def encode(a: dict) -> str:
-    """Fragment without the leading '#'. The encoder never makes a minor's yes."""
-    assert answers_ok(a) and not (a["age"] == "13-17" and a["decision"] != "no"), a
+    """Fragment without the leading '#'. The encoder never makes a minor's own answers."""
+    assert answers_ok(a) and a.get("age") != "13-17", a
     f = "tog=v1." + _b64(_canon(a))
     assert len(f) <= MAX_FRAGMENT
     return f
@@ -87,7 +104,7 @@ def decode(f) -> dict:
         return bad
     if not answers_ok(a) or "tog=v1." + _b64(_canon(a)) != f:   # canonical bytes and canonical base64 only
         return bad
-    if a["age"] == "13-17" and a["decision"] != "no":
+    if a.get("age") == "13-17":            # only a parent, guardian or representative registers a minor
         return {"result": "minor"}
     return {"result": "ok", "answers": a}
 
@@ -112,8 +129,7 @@ CO_L = {**{k: (v["1"] if isinstance(v, dict) else v) for k, v in g.L["en"].items
         "real": "Never presented as our own advertising or statement.",
         "except": "Exceptions only by a deal we sign, and never for sexual or adult content.",
         "binds": "This covers only what we own. It never licenses any real person shown with it. It does not stop uses "
-                 "the law allows without a licence.",
-        "unsigned": "Unsigned draft: until signed with your passkey, AI apps read this as a no."}
+                 "the law allows without a licence."}
 CO_MODALITIES = ["3d", "image", "video"]
 
 
@@ -124,11 +140,11 @@ def company_rules(a: dict) -> dict:
 
 
 def card_company(r: dict) -> list:
-    """card()'s structure for profile marks/1 (draft): no voice line, the company lines, the unsigned-draft last line."""
+    """card()'s structure for profile marks/1 (draft): no voice line, the company lines."""
     t = CO_L
     assert not r["training"] and set(r["modalities"]) <= set(CO_MODALITIES)
     if not r["uses"]:
-        return [t["no"], t["no2"], t["except"], t["binds"], t["unsigned"]]
+        return [t["no"], t["no2"], t["except"], t["binds"]]
     ps = lambda modes: g._join(g._items({p for p, m in r["uses"].items() if m in modes}, g.PURPOSE_ORDER, t,
                                         lambda grp: "rnd" if len(grp) == 3 else grp[0]), t)
     modes = set(r["uses"].values())
@@ -142,10 +158,9 @@ def card_company(r: dict) -> list:
         lines.append(t["paid"])
     lines.append(t["as"].format(list=g._join(g._items(set(r["modalities"]), g.MODALITY_ORDER, t), t, ", ")))
     lines.append(t["never"].format(list=g._join(g._items(set(r["excluded_categories"]), g.CATEGORY_ORDER, t), t)))
-    return lines + [t["train_no"], t["real"], t["except"], t["binds"], t["unsigned"]]
+    return lines + [t["train_no"], t["real"], t["except"], t["binds"]]
 
 
-DOMAIN = "northwind.example"
 # PLAN §1.1: every screen that names the legal text says it is a draft until the founder freezes it.
 DRAFT = {"en": ("legal text prampta-likeness v2 ·", "legal text prampta-likeness v2 (draft) ·"),
          "ru": ("юридический текст prampta-likeness v2 ·", "юридический текст prampta-likeness v2 (черновик) ·")}
@@ -157,13 +172,6 @@ def frame_shown(r, lang, *a) -> list:
     old, new = DRAFT[lang]
     assert lines[-1].count(old) == 1
     return lines[:-1] + [lines[-1].replace(old, new)]
-
-
-def statement_body(r: dict) -> dict:
-    """The rules-bound part of the tog.json statement body; signers, legal (sha256 of spec/legal/ToG-1.0-DRAFT.txt),
-    witness and issued_at are added by companyFiles() when it builds the files (unsigned draft)."""
-    return {"subject_ref": f"domain:{DOMAIN}#marks", "profile": "marks/1", "version": 1, "licence": "ToG-B-1.0",
-            "rules": r, "assent": "self"}
 
 
 # ---- the registry chooser (PLAN §2.2) -----------------------------------------------------------------------------
@@ -270,8 +278,7 @@ def main():
 
     # fragment.encode: every encodable answer set as an adult, floors in turn; the two exact examples of PLAN §2.1
     enc, i = [], 0
-    for n, a in [("NO", {"age": "18+", "decision": "no"}), ("NO, 13-17", {"age": "13-17", "decision": "no"})] + \
-            [(n, {"age": "18+", **a}) for n, a in sets[2:]]:
+    for n, a in [("NO", {"age": "18+", "decision": "no"})] + [(n, {"age": "18+", **a}) for n, a in sets[2:]]:
         if "paid" in a.get("for", ()):
             a, i = {**a, "floor": FLOORS[i % 3]}, i + 1
         enc.append({"name": n, "answers": a, "fragment": encode(a)})
@@ -279,6 +286,11 @@ def main():
     ads = {"age": "18+", "decision": "rules", "floor": "each", "for": ["fun", "news", "paid"], "voice": False,
            "never": ["vice", "weapons", "violence", "gambling", "money", "health", "religion", "endorse"]}
     assert len(encode(ads)) - len("tog=") == 238 and any(e["answers"] == ads for e in enc)
+    co_ads = {"who": "company", "decision": "rules", "for": ["fun", "news", "paid"], "never": ["vice", "endorse"]}
+    for n, a in [("company NO", {"who": "company", "decision": "no"}), ("company ADS", co_ads),
+                 ("company approve_all", {"who": "company", "decision": "approve_all", "for": ["paid"], "never": []}),
+                 ("a minor's representative: NO", {"who": "child", "decision": "no"})]:
+        enc.append({"name": n, "answers": a, "fragment": encode(a)})
     biggest = {"age": "18+", "decision": "approve_all", "for": L(g.FOR), "never": L(g.NEVER), "voice": True,
                "floor": "project"}
 
@@ -289,7 +301,7 @@ def main():
     ads_wo = lambda **kw: _canon({**{k: v for k, v in ads.items() if k not in kw.get("drop", ())},
                                   **{k: v for k, v in kw.items() if k != "drop"}})
     cases = [
-        ("ok: no, adult", no), ("ok: no, 13-17", encode({"age": "13-17", "decision": "no"})), ("ok: ADS", encode(ads)),
+        ("ok: no, adult", no), ("minor: a 13-17 no", raw('{"age":"13-17","decision":"no"}')), ("ok: ADS", encode(ads)),
         ("ok: everything ticked, the longest fragment", encode(biggest)),
         ("v2.", "tog=v2." + p_no), ("V1.", "tog=V1." + p_no), ("no dot after v1", "tog=v1" + p_no),
         ("tog= alone", "tog="),
@@ -317,11 +329,22 @@ def main():
         ("teen yes", raw(_canon({**ads, "age": "13-17"}))),
         ("1025 chars, v1", "tog=v1." + "A" * (MAX_FRAGMENT + 1 - len("tog=v1."))),
         ("1025 chars, v2", "tog=v2." + "A" * (MAX_FRAGMENT + 1 - len("tog=v2."))),
+        ("ok: company no", encode({"who": "company", "decision": "no"})), ("ok: company ADS", encode(co_ads)),
+        ("ok: a minor's representative, no", encode({"who": "child", "decision": "no"})),
+        ("a minor's representative: a yes", raw(_canon({**co_ads, "who": "child"}))),
+        ("a minor's representative with an age", raw('{"age":"13-17","decision":"no","who":"child"}')),
+        ("company with an age", raw('{"age":"18+","decision":"no","who":"company"}')),
+        ("company with a voice", raw(_canon({**co_ads, "voice": False}))),
+        ("company with a floor", raw(_canon({**co_ads, "floor": "each"}))),
+        ("company with a domain", raw('{"decision":"no","domain":"northwind.example","who":"company"}')),
+        ("company yes, for: []", raw(_canon({**co_ads, "for": []}))),
+        ("company yes without never", raw(_canon({k: v for k, v in co_ads.items() if k != "never"}))),
+        ("who: brand", raw('{"decision":"no","who":"brand"}')), ("who: me", raw('{"decision":"no","who":"me"}')),
     ]
     dec = [{"name": n, "fragment": f, **decode(f)} for n, f in cases]
-    want = {"ok": 4, "unknown_version": 4, "minor": 1}
+    want = {"ok": 6, "unknown_version": 4, "minor": 2}
     got = {r: sum(d["result"] == r for d in dec) for r in ("ok", "unknown_version", "minor", "malformed")}
-    assert all(got[k] == v for k, v in want.items()) and got["malformed"] == len(cases) - 9, got
+    assert all(got[k] == v for k, v in want.items()) and got["malformed"] == len(cases) - 12, got
     assert all(decode(e["fragment"]) == {"result": "ok", "answers": e["answers"]} for e in enc)
 
     co_sets = [("NO", {"decision": "no"}), ("nothing ticked on Q2 is no", {"decision": "rules", "for": [], "never": []})]
@@ -338,7 +361,7 @@ def main():
         r = company_rules(a)
         c = card_company(r)
         assert sum(line.count("**") for line in c) == 2
-        company.append({"name": n, "answers": a, "rules": r, "card": {"en": c}, "statement_body": statement_body(r)})
+        company.append({"name": n, "answers": a, "rules": r, "card": {"en": c}})
     assert len({tuple(c["card"]["en"]) for c in company}) == len({json.dumps(c["rules"]) for c in company})
 
     def reg(**kw):
@@ -381,17 +404,16 @@ def main():
                        "do not edit by hand. Cards are body lines with ** around the one bold phrase; frames are DESIGN "
                        "§4.2's four cards with TOG-PRAM codes (PG codes are retired) and '(draft)' on the meta line "
                        "(PLAN §1.1). A fragment is "
-                       "location.hash without the leading '#'. Company wording, profile marks/1 and licence ToG-B-1.0 "
-                       "are drafts. The legal texts are drafts, not final.",
+                       "location.hash without the leading '#'. Company wording and profile marks/1 are drafts. Every "
+                       "card links the one common legal text, meta.legal.",
         "meta": {"reference_sha256": REFERENCE_SHA256, "profile": "likeness/2", "vocab": L(g.VOCAB),
                  "floor": L(g.FLOOR), "registry_lock": L(g.REGISTRY_LOCK), "purposes": L(g.PURPOSES),
                  "modes": L(g.MODES), "modalities": L(g.MODALITIES),
                  "for": {k: L(v) for k, v in g.FOR.items()}, "never": {k: L(v) for k, v in g.NEVER.items()},
                  "fragment": {"prefix": "tog=", "version": "v1.", "max_length": MAX_FRAGMENT,
-                              "longest_encoded": len(encode(biggest)), "ages": L(AGES), "decisions": L(DECISIONS),
-                              "floors": L(FLOORS)},
-                 "company": {"profile": "marks/1", "modalities": CO_MODALITIES, "licence": "ToG-B-1.0",
-                             "domain": DOMAIN}},
+                              "longest_encoded": len(encode(biggest)), "ages": L(AGES), "who": L(WHO),
+                              "decisions": L(DECISIONS), "floors": L(FLOORS)},
+                 "company": {"profile": "marks/1", "modalities": CO_MODALITIES}, "legal": LEGAL},
         "answers": answers, "never_lines": never_lines, "frames": frames,
         "reject_rules": g.REJECT, "policy": policy,
         "fragment": {"encode": enc, "decode": dec},
