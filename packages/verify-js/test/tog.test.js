@@ -76,6 +76,17 @@ test("conditions: the person's own words ride a person's yes only, code points c
     { who: "company", decision: "no", conditions: "x" }]) assert.throws(() => encodeAnswers(bad), JSON.stringify(bad));
 });
 
+test("conditions are checked without String.prototype.isWellFormed (ES2024: Safari < 16.4, Firefox < 119)", () => {
+  const own = String.prototype.isWellFormed;
+  delete String.prototype.isWellFormed;
+  try {
+    assert.ok(conditionsOk("ok 🎰\nне в рекламе"));                                        // a surrogate pair is one character
+    for (const lone of ["\ud800", "a\udfffb", "\ude00\ud83c"]) assert.equal(conditionsOk(lone), false, escape(lone));
+  } finally {
+    String.prototype.isWellFormed = own;
+  }
+});
+
 test("company: rules and card; a company gets its ToG code at a registry, like a person", () => {
   for (const { name, answers, rules, card: c } of V.company) {
     assert.deepEqual(companyRules(answers), rules, name);

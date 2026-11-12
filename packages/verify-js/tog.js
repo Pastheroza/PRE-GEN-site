@@ -27,12 +27,13 @@ export const FLOORS = ["each", "project", "video"];
 export const MAX_FRAGMENT = 6144;   // the longest answers with 1,000 four-byte characters of conditions: 5,629
 export const CONDITIONS_MAX = 1000;  // ToG 1.0 §6(f): at most 1,000 characters (Unicode code points), any language
 // Never in conditions: C0 and C1 controls but LF, the line and paragraph separators, bidi controls
-// (U+202A-U+202E, U+2066-U+2069; the card would show other text than the bytes); lone surrogates fail isWellFormed().
-const COND_BAD = /[\x00-\x09\x0b-\x1f\x7f-\x9f\u2028\u2029\u202a-\u202e\u2066-\u2069]/;
+// (U+202A-U+202E, U+2066-U+2069; the card would show other text than the bytes), lone surrogates (with the `u` flag a
+// surrogate pair is one character, so only a lone half matches; no isWellFormed(), which older browsers lack).
+const COND_BAD = /[\x00-\x09\x0b-\x1f\x7f-\x9f\u2028\u2029\u202a-\u202e\u2066-\u2069\uD800-\uDFFF]/u;
 
 /** The person's own words: a non-empty NFC string of at most 1,000 code points, LF the only control. */
 export function conditionsOk(c) {
-  return typeof c === "string" && c.isWellFormed() && c.length > 0 && [...c].length <= CONDITIONS_MAX
+  return typeof c === "string" && c.length > 0 && [...c].length <= CONDITIONS_MAX
     && c.normalize("NFC") === c && !COND_BAD.test(c);
 }
 /** The one common licence text every card links to, the same for everyone (tog/1.0/legal-code.txt), and the label
