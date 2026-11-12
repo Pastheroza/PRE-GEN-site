@@ -1,23 +1,23 @@
-// /tog (UNRELEASED draft, PRE-GEN-Drafts/tog-funnel/PLAN.md §4.1): the page loads only the ToG module, keeps the CSP,
-// never puts the year of birth or the answers anywhere but the fragment, says "draft" beside every legal name, and a
-// company's files carry tog:<domain> and no TOG- code. The cards themselves: packages/verify-js/test/tog.test.js.
+// /tog (spec/drafts/tog-funnel.md): the page loads only the ToG module, keeps the CSP, never puts the year of birth
+// or the answers anywhere but the fragment, names only the one common legal text (ToG 1.0, with its hash and link) and
+// no draft text, and is public. The cards: packages/verify-js/test/tog.test.js; the screens: test/tog-flow.test.mjs.
 // Run: node --test test/tog-page.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { companyFiles } from "../packages/verify-js/tog.js";
+import { existsSync, readFileSync } from "node:fs";
 
 const read = (f) => readFileSync(new URL("../" + f, import.meta.url), "utf8");
+const exists = (f) => existsSync(new URL("../" + f, import.meta.url));
 const html = read("tog.html"), js = read("tog.js");
 
-test("the page loads only its own module, which imports only the ToG library; no inline script or style", () => {
+test("the page loads only its own module, which imports only the ToG library; no inline script or style; public", () => {
   assert.deepEqual(html.match(/<script[^>]*>/g), ['<script src="/theme.js">', '<script src="/site.js" defer>', '<script type="module" src="/tog.js">']);
   assert.deepEqual([...js.matchAll(/^import[^;]*from "([^"]+)"/gms)].map((m) => m[1]), ["/packages/verify-js/tog.js"]);
   assert.doesNotMatch(html, /\sstyle=|<style/);
   assert.doesNotMatch(js, /innerHTML|insertAdjacentHTML|\.style\b|"style"|eval\(|new Function/);
-  assert.match(html, /<meta name="robots" content="noindex">/);
+  assert.doesNotMatch(html, /noindex|DRAFT|[Nn]ot public/);
   assert.match(read("vercel.json"), /style-src 'self';/);
-  assert.doesNotMatch(read("sitemap.xml"), /pregen\.org\/tog</);
+  for (const url of ["/tog", "/tog/1.0", "/tog/1.0/deed"]) assert.match(read("sitemap.xml"), new RegExp(`pregen\\.org${url}<`));
 });
 
 test("nothing is stored, and only the fragment carries answers", () => {
@@ -28,27 +28,17 @@ test("nothing is stored, and only the fragment carries answers", () => {
   for (const [, url] of js.matchAll(/fetch\("([^"]+)"/g)) assert.equal(url, "/test/tog-local/steward.json");
 });
 
-test('"draft" beside every legal name the page shows', () => {
-  for (const text of [html, js]) {
-    for (const m of text.matchAll(/ToG-[LB]-1\.0|prampta-likeness/g)) {
-      assert.match(text.slice(m.index, m.index + 40), /draft/i, text.slice(m.index - 20, m.index + 40));
+test("one common legal text: the page names only ToG 1.0, links its pages, and never builds a personal copy", () => {
+  for (const text of [html, js]) assert.doesNotMatch(text, /ToG-[LB]-1\.0|prampta-likeness|\bdraft\b|UNRELEASED|Blob|download/i);
+  assert.match(js, /href: "\/tog\/1\.0" \}, "Read the legal code"/);
+  assert.match(js, /href: "\/tog\/1\.0\/deed" \}, "Read it in plain words"/);
+  for (const f of ["tog/1.0/index.html", "tog/1.0/deed.html", "tog/1.0/legal-code.txt"]) assert.ok(exists(f), f);
+  // Every site link the ToG pages hold points at a file served here.
+  for (const f of ["tog.html", "tog/1.0/index.html", "tog/1.0/deed.html"]) {
+    for (const [, href] of read(f).matchAll(/href="(\/[^"#]*)"/g)) {
+      const p = href.slice(1);
+      assert.ok([p, p + ".html", p + "/index.html"].some(exists), `${f}: ${href}`);
     }
-  }
-  assert.match(js, /ToG-L-1\.0 \(draft, not final\)/);
-  assert.match(js, /ToG-B-1\.0 \(draft, not final\)/);
-});
-
-test("a company's files: tog:<domain>, the link line, no TOG- code, unsigned", () => {
-  for (const a of [{ decision: "no" }, { decision: "rules", for: ["fun", "news", "paid"], never: ["vice"] }]) {
-    const f = companyFiles("northwind.example", "Northwind Coffee", a);
-    const all = Object.values(f).join("\n");
-    assert.match(all, /tog:northwind\.example/);
-    assert.doesNotMatch(all, /TOG-/);
-    assert.equal(f.link_tag, '<link rel="tog" href="https://northwind.example/.well-known/tog.json">');
-    assert.match(f.page_html, /Unsigned draft: until signed with your passkey, AI apps read this as a no\./);
-    const doc = JSON.parse(f.tog_json);
-    assert.equal(doc.keys, null);
-    assert.deepEqual(doc.statements[0].body.signers, []);
   }
 });
 
