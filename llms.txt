@@ -1,6 +1,8 @@
-# PRE-GEN
+# ToG Protocol
 
-> PRE-GEN is an open standard by Valerii Egorov (Apache-2.0) for asking permission before an AI system generates a protected subject — a person's likeness or voice, a character, a brand, a work (first profile: likeness and voice). The registry that speaks for the person answers with an Ed25519-signed answer, bound to the exact request, that anyone can verify offline. It is not owned by any registry, and no intermediary is required.
+> ToG Protocol is an open standard by Valerii Egorov (Apache-2.0) for asking permission before an AI system generates a protected subject — a person's likeness or voice, a character, a brand, a work (first profile: likeness and voice). The registry that speaks for the person answers with an Ed25519-signed answer, bound to the exact request, that anyone can verify offline. It is not owned by any registry, and no intermediary is required.
+
+ToG Protocol (Terms of Generation Protocol). Earlier versions of this protocol were published as Prompt Protocol and as PRE-GEN Protocol. It is the same protocol under its current name.
 
 - **One-file guide for AI agents:** [get-started.md](https://www.pregen.org/get-started.md) — integrate as a provider, check a proof, or run a registry, step by step. Complete provider guide: [docs/provider.md](https://www.pregen.org/docs/provider.md); registry guide: [docs/registry.md](https://www.pregen.org/docs/registry.md).
 - **Two layers.** PRE-GEN (ask, check, generate, report, prove) is the mandatory layer: every AI provider and every registry implements it, with no account anywhere (a domain, a key, the library). A registry's commerce (selling licences) is an optional second layer, set by each registry. At PRAMPTA today, commerce for apps known only by their domain is not open yet: a provider buys licences through a PRAMPTA account, and a person who bought a licence connects it to any app with `bind`. See [two layers](https://www.pregen.org/docs/two-layers).

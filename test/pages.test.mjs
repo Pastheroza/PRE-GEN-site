@@ -46,4 +46,7 @@ test("the name: ToG Protocol in every footer, title and front page; PRE-GEN only
   assert.ok(served.filter((f) => readFileSync(ROOT + f, "utf8").includes('class="foot-brand"')).length > 20);
   for (const f of ["spec/README.md", "spec/PRE-GEN-SPEC.md", "packages/verify-py/README.md", "packages/verify-js/README.md",
     "packages/registry/README.md", "README.md"]) assert.ok(readFileSync(ROOT + f, "utf8").split("\n").slice(0, 4).includes(NAME), f);
+  // llms.txt, linked from every footer: H1 and its one-line summary first (llmstxt.org), then the name.
+  const llms = readFileSync(ROOT + "llms.txt", "utf8").split("\n");
+  assert.deepEqual([llms[0], llms[2].slice(0, 41), llms[4]], ["# ToG Protocol", "> ToG Protocol is an open standard by Val", NAME]);
 });
