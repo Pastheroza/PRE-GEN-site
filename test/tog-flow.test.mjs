@@ -71,8 +71,7 @@ function registryStep(t, co = false) {
   assert.match(t, /Once verified, your YES or NO is global for every registry on ToG Protocol\./);
   assert.doesNotMatch(t, /ToG 1\.0(?! public draft 1)/);   // every line that cites the text says which text it is
   if (co) {   // ToG 1.0 covers a natural person's likeness only: a company's card cites no licence text
-    assert.match(t, /This code records the company's answer for its name, marks and products\. Rules for brands will join ToG later\./);
-    assert.doesNotMatch(t, /ToG 1\.0 public draft|Read the legal code/);
+    assert.doesNotMatch(t, /ToG 1\.0 public draft|Read the legal code|Rules for brands|This code records the company's answer/);
     assert.match(t, /publish the file \/\.well-known\/tog\.json on your company's domain/);
     return;
   }

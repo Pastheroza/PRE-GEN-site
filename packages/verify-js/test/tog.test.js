@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { validate, rulesFromAnswers, card, cardCompany, companyRules, encodeAnswers, decodeFragment, offeredRegistries,
-  defaultNever, conditionsOk, COMPANY_NOTE, NEVER, FOR, WHO, LEGAL, MAX_FRAGMENT, CONDITIONS_MAX } from "../tog.js";
+  defaultNever, conditionsOk, NEVER, FOR, WHO, LEGAL, MAX_FRAGMENT, CONDITIONS_MAX } from "../tog.js";
 
 const V = JSON.parse(readFileSync(new URL("../../../spec/test-vectors/tog-generator.json", import.meta.url)));
 
@@ -14,7 +14,7 @@ test("meta: the chip and purpose tables are the reference's; every card links th
   assert.deepEqual(NEVER, V.meta.never);
   assert.deepEqual(WHO, V.meta.fragment.who);
   assert.deepEqual(LEGAL, V.meta.legal);
-  assert.equal(COMPANY_NOTE, V.meta.company.note);   // a company's card cites no licence text
+  assert.deepEqual(Object.keys(V.meta.company), ["profile", "modalities"]);   // a company's card cites no licence text and carries no note
   const text = readFileSync(new URL("../../../tog/1.0/legal-code.txt", import.meta.url));
   assert.equal(createHash("sha256").update(text).digest("hex"), LEGAL.sha256);
 });

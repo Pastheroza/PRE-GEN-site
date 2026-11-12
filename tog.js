@@ -5,7 +5,7 @@
 // The year of birth stays in this page's memory: never in a URL, never in storage. A person's yes may add conditions in
 // their own words (ToG 1.0 §6(f)), shown first on the card as plain text.
 import { rulesFromAnswers, card, companyRules, cardCompany, encodeAnswers, offeredRegistries, defaultNever,
-  conditionsOk, loadDirectory, proofLine, NEVER, LEGAL, CONDITIONS_MAX, COMPANY_NOTE } from "/packages/verify-js/tog.js";
+  conditionsOk, loadDirectory, proofLine, NEVER, LEGAL, CONDITIONS_MAX } from "/packages/verify-js/tog.js";
 
 const LETTERS = "ABCDEFGHIJ";
 const LOCAL = ["localhost", "127.0.0.1"].includes(location.hostname);
@@ -210,9 +210,8 @@ const SCREENS = {
     }, () => list.replaceChildren(el("p", {}, "The signed list of registries could not be loaded. Try again later.")));
     const whose = co ? "YOUR COMPANY'S TOG" : child ? "YOUR CHILD'S TOG" : "YOUR TOG";
     return { title: child ? "Your child's answer, as AI apps will read it" : "Your answer, as AI apps will read it", wide: true, body: [
-      cardBox(`${whose} · CODE FROM YOUR REGISTRY`, lines, !co && !child && yes() && words(), co   // ToG 1.0 covers a natural person's likeness only
-        ? COMPANY_NOTE
-        : `${LEGAL.label} · SHA-256 ${LEGAL.sha256} · the same text for everyone`),
+      cardBox(`${whose} · CODE FROM YOUR REGISTRY`, lines, !co && !child && yes() && words(),
+        !co && `${LEGAL.label} · SHA-256 ${LEGAL.sha256} · the same text for everyone`),   // ToG 1.0 covers a natural person's likeness only
       !co && el("p", { class: "tf-legal" }, el("a", { href: "/tog/1.0" }, "Read the legal code"), el("a", { href: "/tog/1.0/deed" }, "Read it in plain words")),
       !co && !child && el("p", { class: "meta" }, ...rich(`Under ${LEGAL.label}: **training AI models on you happens only under a paid deal you sign**; sexual or adult content only under a deal you sign yourself after an identity document check, which is not offered yet; rights you granted before ToG keep their own terms.`)),
       yes() && el("p", { class: "meta" }, ...rich("Your yes is recorded as your wish. **It opens only after identity verification, which is coming soon;** until then it opens nothing.")),
@@ -245,7 +244,7 @@ const SCREENS = {
 function cardBox(head, lines, conditions, meta) {
   return el("figure", { class: "tf-card" }, el("figcaption", {}, head),
     conditions && el("p", { class: "tf-cond" }, conditions),
-    lines.map((l) => el("p", {}, ...rich(l))), el("p", { class: "tf-card-meta" }, meta));
+    lines.map((l) => el("p", {}, ...rich(l))), meta && el("p", { class: "tf-card-meta" }, meta));
 }
 
 // ---- the registries (PLAN §2.2): the signed directory, read once ----------------------------------------------------

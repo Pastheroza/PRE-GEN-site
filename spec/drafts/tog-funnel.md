@@ -79,8 +79,7 @@ On `localhost` only, the page reads `/test/tog-local/registries.json`, signed by
 A company answers the same questions without voice and goes to a registry like a person. It gets a code of the same
 form (`TOG-CODE.md` §5), pending until it proves its domain: the registry gives it the `/.well-known/tog.json` to
 place at `https://<domain>`, naming the registry's record for the code, read without redirects. Lookup says
-`holder: "company"`. ToG 1.0 covers natural persons, so a company's card cites no licence text and says instead
-"This code records the company's answer for its name, marks and products. Rules for brands will join ToG later."
-(`meta.company.note`; a founder's recommendation not yet confirmed). When the file later stops naming the record, the company gets a notice and 30 days of grace, then
+`holder: "company"`. ToG 1.0 covers natural persons, so a company's card cites no licence text. When the file later
+stops naming the record, the company gets a notice and 30 days of grace, then
 its code answers `pending` until the file is back; the home re-checks at most daily (`extensions/lookup.md`;
-`DOMAIN_GRACE` and `DOMAIN_RECHECK` in the reference registry, a founder's recommendation not yet confirmed).
+`DOMAIN_GRACE` and `DOMAIN_RECHECK` in the reference registry, founder decision 2026-11-12).

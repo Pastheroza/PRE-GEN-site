@@ -41,10 +41,6 @@ export function conditionsOk(c) {
 export const LEGAL = { id: "ToG-1.0", label: "ToG 1.0 public draft 1",
   sha256: "b5ca28ccaeeecf3be03e7532b3460ff2d0d696c2f72cc7af1cff5ef5cdd178e4", url: "https://www.pregen.org/tog/1.0" };
 
-/** A company's card cites no licence text: ToG 1.0 covers natural persons (founder's recommendation, 2026-11-11). */
-export const COMPANY_NOTE = "This code records the company's answer for its name, marks and products. Rules for brands "
-  + "will join ToG later.";
-
 const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
 const sortedSet = (xs) => [...new Set(xs)].sort();
