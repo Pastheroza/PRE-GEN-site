@@ -69,6 +69,7 @@ function registryStep(t, co = false) {
   assert.match(t, /The code is pending for 7 days\. It permits nothing and forbids nothing until you confirm it is you/);
   assert.match(t, /An email alone does not\. Your registry reminds you on day 3; on day 7 an unconfirmed code is deleted and never issued again\./);
   assert.match(t, /Once verified, your YES or NO is global for every registry on ToG Protocol\./);
+  assert.doesNotMatch(t, /ToG 1\.0(?! public draft 1)/);   // every line that cites the text says which text it is
   if (co) {   // ToG 1.0 covers a natural person's likeness only: a company's card cites no licence text
     assert.match(t, /This code records the company's answer for its name, marks and products\. Rules for brands will join ToG later\./);
     assert.doesNotMatch(t, /ToG 1\.0 public draft|Read the legal code/);
@@ -88,7 +89,7 @@ test("a person's no: the card, tog:no first, then the registry; the year never l
   p.press("Me"); p.type("1990"); p.press("OK"); p.press("No.");
   const t = p.text();
   assert.match(t, /No AI generation of me\./);
-  assert.match(t, /write tog:no in the bio of your own public profile/);
+  assert.match(t, /write tog:no in the bio of your own public profile\. Under ToG 1\.0 public draft 1 §2\(h\) it counts at once\./);
   assert.ok(t.indexOf("tog:no") < t.indexOf("Get your ToG code"));
   registryStep(t);
   assert.deepEqual(await p.out(), { result: "ok", answers: { age: "18+", decision: "no" } });

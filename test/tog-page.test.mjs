@@ -29,8 +29,9 @@ test("nothing is stored, and only the fragment carries answers", () => {
 });
 
 test("one common legal text: the page names only ToG 1.0, links its pages, and never builds a personal copy", () => {
-  for (const text of [html, js]) assert.doesNotMatch(text, /ToG-[LB]-1\.0|prampta-likeness|\bdraft\b|UNRELEASED|Blob|download/i);
+  for (const text of [html, js]) assert.doesNotMatch(text, /ToG-[LB]-1\.0|prampta-likeness|(?<!public )\bdraft\b(?! 1\b)|UNRELEASED|Blob|download/i);
   assert.match(js, /href: "\/tog\/1\.0" \}, "Read the legal code"/);
+  assert.doesNotMatch(html, /ToG 1\.0(?! public draft 1)/);   // the meta description too names which text it is
   assert.match(js, /href: "\/tog\/1\.0\/deed" \}, "Read it in plain words"/);
   for (const f of ["tog/1.0/index.html", "tog/1.0/deed.html", "tog/1.0/legal-code.txt"]) assert.ok(exists(f), f);
   // Every site link the ToG pages hold points at a file served here.

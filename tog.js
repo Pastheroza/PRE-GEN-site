@@ -217,7 +217,7 @@ const SCREENS = {
       !co && !child && el("p", { class: "meta" }, ...rich(`Under ${LEGAL.label}: **training AI models on you happens only under a paid deal you sign**; sexual or adult content only under a deal you sign yourself after an identity document check, which is not offered yet; rights you granted before ToG keep their own terms.`)),
       yes() && el("p", { class: "meta" }, ...rich("Your yes is recorded as your wish. **It opens only after identity verification, which is coming soon;** until then it opens nothing.")),
       !child && el("p", { class: "actions" }, el("button", { type: "button", class: "btn", on: () => { trail = trail.slice(0, trail.indexOf("decision") + 1); render(); } }, "Change")),
-      !yes() && !co && !child && el("p", {}, ...rich("Saying no right now: write **tog:no** in the bio of your own public profile. Under ToG 1.0 §2(h) it counts at once.")),
+      !yes() && !co && !child && el("p", {}, ...rich(`Saying no right now: write **tog:no** in the bio of your own public profile. Under ${LEGAL.label} §2(h) it counts at once.`)),
       el("h2", {}, "Get your ToG code at your home registry"),
       el("p", {}, ...rich("Your home registry records your answer and gives you your ToG code at once. **You need one home only:** every other registry and AI app uses that code.")),
       el("p", {}, ...rich(`**The code is pending for 7 days.** It permits nothing and forbids nothing until you confirm it is you: ${co ? "publish the file /.well-known/tog.json on your company's domain" : `put the line “${proofLine("<your code>")}” on a public account or website you control`}, or verify your identity. An email alone does not. Your registry reminds you on day 3; on day 7 an unconfirmed code is deleted and never issued again.`)),
