@@ -288,7 +288,7 @@ def create_app(registry: Registry, policy_file=None) -> FastAPI:
                            "<h1>Refused</h1><p>Nothing is published.</p>")
 
     @app.post("/v2/after-gen/{rid}/withdraw")
-    def after_gen_withdraw(rid: str, env=Body(...)):
+    def after_gen_withdraw(rid: str, env=Body(None)):   # None: a "null" body reaches the check below on any FastAPI
         if not isinstance(env, dict):           # a withdrawal on instruction is the operator's, never over HTTP
             raise ProtocolError("PG_MALFORMED", "expected a pg.after_gen_withdrawal.v1 envelope")
         return registry.withdraw_after_gen(rid, env)
