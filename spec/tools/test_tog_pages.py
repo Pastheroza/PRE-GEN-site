@@ -24,7 +24,7 @@ def test_both_pages_and_the_deed_show_the_hash_of_the_plain_text():
     for page in ("index.html", "deed.html"):
         assert f"SHA-256 <span>{H}</span>" in (t.DIR / page).read_text(encoding="utf-8"), page
     assert (t.DIR / "deed.md").read_text(encoding="utf-8").endswith(
-        f"Legal code: ToG-1.0, sha256 {H}, at https://pregen.org/tog.\n")
+        f"Legal code: ToG 1.0 public draft 1, sha256 {H}, at https://pregen.org/tog.\n")   # the hash's own text
 
 
 def test_public_draft_1_with_its_two_brackets_as_written_and_labelled_on_both_pages():
@@ -52,7 +52,7 @@ def test_extract_follows_the_recipe_printed_in_the_source(tmp_path, monkeypatch)
     body = b"## ToG 1.0 legal code\n\n(a) [hash] stays.\n"
     assert (out / "legal-code.txt").read_bytes() == body
     deed = (out / "deed.md").read_text(encoding="utf-8")
-    assert deed.endswith(f"ToG-1.0, sha256 {hashlib.sha256(body).hexdigest()}, at https://pregen.org/tog.\n")
+    assert deed.endswith(f"Legal code: ToG 1.0 public draft 1, sha256 {hashlib.sha256(body).hexdigest()}, at https://pregen.org/tog.\n")
     assert "version [n], sha256 [hash], of a Statement" in deed       # the model clause keeps its own blanks
     (src / "ToG-1.0-legal-code.md").write_text("Legal code begins\n## x\n\nLegal code ends\n", encoding="utf-8")
     with pytest.raises(AssertionError):

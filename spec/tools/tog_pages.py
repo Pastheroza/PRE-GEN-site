@@ -8,7 +8,8 @@
 
     python3 -I spec/tools/tog_pages.py      writes tog/1.0/index.html (/tog/1.0) and tog/1.0/deed.html (/tog/1.0/deed)
     python3 -I spec/tools/tog_pages.py --from DIR   first re-extracts both sources from DIR/ToG-1.0-legal-code.md
-                                            (by the recipe printed at its top) and DIR/ToG-1.0-deed.md ([hash] filled)
+                                            (by the recipe printed at its top) and DIR/ToG-1.0-deed.md ([hash] filled,
+                                            labelled as public draft 1's)
 
 ToG 1.0 public draft 1 (11 November 2026): one common text for everyone; a person attaches it with their own short card.
 spec/tools/test_tog_pages.py checks the committed pages are what this prints and that the text keeps its form.
@@ -37,7 +38,8 @@ def extract(src: Path):
     (DIR / "legal-code.txt").write_bytes(("\n".join(lines[i + 2:j - 1]) + "\n").encode("utf-8"))
     deed = (src / "ToG-1.0-deed.md").read_text(encoding="utf-8")
     assert deed.count("Legal code: ToG-1.0, sha256 [hash],") == 1, "the deed names the legal code's hash once"
-    (DIR / "deed.md").write_text(deed.replace("ToG-1.0, sha256 [hash],", f"ToG-1.0, sha256 {sha256()},"), encoding="utf-8")
+    # The hash is public draft 1's, not the final ToG 1.0's (its §16(a)): the line names the text it is the hash of.
+    (DIR / "deed.md").write_text(deed.replace("ToG-1.0, sha256 [hash],", f"{LABEL}, sha256 {sha256()},"), encoding="utf-8")
 
 
 def legal_text() -> str:

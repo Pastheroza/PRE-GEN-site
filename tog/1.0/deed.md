@@ -148,4 +148,4 @@ A permission under this licence is one person's permission. It does not make a u
 
 The steward publishes the licence text and the list of registries and lookup sources, on published criteria and with public notice. It is not a party to anyone's terms, is not a registry, ranks no registry, and gives no legal advice.
 
-Legal code: ToG-1.0, sha256 b5ca28ccaeeecf3be03e7532b3460ff2d0d696c2f72cc7af1cff5ef5cdd178e4, at https://pregen.org/tog.
+Legal code: ToG 1.0 public draft 1, sha256 b5ca28ccaeeecf3be03e7532b3460ff2d0d696c2f72cc7af1cff5ef5cdd178e4, at https://pregen.org/tog.
