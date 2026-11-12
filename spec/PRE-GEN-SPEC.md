@@ -1,5 +1,7 @@
 # PRE-GEN Protocol Specification
 
+ToG Protocol (Terms of Generation Protocol). Earlier versions of this protocol were published as Prompt Protocol and as PRE-GEN Protocol. It is the same protocol under its current name.
+
 **Version:** PRE-GEN v5 (2026-10-12, published on pregen.org; the Zenodo
 record is pending, so the concept DOI
 [10.5281/zenodo.20129901](https://doi.org/10.5281/zenodo.20129901) still

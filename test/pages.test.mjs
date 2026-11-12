@@ -29,3 +29,21 @@ test("no page shows a PG code; the historical documents carry the retired banner
 test("the sitemap does not list the retired PG code page", () => {
   assert.doesNotMatch(readFileSync(ROOT + "sitemap.xml", "utf8"), /pg-code/);
 });
+
+// The protocol's name (founder, exact wording): every footer and the spec and package front pages carry it; a page title
+// never names the whole protocol PRE-GEN. The historical v5 paper keeps its own title.
+const NAME = "ToG Protocol (Terms of Generation Protocol). Earlier versions of this protocol were published as Prompt "
+  + "Protocol and as PRE-GEN Protocol. It is the same protocol under its current name.";
+test("the name: ToG Protocol in every footer, title and front page; PRE-GEN only as an earlier name", () => {
+  const served = pages.filter((f) => f.endsWith(".html") && !HISTORICAL[f]);
+  for (const f of served) {
+    const text = readFileSync(ROOT + f, "utf8");
+    if (text.includes('class="foot-brand"')) assert.ok(text.includes(`<p>${NAME}</p>`), f);
+    assert.doesNotMatch(text, /Pre-Generative Authorization Protocol\. AI asks/, f);
+    for (const [, a, b] of text.matchAll(/<title>([^<]*)<\/title>|property="og:title" content="([^"]*)"/g)) assert.doesNotMatch(a ?? b, /PRE-GEN/, f);
+    assert.doesNotMatch(text, /integrated PRE-GEN|PRE-GEN: &lt;|“PRE-GEN: /, f);
+  }
+  assert.ok(served.filter((f) => readFileSync(ROOT + f, "utf8").includes('class="foot-brand"')).length > 20);
+  for (const f of ["spec/README.md", "spec/PRE-GEN-SPEC.md", "packages/verify-py/README.md", "packages/verify-js/README.md",
+    "packages/registry/README.md", "README.md"]) assert.ok(readFileSync(ROOT + f, "utf8").split("\n").slice(0, 4).includes(NAME), f);
+});

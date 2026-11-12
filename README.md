@@ -1,5 +1,7 @@
 # PRE-GEN
 
+ToG Protocol (Terms of Generation Protocol). Earlier versions of this protocol were published as Prompt Protocol and as PRE-GEN Protocol. It is the same protocol under its current name.
+
 The PRE-GEN standard and its website, [pregen.org](https://www.pregen.org):
 static HTML/CSS/JS, no build step. The standard is in [`spec/`](spec/)
 (Apache-2.0, `spec/LICENSE`); the website itself is not (`NOTICE`).

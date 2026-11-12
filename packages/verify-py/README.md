@@ -1,5 +1,7 @@
 # pregen
 
+ToG Protocol (Terms of Generation Protocol). Earlier versions of this protocol were published as Prompt Protocol and as PRE-GEN Protocol. It is the same protocol under its current name.
+
 The PRE-GEN client for Python. Ask a registry before you generate, as a provider known by its
 domain (no account), and check what comes back against the signed registry directory at
 [pregen.org](https://www.pregen.org/registries.v3.json). The PRE-GEN steward key is built in.
