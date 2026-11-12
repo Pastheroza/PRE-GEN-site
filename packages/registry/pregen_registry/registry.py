@@ -162,6 +162,7 @@ class Config:
     providers: str = "registered"   # "open": providers known by their domain (provider-identity); a sandbox always is
     terms: bool = True              # extension terms: subjects may publish terms, and requests may accept them; open only
     after_gen: bool | None = None   # after-gen (draft): on in a sandbox unless set; off in production unless set
+    tog_yes: bool = False           # a ToG code signs a yes (licence, terms) only when open, and only once verified
 
     def __post_init__(self):
         try:                            # TOG-CODE §9: 4 to 8 letters A-Z, never LIC at either end (the library's grammar)
@@ -396,8 +397,8 @@ class Registry:
         `pending`: a holder registering here, their home, gets the code at once, pending (lookup.md): it signs nothing
         until prove(), and is deleted after 7 days without it. `domain`: the holder is a company; its code has a
         person's form, and one domain has one code."""
-        if domain is not None:
-            flags["holder"], flags["domain"] = "company", domain
+        if domain is not None:      # one domain, one code: one spelling (lower case, IDNA, no trailing dot)
+            flags["holder"], flags["domain"] = "company", domain.strip().rstrip(".").lower().encode("idna").decode()
         if pending:
             flags["tog_issued_at"] = self.clock()
         if holder_public:
@@ -490,6 +491,7 @@ class Registry:
         registry verified their identity. An email alone never proves. The level only rises; the first proof stays."""
         if level not in ("channel", "verified"):
             raise ValueError("a ToG code is proved at channel or verified")
+        self._tog_expire()                      # a code past its 7 days is gone, even if nothing looked it up
         with self.tx() as db:
             s = self._own(db, code)
             if s["tog_issued_at"] is None:
@@ -512,10 +514,15 @@ class Registry:
         return s["tog_issued_at"] is not None and s["proved_at"] is None
 
     def _signable(self, db, code: str):
-        """The subject row a licence or terms may be signed for: never a pending ToG code (it signs nothing)."""
+        """The subject row a licence or terms may be signed for: never a pending ToG code (it signs nothing), and a ToG
+        code's yes only while Config.tog_yes is open and only once its identity is verified (lookup.md)."""
         s = self._own(db, code)
         if self._pending(s):
             raise ValueError(f"{code} is pending: a ToG code signs nothing until it is proved (lookup.md)")
+        if s["tog_issued_at"] is not None and s["level"] != "verified":
+            raise ValueError(f"{code}: only a verified ToG code may open a use (lookup.md)")
+        if s["tog_issued_at"] is not None and not self.config.tog_yes:
+            raise ValueError(f"{code}: a ToG code's yes is shut on this registry until identity verification is wired")
         return s
 
     def opt_out(self, code: str):
@@ -1893,7 +1900,7 @@ class Registry:
                     out = {**head, "status": "valid", "issued_at": a["issued_at"], "purpose": req["use"]["purpose"],
                            **({"terms": req["terms"]} if "terms" in req else {}), "provider": req["provider_id"],
                            "reported": a["use"] == "consumed",    # false: allowed, no output reported
-                           **self._tied(a["subject_ref"])}
+                           **self._tied(req["subject_ref"])}   # the ask column holds its id once it steps aside
                     entry = self._proof_entries("r.id = ?", (a["report_id"],)) if media and a["report_id"] else []
                     if entry and entry[0]["report"]["body"]["output_hash"] == media:
                         out["proof"] = entry[0]
@@ -1901,9 +1908,11 @@ class Registry:
         return {**head, "status": "unknown"}
 
     def _tied(self, subject_code: str) -> dict:
-        """lookup.md: the ToG code a licence or record is tied to, and that code's level (`verified`: identity)."""
-        s = self.db.execute("SELECT code, level FROM subjects WHERE code = ?", (subject_code,)).fetchone()
-        return {"subject": code_key(subject_code), "subject_level": s["level"] if s else None}
+        """lookup.md: the ToG code a licence or record is tied to, and that code's level (`verified`: identity); nothing
+        for a person whose own code answers like one never issued (unpublished, not a ToG code)."""
+        s = self.db.execute("SELECT code, level FROM subjects WHERE code = ? AND (tog_issued_at IS NOT NULL OR published = 1)",
+                            (subject_code,)).fetchone()
+        return {"subject": _tog(s), "subject_level": s["level"]} if s else {}
 
     def status(self, code: str) -> dict:
         """lookup.md `status_url`: a published subject's current terms and every earlier version, newest first; for
@@ -1928,7 +1937,8 @@ class Registry:
 
     def anchors(self) -> dict:
         """identity.md: every anchored subject, signed, with its status, so a refusal is visible across registries."""
-        rows = self._q("SELECT * FROM subjects WHERE anchor IS NOT NULL ORDER BY serial")
+        rows = self._q("SELECT * FROM subjects WHERE anchor IS NOT NULL AND NOT (tog_issued_at IS NOT NULL AND proved_at IS NULL) "
+                       "ORDER BY serial")      # a pending code forbids nothing, so it is never listed
         status = lambda s: "opted_out" if s["opted_out"] else (s["status"] if s["status"] in UNAVAILABLE else "active")  # noqa: E731
         return seal("pg.anchors.v1", {"registry": self.config.prefix, "issued_at": self.clock(), "anchors": [
             {"anchor": s["anchor"], "code": _tog(s), "level": s["level"], "proof_url": s["proof_url"] or "",

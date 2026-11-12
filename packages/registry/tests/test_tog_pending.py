@@ -17,9 +17,9 @@ TEMPLATE = {"id": "t", "version": 1}
 LEGAL = {"sha256": "0" * 64, "url": "https://r.example/legal"}
 
 
-def make(path=":memory:"):
+def make(path=":memory:", **cfg):
     clock = Clock()
-    reg = Registry(Config(prefix="TEST", name="Test", api="https://test.example"), Key(), path, clock=clock)
+    reg = Registry(Config(prefix="TEST", name="Test", api="https://test.example", **cfg), Key(), path, clock=clock)
     c = TestClient(create_app(reg))
     return reg, c, clock, Provider(reg, c)
 
@@ -104,7 +104,7 @@ def test_a_company_code_has_a_persons_form_and_one_domain_one_code():
 
 
 def test_a_licence_and_an_allow_name_the_tog_code_they_are_tied_to():
-    reg, c, _, p = make()
+    reg, c, _, p = make(tog_yes=True)
     code = reg.add_subject("Lena", pending=True)
     reg.prove(code, "verified")
     gid = reg.add_grant(code, licensee_id=p.id)
@@ -114,6 +114,67 @@ def test_a_licence_and_an_allow_name_the_tog_code_they_are_tied_to():
     r = p.ask(p.body(code)).json()
     got = c.get(f"/v2/codes/{r['code']}").json()
     assert (got["kind"], got["subject"], got["subject_level"]) == ("generated", code, "verified")
+
+
+def test_a_yes_stays_shut_until_the_setting_opens_it_and_then_needs_identity():
+    """lookup.md: only `verified` may open a use; and a ToG yes stays shut by default (Config.tog_yes)."""
+    for opened in (False, True):
+        reg, c, _, p = make(tog_yes=opened)
+        channel, verified = reg.add_subject("Lena", pending=True), reg.add_subject("Maya", pending=True)
+        reg.prove(channel)
+        reg.prove(verified, "verified")
+        with pytest.raises(ValueError, match="verified"):
+            reg.add_grant(channel, licensee_id=p.id)
+        with pytest.raises(ValueError, match="verified"):
+            reg.publish_terms(channel, purposes=["research"], template=TEMPLATE, legal=LEGAL)
+        assert p.answer(p.body(channel))["body"]["reason"] == "PG_NO_LICENSE"
+        if opened:
+            reg.add_grant(verified, licensee_id=p.id)
+        else:
+            with pytest.raises(ValueError, match="shut"):
+                reg.add_grant(verified, licensee_id=p.id)
+
+
+def test_a_licence_of_an_unpublished_person_never_names_them():
+    reg, c, _, p = make()
+    hidden = reg.add_subject("Hidden", level="verified")
+    gid = reg.add_grant(hidden, licensee_id=p.id)
+    lic = reg.db.execute("SELECT code FROM grants WHERE id = ?", (gid,)).fetchone()["code"]
+    assert c.get(f"/v2/codes/{hidden}").json()["status"] == "unknown"
+    got = c.get(f"/v2/codes/{lic}").json()
+    assert got["status"] == "active" and "subject" not in got and "subject_level" not in got
+    reg.set_published(hidden, True)
+    assert c.get(f"/v2/codes/{lic}").json()["subject"] == hidden
+
+
+def test_a_pending_code_is_never_listed_as_opted_out_in_anchors():
+    reg, c, _, _ = make()
+    code = reg.add_subject("Lena", pending=True)
+    reg.set_identity(code, anchor="wikidata:Q1")
+    reg.opt_out(code)
+    assert [a["code"] for a in c.get("/v2/anchors").json()["body"]["anchors"]] == []
+    reg.prove(code)
+    assert [a["status"] for a in c.get("/v2/anchors").json()["body"]["anchors"]] == ["opted_out"]
+
+
+def test_an_expired_code_cannot_be_proved_even_if_nothing_looked_it_up():
+    reg, _, clock, _ = make()
+    code = reg.add_subject("Boris", pending=True)
+    clock.t += 8 * DAY                                                # no lookup or request ran the lazy expiry
+    with pytest.raises(ValueError):
+        reg.prove(code)
+    assert reg.lookup(code)["status"] == "expired"
+
+
+def test_one_domain_one_code_whatever_its_spelling():
+    reg, *_ = make()
+    code = reg.add_subject("Northwind", pending=True, domain="Northwind.Example.")
+    reg.prove(code)
+    assert reg.lookup(code)["domain"] == "northwind.example"
+    with pytest.raises(sqlite3.IntegrityError):
+        reg.add_subject("Impostor", pending=True, domain="northwind.example")
+    assert reg.lookup(reg.add_subject("Bücher", pending=True, domain="bücher.example"))["status"] == "pending"
+    assert reg.db.execute("SELECT 1 FROM subjects WHERE domain = 'xn--bcher-kva.example'").fetchone()
 
 
 def test_a_database_from_before_pending_codes_gains_the_columns(tmp_path):

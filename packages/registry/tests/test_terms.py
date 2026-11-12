@@ -182,6 +182,9 @@ def test_after_an_allow_expired_unused_a_new_version_does_not_lock_the_job():
                           "AND a.use = 'reserved'").fetchone()[0] == 2
     assert p.report(first, outcome="not_generated").status_code == 200
     assert p.report(again).status_code == 200
+    for (lic,) in reg.db.execute("SELECT code FROM answers WHERE status = 'allow'").fetchall():   # the stepped-aside one too
+        got = c.get(f"/v2/codes/{lic}")
+        assert got.status_code == 200 and got.json()["subject"] == code(1)
 
 
 def test_after_an_exclusion_a_widened_version_does_not_lock_the_job():

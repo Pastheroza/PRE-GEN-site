@@ -132,7 +132,7 @@ def test_an_allow_has_one_pg_lic_code_and_its_licence_one_lic_code_both_computed
     reg, http = w.regs["AAAA"]
     p = Provider(reg, http)
     p.register()
-    s = reg.add_subject("Creator", level="verified")
+    s = reg.add_subject("Creator", level="verified", published=1)   # an unpublished one is never named
     gid = reg.add_grant(s, purposes=PURPOSES)
     body = p.body(s, purpose="commercial")
     r = p.ask(body).json()
