@@ -1,6 +1,6 @@
 {
   "schema": "pregen.registries.v2",
-  "sequence": 3,
+  "sequence": 4,
   "note": "Signed registry directory (PG-CODE.md §9.1): each namespace — the closed legacy bare namespace, or a four-letter prefix — and the operator keys allowed to sign in it. Verify the signature with the published steward key, never with a key taken from this file.",
   "registries": [
     {
@@ -31,11 +31,12 @@
       ],
       "status": "Production",
       "since": "2026",
-      "pregen_version": "5"
+      "pregen_version": "5",
+      "tog_start": "https://prampta.com/start"
     }
   ],
   "providers": [],
-  "issued_at": "2026-10-14T19:48:15Z",
+  "issued_at": "2026-11-12T19:12:38Z",
   "steward_key_id": "pg-ed25519:dcdd244659e6d0e2426f2b504cb11590",
-  "signature": "df364ec6bb223d200ca91271d73e0455604048257289e0ab6fd205766e1a3cf4beccc3d2fa639cd257c1978a3663af0a8150bf8232d09703762613f5e8c30309"
+  "signature": "df2ae99a443da93333db39c335b0dfdc30cce8396b8700229dea66d5fbabef200409b07b93c3e78afc33c88d3a67fe2e458b8fec75afe59230ff6b69c588d106"
 }
