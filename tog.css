@@ -57,6 +57,7 @@ button.btn.primary { background: var(--fg); color: var(--bg); }
 .tf-note { max-width: 40em; }
 .tf-input { display: block; width: 100%; max-width: 560px; padding: 8px 0; border: 0; border-bottom: 2px solid var(--soft); border-radius: 0; background: none; color: var(--fg); font: 500 clamp(24px, 3vw, 32px) var(--sans); }
 .tf-input:focus { outline: none; border-bottom-color: var(--acc); }
+.tf-words { font-size: 19px; line-height: 1.45; resize: vertical; }
 .tf-ok { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin: 22px 0 0; }
 .tf-ok button { border-radius: 0; font: inherit; cursor: pointer; }
 .tf-ok button.primary { border-color: var(--acc); background: var(--acc); color: var(--paper); font-weight: 600; }
@@ -65,6 +66,7 @@ button.btn.primary { background: var(--fg); color: var(--bg); }
 .tf-card figcaption { margin: 0 0 14px; font: 600 12px var(--mono); letter-spacing: .05em; overflow-wrap: anywhere; }
 .tf-card p { margin: 0 0 8px; font-size: 17px; line-height: 1.45; }
 .tf-card strong { font-weight: 700; }
+.tf-card .tf-cond { padding: 0 0 10px; border-bottom: 1px solid var(--soft); white-space: pre-line; overflow-wrap: anywhere; }
 .tf-card .tf-card-meta { margin: 14px 0 0; padding-top: 10px; border-top: 1px solid var(--soft); font: 12px var(--mono); color: var(--muted); overflow-wrap: anywhere; }
 .tf-legal { display: flex; flex-wrap: wrap; gap: 6px 18px; font: 12px var(--mono); letter-spacing: .05em; text-transform: uppercase; }
 .tf-registries { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 16px; }

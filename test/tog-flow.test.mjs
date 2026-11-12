@@ -18,7 +18,7 @@ class Node {
   closest() { return null; }
   click() { for (const f of this.on.click || []) f({}); }
   all() { return this.kids.flatMap((k) => (k instanceof Node ? [k, ...k.all()] : [])); }
-  querySelector(sel) { return this.all().find((n) => (sel === "input" ? n.tag === "input" : false)) ?? null; }
+  querySelector(sel) { return this.all().find((n) => (["input", "textarea"].includes(sel) ? n.tag === sel : false)) ?? null; }
   get text() { return this.kids.map((k) => (k instanceof Node ? k.text : String(k))).join(""); }
 }
 
@@ -52,7 +52,7 @@ async function page() {
     assert.ok(b, `no "${label}" on: ${stage.text.slice(0, 200)}`);
     b.click();
   };
-  const type = (v) => { const i = stage.querySelector("input"); i.value = v; i.on.input.forEach((f) => f()); };
+  const type = (v, tag = "input") => { const i = stage.querySelector(tag); i.value = v; i.on.input.forEach((f) => f()); };
   const out = async () => {   // the registry buttons arrive once the signed directory is read
     for (let i = 0; i < 50 && !stage.all().some((x) => x.tag === "a" && x.attrs.class?.includes("tf-go")); i++) await new Promise((r) => setTimeout(r, 5));
     const go = stage.all().filter((x) => x.tag === "a" && x.attrs.class?.includes("tf-go")).map((x) => x.attrs.href);
@@ -97,11 +97,32 @@ test("a person's yes is recorded as a wish that opens only after identity verifi
   p.press("Me"); p.type("1990"); p.press("OK");
   assert.match(p.text(), /It opens only after identity verification, which is coming soon\./);
   p.press("Yes, within my rules."); p.press("For fun"); p.press("Next"); p.press("Next"); p.press("No, not my voice");
+  assert.match(p.text(), /In your own words.*They can only narrow what you allow\./);
+  p.press("Next");                                       // nothing typed: the fragment carries no conditions
   const t = p.text();
   assert.match(t, /Your yes is recorded as your wish\. It opens only after identity verification, which is coming soon;/);
   assert.doesNotMatch(t, /tog:no/);
   registryStep(t);
-  assert.equal((await p.out()).answers.decision, "rules");
+  const { answers } = await p.out();
+  assert.equal(answers.decision, "rules");
+  assert.ok(!("conditions" in answers));
+});
+
+test("a person's own words come first on the card, as plain text, and ride the fragment exactly", async () => {
+  const p = await page();
+  p.press("Me"); p.type("1990"); p.press("OK"); p.press("Yes, within my rules."); p.press("Ads and paid work");
+  p.press("Next"); p.press("Next"); p.press("Yes, my voice too"); p.press("We agree on each deal");
+  const said = "Не в рекламе казино 🎰\r\nNever **bold**, never <b>html</b>.";
+  p.type("😀".repeat(1001), "textarea"); p.press("Next");
+  assert.match(p.text(), /At most 1000 characters\./);                // 1,001 code points: refused, never cut
+  p.type("no \u202eads", "textarea"); p.press("Next");
+  assert.match(p.text(), /Remove the invisible control characters/);
+  p.type(`  ${said}\t `, "textarea"); p.press("Next");
+  const t = p.text(), kept = "Не в рекламе казино 🎰\nNever **bold**, never <b>html</b>.";
+  assert.ok(t.indexOf(kept) >= 0 && t.indexOf(kept) < t.indexOf("AI may make me"), t.slice(0, 300));
+  const cond = p.stage.all().find((x) => x.attrs.class === "tf-cond");
+  assert.deepEqual(cond.kids, [kept]);                                     // one text node: no <strong>, no markup
+  assert.equal((await p.out()).answers.conditions, kept);
 });
 
 test("under 18: only a parent, guardian or other legal representative registers you; nothing is handed off", async () => {

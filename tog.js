@@ -2,9 +2,10 @@
 // answers or confirms the one already chosen. The result is a short card that links the one common legal text
 // (/tog/1.0), never a personal copy of it. Nothing leaves the browser until the person picks their home registry: then
 // only the closed answers travel, in the URL fragment (#tog=v1.…), which browsers never send to a server.
-// The year of birth stays in this page's memory: never in a URL, never in storage.
+// The year of birth stays in this page's memory: never in a URL, never in storage. A person's yes may add conditions in
+// their own words (ToG 1.0 §6(f)), shown first on the card as plain text.
 import { rulesFromAnswers, card, companyRules, cardCompany, encodeAnswers, offeredRegistries, defaultNever,
-  loadDirectory, NEVER, LEGAL } from "/packages/verify-js/tog.js";
+  conditionsOk, loadDirectory, NEVER, LEGAL, CONDITIONS_MAX } from "/packages/verify-js/tog.js";
 
 const LETTERS = "ABCDEFGHIJ";
 const LOCAL = ["localhost", "127.0.0.1"].includes(location.hostname);
@@ -19,7 +20,8 @@ const FOR_LABELS = [
 const $ = (id) => document.getElementById(id);
 let S, trail;
 function reset(who = null) {
-  S = { who, year: "", age: null, decision: null, for: [], never: null, neverFor: null, voice: false, floor: "each" };
+  S = { who, year: "", age: null, decision: null, for: [], never: null, neverFor: null, voice: false, floor: "each",
+    conditions: "" };
   trail = [who === "me" ? "year" : "who"];
   if (who) trail.unshift("who");
 }
@@ -40,6 +42,8 @@ function rich(text) {
 }
 const yes = () => S.decision && S.decision !== "no" && S.for.length > 0;
 const company = () => S.who === "company";
+/** What the person typed, as the fragment carries it (spec/drafts/tog-funnel.md): one line break, NFC, trimmed. */
+const words = () => S.conditions.replace(/\r\n?/g, "\n").replace(/\t/g, " ").trim().normalize("NFC");
 
 /** The answers a registry gets (spec/drafts/tog-funnel.md); "nothing ticked" is the no. Never a name or a domain. */
 function answers() {
@@ -47,7 +51,7 @@ function answers() {
   if (company()) return yes() ? { who: "company", decision: S.decision, for: S.for, never: S.never } : { who: "company", decision: "no" };
   if (!yes()) return { age: S.age, decision: "no" };
   return { age: S.age, decision: S.decision, for: S.for, never: S.never, voice: S.voice,
-    ...(S.for.includes("paid") && { floor: S.floor }) };
+    ...(S.for.includes("paid") && { floor: S.floor }), ...(words() && { conditions: words() }) };
 }
 const personRules = () => rulesFromAnswers(answers());
 
@@ -56,7 +60,7 @@ function planned() {
   if (S.who === "child") return ["who", "child", "card"];
   if (company()) return ["who", "decision", ...(S.decision && S.decision !== "no" ? ["for", "never"] : []), "card"];
   return ["who", "year", "decision", ...(S.decision && S.decision !== "no" ? ["for", "never", "voice",
-    ...(S.for.includes("paid") ? ["floor"] : [])] : []), "card"];
+    ...(S.for.includes("paid") ? ["floor"] : []), "words"] : []), "card"];
 }
 
 const go = (screen) => { trail.push(screen); render(); };
@@ -159,14 +163,14 @@ const SCREENS = {
         ok("Next", next)] };
   },
   voice() {
-    const pick = (v) => () => { S.voice = v; go(S.for.includes("paid") ? "floor" : "card"); };
+    const pick = (v) => () => { S.voice = v; go(S.for.includes("paid") ? "floor" : "words"); };
     const opts = [{ value: false, label: "No, not my voice", sub: "another actor's voice is still fine", pick: pick(false) },
       { value: true, label: "Yes, my voice too", pick: pick(true) }];
     return { title: "Your voice too?", hint: "**Voice copies are a favourite tool of phone scams.** Turn this on only if you need it.",
       options: opts, body: choice(opts, S.voice) };
   },
   floor() {
-    const pick = (f) => () => { S.floor = f; go("card"); };
+    const pick = (f) => () => { S.floor = f; go("words"); };
     const opts = [{ value: "each", label: "We agree on each deal", pick: pick("each") },
       { value: "project", label: "Lowest price per project", sub: "one brand's campaign, as its deal describes it", pick: pick("project") },
       { value: "video", label: "Lowest price per video", sub: "e.g. one 15-second video for one brand's social media", pick: pick("video") }];
@@ -174,6 +178,27 @@ const SCREENS = {
       hint: "**You sign every deal yourself.** Offers below your price are declined for you, and the price is never on your card.",
       options: opts, body: [choice(opts, S.floor),
         el("p", { class: "meta tf-note" }, "You type the amount at the registry. Each deal is a contract you sign, with its own description.")] };
+  },
+  words() {
+    const count = el("span", { class: "meta" });
+    const error = el("p", { class: "meta tf-note", role: "alert" });
+    const show = () => count.replaceChildren(`${[...words()].length} / ${CONDITIONS_MAX}`);
+    const next = () => {
+      const w = words();
+      if (w && !conditionsOk(w)) {
+        return error.replaceChildren([...w].length > CONDITIONS_MAX ? `At most ${CONDITIONS_MAX} characters.`
+          : "Remove the invisible control characters from the text.");
+      }
+      go("card");
+    };
+    const box = el("textarea", { class: "tf-input tf-words", rows: "5", spellcheck: "true", "aria-label": "Your conditions, in your own words",
+      placeholder: "For example: never in a horror film; no changes to my face." });
+    box.value = S.conditions;
+    box.addEventListener("input", () => { S.conditions = box.value; error.replaceChildren(); show(); });
+    show();
+    return { title: "In your own words", ok: next,
+      hint: "Optional, in any language, up to 1,000 characters. **They can only narrow what you allow.**",
+      body: [box, count, error, ok("Next", next)] };
   },
   card() {
     const co = company(), child = S.who === "child";
@@ -185,7 +210,7 @@ const SCREENS = {
     }, () => list.replaceChildren(el("p", {}, "The signed list of registries could not be loaded. Try again later.")));
     const whose = co ? "YOUR COMPANY'S TOG" : child ? "YOUR CHILD'S TOG" : "YOUR TOG";
     return { title: child ? "Your child's answer, as AI apps will read it" : "Your answer, as AI apps will read it", wide: true, body: [
-      cardBox(`${whose} · CODE FROM YOUR REGISTRY`, lines, co   // ToG 1.0 covers a natural person's likeness only
+      cardBox(`${whose} · CODE FROM YOUR REGISTRY`, lines, !co && !child && yes() && words(), co   // ToG 1.0 covers a natural person's likeness only
         ? "No licence text applies to a company: its ToG code records its answer"
         : `${LEGAL.label} · SHA-256 ${LEGAL.sha256} · the same text for everyone`),
       !co && el("p", { class: "tf-legal" }, el("a", { href: "/tog/1.0" }, "Read the legal code"), el("a", { href: "/tog/1.0/deed" }, "Read it in plain words")),
@@ -215,8 +240,10 @@ const SCREENS = {
   },
 };
 
-function cardBox(head, lines, meta) {
+/** The card; the person's own conditions come first, as plain text (never parsed for markup). */
+function cardBox(head, lines, conditions, meta) {
   return el("figure", { class: "tf-card" }, el("figcaption", {}, head),
+    conditions && el("p", { class: "tf-cond" }, conditions),
     lines.map((l) => el("p", {}, ...rich(l))), el("p", { class: "tf-card-meta" }, meta));
 }
 
@@ -250,7 +277,7 @@ function render() {
     h, current.hint && el("p", { class: "tf-hint" }, ...rich(current.hint)),
     el("div", { class: "tf-body" }, current.body),
     current.end && el("p", { class: "actions" }, el("button", { type: "button", class: "btn primary", on: () => { reset(); render(); } }, "Start over"))));
-  const input = $("tf-stage").querySelector("input");
+  const input = $("tf-stage").querySelector("input") || $("tf-stage").querySelector("textarea");
   (input || h).focus({ preventScroll: true });
   window.scrollTo(0, 0);
 }
