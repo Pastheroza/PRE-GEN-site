@@ -286,6 +286,14 @@ you have checked identity and authority, or raise it later with `pregen-registry
 --dir ./data --code '<code>' --level verified`. `pregen-registry subject list --dir ./data`
 prints every code you hold, with its level and name.
 
+**A holder registering at their home** (ToG codes, `extensions/lookup.md`): `subject add --pending`
+(a company: `--domain example.com`, one domain one code) issues the code at once, pending: lookup says
+`pending`, every request gets `not_blocked` `PG_SUBJECT_PENDING`, and no licence or terms can be signed
+for it. When they place `PRE-GEN: <code>` at an account or domain they control, or you verify their
+identity, run `subject prove --code '<code>' --by channel` (or `--by verified`). An email alone never
+proves. Unproved after 7 days, the code is deleted and answers `expired`; its serial is never issued
+again. Remind them on day 3.
+
 **Anchor a public person** (extension `identity`): a public person is anyone with a Wikidata item,
 and every one needs an anchor; before adding one, look for their anchor in every listed
 registry's `/v2/anchors` (provider.md step 5.1's loop; a 404 is fine only from a registry whose

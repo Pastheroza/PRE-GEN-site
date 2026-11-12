@@ -124,7 +124,8 @@
         "self",
         "asserted",
         "consented",
-        "verified"
+        "verified",
+        "channel"
       ],
       "description": "profile likeness/1"
     },

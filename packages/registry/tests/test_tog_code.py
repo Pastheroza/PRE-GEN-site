@@ -143,11 +143,12 @@ def test_an_allow_has_one_pg_lic_code_and_its_licence_one_lic_code_both_computed
     assert p.ask(body).json()["code"] == r["code"]                          # one allow, one code
     lic = code_for({"type": "pg.grant.v1", "id": gid, "signer": "AAAA", "subject_ref": s})
     assert http.get(f"/v2/codes/{lic}").json() == {"code": lic, "kind": "license", "registry": "AAAA",
-                                                    "status": "active", "issuer": "AAAA"}
+                                                    "status": "active", "issuer": "AAAA",
+                                                    "subject": s, "subject_level": "verified"}   # tied to its ToG code
     looked = http.get(f"/v2/codes/{r['code']}").json()
     assert looked == {"code": r["code"], "kind": "generated", "registry": "AAAA", "status": "valid",
                       "issued_at": answer["body"]["issued_at"], "purpose": "commercial", "provider": p.id,
-                      "reported": False}                                     # allowed; no output reported
+                      "reported": False, "subject": s, "subject_level": "verified"}   # allowed; no output reported
     video = hashlib.sha256(b"the video").hexdigest()
     report = p.report(answer, output_hash=video)
     assert p.send(report).status_code == 200

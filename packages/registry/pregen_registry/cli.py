@@ -107,7 +107,7 @@ def main(argv=None):
             p.add_argument("--ssl-certfile", help="serve HTTPS directly (a local test); in production, use a TLS proxy")
             p.add_argument("--ssl-keyfile")
         elif name == "subject":
-            p.add_argument("action", choices=["add", "anchor", "list", "opt-out", "level", "publish"])
+            p.add_argument("action", choices=["add", "anchor", "list", "opt-out", "level", "publish", "prove"])
             p.add_argument("--name", help="add: the subject's name")
             p.add_argument("--code", help="anchor, opt-out, level, publish: the subject's ToG code (a PG- string is not a code)")
             p.add_argument("--anchor", help="anchor: wikidata:Q…, isni:…, or a domain (identity.md)")
@@ -116,6 +116,13 @@ def main(argv=None):
             p.add_argument("--publish", action="store_true",
                            help="add: show name and level at GET /v2/codes/<code> (only if the person chose to)")
             p.add_argument("--off", action="store_true", help="publish: stop showing them")
+            p.add_argument("--pending", action="store_true",
+                           help="add: a holder registering here, their home: the ToG code is pending until `prove`, "
+                                "and deleted after 7 days without it (lookup.md)")
+            p.add_argument("--domain", help="add: the holder is a company with this domain (one domain, one code)")
+            p.add_argument("--by", default="channel", choices=["channel", "verified"],
+                           help="prove: channel (PRE-GEN: <code> at an account or domain they control) or verified "
+                                "(identity); never an email alone")
         elif name == "grant":
             p.add_argument("action", choices=["add", "revoke"])
             p.add_argument("--subject", help="add: the subject's ToG code")
@@ -215,7 +222,16 @@ def main(argv=None):
     elif a.cmd == "subject" and a.action == "add":
         if not a.name:
             sys.exit("subject add needs --name")
-        print(load(a.dir).add_subject(a.name, level=a.level, published=int(a.publish)))
+        print(load(a.dir).add_subject(a.name, level=a.level, published=int(a.publish), pending=a.pending,
+                                      domain=a.domain))
+    elif a.cmd == "subject" and a.action == "prove":
+        if not a.code:
+            sys.exit("subject prove needs --code")
+        try:
+            load(a.dir).prove(a.code, a.by)
+        except ValueError as e:
+            sys.exit(str(e))
+        print(f"{a.code} is active ({a.by})")
     elif a.cmd == "subject" and a.action == "publish":
         if not a.code:
             sys.exit("subject publish needs --code")

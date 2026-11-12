@@ -49,6 +49,7 @@ BINDING_TTL = 365 * 86400       # pg.binding.v1: at most one year, then the pers
 SANDBOX_HOLDER = "account:holder"   # sandbox.md serial 12: the test creator; an account's grants are reached only by bind
 # extensions/sandbox.md, serial 10: a test template; its text governs nothing
 SANDBOX_TEMPLATE = {"id": "pregen-sandbox", "version": 1, "jurisdiction": "US"}
+TOG_PENDING = 7 * 86400         # lookup.md: a ToG code not verified within 7 days is deleted, its serial retired
 AG_REVIEW = 14 * 86400          # after-gen.md step 3: the reference registry's review period; silence approves nothing
 AG_SKEW = 300                   # a signed after-gen request, decision or withdrawal is this close to the registry's clock
 AG_FACTORS = ("authenticator", "email")
@@ -74,7 +75,10 @@ CREATE TABLE IF NOT EXISTS subjects (
   opted_out INTEGER NOT NULL DEFAULT 0, minor INTEGER NOT NULL DEFAULT 0, review INTEGER NOT NULL DEFAULT 0,
   fixed_refusal TEXT, immutable_denials TEXT NOT NULL DEFAULT '[]', no_grant_status TEXT NOT NULL DEFAULT 'deny',
   custody TEXT NOT NULL DEFAULT 'managed', key_public TEXT NOT NULL, key_private TEXT,
-  anchor TEXT, proof_url TEXT, offer TEXT);
+  anchor TEXT, proof_url TEXT, offer TEXT, holder TEXT NOT NULL DEFAULT 'person', domain TEXT,
+  tog_issued_at INTEGER, proved_at INTEGER);
+CREATE TABLE IF NOT EXISTS retired (serial INTEGER PRIMARY KEY, code TEXT NOT NULL, retired_at INTEGER NOT NULL,
+  reason TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS grants (
   id TEXT PRIMARY KEY, subject_code TEXT NOT NULL, licensee_id TEXT NOT NULL, purposes TEXT NOT NULL,
   not_before INTEGER NOT NULL, expires_at INTEGER NOT NULL, max_uses INTEGER, uses_offset INTEGER NOT NULL DEFAULT 0,
@@ -237,6 +241,12 @@ class Registry:
             self.db.executescript(SCHEMA)
         if "signatures" not in {r["name"] for r in self.db.execute("PRAGMA table_info(asks)")}:   # a 0.3 database
             self.db.execute("ALTER TABLE asks ADD COLUMN signatures TEXT NOT NULL DEFAULT '[]'")
+        have = {r["name"] for r in self.db.execute("PRAGMA table_info(subjects)")}
+        for col, decl in (("holder", "TEXT NOT NULL DEFAULT 'person'"), ("domain", "TEXT"), ("tog_issued_at", "INTEGER"),
+                          ("proved_at", "INTEGER")):     # 0.5: ToG codes issued pending (lookup.md)
+            if col not in have:
+                self.db.execute(f"ALTER TABLE subjects ADD COLUMN {col} {decl}")
+        self.db.execute("CREATE UNIQUE INDEX IF NOT EXISTS subjects_domain ON subjects (domain)")   # one domain, one code
         for table in ("grants", "answers"):     # 0.5: the act's ToG code, computed from its signed record (an index)
             if "code" not in {r["name"] for r in self.db.execute(f"PRAGMA table_info({table})")}:
                 self.db.execute(f"ALTER TABLE {table} ADD COLUMN code TEXT")
@@ -380,9 +390,16 @@ class Registry:
 
     # ── operator actions (CLI) ───────────────────────────────────────────
     def add_subject(self, name: str, *, serial: int | None = None, level: str = "self", holder_public: str | None = None,
-                    **flags) -> str:
+                    pending: bool = False, domain: str | None = None, **flags) -> str:
         """A new person is born TOG-<prefix>-<9 random digits><check> (TOG-CODE §5); `serial` only for a sandbox's
-        fixed test subjects. `holder_public`: the person holds their own key (custody self); the registry never sees it."""
+        fixed test subjects. `holder_public`: the person holds their own key (custody self); the registry never sees it.
+        `pending`: a holder registering here, their home, gets the code at once, pending (lookup.md): it signs nothing
+        until prove(), and is deleted after 7 days without it. `domain`: the holder is a company; its code has a
+        person's form, and one domain has one code."""
+        if domain is not None:
+            flags["holder"], flags["domain"] = "company", domain
+        if pending:
+            flags["tog_issued_at"] = self.clock()
         if holder_public:
             check_public_key(holder_public)          # a small-order key would let anyone sign as the person (C1)
         # A real person's name is public at /v2/codes only by their choice; a sandbox holds no real people.
@@ -390,7 +407,8 @@ class Registry:
         with self.tx() as db:
             if serial is None:
                 serial = mint_serial(self.config.prefix)
-                while db.execute("SELECT 1 FROM subjects WHERE serial = ?", (serial,)).fetchone():
+                while db.execute("SELECT 1 FROM subjects WHERE serial = ? UNION SELECT 1 FROM retired WHERE serial = ?",
+                                 (serial, serial)).fetchone():     # TOG-CODE §5: a serial is never issued again
                     serial = mint_serial(self.config.prefix)
             code = mint_code(self.config.prefix, serial)
             key = None if holder_public else Key()
@@ -409,7 +427,7 @@ class Registry:
         """`resale`: licensee_id is a provider that may sell generations to its own users (catalog.md).
         `categories`: content categories granted explicitly; intimate ones need `holder_key`, the person's own key."""
         with self.tx() as db:
-            s = self._own(db, subject_code)
+            s = self._signable(db, subject_code)
             signer = Key(s["key_private"]) if s["key_private"] else holder_key
             if signer is None or signer.public_hex != s["key_public"]:
                 raise ValueError("a grant is signed by the subject's own key: this subject holds it (self custody)")
@@ -466,6 +484,40 @@ class Registry:
         with self.tx() as db:
             db.execute("UPDATE subjects SET level = ? WHERE code = ?", (level, self._own(db, code)["code"]))
 
+    def prove(self, code: str, level: str = "channel"):
+        """A pending ToG code becomes active (lookup.md): `channel` when the holder placed `PRE-GEN: <code>` at a public
+        account or domain they control (a company: its /.well-known/tog.json names this record), `verified` when the
+        registry verified their identity. An email alone never proves. The level only rises; the first proof stays."""
+        if level not in ("channel", "verified"):
+            raise ValueError("a ToG code is proved at channel or verified")
+        with self.tx() as db:
+            s = self._own(db, code)
+            if s["tog_issued_at"] is None:
+                raise ValueError(f"{code} was not issued as a pending ToG code")
+            db.execute("UPDATE subjects SET proved_at = COALESCE(proved_at, ?), level = ? WHERE code = ?",
+                       (self.clock(), "verified" if "verified" in (level, s["level"]) else level, s["code"]))
+
+    def _tog_expire(self):
+        """lookup.md: a ToG code not proved within 7 days is deleted and its serial retired for good, so lookup answers
+        `expired` and no one is ever issued it again. Only codes issued pending: never an operator's or older subject.
+        Run lazily, in its own transaction, before a lookup or a decision, like _ag_expire."""
+        with self.tx() as db:
+            for r in db.execute("SELECT serial, code FROM subjects WHERE tog_issued_at IS NOT NULL AND proved_at IS NULL "
+                                "AND tog_issued_at <= ?", (self.clock() - TOG_PENDING,)).fetchall():
+                db.execute("INSERT INTO retired VALUES (?, ?, ?, 'expired')", (r["serial"], r["code"], self.clock()))
+                db.execute("DELETE FROM subjects WHERE serial = ?", (r["serial"],))
+
+    @staticmethod
+    def _pending(s) -> bool:
+        return s["tog_issued_at"] is not None and s["proved_at"] is None
+
+    def _signable(self, db, code: str):
+        """The subject row a licence or terms may be signed for: never a pending ToG code (it signs nothing)."""
+        s = self._own(db, code)
+        if self._pending(s):
+            raise ValueError(f"{code} is pending: a ToG code signs nothing until it is proved (lookup.md)")
+        return s
+
     def opt_out(self, code: str):
         """The person opted out or withdrew: every answer from now on is PG_SUBJECT_OPTED_OUT (core rule 3)."""
         with self.tx() as db:
@@ -481,7 +533,7 @@ class Registry:
         if not rules["purposes"] or not set(rules["purposes"]) <= PURPOSES or not set(rules["excluded_categories"]) <= CATEGORIES:
             raise ValueError(f"purposes from {sorted(PURPOSES)}, at least one; exclusions from {sorted(CATEGORIES)}")
         with self.tx() as db:
-            s = self._own(db, code)
+            s = self._signable(db, code)
             if not self.config.terms or not s["published"] or s["level"] not in TERMS_LEVELS:
                 raise ValueError("terms are published only for a published subject that is consented or verified (T-1)")
             last = db.execute("SELECT id, envelope FROM terms WHERE subject_code = ? ORDER BY version DESC LIMIT 1",
@@ -630,6 +682,7 @@ class Registry:
     # ── core: requests ───────────────────────────────────────────────────
     def request(self, provider_id: str, authorization: str | None, env) -> dict:
         body = self._checked_request(provider_id, authorization, env)
+        self._tog_expire()
         with self.tx() as db:
             now = self.clock()
             ask = db.execute("SELECT * FROM asks WHERE id = ?", (message_id("pg.request.v1", body),)).fetchone()
@@ -748,6 +801,8 @@ class Registry:
         s = self._subject(db, req["subject_ref"])
         if s is None:
             return "deny", "PG_UNKNOWN_SUBJECT", None, "self"
+        if self._pending(s):              # lookup.md: permits nothing, forbids nothing; not the person's refusal
+            return "not_blocked", "PG_SUBJECT_PENDING", None, s["level"]
         use, level = req["use"], s["level"]
         categories = set(use.get("categories", []))
         if s["status"] in UNAVAILABLE - {"disputed"}:
@@ -817,7 +872,8 @@ class Registry:
                 or db.execute("SELECT 1 FROM accepted WHERE provider_id = ?", (pid,)).fetchone():
             return False
         s = self._subject(db, req["subject_ref"])
-        if s is not None and (s["published"] or s["offer"] is not None or s["anchor"] is not None):  # lookup, catalog
+        if s is not None and (s["published"] or s["offer"] is not None or s["anchor"] is not None   # lookup, catalog
+                              or s["tog_issued_at"] is not None):    # or a ToG code, which lookup always answers
             return False                                                         # or the anchor list names it
         licensee, now = req.get("licensee_id", ""), self.clock()      # P-5a: a licensee connected or bound to this
         binding = self._binding(db, pid, licensee)                      # provider that holds a live grant on the
@@ -1801,14 +1857,23 @@ class Registry:
         if p["issuer"] != self.config.prefix:
             return {**head, "registry": p["issuer"], "status": "other_registry", "directory": DIRECTORY_URL}
         head["registry"] = self.config.prefix
+        self._tog_expire()
         with self.lock:
             if p["kind"] == "subject":
                 s = self._subject(self.db, code)                # an over-padded number: PG_MALFORMED with a hint
-                if s is None or not s["published"]:
+                if s is None and self.db.execute("SELECT 1 FROM retired WHERE serial = ? AND code = ?",
+                                                 (int(p["serial"]), code_key(code))).fetchone():
+                    return {**head, "status": "expired"}        # deleted unproved; permits and forbids nothing
+                if s is not None and self._pending(s):
+                    return {**head, "status": "pending"}        # exactly this: no name, no level, no terms
+                tog = s is not None and s["tog_issued_at"] is not None      # a ToG code answers, published or not
+                if s is None or not (s["published"] or tog):
                     return {**head, "status": "opted_out" if s is not None and s["opted_out"] else "unknown"}
-                out = {**head, "status": "active", "name": s["name"], "level": s["level"],
-                       "subject_key": {"key_id": fingerprint(s["key_public"]), "public_key_hex": s["key_public"],
-                                       "custody": s["custody"]}}
+                out = {**head, "status": "active", "holder": s["holder"], "level": s["level"],
+                       **({"domain": s["domain"]} if s["domain"] else {})}
+                if s["published"]:
+                    out |= {"name": s["name"], "subject_key": {"key_id": fingerprint(s["key_public"]),
+                                                               "public_key_hex": s["key_public"], "custody": s["custody"]}}
                 terms = self._current_terms(self.db, s)
                 if terms:
                     api = self.config.api.rstrip("/")
@@ -1816,23 +1881,29 @@ class Registry:
                             "status_url": f"{api}/v2/codes/{code}/terms"}
                 return out
             if p["kind"] == "license":
-                g = self.db.execute("SELECT expires_at FROM grants WHERE code = ?", (code,)).fetchone()
+                g = self.db.execute("SELECT expires_at, subject_code FROM grants WHERE code = ?", (code,)).fetchone()
                 if g is not None:
                     return {**head, "status": "active" if g["expires_at"] > self.clock() else "expired",
-                            "issuer": self.config.prefix}
+                            "issuer": self.config.prefix, **self._tied(g["subject_code"])}
             if p["kind"] == "generated":
-                a = self.db.execute("SELECT a.issued_at, a.use, a.report_id, k.request FROM answers a JOIN asks k ON "
-                                    "k.id = a.ask_id WHERE a.code = ?", (code,)).fetchone()
+                a = self.db.execute("SELECT a.issued_at, a.use, a.report_id, k.request, k.subject_ref FROM answers a "
+                                    "JOIN asks k ON k.id = a.ask_id WHERE a.code = ?", (code,)).fetchone()
                 if a is not None:            # an act code has no "withdrawn": the deal stays a contract (rule 3)
                     req = json.loads(a["request"])
                     out = {**head, "status": "valid", "issued_at": a["issued_at"], "purpose": req["use"]["purpose"],
                            **({"terms": req["terms"]} if "terms" in req else {}), "provider": req["provider_id"],
-                           "reported": a["use"] == "consumed"}    # false: allowed, no output reported
+                           "reported": a["use"] == "consumed",    # false: allowed, no output reported
+                           **self._tied(a["subject_ref"])}
                     entry = self._proof_entries("r.id = ?", (a["report_id"],)) if media and a["report_id"] else []
                     if entry and entry[0]["report"]["body"]["output_hash"] == media:
                         out["proof"] = entry[0]
                     return out
         return {**head, "status": "unknown"}
+
+    def _tied(self, subject_code: str) -> dict:
+        """lookup.md: the ToG code a licence or record is tied to, and that code's level (`verified`: identity)."""
+        s = self.db.execute("SELECT code, level FROM subjects WHERE code = ?", (subject_code,)).fetchone()
+        return {"subject": code_key(subject_code), "subject_level": s["level"] if s else None}
 
     def status(self, code: str) -> dict:
         """lookup.md `status_url`: a published subject's current terms and every earlier version, newest first; for

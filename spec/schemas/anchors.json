@@ -47,7 +47,8 @@
               "self",
               "asserted",
               "consented",
-              "verified"
+              "verified",
+              "channel"
             ]
           },
           "proof_url": {

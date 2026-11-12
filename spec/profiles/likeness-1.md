@@ -32,8 +32,9 @@ Both lists only grow.
 
 ## Answer members this profile adds
 
-- **`level`** — `self`, `asserted`, `consented` or `verified`, as defined in
-  [`lookup`](../extensions/lookup.md). A claim, not evidence.
+- **`level`** — `self`, `asserted`, `consented`, `verified` or `channel` (a ToG holder who proved an
+  account or domain, not identity), as defined in [`lookup`](../extensions/lookup.md). A claim, not
+  evidence.
 - **`obligations`** — a list of `{id, params}`, for example `disclosure`. PRE-GEN never asks
   for a watermark; a legacy `watermark` id is recognised, not used. A registry lists the ids
   it uses in its published policy. A report may name the ids applied (`obligations_applied`).

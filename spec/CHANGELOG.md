@@ -43,6 +43,11 @@ Needs `pregen` 0.14.
 - **`POST /v2/requests`** returns an allow's code beside the answer (`extensions/proof.md`); proof entries carry
   `code`, `licence` and `grant`.
 - **Lookup** answers any ToG code with its kind (`extensions/lookup.md`); a `PG-` string is `400 invalid_format`.
+- **Pending ToG codes:** `subject add --pending [--domain]` issues a holder's code pending (lookup `pending`, answers
+  `not_blocked` `PG_SUBJECT_PENDING`, no licence or terms signed); `subject prove --by channel|verified` makes it
+  active; unproved after 7 days it is deleted, answers `expired`, and its serial is never issued again. Lookup adds
+  `holder` and `domain`; a licence and an allow name `subject` and `subject_level`. Level `channel` in the answer and
+  anchor schemas.
 - **Anchor lists, catalog, terms and grants** write `TOG-`. Prefixes are 4 to 8 letters; a sandbox keeps 4 PG
   letters (old-shape test codes).
 - **A grant signed before 0.5 whose bytes hold a PG id is not served:** `GET /v2/grants/{id}` answers 404
