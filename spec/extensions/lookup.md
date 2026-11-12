@@ -12,7 +12,8 @@
 - `kind` is `subject`, `license`, `generated` (`PG`, `PG-LIC`) or `approved_after` (`AG`,
   `AG-LIC`);
 - **for a subject that answers `active`, also:** `"holder": "person" | "company"`, so no verifier reads a
-  company's code as a person's; a company also `"domain"`, the domain it proved (below);
+  company's code as a person's; a company also `"domain"`, the domain it proved (below); a person who gave
+  conditions in their own words also `"conditions"` (below);
 - **for a subject the registry publishes, also:** `"name"`, `"level"` and `"subject_key":
   {"key_id", "public_key_hex", "custody"}`;
 - **under a registry that declares [`terms`](terms.md), for a subject that has terms, also:**
@@ -64,6 +65,12 @@ code and a company's code have the same form (`TOG-CODE.md` §5).
   and `status_url`, whether the holder is published or not; `name` and `subject_key` only if the
   holder chose to publish them. A verified code never returns to pending by itself; a company whose
   domain stops naming the record answers `pending` until it does again.
+- **Conditions** (ToG 1.0 public draft 1, Section 6(f)): a person's own words, in any language, at most 1,000
+  characters, that only narrow their rules. An `active` code's answer carries them as `"conditions": "<text>"`,
+  the exact string the holder gave (the form of `spec/drafts/tog-funnel.md`: non-empty NFC, at most 1,000 code
+  points, LF the only control), and a verifier shows them first, as plain text. **A pending or expired code never
+  carries them**, nor does a company's. Adding conditions takes effect at once; changing or removing them may open a
+  use, so the home registry takes them only with the holder's second factor.
 - **Seven days.** A code not verified within 7 days of its issue is deleted; the registry reminds the
   holder on day 3. A deleted code answers `"status": "expired"` (no other member but `code`, `kind`
   and `registry`): it permits nothing and forbids nothing. **Its serial is never issued again**

@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from pregen_registry import registry as registry_module
 from pregen_registry.app import create_app
-from pregen_registry.cli import main as cli
+from pregen_registry.cli import load, main as cli
 from pregen_registry.protocol import Key, parse_code
 from pregen_registry.registry import TOG_PENDING, Config, Registry
 from test_registry import Clock, Provider
@@ -182,7 +182,7 @@ def test_a_database_from_before_pending_codes_gains_the_columns(tmp_path):
     reg, *_ = make(str(db))
     older = reg.add_subject("Before", published=1)
     reg.db.execute("DROP INDEX subjects_domain")
-    for col in ("holder", "domain", "tog_issued_at", "proved_at"):
+    for col in ("holder", "domain", "tog_issued_at", "proved_at", "conditions"):
         reg.db.execute(f"ALTER TABLE subjects DROP COLUMN {col}")
     reg.db.close()
     again, *_ = make(str(db))
@@ -199,3 +199,69 @@ def test_cli_adds_a_pending_code_and_proves_it(tmp_path, capsys):
     assert "active (verified)" in capsys.readouterr().out
     with pytest.raises(SystemExit, match="needs --code"):
         cli(["subject", "prove", "--dir", str(tmp_path)])
+
+
+# ── ToG 1.0 §6(f): conditions in the person's own words ─────────────────────────────────────────────────────────
+SAID = "Не в рекламе казино.\nNever in a horror film 🎬"
+
+
+def test_conditions_are_returned_only_while_the_code_is_active():
+    reg, c, clock, _ = make()
+    code = reg.add_subject("Lena", pending=True, conditions=SAID)
+    assert c.get(f"/v2/codes/{code}").json() == {"code": code, "kind": "subject", "registry": "TEST",
+                                                 "status": "pending"}              # a pending code never carries them
+    reg.prove(code)
+    assert c.get(f"/v2/codes/{code}").json()["conditions"] == SAID                    # exactly as written
+    gone = reg.add_subject("Boris", pending=True, conditions=SAID)
+    clock.t += TOG_PENDING
+    assert c.get(f"/v2/codes/{gone}").json() == {"code": gone, "kind": "subject", "registry": "TEST",
+                                                 "status": "expired"}
+    quiet = reg.add_subject("Maya", pending=True)
+    reg.prove(quiet)
+    assert "conditions" not in reg.lookup(quiet)
+
+
+@pytest.mark.parametrize("bad", ["", "x" * 1001, "Rene\u0301e", "a\r\nb", "a\tb", "a\x00b", "a\x85b", "no \u202eads",
+                                 "a\u2066b", "a\u2028b", "\ud800", 7, ["no ads"]])
+def test_conditions_are_refused_never_repaired(bad):
+    reg, *_ = make()
+    with pytest.raises(ValueError, match="conditions"):
+        reg.add_subject("Lena", pending=True, conditions=bad)
+    assert reg.db.execute("SELECT COUNT(*) FROM subjects").fetchone()[0] == 0
+
+
+def test_a_thousand_code_points_fit_and_a_company_has_no_conditions():
+    reg, *_ = make()
+    reg.prove(code := reg.add_subject("Lena", pending=True, conditions="😀" * 1000))
+    assert len(reg.lookup(code)["conditions"]) == 1000
+    with pytest.raises(ValueError, match="covers no company"):
+        reg.add_subject("Northwind", pending=True, domain="northwind.example", conditions="No coffee ads.")
+    co = reg.add_subject("Northwind", pending=True, domain="northwind.example")
+    with pytest.raises(ValueError, match="covers no company"):
+        reg.set_conditions(co, "No coffee ads.")
+
+
+def test_adding_conditions_is_at_once_and_changing_or_removing_them_needs_a_second_factor():
+    reg, *_ = make()
+    code = reg.add_subject("Lena", pending=True)
+    reg.prove(code)
+    reg.set_conditions(code, SAID)                                    # they only narrow: no factor
+    assert reg.lookup(code)["conditions"] == SAID
+    reg.set_conditions(code, SAID)                                    # the same words again change nothing
+    for change in ("Never in a horror film", None):
+        with pytest.raises(ValueError, match="second factor"):
+            reg.set_conditions(code, change)
+        assert reg.lookup(code)["conditions"] == SAID
+    reg.set_conditions(code, "Never in a horror film", factor="authenticator")
+    assert reg.lookup(code)["conditions"] == "Never in a horror film"
+    reg.set_conditions(code, None, factor="email")
+    assert "conditions" not in reg.lookup(code)
+
+
+def test_cli_adds_a_pending_code_with_conditions(tmp_path, capsys):
+    cli(["init", "--dir", str(tmp_path), "--prefix", "ABCD", "--name", "R", "--api", "https://r.example"])
+    capsys.readouterr()
+    cli(["subject", "add", "--dir", str(tmp_path), "--name", "Lena", "--pending", "--conditions", "No horror films."])
+    code = capsys.readouterr().out.strip()
+    cli(["subject", "prove", "--dir", str(tmp_path), "--code", code])
+    assert load(str(tmp_path)).lookup(code)["conditions"] == "No horror films."

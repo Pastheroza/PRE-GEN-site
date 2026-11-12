@@ -120,6 +120,8 @@ def main(argv=None):
                            help="add: a holder registering here, their home: the ToG code is pending until `prove`, "
                                 "and deleted after 7 days without it (lookup.md)")
             p.add_argument("--domain", help="add: the holder is a company with this domain (one domain, one code)")
+            p.add_argument("--conditions", help="add: the person's conditions in their own words, at most 1,000 "
+                                                "characters (ToG 1.0 §6(f)); lookup returns them once the code is active")
             p.add_argument("--by", default="channel", choices=["channel", "verified"],
                            help="prove: channel (PRE-GEN: <code> at an account or domain they control) or verified "
                                 "(identity); never an email alone")
@@ -223,7 +225,7 @@ def main(argv=None):
         if not a.name:
             sys.exit("subject add needs --name")
         print(load(a.dir).add_subject(a.name, level=a.level, published=int(a.publish), pending=a.pending,
-                                      domain=a.domain))
+                                      domain=a.domain, conditions=a.conditions))
     elif a.cmd == "subject" and a.action == "prove":
         if not a.code:
             sys.exit("subject prove needs --code")

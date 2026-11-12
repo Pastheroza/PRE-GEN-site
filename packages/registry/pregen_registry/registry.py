@@ -20,6 +20,7 @@ import socket
 import sqlite3
 import threading
 import time
+import unicodedata
 import urllib.request
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -50,6 +51,10 @@ SANDBOX_HOLDER = "account:holder"   # sandbox.md serial 12: the test creator; an
 # extensions/sandbox.md, serial 10: a test template; its text governs nothing
 SANDBOX_TEMPLATE = {"id": "pregen-sandbox", "version": 1, "jurisdiction": "US"}
 TOG_PENDING = 7 * 86400         # lookup.md: a ToG code not verified within 7 days is deleted, its serial retired
+CONDITIONS_MAX = 1000           # ToG 1.0 §6(f): the person's own words, at most 1,000 characters (code points)
+# Never in conditions (spec/drafts/tog-funnel.md): C0/C1 controls but LF, U+2028/9, bidi embeddings, overrides and
+# isolates, lone surrogates; the card would otherwise show other text than the bytes.
+_COND_BAD = re.compile("[\x00-\x09\x0b-\x1f\x7f-\x9f\u2028\u2029\u202a-\u202e\u2066-\u2069\ud800-\udfff]")
 AG_REVIEW = 14 * 86400          # after-gen.md step 3: the reference registry's review period; silence approves nothing
 AG_SKEW = 300                   # a signed after-gen request, decision or withdrawal is this close to the registry's clock
 AG_FACTORS = ("authenticator", "email")
@@ -76,7 +81,7 @@ CREATE TABLE IF NOT EXISTS subjects (
   fixed_refusal TEXT, immutable_denials TEXT NOT NULL DEFAULT '[]', no_grant_status TEXT NOT NULL DEFAULT 'deny',
   custody TEXT NOT NULL DEFAULT 'managed', key_public TEXT NOT NULL, key_private TEXT,
   anchor TEXT, proof_url TEXT, offer TEXT, holder TEXT NOT NULL DEFAULT 'person', domain TEXT,
-  tog_issued_at INTEGER, proved_at INTEGER);
+  tog_issued_at INTEGER, proved_at INTEGER, conditions TEXT);
 CREATE TABLE IF NOT EXISTS retired (serial INTEGER PRIMARY KEY, code TEXT NOT NULL, retired_at INTEGER NOT NULL,
   reason TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS grants (
@@ -135,6 +140,16 @@ def _int(v, low=0) -> bool:
 def _reply(answer: dict, code: str | None) -> dict:
     """POST /v2/requests: the signed answer; with an allow, its ToG code beside it, a readable copy (TOG-CODE §14)."""
     return {"answer": answer, "attachments": [], **({"code": code} if code else {})}
+
+
+def _conditions(text, person: bool) -> str:
+    """The person's own words, exactly as given or refused, never repaired: non-empty NFC, at most 1,000 code points."""
+    if not person:
+        raise ValueError("conditions are a person's (ToG 1.0 §6(f)); ToG 1.0 covers no company")
+    if not (isinstance(text, str) and 0 < len(text) <= CONDITIONS_MAX
+            and unicodedata.normalize("NFC", text) == text and not _COND_BAD.search(text)):
+        raise ValueError(f"conditions: 1 to {CONDITIONS_MAX} characters, NFC, no control character but a line feed")
+    return text
 
 
 def _tog(subject) -> str:
@@ -244,7 +259,7 @@ class Registry:
             self.db.execute("ALTER TABLE asks ADD COLUMN signatures TEXT NOT NULL DEFAULT '[]'")
         have = {r["name"] for r in self.db.execute("PRAGMA table_info(subjects)")}
         for col, decl in (("holder", "TEXT NOT NULL DEFAULT 'person'"), ("domain", "TEXT"), ("tog_issued_at", "INTEGER"),
-                          ("proved_at", "INTEGER")):     # 0.5: ToG codes issued pending (lookup.md)
+                          ("proved_at", "INTEGER"), ("conditions", "TEXT")):   # 0.5: ToG codes issued pending (lookup.md)
             if col not in have:
                 self.db.execute(f"ALTER TABLE subjects ADD COLUMN {col} {decl}")
         self.db.execute("CREATE UNIQUE INDEX IF NOT EXISTS subjects_domain ON subjects (domain)")   # one domain, one code
@@ -391,12 +406,14 @@ class Registry:
 
     # ── operator actions (CLI) ───────────────────────────────────────────
     def add_subject(self, name: str, *, serial: int | None = None, level: str = "self", holder_public: str | None = None,
-                    pending: bool = False, domain: str | None = None, **flags) -> str:
+                    pending: bool = False, domain: str | None = None, conditions: str | None = None, **flags) -> str:
         """A new person is born TOG-<prefix>-<9 random digits><check> (TOG-CODE §5); `serial` only for a sandbox's
         fixed test subjects. `holder_public`: the person holds their own key (custody self); the registry never sees it.
         `pending`: a holder registering here, their home, gets the code at once, pending (lookup.md): it signs nothing
         until prove(), and is deleted after 7 days without it. `domain`: the holder is a company; its code has a
-        person's form, and one domain has one code."""
+        person's form, and one domain has one code. `conditions`: a person's own words (ToG 1.0 §6(f))."""
+        if conditions is not None:
+            flags["conditions"] = _conditions(conditions, domain is None)
         if domain is not None:      # one domain, one code: one spelling (lower case, IDNA, no trailing dot)
             flags["holder"], flags["domain"] = "company", domain.strip().rstrip(".").lower().encode("idna").decode()
         if pending:
@@ -484,6 +501,16 @@ class Registry:
             raise ValueError(f"unknown level {level}")
         with self.tx() as db:
             db.execute("UPDATE subjects SET level = ? WHERE code = ?", (level, self._own(db, code)["code"]))
+
+    def set_conditions(self, code: str, conditions: str | None, *, factor: str | None = None):
+        """ToG 1.0 §6(f): conditions only narrow, so adding them where there are none takes effect at once; changing or
+        removing them may open, so it needs `factor`, the person's second factor the operator checked."""
+        with self.tx() as db:
+            s = self._own(db, code)
+            new = None if conditions is None else _conditions(conditions, s["holder"] == "person")
+            if s["conditions"] is not None and new != s["conditions"] and factor not in AG_FACTORS:
+                raise ValueError("changing or removing conditions may open a use: it needs the person's second factor")
+            db.execute("UPDATE subjects SET conditions = ? WHERE code = ?", (new, s["code"]))
 
     def prove(self, code: str, level: str = "channel"):
         """A pending ToG code becomes active (lookup.md): `channel` when the holder placed `PRE-GEN: <code>` at a public
@@ -1877,7 +1904,8 @@ class Registry:
                 if s is None or not (s["published"] or tog):
                     return {**head, "status": "opted_out" if s is not None and s["opted_out"] else "unknown"}
                 out = {**head, "status": "active", "holder": s["holder"], "level": s["level"],
-                       **({"domain": s["domain"]} if s["domain"] else {})}
+                       **({"domain": s["domain"]} if s["domain"] else {}),
+                       **({"conditions": s["conditions"]} if s["conditions"] is not None else {})}   # never pending
                 if s["published"]:
                     out |= {"name": s["name"], "subject_key": {"key_id": fingerprint(s["key_public"]),
                                                                "public_key_hex": s["key_public"], "custody": s["custody"]}}
