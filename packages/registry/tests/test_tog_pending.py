@@ -300,19 +300,30 @@ def test_a_company_whose_domain_stops_showing_its_file_keeps_its_answer_30_days_
     assert p.answer(p.body(code, job="job-3"))["body"]["reason"] == "PG_SUBJECT_OPTED_OUT"
 
 
-def test_a_domain_is_checked_at_most_once_a_day_and_a_new_proof_ends_the_grace():
+def test_a_lapse_is_recorded_at_most_once_a_day_and_a_new_proof_ends_the_grace():
     reg, _, clock, _ = make()
     code = company(reg)
-    reg.domain_check(code, shows=False)
-    clock.t += DOMAIN_RECHECK - 1
-    assert reg.domain_check(code, shows=True)["shows"] is False    # too soon: not recorded
-    clock.t += 1
     assert reg.domain_check(code, shows=True)["shows"] is True
+    clock.t += DOMAIN_RECHECK - 1
+    assert reg.domain_check(code, shows=False)["shows"] is True    # a lapse too soon: not recorded
     clock.t += DOMAIN_RECHECK
     reg.domain_check(code, shows=False)
     reg.prove(code)                                                 # the file is back, proved again
     clock.t += DOMAIN_GRACE
     assert reg.lookup(code)["status"] == "active"
+
+
+def test_a_check_that_finds_the_file_ends_a_lapse_at_once_even_within_the_day():
+    reg, c, clock, p = make()
+    code = company(reg)
+    reg.domain_check(code, shows=False)
+    clock.t += DOMAIN_GRACE + DAY                                   # day 31: the daily check finds it still gone
+    assert reg.domain_check(code, shows=False)["shows"] is False
+    assert reg.lookup(code)["status"] == "pending"
+    clock.t += 3600                                                 # an hour later the file is back
+    assert reg.domain_check(code, shows=True) == {"domain": "northwind.example", "shows": True}
+    assert reg.lookup(code)["status"] == "active"
+    assert p.answer(p.body(code, job="job-4"))["body"]["reason"] == "PG_SUBJECT_OPTED_OUT"
 
 
 def test_only_a_proved_companys_domain_is_checked():

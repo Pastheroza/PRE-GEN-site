@@ -531,15 +531,16 @@ class Registry:
 
     def domain_check(self, code: str, shows: bool) -> dict:
         """lookup.md: the registry's check that a proved company's https://<domain>/.well-known/tog.json still names its
-        record, at most once a day (a check sooner is not recorded). When it stops, the company gets a notice and 30
-        days of grace in which its answer stays in force; then the code answers `pending` until the file is back.
+        record. A lapse is recorded at most once a day (a gone check sooner is not recorded); a check that finds the file
+        ends a lapse at once. When it stops, the company gets a notice and 30 days of grace in which its answer stays
+        in force; then the code answers `pending` until the file is back.
         Returns {"domain", "shows", "grace_until"?}: the notice to send names grace_until."""
         now = self.clock()
         with self.tx() as db:
             s = self._own(db, code)
             if s["holder"] != "company" or s["proved_at"] is None:
                 raise ValueError(f"{code} is not a proved company's code")
-            if s["domain_checked_at"] is None or now - s["domain_checked_at"] >= DOMAIN_RECHECK:
+            if shows or s["domain_checked_at"] is None or now - s["domain_checked_at"] >= DOMAIN_RECHECK:
                 lapsed = None if shows else (s["domain_lapsed_at"] or now)
                 db.execute("UPDATE subjects SET domain_lapsed_at = ?, domain_checked_at = ? WHERE code = ?",
                            (lapsed, now, s["code"]))

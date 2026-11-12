@@ -19,7 +19,7 @@
   pregen-registry subject opt-out --dir DATA --code TOG-…  (the person opted out or withdrew: refused from the next answer)
   pregen-registry subject level --dir DATA --code TOG-… --level verified   (after you checked identity and authority)
   pregen-registry subject publish --dir DATA --code TOG-… [--off]   (name and level public at /v2/codes, by the person's choice)
-  pregen-registry subject domain-check --dir DATA --code TOG-… [--gone]   (at most daily: a company's tog.json shows, or is gone)
+  pregen-registry subject domain-check --dir DATA --code TOG-… [--gone]   (a company's tog.json shows, or is gone: a lapse at most daily)
   pregen-registry after-gen show --dir DATA REQUEST_ID        (a request the person has not decided and its viewing link)
   pregen-registry after-gen approve --dir DATA REQUEST_ID --instruction-sha256 HEX --factor authenticator|email [--purposes …]
   pregen-registry after-gen refuse --dir DATA REQUEST_ID
