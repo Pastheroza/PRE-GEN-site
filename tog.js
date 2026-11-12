@@ -214,6 +214,7 @@ const SCREENS = {
         ? COMPANY_NOTE
         : `${LEGAL.label} · SHA-256 ${LEGAL.sha256} · the same text for everyone`),
       !co && el("p", { class: "tf-legal" }, el("a", { href: "/tog/1.0" }, "Read the legal code"), el("a", { href: "/tog/1.0/deed" }, "Read it in plain words")),
+      !co && !child && el("p", { class: "meta" }, ...rich(`Under ${LEGAL.label}: **training AI models on you happens only under a paid deal you sign**; sexual or adult content only under a deal you sign yourself after an identity document check, which is not offered yet; rights you granted before ToG keep their own terms.`)),
       yes() && el("p", { class: "meta" }, ...rich("Your yes is recorded as your wish. **It opens only after identity verification, which is coming soon;** until then it opens nothing.")),
       !child && el("p", { class: "actions" }, el("button", { type: "button", class: "btn", on: () => { trail = trail.slice(0, trail.indexOf("decision") + 1); render(); } }, "Change")),
       !yes() && !co && !child && el("p", {}, ...rich("Saying no right now: write **tog:no** in the bio of your own public profile. Under ToG 1.0 §2(h) it counts at once.")),

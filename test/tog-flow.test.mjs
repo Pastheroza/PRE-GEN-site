@@ -77,6 +77,9 @@ function registryStep(t, co = false) {
   }
   assert.match(t, new RegExp(`ToG 1\\.0 public draft 1 · SHA-256 ${LEGAL.sha256} · the same text for everyone`));
   assert.match(t, /Read the legal code.*Read it in plain words/);
+  // What ToG 1.0 public draft 1 adds for a person: training by paid deal only, sexual or adult content shut at launch,
+  // earlier grants keep their terms (§6(e), §5(a), §4(h)).
+  assert.equal(/training AI models on you happens only under a paid deal you sign;.*which is not offered yet; rights you granted before ToG keep their own terms\./.test(t), !/CHILD'S/.test(t));
   assert.match(t, /put the line “ToG: <your code>” on a public account or website you control/);   // the exact proof line
 }
 
