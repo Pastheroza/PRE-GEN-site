@@ -29,12 +29,24 @@ function row(label, value) {
 }
 
 /* The registry's answer (spec/extensions/lookup.md), every code already in its TOG spelling (api/lookup.js). */
+/* lookup.md, ToG codes: what pending and expired mean, in plain words. */
+var STATUS = {
+  pending: "Not verified yet. It permits nothing and forbids nothing. A code not verified within 7 days of its issue is deleted.",
+  expired: "Deleted: it was not verified within 7 days. It permits nothing and forbids nothing, and is never issued again."
+};
+
 function renderAnswer(d) {
   var key = d.subject_key || {};
   var known = ["code", "kind", "status", "registry", "name", "level", "subject_key", "terms", "status_url", "moved",
     "alias", "issued_at", "directory", "visibility", "aliases", "owner_verified", "subject_type", "lifecycle_status",
-    "authority_status", "rules_text", "registered_at"];
-  var rows = row("Name", esc(d.name))
+    "authority_status", "rules_text", "registered_at", "holder", "domain", "subject", "subject_level"];
+  var rows = row("Status", STATUS[d.status] || "")
+    + row("Name", esc(d.name))
+    + row("Holder", d.holder === "company" ? "a company" : d.holder === "person" ? "a person" : esc(d.holder))
+    + row("Domain", esc(d.domain))
+    /* A licence or record is tied to one ToG code; its level says whether that holder's identity is verified. */
+    + row("ToG code", d.subject ? '<span class="mono">' + esc(d.subject) + "</span>"
+      + (d.subject_level ? " · " + (d.subject_level === "verified" ? "identity verified" : esc(d.subject_level) + ", identity not verified") : "") : "")
     + row("Aliases", (d.aliases || []).map(esc).join(" · "))
     /* The registry's own word about the owner: never a badge. Only a claim the person confirmed on their own
        channel (spec/extensions/identity.md) may earn one, and this page does not check that yet. */

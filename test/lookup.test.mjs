@@ -178,3 +178,37 @@ test("the page: a typed PG string gets only the retired message, and nothing is 
   assert.match(els.pgResult.innerHTML, /PG codes are retired\. Use the ToG code your registry shows you\./);
   assert.doesNotMatch(els.pgResult.innerHTML, /TOG-PRAM/);   // no suggestion
 });
+
+// lookup.md, ToG codes: pending and expired in plain words; a company holder; a licence names its ToG code and level.
+async function shownFor(answer, tag) {
+  const el = () => ({ value: "", innerHTML: "", addEventListener() {}, focus() {} });
+  const els = { pgForm: el(), pgInput: el(), pgResult: el() };
+  let done;
+  const shown = new Promise((r) => { done = r; });
+  globalThis.document = { getElementById: (id) => els[id] };
+  globalThis.window = { location: { search: "?code=" + answer.code }, history: { replaceState() {} } };
+  const saved = globalThis.fetch;
+  globalThis.fetch = async () => { setTimeout(done, 0); return { status: 200, json: async () => structuredClone(answer) }; };
+  const { readFile } = await import("node:fs/promises");
+  const lib = new URL("../packages/verify-js/index.js", import.meta.url).href;
+  const src = (await readFile(new URL("../lookup.js", import.meta.url), "utf8")).replace('"/packages/verify-js/index.js"', JSON.stringify(lib));
+  await import("data:text/javascript," + encodeURIComponent(src + "\n// " + tag));
+  await shown;
+  globalThis.fetch = saved;
+  return [...els.pgResult.innerHTML.matchAll(/<dt>(.*?)<\/dt><dd>(.*?)<\/dd>/g)].map((m) => [m[1], m[2]]);
+}
+
+test("the page: a pending or expired ToG code in plain words, a company holder, a licence's ToG code", async () => {
+  const head = { code: "TOG-PRAM-900000037K", kind: "subject", registry: "PRAM" };
+  assert.deepEqual((await shownFor({ ...head, status: "pending" }, "pending"))[0],
+    ["Status", "Not verified yet. It permits nothing and forbids nothing. A code not verified within 7 days of its issue is deleted."]);
+  assert.match((await shownFor({ ...head, status: "expired" }, "expired"))[0][1], /^Deleted: it was not verified within 7 days\./);
+  assert.deepEqual(await shownFor({ ...head, status: "active", holder: "company", domain: "northwind.example", level: "channel" }, "co"),
+    [["Holder", "a company"], ["Domain", "northwind.example"], ["Level", "channel (the registry's claim)"], ["Registry", "PRAM"]]);
+  const lic = { code: "TOG-LIC-NWRD-PRAM-ZZZZ-84RN-RT04", kind: "license", registry: "PRAM", status: "active", issuer: "PRAM",
+    subject: "TOG-PRAM-900000037K" };
+  assert.deepEqual((await shownFor({ ...lic, subject_level: "verified" }, "lic1")).slice(0, 1),
+    [["ToG code", '<span class="mono">TOG-PRAM-900000037K</span> · identity verified']]);
+  assert.deepEqual((await shownFor({ ...lic, subject_level: "channel" }, "lic2")).slice(0, 1),
+    [["ToG code", '<span class="mono">TOG-PRAM-900000037K</span> · channel, identity not verified']]);
+});
