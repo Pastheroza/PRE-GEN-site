@@ -11,8 +11,9 @@
 - `code` is always the TOG spelling (`TOG-CODE.md` §7.3), whatever spelling was asked;
 - `kind` is `subject`, `license`, `generated` (`PG`, `PG-LIC`) or `approved_after` (`AG`,
   `AG-LIC`);
-- **for a subject that answers `active`, also:** `"holder": "person" | "company"`, so no verifier reads a
-  company's code as a person's; a company also `"domain"`, the domain it proved (below); a person who gave
+- **for a person's or a company's subject that answers `active`, also:** `"holder": "person" | "company"`, so no
+  verifier reads a company's code as a person's (a character, a recording, a model or a voice names none, and an
+  answer that refuses without naming its subject never carries it); a company also `"domain"`, the domain it proved (below); a person who gave
   conditions in their own words also `"conditions"` (below);
 - **for a subject the registry publishes, also:** `"name"`, `"level"` and `"subject_key":
   {"key_id", "public_key_hex", "custody"}`;

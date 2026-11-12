@@ -43,7 +43,9 @@ it opens only after identity verification.
     one line break. These would let the card show other text than the bytes that were signed.
   The page trims the text and omits the member when nothing is left. The card shows the conditions **first**, as
   plain text exactly as written (never parsed for markup), under the line "They can only narrow what you allow."
-  They do not enter the rules (`rules_from_answers` ignores them). Vectors: `fragment.encode` and `fragment.decode`
+  They do not enter the machine-read rules (`rules_from_answers` ignores them), but they are part of what the
+  person agreed (ToG 1.0 §1(m)): a registry that signs a version carries them in its body as `conditions`, and any
+  change makes a new version. Vectors: `fragment.encode` and `fragment.decode`
   entries named `conditions…`; `meta.fragment.conditions_max`.
 - A company: exactly `{"who": "company", "decision"}` for a no, `{"who": "company", "decision", "for", "never"}` for
   a yes, the same closed sets. Never an age, a voice, a floor, a domain or a name: the domain is typed at the registry.

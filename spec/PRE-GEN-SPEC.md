@@ -1,4 +1,4 @@
-# PRE-GEN Protocol Specification
+# ToG Protocol Specification
 
 ToG Protocol (Terms of Generation Protocol). Earlier versions of this protocol were published as Prompt Protocol and as PRE-GEN Protocol. It is the same protocol under its current name.
 
