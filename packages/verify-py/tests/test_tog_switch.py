@@ -35,7 +35,7 @@ def test_a_false_claim_is_compared_by_its_code_and_a_pg_string_matches_nothing()
 
 
 def test_a_channel_line_with_a_pg_string_confirms_nothing():
-    for line, ok in (("PRE-GEN: TOG-TEST-000001N", True), ("PRE-GEN: PG-TEST-000001N", False)):
+    for line, ok in (("ToG: TOG-TEST-000001N", True), ("ToG: PG-TEST-000001N", False)):
         page = lambda url, line=line: line + "\n"   # noqa: E731
         assert pregen.check_channel_proof("TOG-TEST-000001N", "https://example.com/.well-known/pregen",
                                           ["https://example.com"], page) is ok

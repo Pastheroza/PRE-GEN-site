@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { checkChannelProof, proofLine, PROOF_PREFIX, LEGACY_PROOF_PREFIXES, wikidataOfficialUrls, decideIdentity, verifyAnchors, verifyDirectory, signEnvelope, fingerprint,
+import { checkChannelProof, proofLine, PROOF_PREFIX, wikidataOfficialUrls, decideIdentity, verifyAnchors, verifyDirectory, signEnvelope, fingerprint,
   publicKeyHex, sha256Hex, canonicalJson, verifyAnswer, checkAnswer, PregenError, DIRECTORY_MAX_AGE, SETTLED_AFTER } from "../index.js";
 
 const CASES = JSON.parse(readFileSync(new URL("../../verify-py/tests/identity_cases.json", import.meta.url)));
@@ -170,7 +170,8 @@ test("a refusal seen this week survives its line being deleted", async () => {
   assert.deepEqual([never.confirmed, never.refusal_only], [false, false]);
 });
 
-test("the proof line is emitted as ToG: <code>; the earlier PRE-GEN: spelling is only read", () => {
+test("the proof line is only ToG: <code>; the earlier PRE-GEN: spelling confirms nothing", async () => {
   assert.equal(proofLine("TOG-XXXX-0000014"), "ToG: TOG-XXXX-0000014");
-  assert.deepEqual([PROOF_PREFIX, [...LEGACY_PROOF_PREFIXES]], ["ToG:", ["PRE-GEN:"]]);
+  assert.equal(PROOF_PREFIX, "ToG:");
+  assert.ok(!("LEGACY_PROOF_PREFIXES" in await import("../index.js")));
 });

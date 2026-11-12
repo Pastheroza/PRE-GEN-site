@@ -16,7 +16,7 @@
    "expect": true
   },
   {
-   "name": "the earlier spelling PRE-GEN: still confirms (never emitted)",
+   "name": "the earlier spelling PRE-GEN: confirms nothing",
    "code": "TOG-XXXX-0000014",
    "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
    "official": [
@@ -26,20 +26,6 @@
     "https://www.tiktok.com/@cristiano"
    ],
    "page": "other line\nPRE-GEN: TOG-XXXX-0000014\n",
-   "seen_confirmed": false,
-   "expect": true
-  },
-  {
-   "name": "the earlier spelling with a withdrawal confirms nothing",
-   "code": "TOG-XXXX-0000014",
-   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
-   "official": [
-    "https://cristianoronaldo.com",
-    "https://www.instagram.com/cristiano",
-    "https://x.com/Cristiano",
-    "https://www.tiktok.com/@cristiano"
-   ],
-   "page": "PRE-GEN: TOG-XXXX-0000014 withdraw *",
    "seen_confirmed": false,
    "expect": false
   },
@@ -86,7 +72,7 @@
    "expect": false
   },
   {
-   "name": "an account's post with the earlier spelling",
+   "name": "an account's post with the earlier spelling PRE-GEN: confirms nothing",
    "code": "TOG-XXXX-0000014",
    "proof_url": "https://www.instagram.com/cristiano/p/1",
    "official": [
@@ -100,7 +86,7 @@
     "text": "PRE-GEN: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
-   "expect": true
+   "expect": false
   },
   {
    "name": "a whole line: spaces and CRLF around it",

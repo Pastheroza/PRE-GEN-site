@@ -176,7 +176,7 @@ def channels(now_sites, then_sites):
 
 def test_a_channel_added_today_refuses_but_does_not_permit():
     now_urls, then_urls = channels([SITE, NEW], [SITE])
-    pages = {NEW + "/.well-known/pregen": "PRE-GEN: TOG-XXXX-0000014"}
+    pages = {NEW + "/.well-known/pregen": "ToG: TOG-XXXX-0000014"}
     c = claim("TOG-XXXX-0000014", NEW + "/.well-known/pregen", now_urls, then_urls, pages, {"status": "allow"})
     assert (c["confirmed"], c["settled"]) == (True, False)
     assert pregen.decide_identity([c]) == {"status": "not_blocked", "reason": "PG_IDENTITY_UNCONFIRMED", "code": None}
@@ -187,7 +187,7 @@ def test_a_channel_added_today_refuses_but_does_not_permit():
 
 def test_a_recent_refusal_survives_replacing_the_channel():
     now_urls, then_urls = channels([NEW], [SITE])
-    pages = {SITE + "/.well-known/pregen": "PRE-GEN: TOG-AAAA-0000029", NEW + "/.well-known/pregen": "PRE-GEN: TOG-XXXX-0000014"}
+    pages = {SITE + "/.well-known/pregen": "ToG: TOG-AAAA-0000029", NEW + "/.well-known/pregen": "ToG: TOG-XXXX-0000014"}
     ron = claim("TOG-AAAA-0000029", SITE + "/.well-known/pregen", now_urls, then_urls, pages,
                 {"status": "deny", "reason": "PG_SUBJECT_OPTED_OUT"})
     thief = claim("TOG-XXXX-0000014", NEW + "/.well-known/pregen", now_urls, then_urls, pages, {"status": "allow"})
@@ -206,8 +206,8 @@ def test_a_refusal_seen_this_week_survives_its_line_being_deleted():
     assert (never["confirmed"], never["refusal_only"]) == (False, False)
 
 
-def test_the_proof_line_is_emitted_as_tog_and_the_earlier_spelling_is_only_read():
+def test_the_proof_line_is_only_tog_and_the_earlier_spelling_confirms_nothing():
     assert pregen.proof_line("TOG-XXXX-0000014") == "ToG: TOG-XXXX-0000014"
-    assert (pregen.PROOF_PREFIX, pregen.LEGACY_PROOF_PREFIXES) == ("ToG:", ("PRE-GEN:",))
-    spelled = [c["page"] if isinstance(c["page"], str) else c["page"].get("text", "") for c in CASES["channel"]]
-    assert sum("PRE-GEN:" in p for p in spelled) == 3 and sum("ToG:" in p for p in spelled) > 30
+    assert pregen.PROOF_PREFIX == "ToG:" and not hasattr(pregen, "LEGACY_PROOF_PREFIXES")
+    old = [c for c in CASES["channel"] if "PRE-GEN:" in (c["page"] if isinstance(c["page"], str) else c["page"]["text"])]
+    assert len(old) == 2 and not any(c["expect"] for c in old)

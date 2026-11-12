@@ -1139,17 +1139,16 @@ function channelUrl(url) {
  *   `getText` returns {author: <handle or channel id>, text: <what the account itself wrote there>} from the
  *   platform's own record of who wrote it. The author must be the account (letter case aside); a string, a comment or
  *   another account's post confirms nothing.
- * The text must have a line "ToG: <code>" (proofLine(); the earlier "PRE-GEN: <code>" also counts), the whole code as
+ * The text must have a line "ToG: <code>" (proofLine()), the whole code as
  * written (a PG- string matches nothing), alone or followed by a space and more words; a line
  * "ToG: <code> withdraw <party>" confirms nothing. `proofUrl` is taken exactly as written: https, a lower-case
  * host, no credentials, port, query, fragment, percent-escape or dot segment, at most 512 characters; `getText` must
  * not follow redirects (treat a 3xx like a 404: return ""). If `getText` throws (the page cannot be read), the claim
  * is unconfirmed, unless `seenConfirmed` (you saw it confirmed at the last check): then the error is thrown, and you
  * have no decision for this person. */
-/** The proof line a person places at a channel they control (founder's recommendation, 2026-11-11, one constant to
- *  change): "ToG: <code>". The earlier spelling "PRE-GEN: <code>" still confirms, and is never emitted. */
+/** The proof line a person places at a channel they control (founder decision 2026-11-12): "ToG: <code>", the only
+ *  spelling read or emitted. */
 export const PROOF_PREFIX = "ToG:";
-export const LEGACY_PROOF_PREFIXES = Object.freeze(["PRE-GEN:"]);
 export const proofLine = (code) => `${PROOF_PREFIX} ${code}`;
 
 export async function checkChannelProof(code, proofUrl, officialUrls, getText, { seenConfirmed = false } = {}) {
@@ -1176,7 +1175,7 @@ export async function checkChannelProof(code, proofUrl, officialUrls, getText, {
   }
   return (typeof got === "string" ? got : "").split("\n").some((line) => {
     const words = line.replace(/^[ \t\r]+|[ \t\r]+$/g, "").split(/[ \t]+/);
-    return [PROOF_PREFIX, ...LEGACY_PROOF_PREFIXES].includes(words[0]) && words.length > 1 && sameCode(words[1], code) && words[2] !== "withdraw";
+    return words[0] === PROOF_PREFIX && words.length > 1 && sameCode(words[1], code) && words[2] !== "withdraw";
   });
 }
 

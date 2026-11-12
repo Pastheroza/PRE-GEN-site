@@ -29,10 +29,10 @@ Text only: no message format, required schema member or vector changes.
   1,000 code points, NFC, LF the only control: the optional `conditions` member of the `tog=v1` fragment
   (`drafts/tog-funnel.md`; the fragment limit is now 6,144 and canonical JSON writes non-ASCII as raw UTF-8, so
   every earlier fragment is unchanged), returned by lookup for an `active` code only (`extensions/lookup.md`).
-- **The proof line is `ToG: <code>`** (founder's recommendation, 2026-11-11; `extensions/identity.md`). The earlier
-  `PRE-GEN: <code>` still confirms and is never emitted; `pregen.proof_line()` / `proofLine()`, `PROOF_PREFIX`,
-  `LEGACY_PROOF_PREFIXES`; `identity_cases.json` now spells the line `ToG:` and adds six cases.
-- **A company's domain lapse** (founder's recommendation, 2026-11-11; `extensions/lookup.md`). Its `tog.json` is
+- **The proof line is `ToG: <code>`** (founder decision 2026-11-12; `extensions/identity.md`). It is the only
+  spelling read or emitted: the earlier `PRE-GEN: <code>` confirms nothing; `pregen.proof_line()` / `proofLine()`,
+  `PROOF_PREFIX`; `identity_cases.json` now spells the line `ToG:` and adds five cases.
+- **A company's domain lapse** (founder decision 2026-11-12; `extensions/lookup.md`). Its `tog.json` is
   re-checked at most daily; when it stops naming the record the company gets a notice and 30 days in which its
   answer stays in force, then its code answers `pending` until the file is back. Replaces "answers `pending` until
   it does again", which no implementation followed and which let an outage cancel a company's no.

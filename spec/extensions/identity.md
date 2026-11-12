@@ -101,8 +101,8 @@ nothing. A value not of its property's form names no channel; it is never repair
 
 The line is `ToG: <code>`, the whole code, alone on its line or followed by a space and
 more words, spaces around it ignored; inside HTML or a sentence it is not a line, and
-`ToG: <code> withdraw …` confirms nothing. The earlier spelling `PRE-GEN: <code>` still confirms (with
-the same rules) and is never shown to anyone: `ToG:` is the one spelling a registry or a library emits. A `proof_url` is compared exactly as written:
+`ToG: <code> withdraw …` confirms nothing. `ToG:` is the only spelling: the earlier `PRE-GEN: <code>`
+confirms nothing. A `proof_url` is compared exactly as written:
 `https://`, a lower-case ASCII host, no user part, port, query, fragment or percent-escape, no
 empty, `.` or `..` path segment, path characters only letters, digits and `._~@-`, at most 512
 characters. It is fetched without following a redirect. The Python and JavaScript libraries
