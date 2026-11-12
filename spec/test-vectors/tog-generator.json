@@ -124,7 +124,8 @@
     "3d",
     "image",
     "video"
-   ]
+   ],
+   "note": "This code records the company's answer for its name, marks and products. Rules for brands will join ToG later."
   },
   "legal": {
    "id": "ToG-1.0",

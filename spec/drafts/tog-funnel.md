@@ -14,7 +14,8 @@ of the licence.
 
 **The registry step is mandatory**, for a company too. The home registry issues the code at once, pending: it
 permits nothing until verified, and is deleted after 7 days without it (`extensions/lookup.md`). After verification
-the holder's yes or no is global for every registry that integrated PRE-GEN. A yes is recorded as the holder's wish;
+the holder's yes or no is global for every registry on ToG Protocol ("Once verified, your YES or NO is global for
+every registry on ToG Protocol."). A yes is recorded as the holder's wish;
 it opens only after identity verification.
 
 ## The fragment `tog=v1`
@@ -76,6 +77,8 @@ On `localhost` only, the page reads `/test/tog-local/registries.json`, signed by
 A company answers the same questions without voice and goes to a registry like a person. It gets a code of the same
 form (`TOG-CODE.md` §5), pending until it proves its domain: the registry gives it the `/.well-known/tog.json` to
 place at `https://<domain>`, naming the registry's record for the code, read without redirects. Lookup says
-`holder: "company"`. When the file later stops naming the record, the company gets a notice and 30 days of grace, then
+`holder: "company"`. ToG 1.0 covers natural persons, so a company's card cites no licence text and says instead
+"This code records the company's answer for its name, marks and products. Rules for brands will join ToG later."
+(`meta.company.note`; a founder's recommendation not yet confirmed). When the file later stops naming the record, the company gets a notice and 30 days of grace, then
 its code answers `pending` until the file is back; the home re-checks at most daily (`extensions/lookup.md`;
 `DOMAIN_GRACE` and `DOMAIN_RECHECK` in the reference registry, a founder's recommendation not yet confirmed).

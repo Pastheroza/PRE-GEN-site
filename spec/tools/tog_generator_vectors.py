@@ -146,6 +146,10 @@ CO_L = {**{k: (v["1"] if isinstance(v, dict) else v) for k, v in g.L["en"].items
         "binds": "This covers only what we own. It never licenses any real person shown with it. It does not stop uses "
                  "the law allows without a licence."}
 CO_MODALITIES = ["3d", "image", "video"]
+# ToG 1.0 covers natural persons: a company's card cites no licence text and says this instead (founder's
+# recommendation, 2026-11-11, one string to change).
+CO_NOTE = ("This code records the company's answer for its name, marks and products. Rules for brands will join ToG "
+           "later.")
 
 
 def company_rules(a: dict) -> dict:
@@ -453,7 +457,7 @@ def main():
                               "longest_encoded": len(encode(longest)), "conditions_max": CONDITIONS_MAX,
                               "ages": L(AGES), "who": L(WHO),
                               "decisions": L(DECISIONS), "floors": L(FLOORS)},
-                 "company": {"profile": "marks/1", "modalities": CO_MODALITIES}, "legal": LEGAL},
+                 "company": {"profile": "marks/1", "modalities": CO_MODALITIES, "note": CO_NOTE}, "legal": LEGAL},
         "answers": answers, "never_lines": never_lines, "frames": frames,
         "reject_rules": g.REJECT, "policy": policy,
         "fragment": {"encode": enc, "decode": dec},

@@ -68,9 +68,9 @@ function registryStep(t, co = false) {
   assert.match(t, /You need one home only:/);
   assert.match(t, /The code is pending for 7 days\. It permits nothing and forbids nothing until you confirm it is you/);
   assert.match(t, /An email alone does not\. Your registry reminds you on day 3; on day 7 an unconfirmed code is deleted and never issued again\./);
-  assert.match(t, /After verification, your YES or NO becomes global for every registry that integrated PRE-GEN\./);
+  assert.match(t, /Once verified, your YES or NO is global for every registry on ToG Protocol\./);
   if (co) {   // ToG 1.0 covers a natural person's likeness only: a company's card cites no licence text
-    assert.match(t, /No licence text applies to a company: its ToG code records its answer/);
+    assert.match(t, /This code records the company's answer for its name, marks and products\. Rules for brands will join ToG later\./);
     assert.doesNotMatch(t, /ToG 1\.0 public draft|Read the legal code/);
     assert.match(t, /publish the file \/\.well-known\/tog\.json on your company's domain/);
     return;
