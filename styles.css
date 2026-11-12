@@ -160,6 +160,7 @@ details p { margin: 10px 0 0; }
 .pg-row { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 12px; padding: 6px 0; border-top: 1px solid var(--soft); }
 .pg-row dt { color: var(--muted); font-size: 14px; }
 .pg-row dd { margin: 0; overflow-wrap: anywhere; }
+.pg-said { white-space: pre-line; }   /* a person's own words keep their line breaks (lookup.md, Conditions) */
 .pg-card-foot, .pg-card .dim { font-size: 14px; color: var(--muted); margin-top: 12px; }
 .pg-card p { margin: 0 0 6px; }
 .pg-prompt { font-family: var(--mono); }

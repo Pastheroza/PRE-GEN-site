@@ -39,8 +39,11 @@ function renderAnswer(d) {
   var key = d.subject_key || {};
   var known = ["code", "kind", "status", "registry", "name", "level", "subject_key", "terms", "status_url", "moved",
     "alias", "issued_at", "directory", "visibility", "aliases", "owner_verified", "subject_type", "lifecycle_status",
-    "authority_status", "rules_text", "registered_at", "holder", "domain", "subject", "subject_level"];
-  var rows = row("Status", STATUS[d.status] || "")
+    "authority_status", "rules_text", "registered_at", "holder", "domain", "subject", "subject_level", "conditions"];
+  /* lookup.md, Conditions: a person's own words come first, as plain text, their line breaks kept (styles.css: the CSP
+     refuses a style attribute). */
+  var rows = row("Conditions", d.conditions ? '<span class="pg-said">' + esc(d.conditions) + "</span>" : "")
+    + row("Status", STATUS[d.status] || "")
     + row("Name", esc(d.name))
     + row("Holder", d.holder === "company" ? "a company" : d.holder === "person" ? "a person" : esc(d.holder))
     + row("Domain", esc(d.domain))
