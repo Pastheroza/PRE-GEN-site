@@ -18,10 +18,11 @@ import sys
 import unicodedata
 from itertools import product
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import quote, unquote, urlsplit
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+import tog_code as tc  # noqa: E402
 import tog_generator as g  # noqa: E402
 
 REFERENCE_SHA256 = "1e3c4cf745a27d02eb282bfa66ff0591ea39d611031bfe288972d3cb16ec1547"   # PRE-GEN-Drafts copy, 2026-11-09
@@ -122,6 +123,72 @@ def decode(f) -> dict:
     if a.get("age") == "13-17":            # only a parent, guardian or representative registers a minor
         return {"result": "minor"}
     return {"result": "ok", "answers": a}
+
+
+# ---- the return: the home registry sends the person back to /tog/document with the code it issued ---------------
+MAX_RETURN = 8192
+RECORD_MAX = 512
+_CLAIM = re.compile(r"[0-9a-f]{16,64}")
+_URI_SAFE = "-_.!~*'()"                    # what encodeURIComponent leaves as it is, besides letters and digits
+
+
+def _record_ok(r) -> bool:
+    """The code's record page: an https URL, printable ASCII, no credentials or fragment, at most 512 characters.
+    That its origin is the registry's website is the page's check (it needs the signed directory)."""
+    if type(r) is not str or not 0 < len(r) <= RECORD_MAX or not re.fullmatch(r"[\x21-\x7e]+", r) or "\\" in r:
+        return False
+    s = urlsplit(r)
+    return s.scheme == "https" and bool(s.hostname) and "@" not in s.netloc and "#" not in r
+
+
+def encode_return(code: str, answers: dict, record=None, claim=None) -> str:
+    """The fragment of https://www.pregen.org/tog/document, without '#'. record and claim: both or neither, and only a
+    company's (the two members of its /.well-known/tog.json entry)."""
+    p = tc.parse(code)
+    assert p["kind"] == "subject" and p["shape"] != "old_no_check", code
+    assert (record is None) == (claim is None) and (record is None or answers.get("who") == "company"), (answers, record)
+    f = f"code={code}&" + encode(answers)
+    if record is not None:
+        assert _record_ok(record) and _CLAIM.fullmatch(claim), (record, claim)
+        f += f"&record={quote(record, safe=_URI_SAFE)}&claim={claim}"
+    assert len(f) <= MAX_RETURN
+    return f
+
+
+def decode_return(f) -> dict:
+    """Strict, never repairs: {"result": "ok", "code", "answers"[, "record", "claim"]} | unknown_version | minor |
+    malformed. The members in this order only; the whole must re-encode to exactly the input."""
+    bad = {"result": "malformed"}
+    if type(f) is not str or len(f) > MAX_RETURN or not f.startswith("code="):
+        return bad
+    parts = f.split("&")
+    if len(parts) not in (2, 4) or not parts[1].startswith("tog="):
+        return bad
+    inner = decode(parts[1])
+    if inner["result"] != "ok":
+        return inner
+    code, a = parts[0][len("code="):], inner["answers"]
+    try:
+        p = tc.parse(code)
+    except ValueError:
+        return bad
+    if p["kind"] != "subject" or p["shape"] == "old_no_check":
+        return bad
+    out = {"result": "ok", "code": code, "answers": a}
+    if len(parts) == 4:
+        if a.get("who") != "company" or not parts[2].startswith("record=") or not parts[3].startswith("claim="):
+            return bad
+        try:
+            record = unquote(parts[2][len("record="):], errors="strict")
+        except UnicodeDecodeError:
+            return bad
+        claim = parts[3][len("claim="):]
+        if not _record_ok(record) or not _CLAIM.fullmatch(claim):
+            return bad
+        out.update(record=record, claim=claim)
+    if encode_return(code, a, out.get("record"), out.get("claim")) != f:
+        return bad
+    return out
 
 
 def rules_of(a: dict) -> dict:
@@ -403,6 +470,56 @@ def main():
         company.append({"name": n, "answers": a, "rules": r, "card": {"en": c}})
     assert len({tuple(c["card"]["en"]) for c in company}) == len({json.dumps(c["rules"]) for c in company})
 
+    # The return to /tog/document (tog-funnel.md, The return). Example codes only (serial 900000000 and up).
+    person, old = "TOG-PRAM-900000037K", "TOG-PRAM-000043R"
+    rec = f"https://prampta.com/certificate/{person}"
+    claim = "3f9a0c1d2e4b5a6c"
+    co_no = {"who": "company", "decision": "no"}
+    ret_ok = [("person, no", person, {"age": "18+", "decision": "no"}, None, None),
+              ("person, a code born PG", old, {"age": "18+", "decision": "no"}, None, None),
+              ("person, yes with conditions", person, {**ads, "conditions": "Не в рекламе казино.\nNo blood."}, None, None),
+              ("a minor's representative, no", person, {"who": "child", "decision": "no"}, None, None),
+              ("company, no", person, co_no, rec, claim),
+              ("company, yes", person, co_ads, rec, "0" * 64),
+              ("company, no, typed by hand: no record", person, co_no, None, None)]
+    ret_enc = [{"name": n, "code": c, "answers": a, **({"record": r, "claim": k} if r else {}),
+                "fragment": encode_return(c, a, r, k)} for n, c, a, r, k in ret_ok]
+    pno = encode({"age": "18+", "decision": "no"})
+    cno = encode(co_no)
+    q = lambda r: quote(r, safe=_URI_SAFE)
+    ret_cases = [(e["name"], e["fragment"]) for e in ret_enc] + [
+        ("empty", ""), ("no code", pno), ("members swapped", f"{pno}&code={person}"),
+        ("a PG code", f"code=PG-PRAM-000043R&{pno}"), ("mistyped check", f"code=TOG-PRAM-900000037J&{pno}"),
+        ("lower case code", f"code={person.lower()}&{pno}"), ("a space before the code", f"code= {person}&{pno}"),
+        ("a licence code", f"code=TOG-LIC-PRAM-ZZZZ-0000-000{tc.check_char(tc.event_body('LIC', 'PRAM', '', 'ZZZZ0000000'))}&{pno}"),
+        ("a code without a check", f"code=TOG-STD-000001&{pno}"),
+        ("an empty code", f"code=&{pno}"), ("a glued member", f"code={person}&{pno}&x=1"),
+        ("an empty member", f"code={person}&{pno}&"), ("unknown version", f"code={person}&tog=v2.AAAA"),
+        ("a minor's own answers", f"code={person}&tog=v1." + _b64(_canon({"age": "13-17", "decision": "no"}))),
+        ("broken answers", f"code={person}&{pno}x"),
+        ("a person with a record", f"code={person}&{pno}&record={q(rec)}&claim={claim}"),
+        ("record without claim", f"code={person}&{cno}&record=x"),
+        ("record and claim swapped", f"code={person}&{cno}&claim={claim}&record={q(rec)}"),
+        ("record not percent-encoded", f"code={person}&{cno}&record={rec}&claim={claim}"),
+        ("record with lower-case escapes", f"code={person}&{cno}&record={q(rec).replace('%2F', '%2f')}&claim={claim}"),
+        ("record over http", f"code={person}&{cno}&record={q(rec.replace('https', 'http'))}&claim={claim}"),
+        ("record with credentials", f"code={person}&{cno}&record={q('https://a@prampta.com/c')}&claim={claim}"),
+        ("record with a fragment", f"code={person}&{cno}&record={q(rec + '#x')}&claim={claim}"),
+        ("record with a space", f"code={person}&{cno}&record={q(rec + ' x')}&claim={claim}"),
+        ("record not UTF-8", f"code={person}&{cno}&record=%FF&claim={claim}"),
+        (f"record of {RECORD_MAX + 1} characters", f"code={person}&{cno}&record="
+         + q("https://prampta.com/" + "c" * (RECORD_MAX + 1 - len("https://prampta.com/"))) + f"&claim={claim}"),
+        ("claim in capitals", f"code={person}&{cno}&record={q(rec)}&claim={claim.upper()}"),
+        ("claim of 15", f"code={person}&{cno}&record={q(rec)}&claim={claim[:15]}"),
+        ("claim of 65", f"code={person}&{cno}&record={q(rec)}&claim={'0' * 65}"),
+        ("an empty claim", f"code={person}&{cno}&record={q(rec)}&claim="),
+        (f"{MAX_RETURN + 1} characters", f"code={person}&tog=v1." + "A" * (MAX_RETURN + 1 - len(f"code={person}&tog=v1."))),
+    ]
+    ret_dec = [{"name": n, "fragment": f, **decode_return(f)} for n, f in ret_cases]
+    got = {r: sum(d["result"] == r for d in ret_dec) for r in ("ok", "unknown_version", "minor", "malformed")}
+    assert got == {"ok": len(ret_ok), "unknown_version": 1, "minor": 1, "malformed": len(ret_cases) - len(ret_ok) - 2}, got
+    assert all(len(f) > MAX_RETURN for n, f in ret_cases if n.endswith(f"{MAX_RETURN + 1} characters"))
+
     def reg(**kw):
         return {"name": "PRAMPTA", "prefix": "PRAM", "website": "https://prampta.com",
                 "tog_start": "https://prampta.com/start", **kw}
@@ -458,6 +575,8 @@ def main():
         "reject_rules": g.REJECT, "policy": policy,
         "fragment": {"encode": enc, "decode": dec},
         "company": company, "chooser": chooser,
+        "return": {"url": "https://www.pregen.org/tog/document", "max_length": MAX_RETURN, "record_max": RECORD_MAX,
+                   "encode": ret_enc, "decode": ret_dec},
     }
     print(json.dumps(out, indent=1, ensure_ascii=False))
 

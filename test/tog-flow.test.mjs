@@ -1,6 +1,6 @@
-// /tog driven screen by screen in a tiny fake DOM: a person's no and yes, a company, a minor and a parent. The output
-// is a card that links the one common legal text, then the mandatory home registry step (pending 7 days, the global
-// yes or no), and the only link out is the registry's start URL with the closed answers in the #fragment.
+// /tog driven screen by screen in a tiny fake DOM: what the person needs ToG for, then a person's no and yes, an AI
+// service, a minor through a parent or legal guardian, a company; the registry step (pending 7 days, the global yes or
+// no), the code typed back and the ToG statement in its three forms; and /tog/document reading a registry's return.
 // Run: node --test test/tog-flow.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -8,151 +8,211 @@ import { readFile } from "node:fs/promises";
 import { canonicalJson, fingerprint } from "../packages/verify-js/index.js";
 import { decodeFragment, LEGAL } from "../packages/verify-js/tog.js";
 
+const V = JSON.parse(await readFile(new URL("../spec/test-vectors/tog-generator.json", import.meta.url), "utf8"));
+
 class Node {
-  constructor(tag) { this.tag = tag; this.attrs = {}; this.kids = []; this.on = {}; this.value = ""; }
-  setAttribute(k, v) { this.attrs[k] = v; if (k === "value") this.value = v; }
+  constructor(tag) { this.tag = tag; this.attrs = {}; this.kids = []; this.on = {}; this.value = ""; this.checked = false; }
+  setAttribute(k, v) { this.attrs[k] = v; if (k === "value") this.value = v; if (k === "checked") this.checked = true; }
   addEventListener(t, f) { (this.on[t] ||= []).push(f); }
+  fire(t, e = {}) { for (const f of this.on[t] || []) f({ target: this, preventDefault() {}, ...e }); }
   append(...k) { this.kids.push(...k); }
   replaceChildren(...k) { this.kids = k; }
   focus() {}
-  closest() { return null; }
-  click() { for (const f of this.on.click || []) f({}); }
+  click() { this.fire("click"); }
   all() { return this.kids.flatMap((k) => (k instanceof Node ? [k, ...k.all()] : [])); }
-  querySelector(sel) { return this.all().find((n) => (["input", "textarea"].includes(sel) ? n.tag === sel : false)) ?? null; }
+  querySelector() { return this.all().find((n) => n.tag === "input" || n.tag === "textarea") ?? null; }
   get text() { return this.kids.map((k) => (k instanceof Node ? k.text : String(k))).join(""); }
 }
 
-const LOCAL = "http://localhost:3100";
+const START = "https://prampta.example/start";
 async function stand() {   // test/tog-local.mjs in memory: an ephemeral steward key lists PRAM with tog_start
   const hex = (b) => Buffer.from(b).toString("hex");
   const keys = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
   const pub = hex(await crypto.subtle.exportKey("raw", keys.publicKey));
   const directory = { schema: "pregen.registries.v2", sequence: 1, issued_at: new Date().toISOString().replace(/\.\d+Z$/, "Z"),
-    steward_key_id: await fingerprint(pub), registries: [{ name: "PRAMPTA", prefix: "PRAM", website: LOCAL,
-      tog_start: `${LOCAL}/start`, api: "https://api.invalid", keys: "https://api.invalid/keys",
+    steward_key_id: await fingerprint(pub), registries: [{ name: "PRAMPTA", prefix: "PRAM", website: "https://prampta.com",
+      tog_start: "https://prampta.com/start", api: "https://api.invalid", keys: "https://api.invalid/keys",
       key_fingerprints: ["pg-ed25519:" + "0".repeat(32)] }] };
   directory.signature = hex(await crypto.subtle.sign("Ed25519", keys.privateKey, new TextEncoder().encode(canonicalJson(directory))));
   return { "/test/tog-local/steward.json": { public_key_hex: pub }, "/test/tog-local/registries.json": directory };
 }
 
 let n = 0;
-async function page() {
-  const files = await stand();
-  const ids = { "tf-bar": new Node("progress"), "tf-back": new Node("button"), "tf-restart": new Node("button"), "tf-stage": new Node("div") };
-  globalThis.document = { getElementById: (id) => ids[id], createElement: (t) => new Node(t), addEventListener() {} };
-  globalThis.location = { hostname: "localhost" };
-  globalThis.window = { scrollTo() {} };
-  globalThis.fetch = async (url) => ({ ok: url in files, status: url in files ? 200 : 404, json: async () => structuredClone(files[url]) });
+const tick = () => new Promise((r) => setTimeout(r, 5));
+async function page({ path = "/tog", hash = "" } = {}) {
+  const files = await stand(), asked = [];
+  const stage = new Node("div");
+  globalThis.document = { getElementById: (id) => (id === "tg-stage" ? stage : null), createElement: (t) => new Node(t), addEventListener() {} };
+  globalThis.location = { hostname: "localhost", pathname: path, hash, origin: "http://localhost:8773" };
+  globalThis.window = { scrollTo() {}, addEventListener() {} };
+  globalThis.fetch = async (url) => {
+    asked.push(url);
+    if (url.startsWith("/api/lookup?code=")) return { ok: true, status: 200, json: async () => ({ status: "pending" }) };
+    return { ok: url in files, status: url in files ? 200 : 404, json: async () => structuredClone(files[url]) };
+  };
   const lib = new URL("../packages/verify-js/tog.js", import.meta.url).href;
   const src = (await readFile(new URL("../tog.js", import.meta.url), "utf8")).replace('"/packages/verify-js/tog.js"', JSON.stringify(lib));
   await import("data:text/javascript," + encodeURIComponent(src + `\n// page ${n++}`));
-  const stage = ids["tf-stage"];
-  const press = (label) => {
-    const b = stage.all().find((x) => (x.tag === "button" || x.tag === "a") && x.text.includes(label));
-    assert.ok(b, `no "${label}" on: ${stage.text.slice(0, 200)}`);
-    b.click();
+  const find = (pred, what) => { const x = stage.all().find(pred); assert.ok(x, `no ${what} on: ${stage.text.slice(0, 300)}`); return x; };
+  const p = {
+    stage, asked, text: () => stage.text, screen: () => stage.all().find((x) => x.attrs["data-screen"]).attrs["data-screen"],
+    press: (label) => find((x) => (x.tag === "button" || x.tag === "a") && x.text.startsWith(label), `"${label}"`).click(),
+    pick: (label) => { const l = find((x) => x.tag === "label" && x.text.startsWith(label), `choice "${label}"`);
+      const i = l.kids[0]; i.checked = !i.checked || i.attrs.type === "radio"; i.fire("change"); },
+    type: (id, v) => { const i = find((x) => x.attrs.id === id, id); i.value = v; i.fire("input"); },
+    next: () => find((x) => x.tag === "form", "a form").fire("submit"),
+    registry: async () => {   // the registry buttons arrive once the signed directory is read
+      for (let i = 0; i < 100 && !stage.all().some((x) => x.attrs.class?.includes("tg-to")); i++) await tick();
+      const go = stage.all().filter((x) => x.attrs.class?.includes("tg-to"));
+      assert.equal(go.length, 1);
+      assert.match(stage.text, /Available registries \(1\)PRAMPTAprampta\.comPrefix PRAM · codes look like TOG-PRAM-9\d{8}[0-9A-Z]Register with PRAMPTA/);
+      const href = go[0].attrs.href;
+      assert.ok(href.startsWith("https://prampta.com/start#tog=v1.") && !href.includes("?"), href);
+      assert.equal(go[0].attrs.target, "_blank");
+      assert.equal(go[0].attrs.rel, "noopener noreferrer");
+      return { answers: decodeFragment(href.split("#")[1]), open: () => go[0].click() };
+    },
   };
-  const type = (v, tag = "input") => { const i = stage.querySelector(tag); i.value = v; i.on.input.forEach((f) => f()); };
-  const out = async () => {   // the registry buttons arrive once the signed directory is read
-    for (let i = 0; i < 50 && !stage.all().some((x) => x.tag === "a" && x.attrs.class?.includes("tf-go")); i++) await new Promise((r) => setTimeout(r, 5));
-    const go = stage.all().filter((x) => x.tag === "a" && x.attrs.class?.includes("tf-go")).map((x) => x.attrs.href);
-    assert.equal(go.length, 1);
-    assert.ok(go[0].startsWith(`${LOCAL}/start#tog=v1.`) && !go[0].includes("?"), go[0]);
-    return decodeFragment(go[0].split("#")[1]);
-  };
-  return { stage, press, type, out, text: () => stage.text };
+  return p;
+}
+async function person(p, use = "On my website", dob = ["27", "3", "1990"]) {
+  p.press("Start"); p.pick("My likeness"); p.next(); p.pick(use); p.next();
+  p.type("tg-day", dob[0]); p.type("tg-month", dob[1]); p.type("tg-year", dob[2]); p.next();
+}
+async function codeBack(p, code = "TOG-PRAM-900000037K") {
+  const r = await p.registry();
+  r.open();
+  assert.equal(p.screen(), "code");
+  p.type("tg-tog-code", code); p.next();
+  for (let i = 0; i < 50 && !/Pending\./.test(p.text()); i++) await tick();
+  return r.answers;
 }
 
 function registryStep(t, co = false) {
-  assert.match(t, /Choose your home registry/);
-  assert.match(t, /You need one home only:/);
-  assert.match(t, /The code is pending for 7 days\. It permits nothing and forbids nothing until you confirm it is you/);
-  assert.match(t, /An email alone does not\. Your registry reminds you on day 3; on day 7 an unconfirmed code is deleted and never issued again\./);
-  assert.match(t, /Once verified, your YES or NO is global for every registry on ToG Protocol\./);
+  assert.match(t, /Choose your registry/);
+  assert.match(t, /pregen\.org is not a registry\.It does not register people or companies and holds no codes\. Registries do: you choose one, it confirms your identity and your rights, and after that your ToG code takes effect\./);
+  assert.match(t, /You need only one: every other registry and AI service reads your code\./);
+  assert.match(t, /The code is pending for 7 days\. It permits and forbids nothing until it is confirmed/);
+  assert.match(t, /Your registry reminds you on day 3\. On day 7 an unconfirmed code is deleted, and its number is never issued again\./);
+  assert.match(t, /Once confirmed, your ToG code takes effect for every registry and AI service on ToG Protocol\./);
   assert.doesNotMatch(t, /ToG 1\.0(?! public draft 1)/);   // every line that cites the text says which text it is
-  if (co) {   // ToG 1.0 covers a natural person's likeness only: a company's card cites no licence text
-    assert.doesNotMatch(t, /ToG 1\.0 public draft|Read the legal code|Rules for brands|This code records the company's answer/);
-    assert.match(t, /publish the file \/\.well-known\/tog\.json on your company's domain/);
-    return;
-  }
-  assert.match(t, new RegExp(`ToG 1\\.0 public draft 1 · SHA-256 ${LEGAL.sha256} · the same text for everyone`));
-  assert.match(t, /Read the legal code.*Read it in plain words/);
-  // What ToG 1.0 public draft 1 adds for a person: training by paid deal only, sexual or adult content shut at launch,
-  // earlier grants keep their terms (§6(e), §5(a), §4(h)).
-  assert.equal(/training AI models on you happens only under a paid deal you sign;.*which is not offered yet; rights you granted before ToG keep their own terms\./.test(t), !/CHILD'S/.test(t));
-  assert.match(t, /put the line “ToG: <your code>” on a public account or website you control/);   // the exact proof line
+  if (co) assert.doesNotMatch(t, /ToG 1\.0 public draft|Read the legal code/);   // ToG 1.0 covers natural persons only
+  else assert.match(t, /Read the legal code.*Read it in plain words/);
 }
 
-test("a person's no: the card, tog:no first, then the registry; the year never leaves the page", async () => {
+test("the intake: an AI service needs no code and a registry is listed; nothing is asked of either", async () => {
   const p = await page();
-  p.press("Me"); p.type("1990"); p.press("OK"); p.press("No.");
-  const t = p.text();
-  assert.match(t, /No AI generation of me\./);
-  assert.match(t, /write tog:no in the bio of your own public profile\. Under ToG 1\.0 public draft 1 §2\(h\) it counts at once\./);
-  assert.ok(t.indexOf("tog:no") < t.indexOf("Choose your home registry"));
-  registryStep(t);
-  assert.deepEqual(await p.out(), { result: "ok", answers: { age: "18+", decision: "no" } });
-  assert.ok(p.stage.all().some((x) => x.tag === "a" && x.attrs.href === "/tog/1.0"));
+  assert.match(p.text(), /Create your ToG.*pregen\.org is not a registry\..*Answer.*Choose a registry.*Confirm.*In force/);
+  p.press("Start");
+  assert.match(p.text(), /What do you need ToG for\?/);
+  p.next();
+  assert.match(p.text(), /There is a problem.*Choose what you need ToG for\./);
+  p.pick("My AI service"); p.next();
+  assert.match(p.text(), /Your AI service needs no ToG code/);
+  assert.ok(p.stage.all().some((x) => x.tag === "a" && x.attrs.href === "/connect"));
+  p.press("Back"); p.pick("A registry"); p.next();
+  assert.ok(p.stage.all().some((x) => x.tag === "a" && x.attrs.href === "/create-registry"));
+  assert.deepEqual(p.asked, []);
 });
 
-test("a person's yes is recorded as a wish that opens only after identity verification", async () => {
+test("a person's no: checked, registered in a new tab, the code typed back, the statement with the proof line", async () => {
   const p = await page();
-  p.press("Me"); p.type("1990"); p.press("OK");
-  assert.match(p.text(), /It opens only after identity verification, which is coming soon\./);
-  p.press("Yes, within my rules."); p.press("For fun"); p.press("Next"); p.press("Next"); p.press("No, not my voice");
-  assert.match(p.text(), /In your own words.*They can only narrow what you allow\./);
-  p.press("Next");                                       // nothing typed: the fragment carries no conditions
+  await person(p);
+  assert.match(p.text(), /May AI generate your likeness\?/);
+  p.pick("No"); p.next();
   const t = p.text();
-  assert.match(t, /Your yes is recorded as your wish\. It opens only after identity verification, which is coming soon;/);
-  assert.doesNotMatch(t, /tog:no/);
+  assert.match(t, /Check your statement/);
+  assert.match(t, /write tog:no in the bio of your own public profile\. Under ToG 1\.0 public draft 1 §2\(h\) it takes effect at once\./);
   registryStep(t);
-  const { answers } = await p.out();
-  assert.equal(answers.decision, "rules");
-  assert.ok(!("conditions" in answers));
+  const answers = await codeBack(p, " tog-pram-900000037k ");   // typed codes fold to their one spelling
+  assert.deepEqual(answers, { result: "ok", answers: { age: "18+", decision: "no" } });
+  const out = p.text();
+  assert.match(out, /Your ToG statement.*Pending\./);
+  assert.match(out, /<p>\nToG: TOG-PRAM-900000037K\n<\/p>/);   // the proof line alone on its own source line
+  assert.match(out, /No AI generation of me\./);
+  assert.match(out, new RegExp(`Licence: <a href="${LEGAL.url}">${LEGAL.label}</a>, SHA-256 <code>${LEGAL.sha256}</code>`));
+  assert.match(out, /Record: <a href="https:\/\/www\.pregen\.org\/lookup\?code=TOG-PRAM-900000037K">/);
+  assert.ok(p.asked.includes("/api/lookup?code=TOG-PRAM-900000037K"));
+  const keep = p.stage.all().find((x) => x.tag === "code" && x.text.startsWith("http://localhost:8773/tog/document#"));
+  assert.equal(keep.text, "http://localhost:8773/tog/document#" + V.return.encode.find((e) => e.name === "person, no").fragment);
+  p.press("Profile or post");
+  assert.match(p.text(), /ToG: TOG-PRAM-900000037K\n\nTerms of Generation\n\nNo AI generation of me\./);   // plain text, first line the proof
+  p.press("Code only");
+  assert.match(p.text(), /Your ToG code/);
 });
 
-test("a person's own words come first on the card, as plain text, and ride the fragment exactly", async () => {
+test("a code from another registry, or mistyped, is refused", async () => {
   const p = await page();
-  p.press("Me"); p.type("1990"); p.press("OK"); p.press("Yes, within my rules."); p.press("Ads and paid work");
-  p.press("Next"); p.press("Next"); p.press("Yes, my voice too"); p.press("We agree on each deal");
-  const said = "Не в рекламе казино 🎰\r\nNever **bold**, never <b>html</b>.";
-  p.type("😀".repeat(1001), "textarea"); p.press("Next");
-  assert.match(p.text(), /At most 1000 characters\./);                // 1,001 code points: refused, never cut
-  p.type("no \u202eads", "textarea"); p.press("Next");
+  await person(p); p.pick("No"); p.next();
+  (await p.registry()).open();
+  p.type("tg-tog-code", "TOG-PRAM-900000037J"); p.next();
+  assert.match(p.text(), /The check character does not fit/);
+  p.type("tg-tog-code", "TOG-ABCD-9000000389"); p.next();
+  assert.match(p.text(), /That code was not issued by PRAMPTA\./);
+});
+
+test("a person's yes: purposes, exclusions, voice, fees and own words; the words come first, as plain text", async () => {
+  const p = await page();
+  await person(p);
+  assert.match(p.text(), /A Yes is recorded now and takes effect only after identity verification, which is not yet available\./);
+  p.pick("Yes, within terms I set"); p.next();
+  p.next();
+  assert.match(p.text(), /Select at least one purpose, or go back and choose No\./);
+  p.pick("Personal"); p.pick("Advertising"); p.next();
+  assert.match(p.text(), /Always excluded: political content, and sexual or adult content\./);
+  p.next(); p.pick("Yes"); p.next(); p.pick("A minimum fee per project"); p.next();
+  p.type("tg-words", "😀".repeat(1001)); p.next();
+  assert.match(p.text(), /At most 1000 characters\./);                    // 1,001 code points: refused, never cut
+  p.type("tg-words", "no ‮ads"); p.next();
   assert.match(p.text(), /Remove the invisible control characters/);
-  p.type(`  ${said}\t `, "textarea"); p.press("Next");
-  const t = p.text(), kept = "Не в рекламе казино 🎰\nNever **bold**, never <b>html</b>.";
-  assert.ok(t.indexOf(kept) >= 0 && t.indexOf(kept) < t.indexOf("AI may make me"), t.slice(0, 300));
-  const cond = p.stage.all().find((x) => x.attrs.class === "tf-cond");
-  assert.deepEqual(cond.kids, [kept]);                                     // one text node: no <strong>, no markup
-  assert.equal((await p.out()).answers.conditions, kept);
-});
-
-test("under 18: only a parent, guardian or other legal representative registers you; nothing is handed off", async () => {
-  const p = await page();
-  p.press("Me"); p.type(String(new Date().getFullYear() - 15)); p.press("OK");
-  assert.match(p.text(), /Under 18, you are registered only by a parent, guardian or other legal representative\./);
-  assert.ok(!p.stage.all().some((x) => x.tag === "a"));
-});
-
-test("a parent, guardian or representative registers a child's no, and only a no", async () => {
-  const p = await page();
-  p.press("My child");
-  assert.match(p.text(), /registered only by a parent, guardian or other legal representative, and for now the only answer is no/);
-  p.press("Next");
+  const said = "Не в рекламе казино 🎰\nNever **bold**, never <b>html</b>.";
+  p.type("tg-words", `  ${said}\t `); p.next();
   const t = p.text();
-  assert.match(t, /YOUR CHILD'S TOG · CODE FROM YOUR REGISTRY/);
-  assert.match(t, /confirm that you are the child's parent, guardian or other legal representative/);
+  assert.ok(t.indexOf(said) >= 0 && t.indexOf(said) < t.indexOf("AI may make me"));
+  const quoted = p.stage.all().find((x) => x.attrs.class === "tg-said");
+  assert.deepEqual(quoted.kids, [said]);                                    // one text node: no <strong>, no markup
+  const { answers } = await codeBack(p);
+  assert.deepEqual(answers, { age: "18+", decision: "rules", for: ["fun", "paid"], never: ["vice", "weapons", "violence",
+    "gambling", "money", "health", "religion", "endorse"], voice: true, floor: "project", conditions: said });
+  assert.match(p.text(), /<blockquote><p>Не в рекламе казино 🎰<br>\nNever \*\*bold\*\*, never &lt;b&gt;html&lt;\/b&gt;\.<\/p><\/blockquote>/);
+});
+
+test("under 18: only a parent or legal guardian, and only a No; the date never leaves the page", async () => {
+  const p = await page();
+  await person(p, "On my website", ["1", "6", String(new Date().getFullYear() - 15)]);
+  assert.match(p.text(), /Under 18, a parent or legal guardian makes this statement/);
+  assert.match(p.text(), /the only statement is No/);
+  p.next();                                                                // "I am their parent or legal guardian"
+  const t = p.text();
+  assert.match(t, /A person under 18, made by their parent or legal guardian/);
+  assert.match(t, /Your registry will ask you to confirm that you are the parent or legal guardian\./);
   registryStep(t);
-  assert.deepEqual(await p.out(), { result: "ok", answers: { who: "child", decision: "no" } });
+  assert.deepEqual(await codeBack(p), { result: "ok", answers: { who: "child", decision: "no" } });
+  assert.match(p.text(), /Made for a person under 18 by their parent or legal guardian\./);
+  assert.deepEqual(p.asked, ["/test/tog-local/steward.json", "/test/tog-local/registries.json", "/api/lookup?code=TOG-PRAM-900000037K"]);
 });
 
-test("a company gets a code of the same form at its registry, proved by its tog.json", async () => {
+test("a company: the same form of code, no licence text cited, its domain confirms it", async () => {
   const p = await page();
-  p.press("My company"); p.press("No.");
+  p.press("Start"); p.pick("My company's brand or products"); p.next(); p.pick("Only the code"); p.next();
+  assert.match(p.text(), /May AI generate the company's marks, products or characters\?/);
+  p.pick("No"); p.next();
+  registryStep(p.text(), true);
+  assert.deepEqual(await codeBack(p), { result: "ok", answers: { who: "company", decision: "no" } });
   const t = p.text();
-  assert.match(t, /YOUR COMPANY'S TOG · CODE FROM YOUR REGISTRY/);
-  assert.match(t, /No AI generation of our marks, products or characters\./);
-  registryStep(t, true);
-  assert.deepEqual(await p.out(), { result: "ok", answers: { who: "company", decision: "no" } });
+  assert.match(t, /Your ToG code/);
+  assert.match(t, /PRAMPTA gives you the file \/\.well-known\/tog\.json on your code's page/);
+  assert.doesNotMatch(t, /ToG 1\.0 public draft/);
+});
+
+test("/tog/document: a registry's return shows the statement; a company's tog.json from its record; a broken link", async () => {
+  const co = V.return.encode.find((e) => e.name === "company, yes");
+  let p = await page({ path: "/tog/document", hash: "#" + co.fragment });
+  for (let i = 0; i < 100 && !p.stage.all().some((x) => x.attrs["data-screen"] === "result"); i++) await tick();
+  const t = p.text();
+  assert.match(t, /Terms of Generation of this company/);
+  assert.match(t, new RegExp(`"record": "${co.record}",\\s*"claim": "${co.claim}"`));
+  p = await page({ path: "/tog/document", hash: "#code=TOG-PRAM-900000037K&tog=v1.broken" });
+  for (let i = 0; i < 100 && !/This link holds no ToG statement/.test(p.text()); i++) await tick();
+  assert.match(p.text(), /This link holds no ToG statement/);
 });

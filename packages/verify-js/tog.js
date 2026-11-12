@@ -4,8 +4,8 @@
 // A port of spec/tools/tog_generator.py (+ tog_generator_vectors.py); spec/test-vectors/tog-generator.json is the
 // judge (test/tog.test.js). A disagreement is an erratum in the port, never a local fix of the vectors.
 // ponytail: English card only (pregen.org is English); the Russian card lives in PRAMPTA's port.
-import { canonicalJson } from "./index.js";
-export { loadDirectory, proofLine } from "./index.js";
+import { canonicalJson, parseCode } from "./index.js";
+export { loadDirectory, proofLine, normalizeTyped, CodeError, kindOf, issuerOf, checkChar, parseCode } from "./index.js";
 
 export const VOCAB = ["adult", "advertising", "alcohol", "cannabis", "drugs", "endorsement", "fashion", "financial",
   "gambling", "health", "political", "religion", "sexual", "tobacco", "violence", "weapons"];
@@ -257,4 +257,54 @@ export function offeredRegistries(directory, { local = false } = {}) {
     return e.prefix && e.revoked == null && o && o === origin(e.website, local)
       && !new URL(e.tog_start).search && !e.tog_start.includes("#");
   }).map((e) => ({ name: e.name, prefix: e.prefix, start: e.tog_start }));
+}
+
+// ---- the return (spec/drafts/tog-funnel.md, The return) ------------------------------------------------------------
+/** Where a home registry sends the person once it has issued the code: the page shows their ToG statement. */
+export const RETURN_URL = "https://www.pregen.org/tog/document";
+export const MAX_RETURN = 8192;
+export const RECORD_MAX = 512;
+const CLAIM = /^[0-9a-f]{16,64}$/;
+
+function personCode(code) {
+  try { const p = parseCode(code); return p.kind === "subject" && p.shape !== "old_no_check"; } catch { return false; }
+}
+/** A company's record page: https, printable ASCII, no credentials or fragment, at most 512 characters. That its origin
+ *  is the registry's website is the page's check (it needs the signed directory). */
+function recordOk(r) {
+  if (typeof r !== "string" || !r.length || r.length > RECORD_MAX || !/^[\x21-\x7e]+$/.test(r) || r.includes("\\")
+      || r.includes("#")) return false;
+  let u;
+  try { u = new URL(r); } catch { return false; }
+  return u.protocol === "https:" && Boolean(u.hostname) && !u.username && !u.password;
+}
+
+/** {code, answers, record?, claim?} -> the fragment of RETURN_URL without '#'. record and claim: both or neither, and
+ *  only a company's (the two members of its /.well-known/tog.json entry). */
+export function encodeReturn({ code, answers, record, claim }) {
+  const has = record !== undefined;
+  if (!personCode(code) || has !== (claim !== undefined)
+      || (has && !(answers && answers.who === "company" && recordOk(record) && CLAIM.test(claim)))) throw new Error("not a return");
+  const f = `code=${code}&${encodeAnswers(answers)}` + (has ? `&record=${encodeURIComponent(record)}&claim=${claim}` : "");
+  if (f.length > MAX_RETURN) throw new Error("not a return");
+  return f;
+}
+
+/** location.hash of RETURN_URL without '#' -> {result: "ok", code, answers, record?, claim?} | {result:
+ *  "unknown_version" | "minor" | "malformed"}. Strict, never repairs: the whole re-encodes to exactly the input. */
+export function decodeReturn(f) {
+  const bad = { result: "malformed" };
+  if (typeof f !== "string" || f.length > MAX_RETURN || !f.startsWith("code=")) return bad;
+  const parts = f.split("&");
+  if (![2, 4].includes(parts.length) || !parts[1].startsWith("tog=")) return bad;
+  const inner = decodeFragment(parts[1]);
+  if (inner.result !== "ok") return inner;
+  const out = { result: "ok", code: parts[0].slice("code=".length), answers: inner.answers };
+  if (parts.length === 4) {
+    if (!parts[2].startsWith("record=") || !parts[3].startsWith("claim=")) return bad;
+    try { out.record = decodeURIComponent(parts[2].slice("record=".length)); } catch { return bad; }
+    out.claim = parts[3].slice("claim=".length);
+  }
+  try { if (encodeReturn(out) !== f) return bad; } catch { return bad; }
+  return out;
 }

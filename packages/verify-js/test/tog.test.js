@@ -5,7 +5,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { validate, rulesFromAnswers, card, cardCompany, companyRules, encodeAnswers, decodeFragment, offeredRegistries,
-  defaultNever, conditionsOk, NEVER, FOR, WHO, LEGAL, MAX_FRAGMENT, CONDITIONS_MAX } from "../tog.js";
+  defaultNever, conditionsOk, NEVER, FOR, WHO, LEGAL, MAX_FRAGMENT, CONDITIONS_MAX, encodeReturn, decodeReturn,
+  RETURN_URL, MAX_RETURN, RECORD_MAX } from "../tog.js";
 
 const V = JSON.parse(readFileSync(new URL("../../../spec/test-vectors/tog-generator.json", import.meta.url)));
 
@@ -101,4 +102,16 @@ test("chooser: offered registries", () => {
   }
   assert.deepEqual(offeredRegistries([{ name: "X", prefix: "PRAM", website: "https://a.example",
     tog_start: "https://a.example/start\t" }]), []);
+});
+
+test("return: the home registry sends the person back to /tog/document with the code it issued", () => {
+  assert.equal(RETURN_URL, V.return.url);
+  assert.equal(MAX_RETURN, V.return.max_length);
+  assert.equal(RECORD_MAX, V.return.record_max);
+  for (const { name, fragment, ...ret } of V.return.encode) {
+    assert.equal(encodeReturn(ret), fragment, name);
+    assert.deepEqual(decodeReturn(fragment), { result: "ok", ...ret }, name);
+  }
+  for (const { name, fragment, ...want } of V.return.decode) assert.deepEqual(decodeReturn(fragment), want, name);
+  assert.throws(() => encodeReturn({ code: "TOG-PRAM-900000037K", answers: { age: "18+", decision: "no" }, record: "https://a.example/c", claim: "0".repeat(16) }));
 });

@@ -1,6 +1,5 @@
-/* /tog: one question per screen. The /start poster of prampta.com (PLAN §4.1(3)): paper and ink,
-   square corners, mono caps labels, the progress bar, number and chosen answer in the holders' blue (--acc).
-   This file loads only on /tog, so it re-points the site's variables for this page; the white mark turns to ink. */
+/* The legal text only (/tog/1.0, /tog/1.0/deed): paper and ink, square corners, the holders' blue (--acc). This file
+   re-points the site's variables for those pages; the white mark turns to ink. /tog itself is styled in styles.css. */
 :root {
   --paper: #efeae0; --ink: #161513; --acc: #0b4fd6;
   --bg: var(--paper); --fg: var(--ink);
@@ -15,62 +14,6 @@
 }
 @media (prefers-color-scheme: light) { .mark img { filter: invert(1); } }
 ::selection { background: var(--ink); color: var(--paper); }
-.tf-wrap { max-width: 880px; }
-button.btn { background: none; color: var(--fg); font: inherit; font-size: 15px; border-radius: 0; cursor: pointer; }
-button.btn.primary { background: var(--fg); color: var(--bg); }
-.tf-bar { position: fixed; top: 61px; left: 0; right: 0; z-index: 9; width: 100%; height: 4px; border: 0; background: var(--soft); appearance: none; }
-.tf-bar::-webkit-progress-bar { background: var(--soft); }
-.tf-bar::-webkit-progress-value { background: var(--acc); transition: width .35s ease; }
-.tf-bar::-moz-progress-bar { background: var(--acc); }
-@media (max-width: 720px) { .tf-bar { top: 57px; } }
-.tf-nav { display: flex; gap: 16px; margin: 0 0 48px; }
-.tf-nav button { padding: 6px 0; border: 0; background: none; color: var(--muted); font: 12px var(--mono); letter-spacing: .05em; text-transform: uppercase; cursor: pointer; }
-.tf-nav button:hover { color: var(--fg); text-decoration: underline; }
-.tf-q { max-width: 720px; }
-.tf-q--wide { max-width: 880px; }
-.tf-n { margin: 0 0 10px; font: 600 12px var(--mono); letter-spacing: .05em; color: var(--acc); }
-.tf-title { margin: 0; font-size: clamp(28px, 4.4vw, 46px); font-weight: 600; line-height: 1.1; letter-spacing: -0.03em; }
-.tf-title:focus { outline: none; }
-.tf-hint { margin: 12px 0 0; max-width: 40em; font-size: clamp(17px, 1.6vw, 20px); line-height: 1.45; color: var(--muted); }
-.tf-hint strong { color: var(--fg); font-weight: 600; }
-.tf-body { margin-top: 32px; }
-.tf-choices, .tf-chips { display: grid; gap: 10px; max-width: 560px; margin: 0 0 16px; padding: 0; list-style: none; }
-.tf-chips { max-width: none; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
-.tf-choices li, .tf-chips li { margin: 0; }
-.tf-choice, .tf-chip {
-  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 10px 12px;
-  border: 1px solid color-mix(in srgb, var(--acc) 50%, transparent); border-radius: 0; background: color-mix(in srgb, var(--acc) 7%, transparent); color: var(--fg); font: inherit; text-align: left; cursor: pointer;
-}
-.tf-choice:hover, .tf-chip:hover { background: color-mix(in srgb, var(--acc) 16%, transparent); border-color: var(--acc); }
-.tf-choice[data-on], .tf-chip[data-on] { border-color: var(--acc); box-shadow: inset 0 0 0 1px var(--acc); }
-.tf-choice kbd, .tf-chip kbd { flex: none; display: inline-grid; place-items: center; width: 24px; height: 24px; border: 1px solid var(--acc); color: var(--acc); font: 600 12px var(--mono); }
-.tf-choice[data-on] kbd, .tf-chip[data-on] kbd { border-color: var(--acc); background: var(--acc); color: var(--paper); }
-.tf-choice span { display: flex; flex-direction: column; }
-.tf-choice b { font-weight: 600; }
-.tf-choice small { font-size: 14px; color: var(--muted); }
-.tf-box { margin-left: auto; flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; border: 1px solid var(--rule); font-style: normal; }
-.tf-chip span { flex: 1; font-size: 15px; }
-.tf-chip em { flex: none; font: 11px var(--mono); letter-spacing: .05em; text-transform: uppercase; font-style: normal; color: var(--muted); }
-.tf-chip[data-on] em { color: var(--fg); }
-.tf-locked { font: 12px var(--mono); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
-.tf-live { padding: 10px 12px; border-left: 3px solid var(--fg); background: var(--tint); font-size: 15px; }
-.tf-note { max-width: 40em; }
-.tf-input { display: block; width: 100%; max-width: 560px; padding: 8px 0; border: 0; border-bottom: 2px solid var(--soft); border-radius: 0; background: none; color: var(--fg); font: 500 clamp(24px, 3vw, 32px) var(--sans); }
-.tf-input:focus { outline: none; border-bottom-color: var(--acc); }
-.tf-words { font-size: 19px; line-height: 1.45; resize: vertical; }
-.tf-ok { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin: 22px 0 0; }
-.tf-ok button { border-radius: 0; font: inherit; cursor: pointer; }
-.tf-ok button.primary { border-color: var(--acc); background: var(--acc); color: var(--paper); font-weight: 600; }
-.tf-ok b { font-weight: 600; color: var(--fg); }
-.tf-card { margin: 0 0 16px; padding: 20px 24px; border: 1px solid var(--fg); background: var(--tint); }
-.tf-card figcaption { margin: 0 0 14px; font: 600 12px var(--mono); letter-spacing: .05em; overflow-wrap: anywhere; }
-.tf-card p { margin: 0 0 8px; font-size: 17px; line-height: 1.45; }
-.tf-card strong { font-weight: 700; }
-.tf-card .tf-cond { padding: 0 0 10px; border-bottom: 1px solid var(--soft); white-space: pre-line; overflow-wrap: anywhere; }
-.tf-card .tf-card-meta { margin: 14px 0 0; padding-top: 10px; border-top: 1px solid var(--soft); font: 12px var(--mono); color: var(--muted); overflow-wrap: anywhere; }
-.tf-legal { display: flex; flex-wrap: wrap; gap: 6px 18px; font: 12px var(--mono); letter-spacing: .05em; text-transform: uppercase; }
-.tf-registries { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 16px; }
-@media (max-width: 640px) { .tf-card { padding: 16px; margin-left: -16px; margin-right: -16px; border-left: 0; border-right: 0; } }
 /* /tog/1.0 and /tog/1.0/deed: the common text and its hash (spec/tools/tog_pages.py). */
 .tl-wrap { max-width: 880px; }
 .tl-kicker { margin: 0 0 10px; font-size: 12px; letter-spacing: .05em; color: var(--acc); }
