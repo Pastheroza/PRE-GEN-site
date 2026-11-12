@@ -64,7 +64,7 @@ async function page() {
 }
 
 function registryStep(t, co = false) {
-  assert.match(t, /Get your ToG code at your home registry/);
+  assert.match(t, /Choose your home registry/);
   assert.match(t, /You need one home only:/);
   assert.match(t, /The code is pending for 7 days\. It permits nothing and forbids nothing until you confirm it is you/);
   assert.match(t, /An email alone does not\. Your registry reminds you on day 3; on day 7 an unconfirmed code is deleted and never issued again\./);
@@ -89,7 +89,7 @@ test("a person's no: the card, tog:no first, then the registry; the year never l
   const t = p.text();
   assert.match(t, /No AI generation of me\./);
   assert.match(t, /write tog:no in the bio of your own public profile\. Under ToG 1\.0 public draft 1 §2\(h\) it counts at once\./);
-  assert.ok(t.indexOf("tog:no") < t.indexOf("Get your ToG code"));
+  assert.ok(t.indexOf("tog:no") < t.indexOf("Choose your home registry"));
   registryStep(t);
   assert.deepEqual(await p.out(), { result: "ok", answers: { age: "18+", decision: "no" } });
   assert.ok(p.stage.all().some((x) => x.tag === "a" && x.attrs.href === "/tog/1.0"));

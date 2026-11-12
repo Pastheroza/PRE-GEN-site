@@ -206,7 +206,7 @@ const SCREENS = {
     const list = el("div", { class: "tf-registries", "aria-live": "polite" }, el("p", { class: "meta" }, "Loading the signed list of registries…"));
     registries().then((offered) => {
       list.replaceChildren(...(offered.length ? offered.map((r) => el("a", { class: "btn primary tf-go", href: r.start + "#" + encodeAnswers(answers()) },
-        `Get a ToG code at ${r.name}`)) : [el("p", {}, "No registry takes ToG codes yet.")]));
+        `${r.name}: get my ToG code here`)) : [el("p", {}, "No registry takes ToG codes yet.")]));
     }, () => list.replaceChildren(el("p", {}, "The signed list of registries could not be loaded. Try again later.")));
     const whose = co ? "YOUR COMPANY'S TOG" : child ? "YOUR CHILD'S TOG" : "YOUR TOG";
     return { title: child ? "Your child's answer, as AI apps will read it" : "Your answer, as AI apps will read it", wide: true, body: [
@@ -217,8 +217,8 @@ const SCREENS = {
       yes() && el("p", { class: "meta" }, ...rich("Your yes is recorded as your wish. **It opens only after identity verification, which is coming soon;** until then it opens nothing.")),
       !child && el("p", { class: "actions" }, el("button", { type: "button", class: "btn", on: () => { trail = trail.slice(0, trail.indexOf("decision") + 1); render(); } }, "Change")),
       !yes() && !co && !child && el("p", {}, ...rich(`Saying no right now: write **tog:no** in the bio of your own public profile. Under ${LEGAL.label} §2(h) it counts at once.`)),
-      el("h2", {}, "Get your ToG code at your home registry"),
-      el("p", {}, ...rich("Your home registry records your answer and gives you your ToG code at once. **You need one home only:** every other registry and AI app uses that code.")),
+      el("h2", {}, "Choose your home registry"),
+      el("p", {}, ...rich("Pick one from the list. It receives your answers and gives you your ToG code at once. **You need one home only:** every other registry and AI app uses that code.")),
       el("p", {}, ...rich(`**The code is pending for 7 days.** It permits nothing and forbids nothing until you confirm it is you: ${co ? "publish the file /.well-known/tog.json on your company's domain" : `put the line “${proofLine("<your code>")}” on a public account or website you control`}, or verify your identity. An email alone does not. Your registry reminds you on day 3; on day 7 an unconfirmed code is deleted and never issued again.`)),
       el("p", {}, ...rich("**Once verified, your YES or NO is global** for every registry on ToG Protocol.")),
       child && el("p", {}, "Your registry asks you to confirm that you are the child's parent, guardian or other legal representative."),
