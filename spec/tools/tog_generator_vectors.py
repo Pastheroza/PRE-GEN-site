@@ -25,7 +25,7 @@ sys.path.insert(0, str(HERE))
 import tog_code as tc  # noqa: E402
 import tog_generator as g  # noqa: E402
 
-REFERENCE_SHA256 = "1e3c4cf745a27d02eb282bfa66ff0591ea39d611031bfe288972d3cb16ec1547"   # PRE-GEN-Drafts copy, 2026-11-09
+REFERENCE_SHA256 = "8a1a6d1936276462e68db0315993569359c535a3946baabcc22864c04c0b8ac0"   # PRE-GEN-Drafts copy, 2026-11-12 (the exceptions line follows ToG 1.0 §5(a))
 _ref = (HERE / "tog_generator.py").read_bytes().split(b"\n", 2)[2]      # the copy minus its two header lines
 if hashlib.sha256(_ref).hexdigest() != REFERENCE_SHA256:
     sys.exit("spec/tools/tog_generator.py is not the approved reference; copy it again, do not edit it here")

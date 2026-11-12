@@ -37,6 +37,16 @@ Text only: no message format, required schema member or vector changes.
   answer stays in force, then its code answers `pending` until the file is back. Replaces "answers `pending` until
   it does again", which no implementation followed and which let an outage cancel a company's no.
   `pregen-registry subject domain-check [--gone]`, `Registry.domain_check()`.
+- **One registration process** (founder decision 2026-11-12; `drafts/tog-funnel.md`). Part A is required of
+  pregen.org and every registry that takes ToG statements: the intake (likeness, brand or products, AI service,
+  registry), the age rule (under 18 only a parent or legal guardian, only a No), the order of decisions, what the
+  home registry does with the answers, and the ToG statement whose first line `ToG: <code>` is the proof. New: the
+  return to `https://www.pregen.org/tog/document#code=…&tog=v1.…[&record=…&claim=…]`, with vectors
+  (`tog-generator.json` → `return`) and `encodeReturn` / `decodeReturn` / `RETURN_URL` in `@pregen/verify` `tog.js`.
+- **The card's exceptions line follows ToG 1.0 §5(a)** (founder, 2026-11-12): "Exceptions only by a deal I sign
+  myself. Sexual or adult content only by such a deal after an identity document check, and never showing me as
+  under 18." (and the third-person and Russian forms). Reference `tog_generator.py` SHA-256 `8a1a6d19…`; the card
+  vectors change; a company's card is unchanged.
 
 ## pregen-registry 0.5.0 (unreleased): the registry writes ToG codes
 

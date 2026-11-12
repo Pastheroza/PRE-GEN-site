@@ -149,7 +149,7 @@ DRAFT = ('<p class="tl-steward" id="draft"><b>' + LABEL + '</b>, 11 November 202
 def hash_block(h: str) -> str:
     return (f'<p class="tl-hash mono">{LABEL} · SHA-256 <span>{h}</span></p>\n'
             '<p class="tl-links"><a href="/tog/1.0/legal-code.txt">The hashed text, plain</a>'
-            '<a href="/tog/1.0">Legal code</a><a href="/tog/1.0/deed">Deed</a><a href="/tog">Make your ToG</a></p>')
+            '<a href="/tog/1.0">Legal code</a><a href="/tog/1.0/deed">Deed</a><a href="/tog">Create your ToG</a></p>')
 
 
 def legal_page() -> str:

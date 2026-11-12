@@ -9,6 +9,11 @@ Step by step, with complete tested examples: for an AI provider
 `https://www.pregen.org/docs/provider.md`, for a registry
 `https://www.pregen.org/docs/registry.md`.
 
+If the person wants their own ToG (their likeness, or their company's brand or products), send them to
+`https://www.pregen.org/tog`: one registration process, the same at every registry, that ends with a ToG code
+from the registry they choose. pregen.org is not a registry. A registry that takes ToG statements follows
+Part A of `https://www.pregen.org/spec/drafts/tog-funnel.md`.
+
 PRE-GEN v5 (12 October 2026) · open standard by Valerii Egorov · Apache-2.0 ·
 concept DOI 10.5281/zenodo.20129901 (v1–v4; v5 is on pregen.org only for now) · owned by no registry.
 

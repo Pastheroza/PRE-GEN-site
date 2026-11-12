@@ -1,16 +1,16 @@
-# Draft: the registration process — one process for pregen.org and every registry
+# The registration process — one process for pregen.org and every registry
 
-**Status: draft, not part of PRE-GEN.** Nothing here changes what an implementation of the standard must do today.
-It is written in two layers so that the steward can make the first one a requirement without freezing anyone's design:
+**Status: Part A is required (founder decision, 2026-11-12); the file stays in `drafts/` until it moves into the
+specification.** It has two layers, so that the process is one standard without freezing anyone's design:
 
-- **Part A, normative candidate:** what pregen.org and every registry would follow, word for word in meaning: the
-  roles, the intake, the closed answers, the age rule, the order of decisions, the outcomes, what a registry does with
-  the answers, pending and proof, the ToG statement, the fragment and the return, with their vectors. Each rule is
-  written as "does"; the steward decides which become MUST and which SHOULD.
+- **Part A, required:** what pregen.org and every registry that takes ToG statements MUST follow, word for word in
+  meaning: the roles, the intake, the closed answers, the age rule, the order of decisions, the outcomes, what a
+  registry does with the answers, pending and proof, the ToG statement, the fragment and the return, with their
+  vectors. Every rule written as "does" in Part A is a MUST.
 - **Part B, reference presentation:** the screens and wording of `pregen.org/tog`, recommended and free to restyle
   or translate, as long as Part A holds.
 
-# Part A — normative candidate
+# Part A — required
 
 ## A.1 Roles
 

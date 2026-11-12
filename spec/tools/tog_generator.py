@@ -218,8 +218,10 @@ L = {
         "train_no": {"1": "Training AI models on me: no.", "3": "Training AI models on this person: no."},
         "train_yes": {"1": "Training AI models on me: allowed. Each later use must still ask.",
                       "3": "Training AI models on this person: allowed. Each later use must still ask."},
-        "except": {"1": "Exceptions only by a deal I sign myself, and never for sexual or adult content.",
-                   "3": "Exceptions only by a deal the person signs, and never for sexual or adult content."},
+        "except": {"1": "Exceptions only by a deal I sign myself. Sexual or adult content only by such a deal after an "
+                        "identity document check, and never showing me as under 18.",
+                   "3": "Exceptions only by a deal the person signs. Sexual or adult content only by such a deal after "
+                        "an identity document check, and never showing them as under 18."},
         "real": {"1": "Never presented as a real recording of me.",
                  "3": "Never presented as a real recording of this person."},
         "binds": {"1": "These rules bind AI companies that accept them. They never limit my rights under the law.",
@@ -261,9 +263,11 @@ L = {
         "train_yes": {"1": "Обучать ИИ-модели на мне: можно. Каждое следующее использование всё равно спрашивает.",
                       "3": "Обучать ИИ-модели на этом человеке: можно. Каждое следующее использование всё равно "
                            "спрашивает."},
-        "except": {"1": "Исключение — только договор с моей подписью, и никогда для секса и контента для взрослых.",
-                   "3": "Исключение — только договор с подписью этого человека, и никогда для секса и контента для "
-                        "взрослых."},
+        "except": {"1": "Исключение — только договор с моей подписью. Секс и контент для взрослых — только по такому "
+                        "договору после проверки документа, удостоверяющего личность, и никогда в образе младше 18 лет.",
+                   "3": "Исключение — только договор с подписью этого человека. Секс и контент для взрослых — только по "
+                        "такому договору после проверки документа, удостоверяющего личность, и никогда в образе младше "
+                        "18 лет."},
         "real": {"1": "Никогда не выдаётся за настоящую запись со мной.",
                  "3": "Никогда не выдаётся за настоящую запись с этим человеком."},
         "binds": {"1": "Эти правила обязывают ИИ-компании, которые их приняли, и никогда не ограничивают мои права "

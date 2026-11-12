@@ -103,7 +103,8 @@ const EN = {
   for: "For: {list}.", paid: "Ads and paid work: only under a deal I sign.", as: "As: {list}.",
   no_voice: "Not my voice.", never: "Never: {list}.", train_no: "Training AI models on me: no.",
   train_yes: "Training AI models on me: allowed. Each later use must still ask.",
-  except: "Exceptions only by a deal I sign myself, and never for sexual or adult content.",
+  except: "Exceptions only by a deal I sign myself. Sexual or adult content only by such a deal after an identity "
+    + "document check, and never showing me as under 18.",
   real: "Never presented as a real recording of me.",
   binds: "These rules bind AI companies that accept them. They never limit my rights under the law.",
   binds_yes: "This yes is only for AI companies that accept these rules. It gives no one else permission.",

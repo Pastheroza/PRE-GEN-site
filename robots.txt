@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
 Disallow: /api/
+Disallow: /tog/document
 
 Sitemap: https://www.pregen.org/sitemap.xml
