@@ -38,8 +38,8 @@ DECISIONS = ("no", "approve_all", "rules")
 FLOORS = ("each", "project", "video")
 MAX_FRAGMENT = 6144                 # the longest answers with 1,000 four-byte characters of conditions encode to 5,629
 CONDITIONS_MAX = 1000               # ToG 1.0 §6(f): at most 1,000 characters (Unicode code points), any language
-# Never in conditions: C0 and C1 controls but LF, the line and paragraph separators, bidi embeddings, overrides and
-# isolates (they would make the card show other text than the bytes), and lone surrogates.
+# Never in conditions: C0 and C1 controls but LF, the line and paragraph separators, bidi controls
+# (U+202A-U+202E, U+2066-U+2069: they would make the card show other text than the bytes), and lone surrogates.
 _COND_BAD = re.compile("[\x00-\x09\x0b-\x1f\x7f-\x9f\u2028\u2029\u202a-\u202e\u2066-\u2069\ud800-\udfff]")
 
 

@@ -25,6 +25,13 @@ Text only: no message format, required schema member or vector changes.
   issued again (`TOG-CODE.md` §5). Lookup adds `holder` (`person` | `company`) and, for a company, `domain`; a
   company's code has a person's form. A licence, allow or AFTER-GEN record answers with `subject`, the ToG code it is
   tied to, and `subject_level`. New level `channel`.
+- **Conditions** (ToG 1.0 public draft 1, §6(f)). A person's yes may carry conditions in their own words, at most
+  1,000 code points, NFC, LF the only control: the optional `conditions` member of the `tog=v1` fragment
+  (`drafts/tog-funnel.md`; the fragment limit is now 6,144 and canonical JSON writes non-ASCII as raw UTF-8, so
+  every earlier fragment is unchanged), returned by lookup for an `active` code only (`extensions/lookup.md`).
+- **The proof line is `ToG: <code>`** (founder's recommendation, 2026-11-11; `extensions/identity.md`). The earlier
+  `PRE-GEN: <code>` still confirms and is never emitted; `pregen.proof_line()` / `proofLine()`, `PROOF_PREFIX`,
+  `LEGACY_PROOF_PREFIXES`; `identity_cases.json` now spells the line `ToG:` and adds six cases.
 
 ## pregen-registry 0.5.0 (unreleased): the registry writes ToG codes
 

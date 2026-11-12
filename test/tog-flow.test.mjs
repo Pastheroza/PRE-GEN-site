@@ -77,7 +77,7 @@ function registryStep(t, co = false) {
   }
   assert.match(t, new RegExp(`ToG 1\\.0 public draft 1 · SHA-256 ${LEGAL.sha256} · the same text for everyone`));
   assert.match(t, /Read the legal code.*Read it in plain words/);
-  assert.match(t, /put the line “PRE-GEN: <your code>” on a public account or website you control/);   // the exact proof line
+  assert.match(t, /put the line “ToG: <your code>” on a public account or website you control/);   // the exact proof line
 }
 
 test("a person's no: the card, tog:no first, then the registry; the year never leaves the page", async () => {

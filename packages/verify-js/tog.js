@@ -5,7 +5,7 @@
 // judge (test/tog.test.js). A disagreement is an erratum in the port, never a local fix of the vectors.
 // ponytail: English card only (pregen.org is English); the Russian card lives in PRAMPTA's port.
 import { canonicalJson } from "./index.js";
-export { loadDirectory } from "./index.js";
+export { loadDirectory, proofLine } from "./index.js";
 
 export const VOCAB = ["adult", "advertising", "alcohol", "cannabis", "drugs", "endorsement", "fashion", "financial",
   "gambling", "health", "political", "religion", "sexual", "tobacco", "violence", "weapons"];
@@ -26,8 +26,8 @@ export const DECISIONS = ["no", "approve_all", "rules"];
 export const FLOORS = ["each", "project", "video"];
 export const MAX_FRAGMENT = 6144;   // the longest answers with 1,000 four-byte characters of conditions: 5,629
 export const CONDITIONS_MAX = 1000;  // ToG 1.0 §6(f): at most 1,000 characters (Unicode code points), any language
-// Never in conditions: C0 and C1 controls but LF, the line and paragraph separators, bidi embeddings, overrides and
-// isolates (the card would show other text than the bytes); lone surrogates fail isWellFormed().
+// Never in conditions: C0 and C1 controls but LF, the line and paragraph separators, bidi controls
+// (U+202A-U+202E, U+2066-U+2069; the card would show other text than the bytes); lone surrogates fail isWellFormed().
 const COND_BAD = /[\x00-\x09\x0b-\x1f\x7f-\x9f\u2028\u2029\u202a-\u202e\u2066-\u2069]/;
 
 /** The person's own words: a non-empty NFC string of at most 1,000 code points, LF the only control. */

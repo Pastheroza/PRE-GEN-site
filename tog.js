@@ -5,7 +5,7 @@
 // The year of birth stays in this page's memory: never in a URL, never in storage. A person's yes may add conditions in
 // their own words (ToG 1.0 §6(f)), shown first on the card as plain text.
 import { rulesFromAnswers, card, companyRules, cardCompany, encodeAnswers, offeredRegistries, defaultNever,
-  conditionsOk, loadDirectory, NEVER, LEGAL, CONDITIONS_MAX } from "/packages/verify-js/tog.js";
+  conditionsOk, loadDirectory, proofLine, NEVER, LEGAL, CONDITIONS_MAX } from "/packages/verify-js/tog.js";
 
 const LETTERS = "ABCDEFGHIJ";
 const LOCAL = ["localhost", "127.0.0.1"].includes(location.hostname);
@@ -219,7 +219,7 @@ const SCREENS = {
       !yes() && !co && !child && el("p", {}, ...rich("Saying no right now: write **tog:no** in the bio of your own public profile. Under ToG 1.0 §2(h) it counts at once.")),
       el("h2", {}, "Get your ToG code at your home registry"),
       el("p", {}, ...rich("Your home registry records your answer and gives you your ToG code at once. **You need one home only:** every other registry and AI app uses that code.")),
-      el("p", {}, ...rich(`**The code is pending for 7 days.** It permits nothing and forbids nothing until you confirm it is you: ${co ? "publish the file /.well-known/tog.json on your company's domain" : "put the line “PRE-GEN: <your code>” on a public account or website you control"}, or verify your identity. An email alone does not. Your registry reminds you on day 3; on day 7 an unconfirmed code is deleted and never issued again.`)),
+      el("p", {}, ...rich(`**The code is pending for 7 days.** It permits nothing and forbids nothing until you confirm it is you: ${co ? "publish the file /.well-known/tog.json on your company's domain" : `put the line “${proofLine("<your code>")}” on a public account or website you control`}, or verify your identity. An email alone does not. Your registry reminds you on day 3; on day 7 an unconfirmed code is deleted and never issued again.`)),
       el("p", {}, ...rich("**After verification, your YES or NO becomes global** for every registry that integrated PRE-GEN.")),
       child && el("p", {}, "Your registry asks you to confirm that you are the child's parent, guardian or other legal representative."),
       list,

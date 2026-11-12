@@ -204,3 +204,10 @@ def test_a_refusal_seen_this_week_survives_its_line_being_deleted():
     assert pregen.decide_identity([ron])["reason"] == "PG_SUBJECT_OPTED_OUT"
     never = claim("TOG-AAAA-0000029", SITE + "/.well-known/pregen", now_urls, then_urls, {}, {"status": "allow"})
     assert (never["confirmed"], never["refusal_only"]) == (False, False)
+
+
+def test_the_proof_line_is_emitted_as_tog_and_the_earlier_spelling_is_only_read():
+    assert pregen.proof_line("TOG-XXXX-0000014") == "ToG: TOG-XXXX-0000014"
+    assert (pregen.PROOF_PREFIX, pregen.LEGACY_PROOF_PREFIXES) == ("ToG:", ("PRE-GEN:",))
+    spelled = [c["page"] if isinstance(c["page"], str) else c["page"].get("text", "") for c in CASES["channel"]]
+    assert sum("PRE-GEN:" in p for p in spelled) == 3 and sum("ToG:" in p for p in spelled) > 30

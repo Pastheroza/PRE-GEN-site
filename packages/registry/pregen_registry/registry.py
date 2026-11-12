@@ -52,8 +52,8 @@ SANDBOX_HOLDER = "account:holder"   # sandbox.md serial 12: the test creator; an
 SANDBOX_TEMPLATE = {"id": "pregen-sandbox", "version": 1, "jurisdiction": "US"}
 TOG_PENDING = 7 * 86400         # lookup.md: a ToG code not verified within 7 days is deleted, its serial retired
 CONDITIONS_MAX = 1000           # ToG 1.0 §6(f): the person's own words, at most 1,000 characters (code points)
-# Never in conditions (spec/drafts/tog-funnel.md): C0/C1 controls but LF, U+2028/9, bidi embeddings, overrides and
-# isolates, lone surrogates; the card would otherwise show other text than the bytes.
+# Never in conditions (spec/drafts/tog-funnel.md): C0/C1 controls but LF, U+2028/9, bidi controls
+# (U+202A-U+202E, U+2066-U+2069), lone surrogates; the card would otherwise show other text than the bytes.
 _COND_BAD = re.compile("[\x00-\x09\x0b-\x1f\x7f-\x9f\u2028\u2029\u202a-\u202e\u2066-\u2069\ud800-\udfff]")
 AG_REVIEW = 14 * 86400          # after-gen.md step 3: the reference registry's review period; silence approves nothing
 AG_SKEW = 300                   # a signed after-gen request, decision or withdrawal is this close to the registry's clock
@@ -513,7 +513,7 @@ class Registry:
             db.execute("UPDATE subjects SET conditions = ? WHERE code = ?", (new, s["code"]))
 
     def prove(self, code: str, level: str = "channel"):
-        """A pending ToG code becomes active (lookup.md): `channel` when the holder placed `PRE-GEN: <code>` at a public
+        """A pending ToG code becomes active (lookup.md): `channel` when the holder placed `ToG: <code>` at a public
         account or domain they control (a company: its /.well-known/tog.json names this record), `verified` when the
         registry verified their identity. An email alone never proves. The level only rises; the first proof stays."""
         if level not in ("channel", "verified"):

@@ -58,7 +58,7 @@ code and a company's code have the same form (`TOG-CODE.md` §5).
   `not_blocked`, `PG_SUBJECT_PENDING` ([`likeness/1`](../profiles/likeness-1.md)): the holder's
   "no" counts only once the code is verified, and a "yes" only once their identity is.
 - **Verified:** the holder proved control of a public account or a domain by placing the line
-  `PRE-GEN: <code>` at its confirmation place ([`identity`](identity.md), Confirmation; a company:
+  `ToG: <code>` at its confirmation place ([`identity`](identity.md), Confirmation; a company:
   its `https://<domain>/.well-known/tog.json` names the home's record for the code, read without
   redirects), or the registry verified their identity. **An email address alone never verifies a
   code.** From then on the code answers `active` with `holder`, `level` and, when in force, `terms`

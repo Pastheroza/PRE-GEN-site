@@ -68,7 +68,7 @@ their line.
 
 ## Confirmation on the person's own channel
 
-A claim is **confirmed** when the line `PRE-GEN: <code>` stands at the confirmation place of
+A claim is **confirmed** when the line `ToG: <code>` stands at the confirmation place of
 one of the person's official channels, and `proof_url` is that place. Anyone can check it. An
 impostor cannot put it there without taking over the account or misusing someone's access to
 it, so a confirmation proves control of the channel, not a right to license every use.
@@ -93,15 +93,16 @@ nothing. A value not of its property's form names no channel; it is never repair
 
 **The confirmation place** is fixed, and nothing else on the host or platform confirms:
 - **Official website:** exactly `https://<host>/.well-known/pregen`, the website's own host.
-  Its text has a line `PRE-GEN: <code>`.
+  Its text has a line `ToG: <code>`.
 - **Official account:** a post or the profile at or under the account's own URL, where the
   platform's own record names the account (letter case aside) as the one who wrote the line.
   A comment, a reply or another account's post, a search page or any other page confirms
   nothing.
 
-The line is `PRE-GEN: <code>`, the whole code, alone on its line or followed by a space and
+The line is `ToG: <code>`, the whole code, alone on its line or followed by a space and
 more words, spaces around it ignored; inside HTML or a sentence it is not a line, and
-`PRE-GEN: <code> withdraw …` confirms nothing. A `proof_url` is compared exactly as written:
+`ToG: <code> withdraw …` confirms nothing. The earlier spelling `PRE-GEN: <code>` still confirms (with
+the same rules) and is never shown to anyone: `ToG:` is the one spelling a registry or a library emits. A `proof_url` is compared exactly as written:
 `https://`, a lower-case ASCII host, no user part, port, query, fragment or percent-escape, no
 empty, `.` or `..` path segment, path characters only letters, digits and `._~@-`, at most 512
 characters. It is fetched without following a redirect. The Python and JavaScript libraries

@@ -49,7 +49,7 @@ Also exported: `check_provider_url`, `signing_input`, `public_key_hex`, `message
 - `check_channel_proof(code, proof_url, official_urls, get_text, seen_confirmed=False)` — did the person
   confirm this code on their own channel? Only at `https://<official host>/.well-known/pregen` (`get_text` returns
   the text) or in a post or profile by the official account itself (`get_text` returns `{"author", "text"}` from the
-  platform's record of who wrote it), as a line `PRE-GEN: <code>`. A page that cannot be read (`get_text` raises) is
+  platform's record of who wrote it), as a line `ToG: <code>` (the earlier `PRE-GEN: <code>` still counts; never shown). A page that cannot be read (`get_text` raises) is
   unconfirmed, unless you saw it confirmed at the last check (`seen_confirmed=True`): then it raises, no decision.
 - `decide_identity(claims, frozen=directory.frozen(anchor))` — "who proved it, not who came first"; generate only on
   `allow`. A steward freeze denies first (`PG_SUBJECT_UNAVAILABLE`). Each claim is `{"code", "confirmed", "settled",

@@ -38,7 +38,7 @@ it opens only after identity verification.
     emoji counts 1 although JavaScript's `length` says 2); a longer text is refused, never cut;
   - in Unicode NFC (`s.normalize("NFC") === s`), never normalised for the person: the page normalises before encoding;
   - free of every C0 and C1 control but LF (U+0000–U+0009, U+000B–U+001F, U+007F–U+009F), of U+2028 and U+2029,
-    of the bidi embeddings, overrides and isolates (U+202A–U+202E, U+2066–U+2069), and of lone surrogates. LF is the
+    of the bidi controls (U+202A–U+202E, U+2066–U+2069), and of lone surrogates. LF is the
     one line break. These would let the card show other text than the bytes that were signed.
   The page trims the text and omits the member when nothing is left. The card shows the conditions **first**, as
   plain text exactly as written (never parsed for markup), under the line "They can only narrow what you allow."

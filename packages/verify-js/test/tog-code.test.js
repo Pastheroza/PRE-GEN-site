@@ -210,7 +210,7 @@ test("one code, one spelling: false claims and channel lines compare by the code
   assert.equal(d.isFalseClaim("PG-ZYXW-1234567R", "wikidata:Q1"), false);
   assert.equal(d.isFalseClaim("TOG-ZYXW-1234567R", "wikidata:Q2"), false);
   assert.equal(d.isFalseClaim("TOG-ZYXW-1234568="), false);    // a PG line names no one
-  const url = "https://example.com/.well-known/pregen", line = (t) => () => `PRE-GEN: ${t}`;
+  const url = "https://example.com/.well-known/pregen", line = (t) => () => `ToG: ${t}`;
   assert.equal(await checkChannelProof("TOG-ZYXW-1234567R", url, ["https://example.com"], line("TOG-ZYXW-1234567R")), true);
   assert.equal(await checkChannelProof("TOG-ZYXW-1234567R", url, ["https://example.com"], line("PG-ZYXW-1234567R")), false);
   assert.equal(await checkChannelProof("PG-ZYXW-1234567R", url, ["https://example.com"], line("PG-ZYXW-1234567R")), false);

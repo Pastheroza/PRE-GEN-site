@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { checkChannelProof, wikidataOfficialUrls, decideIdentity, verifyAnchors, verifyDirectory, signEnvelope, fingerprint,
+import { checkChannelProof, proofLine, PROOF_PREFIX, LEGACY_PROOF_PREFIXES, wikidataOfficialUrls, decideIdentity, verifyAnchors, verifyDirectory, signEnvelope, fingerprint,
   publicKeyHex, sha256Hex, canonicalJson, verifyAnswer, checkAnswer, PregenError, DIRECTORY_MAX_AGE, SETTLED_AFTER } from "../index.js";
 
 const CASES = JSON.parse(readFileSync(new URL("../../verify-py/tests/identity_cases.json", import.meta.url)));
@@ -144,7 +144,7 @@ const OUT = { status: "deny", reason: "PG_SUBJECT_OPTED_OUT" };
 
 test("a channel added today refuses but does not permit", async () => {
   const [nowUrls, thenUrls] = await channels([SITE, NEW], [SITE]);
-  const pages = { [NEW + "/.well-known/pregen"]: "PRE-GEN: TOG-XXXX-0000014" };
+  const pages = { [NEW + "/.well-known/pregen"]: "ToG: TOG-XXXX-0000014" };
   const c = await claim("TOG-XXXX-0000014", NEW + "/.well-known/pregen", nowUrls, thenUrls, pages, { status: "allow" });
   assert.deepEqual([c.confirmed, c.settled], [true, false]);
   assert.deepEqual(decideIdentity([c]), { status: "not_blocked", reason: "PG_IDENTITY_UNCONFIRMED", code: null });
@@ -154,7 +154,7 @@ test("a channel added today refuses but does not permit", async () => {
 
 test("a recent refusal survives replacing the channel", async () => {
   const [nowUrls, thenUrls] = await channels([NEW], [SITE]);
-  const pages = { [SITE + "/.well-known/pregen"]: "PRE-GEN: TOG-AAAA-0000029", [NEW + "/.well-known/pregen"]: "PRE-GEN: TOG-XXXX-0000014" };
+  const pages = { [SITE + "/.well-known/pregen"]: "ToG: TOG-AAAA-0000029", [NEW + "/.well-known/pregen"]: "ToG: TOG-XXXX-0000014" };
   const ron = await claim("TOG-AAAA-0000029", SITE + "/.well-known/pregen", nowUrls, thenUrls, pages, OUT);
   const thief = await claim("TOG-XXXX-0000014", NEW + "/.well-known/pregen", nowUrls, thenUrls, pages, { status: "allow" });
   assert.deepEqual([ron.confirmed, ron.refusal_only], [false, true]);
@@ -168,4 +168,9 @@ test("a refusal seen this week survives its line being deleted", async () => {
   assert.equal(decideIdentity([ron]).reason, "PG_SUBJECT_OPTED_OUT");
   const never = await claim("TOG-AAAA-0000029", SITE + "/.well-known/pregen", nowUrls, thenUrls, {}, { status: "allow" });
   assert.deepEqual([never.confirmed, never.refusal_only], [false, false]);
+});
+
+test("the proof line is emitted as ToG: <code>; the earlier PRE-GEN: spelling is only read", () => {
+  assert.equal(proofLine("TOG-XXXX-0000014"), "ToG: TOG-XXXX-0000014");
+  assert.deepEqual([PROOF_PREFIX, [...LEGACY_PROOF_PREFIXES]], ["ToG:", ["PRE-GEN:"]]);
 });

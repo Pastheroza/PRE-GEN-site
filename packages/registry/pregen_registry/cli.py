@@ -111,7 +111,7 @@ def main(argv=None):
             p.add_argument("--name", help="add: the subject's name")
             p.add_argument("--code", help="anchor, opt-out, level, publish: the subject's ToG code (a PG- string is not a code)")
             p.add_argument("--anchor", help="anchor: wikidata:Q…, isni:…, or a domain (identity.md)")
-            p.add_argument("--proof-url", help="anchor: where the person posted \"PRE-GEN: <code>\" on an official channel")
+            p.add_argument("--proof-url", help="anchor: where the person posted \"ToG: <code>\" on an official channel")
             p.add_argument("--level", default="self", choices=["self", "asserted", "consented", "verified"])
             p.add_argument("--publish", action="store_true",
                            help="add: show name and level at GET /v2/codes/<code> (only if the person chose to)")
@@ -123,7 +123,7 @@ def main(argv=None):
             p.add_argument("--conditions", help="add: the person's conditions in their own words, at most 1,000 "
                                                 "characters (ToG 1.0 §6(f)); lookup returns them once the code is active")
             p.add_argument("--by", default="channel", choices=["channel", "verified"],
-                           help="prove: channel (PRE-GEN: <code> at an account or domain they control) or verified "
+                           help="prove: channel (ToG: <code> at an account or domain they control) or verified "
                                 "(identity); never an email alone")
         elif name == "grant":
             p.add_argument("action", choices=["add", "revoke"])

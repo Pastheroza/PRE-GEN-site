@@ -177,7 +177,11 @@ export function decideIdentity(claims: { code: string; confirmed: boolean; answe
   options?: { allowUnconfirmed?: boolean; frozen?: object | null }): { status: "allow" | "deny" | "review" | "not_blocked"; reason: string | null; code: string | null };
 /** What `getText` returns for an official account: who wrote it, by the platform's own record, and what they wrote. */
 export interface AccountText { author: string; text: string }
-/** True when the line "PRE-GEN: <code>" stands at https://<official host>/.well-known/pregen (getText returns a string)
+/** The proof line a person places: "ToG: <code>". The earlier "PRE-GEN:" spelling still confirms; never emitted. */
+export const PROOF_PREFIX: "ToG:";
+export const LEGACY_PROOF_PREFIXES: readonly string[];
+export function proofLine(code: string): string;
+/** True when the line "ToG: <code>" (or the earlier "PRE-GEN: <code>") stands at https://<official host>/.well-known/pregen (getText returns a string)
  * or in a post or profile by the official account itself (getText returns {author, text}). If getText throws, false,
  * unless seenConfirmed: then it throws (no decision). */
 export function checkChannelProof(code: string, proofUrl: string, officialUrls: string[],

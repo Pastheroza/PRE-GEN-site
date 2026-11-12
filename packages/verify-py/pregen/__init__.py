@@ -21,7 +21,7 @@ __all__ = [
     "STEWARD_PUBLIC_KEY_HEX", "DIRECTORY_URL", "PregenError", "Directory", "canonical_json",
     "fingerprint", "check_public_key", "verify_bytes", "verify_signed", "issuer_of", "normalize_code",
     "verify_directory", "load_directory", "verify_decision", "check_decision", "check_answer", "verify_answer", "message_id", "DIRECTORY_MAX_AGE", "decide_identity",
-    "verify_anchors", "check_channel_proof", "wikidata_official_urls", "SETTLED_AFTER", "check_proof", "FLOOR_REASONS", "REPORT_GRACE", "STEWARD_SUCCESSOR_PUBLIC_KEY_HEX", "Simulator",
+    "verify_anchors", "check_channel_proof", "proof_line", "PROOF_PREFIX", "LEGACY_PROOF_PREFIXES", "wikidata_official_urls", "SETTLED_AFTER", "check_proof", "FLOOR_REASONS", "REPORT_GRACE", "STEWARD_SUCCESSOR_PUBLIC_KEY_HEX", "Simulator",
     "signing_input", "sign_envelope", "new_private_key_hex", "public_key_hex",
     "check_provider_url", "sandbox_provider_url", "party_document", "pg_access",
     "CATEGORIES", "PROHIBITED_FOR_MINORS", "INTIMATE", "floor", "forbids", "terms_opens", "check_terms",
@@ -1345,6 +1345,15 @@ _SEVERITY = {"deny": 0, "review": 1}     # no allow: the strongest refusal, ties
 # fragment, percent-escape or dot segment, at most 512 characters, so every client reads the same page (stress B-9, D-1).
 _CHANNEL_URL = re.compile(r"https://([a-z0-9.-]{1,253})((?:/(?!\.\.?(?:/|$))[A-Za-z0-9._~@-]+)*/?)")
 _WELL_KNOWN = "/.well-known/pregen"
+# The proof line a person places at a channel they control (founder's recommendation, 2026-11-11, one constant to
+# change): "ToG: <code>". The earlier spelling "PRE-GEN: <code>" still confirms, and is never emitted.
+PROOF_PREFIX = "ToG:"
+LEGACY_PROOF_PREFIXES = ("PRE-GEN:",)
+
+
+def proof_line(code: str) -> str:
+    """The line to show a person: "ToG: <code>"."""
+    return f"{PROOF_PREFIX} {code}"
 
 
 def _channel_url(url):
@@ -1361,8 +1370,9 @@ def check_channel_proof(code: str, proof_url: str, official_urls: list, get_text
       `get_text` returns {"author": <handle or channel id>, "text": <what the account itself wrote there>} from the
       platform's own record of who wrote it. The author must be the account (letter case aside); a string, a comment
       or another account's post confirms nothing.
-    The text must have a line "PRE-GEN: <code>", the whole code as written (a PG- string matches nothing), alone or followed by a space and more words; a
-    line "PRE-GEN: <code> withdraw <party>" confirms nothing. `proof_url` is taken exactly as written: https, a
+    The text must have a line "ToG: <code>" (proof_line(); the earlier "PRE-GEN: <code>" also counts), the whole code as
+    written (a PG- string matches nothing), alone or followed by a space and more words; a line
+    "ToG: <code> withdraw <party>" confirms nothing. `proof_url` is taken exactly as written: https, a
     lower-case host, no credentials, port, query, fragment, percent-escape or dot segment, at most 512 characters;
     `get_text` must not follow redirects (treat a 3xx like a 404: return ""). If `get_text` raises (the
     page cannot be read), the claim is unconfirmed, unless `seen_confirmed` (you saw it confirmed at the last check):
@@ -1393,7 +1403,7 @@ def check_channel_proof(code: str, proof_url: str, official_urls: list, get_text
         got = got.get("text")
     for line in (got if isinstance(got, str) else "").split("\n"):
         words = re.split(r"[ \t]+", line.strip(" \t\r"))
-        if words[0] == "PRE-GEN:" and len(words) > 1 and _same(words[1], code) and words[2:3] != ["withdraw"]:
+        if words[0] in (PROOF_PREFIX, *LEGACY_PROOF_PREFIXES) and len(words) > 1 and _same(words[1], code) and words[2:3] != ["withdraw"]:
             return True
     return False
 

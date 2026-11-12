@@ -289,7 +289,7 @@ prints every code you hold, with its level and name.
 **A holder registering at their home** (ToG codes, `extensions/lookup.md`): `subject add --pending`
 (a company: `--domain example.com`, one domain one code) issues the code at once, pending: lookup says
 `pending`, every request gets `not_blocked` `PG_SUBJECT_PENDING`, and no licence or terms can be signed
-for it. When they place `PRE-GEN: <code>` at an account or domain they control, or you verify their
+for it. When they place `ToG: <code>` at an account or domain they control, or you verify their
 identity, run `subject prove --code '<code>' --by channel` (or `--by verified`). An email alone never
 proves. Unproved after 7 days, the code is deleted and answers `expired`; its serial is never issued
 again. Remind them on day 3.
@@ -306,12 +306,12 @@ person has one:** clients today confirm only `wikidata:` anchors, so a person an
 `PG_IDENTITY_UNCONFIRMED`), grant or not, until confirmed. An anchor that cannot be confirmed
 means nobody can generate that person.
 
-Add the place where the person posted the line `PRE-GEN: TOG-ABCD-418207365E`. Only two places
+Add the place where the person posted the line `ToG: TOG-ABCD-418207365E`. Only two places
 count (`spec/extensions/identity.md`), on a channel that a **current** statement of their
 Wikidata item lists (not deprecated, not ended):
 - **their official website** (use it: social posts are mostly scripts a plain fetch cannot read):
   exactly `https://<host>/.well-known/pregen`, on the host Wikidata lists, in lower case (`www.`
-  counts), as plain text with a line `PRE-GEN: <code>`;
+  counts), as plain text with a line `ToG: <code>`;
 - **their own X, Instagram, YouTube or TikTok account**: a post or the profile at or under the
   account's URL, which the platform itself records as written by that account.
 

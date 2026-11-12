@@ -11,135 +11,26 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
+   "page": "other line\nToG: TOG-XXXX-0000014\n",
+   "seen_confirmed": false,
+   "expect": true
+  },
+  {
+   "name": "the earlier spelling PRE-GEN: still confirms (never emitted)",
+   "code": "TOG-XXXX-0000014",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
    "page": "other line\nPRE-GEN: TOG-XXXX-0000014\n",
    "seen_confirmed": false,
    "expect": true
   },
   {
-   "name": "a whole line: spaces and CRLF around it",
-   "code": "TOG-XXXX-0000014",
-   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
-   "official": [
-    "https://cristianoronaldo.com",
-    "https://www.instagram.com/cristiano",
-    "https://x.com/Cristiano",
-    "https://www.tiktok.com/@cristiano"
-   ],
-   "page": "  PRE-GEN: TOG-XXXX-0000014 \r\n",
-   "seen_confirmed": false,
-   "expect": true
-  },
-  {
-   "name": "a line naming the person's key",
-   "code": "TOG-XXXX-0000014",
-   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
-   "official": [
-    "https://cristianoronaldo.com",
-    "https://www.instagram.com/cristiano",
-    "https://x.com/Cristiano",
-    "https://www.tiktok.com/@cristiano"
-   ],
-   "page": "PRE-GEN: TOG-XXXX-0000014 pg-ed25519:ab self",
-   "seen_confirmed": false,
-   "expect": true
-  },
-  {
-   "name": "an official URL with a trailing slash is the same site",
-   "code": "TOG-XXXX-0000014",
-   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
-   "official": [
-    "https://cristianoronaldo.com/"
-   ],
-   "page": "PRE-GEN: TOG-XXXX-0000014",
-   "seen_confirmed": false,
-   "expect": true
-  },
-  {
-   "name": "any other page on the host (B-2)",
-   "code": "TOG-XXXX-0000014",
-   "proof_url": "https://cristianoronaldo.com/pregen",
-   "official": [
-    "https://cristianoronaldo.com",
-    "https://www.instagram.com/cristiano",
-    "https://x.com/Cristiano",
-    "https://www.tiktok.com/@cristiano"
-   ],
-   "page": "PRE-GEN: TOG-XXXX-0000014",
-   "seen_confirmed": false,
-   "expect": false
-  },
-  {
-   "name": "a search page echoing its path (B-2)",
-   "code": "TOG-XXXX-0000014",
-   "proof_url": "https://cristianoronaldo.com/search/PRE-GEN-TOG-XXXX-0000014/",
-   "official": [
-    "https://cristianoronaldo.com",
-    "https://www.instagram.com/cristiano",
-    "https://x.com/Cristiano",
-    "https://www.tiktok.com/@cristiano"
-   ],
-   "page": "PRE-GEN: TOG-XXXX-0000014",
-   "seen_confirmed": false,
-   "expect": false
-  },
-  {
-   "name": "the fixed place with a trailing slash",
-   "code": "TOG-XXXX-0000014",
-   "proof_url": "https://cristianoronaldo.com/.well-known/pregen/",
-   "official": [
-    "https://cristianoronaldo.com",
-    "https://www.instagram.com/cristiano",
-    "https://x.com/Cristiano",
-    "https://www.tiktok.com/@cristiano"
-   ],
-   "page": "PRE-GEN: TOG-XXXX-0000014",
-   "seen_confirmed": false,
-   "expect": false
-  },
-  {
-   "name": "the fixed place under a path",
-   "code": "TOG-XXXX-0000014",
-   "proof_url": "https://cristianoronaldo.com/blog/.well-known/pregen",
-   "official": [
-    "https://cristianoronaldo.com",
-    "https://www.instagram.com/cristiano",
-    "https://x.com/Cristiano",
-    "https://www.tiktok.com/@cristiano"
-   ],
-   "page": "PRE-GEN: TOG-XXXX-0000014",
-   "seen_confirmed": false,
-   "expect": false
-  },
-  {
-   "name": "the line inside HTML is not a line",
-   "code": "TOG-XXXX-0000014",
-   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
-   "official": [
-    "https://cristianoronaldo.com",
-    "https://www.instagram.com/cristiano",
-    "https://x.com/Cristiano",
-    "https://www.tiktok.com/@cristiano"
-   ],
-   "page": "<p>PRE-GEN: TOG-XXXX-0000014</p>",
-   "seen_confirmed": false,
-   "expect": false
-  },
-  {
-   "name": "the line in the middle of a sentence",
-   "code": "TOG-XXXX-0000014",
-   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
-   "official": [
-    "https://cristianoronaldo.com",
-    "https://www.instagram.com/cristiano",
-    "https://x.com/Cristiano",
-    "https://www.tiktok.com/@cristiano"
-   ],
-   "page": "see PRE-GEN: TOG-XXXX-0000014",
-   "seen_confirmed": false,
-   "expect": false
-  },
-  {
-   "name": "a withdrawal line (rule 1)",
+   "name": "the earlier spelling with a withdrawal confirms nothing",
    "code": "TOG-XXXX-0000014",
    "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
    "official": [
@@ -153,6 +44,202 @@
    "expect": false
   },
   {
+   "name": "another letter case of ToG: is not the line",
+   "code": "TOG-XXXX-0000014",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "TOG: TOG-XXXX-0000014",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "tog: in lower case is not the line",
+   "code": "TOG-XXXX-0000014",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "tog: TOG-XXXX-0000014",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "no space after the colon is not the line",
+   "code": "TOG-XXXX-0000014",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "ToG:TOG-XXXX-0000014",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "an account's post with the earlier spelling",
+   "code": "TOG-XXXX-0000014",
+   "proof_url": "https://www.instagram.com/cristiano/p/1",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": {
+    "author": "cristiano",
+    "text": "PRE-GEN: TOG-XXXX-0000014"
+   },
+   "seen_confirmed": false,
+   "expect": true
+  },
+  {
+   "name": "a whole line: spaces and CRLF around it",
+   "code": "TOG-XXXX-0000014",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "  ToG: TOG-XXXX-0000014 \r\n",
+   "seen_confirmed": false,
+   "expect": true
+  },
+  {
+   "name": "a line naming the person's key",
+   "code": "TOG-XXXX-0000014",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "ToG: TOG-XXXX-0000014 pg-ed25519:ab self",
+   "seen_confirmed": false,
+   "expect": true
+  },
+  {
+   "name": "an official URL with a trailing slash is the same site",
+   "code": "TOG-XXXX-0000014",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com/"
+   ],
+   "page": "ToG: TOG-XXXX-0000014",
+   "seen_confirmed": false,
+   "expect": true
+  },
+  {
+   "name": "any other page on the host (B-2)",
+   "code": "TOG-XXXX-0000014",
+   "proof_url": "https://cristianoronaldo.com/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "ToG: TOG-XXXX-0000014",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "a search page echoing its path (B-2)",
+   "code": "TOG-XXXX-0000014",
+   "proof_url": "https://cristianoronaldo.com/search/PRE-GEN-TOG-XXXX-0000014/",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "ToG: TOG-XXXX-0000014",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "the fixed place with a trailing slash",
+   "code": "TOG-XXXX-0000014",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen/",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "ToG: TOG-XXXX-0000014",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "the fixed place under a path",
+   "code": "TOG-XXXX-0000014",
+   "proof_url": "https://cristianoronaldo.com/blog/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "ToG: TOG-XXXX-0000014",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "the line inside HTML is not a line",
+   "code": "TOG-XXXX-0000014",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "<p>ToG: TOG-XXXX-0000014</p>",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "the line in the middle of a sentence",
+   "code": "TOG-XXXX-0000014",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "see ToG: TOG-XXXX-0000014",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
+   "name": "a withdrawal line (rule 1)",
+   "code": "TOG-XXXX-0000014",
+   "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
+   "official": [
+    "https://cristianoronaldo.com",
+    "https://www.instagram.com/cristiano",
+    "https://x.com/Cristiano",
+    "https://www.tiktok.com/@cristiano"
+   ],
+   "page": "ToG: TOG-XXXX-0000014 withdraw *",
+   "seen_confirmed": false,
+   "expect": false
+  },
+  {
    "name": "a longer code that starts the same way",
    "code": "TOG-STD-000042",
    "proof_url": "https://cristianoronaldo.com/.well-known/pregen",
@@ -162,7 +249,7 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: TOG-STD-0000421",
+   "page": "ToG: TOG-STD-0000421",
    "seen_confirmed": false,
    "expect": false
   },
@@ -176,7 +263,7 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: TOG-XXXX-000002E",
+   "page": "ToG: TOG-XXXX-000002E",
    "seen_confirmed": false,
    "expect": false
   },
@@ -190,7 +277,7 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: TOG-XXXX-0000014",
+   "page": "ToG: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
@@ -204,7 +291,7 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: TOG-XXXX-0000014",
+   "page": "ToG: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
@@ -218,7 +305,7 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: TOG-XXXX-0000014",
+   "page": "ToG: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
@@ -232,7 +319,7 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: TOG-XXXX-0000014",
+   "page": "ToG: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
@@ -246,7 +333,7 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: TOG-XXXX-0000014",
+   "page": "ToG: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
@@ -260,7 +347,7 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: TOG-XXXX-0000014",
+   "page": "ToG: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
@@ -274,7 +361,7 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: TOG-XXXX-0000014",
+   "page": "ToG: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
@@ -288,18 +375,18 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: TOG-XXXX-0000014",
+   "page": "ToG: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
   {
    "name": "a non-ASCII host (B-10)",
    "code": "TOG-XXXX-0000014",
-   "proof_url": "https://cristianoronaldо.com/.well-known/pregen",
+   "proof_url": "https://cristianoronald\u043e.com/.well-known/pregen",
    "official": [
-    "https://cristianoronaldо.com"
+    "https://cristianoronald\u043e.com"
    ],
-   "page": "PRE-GEN: TOG-XXXX-0000014",
+   "page": "ToG: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
@@ -310,7 +397,7 @@
    "official": [
     "https://cristianoronaldo.com@cr7-media.example"
    ],
-   "page": "PRE-GEN: TOG-XXXX-0000014",
+   "page": "ToG: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
@@ -321,7 +408,7 @@
    "official": [
     "https://cristianoronaldo.com:443"
    ],
-   "page": "PRE-GEN: TOG-XXXX-0000014",
+   "page": "ToG: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
@@ -351,7 +438,7 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: TOG-XXXX-0000014"
+    "text": "ToG: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": true
@@ -368,7 +455,7 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: TOG-XXXX-0000014"
+    "text": "ToG: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": true
@@ -385,7 +472,7 @@
    ],
    "page": {
     "author": "Cristiano",
-    "text": "PRE-GEN: TOG-XXXX-0000014"
+    "text": "ToG: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": true
@@ -402,7 +489,7 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: TOG-XXXX-0000014"
+    "text": "ToG: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": true
@@ -419,7 +506,7 @@
    ],
    "page": {
     "author": "cr7_fan",
-    "text": "PRE-GEN: TOG-XXXX-0000014"
+    "text": "ToG: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
@@ -435,8 +522,8 @@
     "https://www.tiktok.com/@cristiano"
    ],
    "page": {
-    "author": "crіstiano",
-    "text": "PRE-GEN: TOG-XXXX-0000014"
+    "author": "cr\u0456stiano",
+    "text": "ToG: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
@@ -451,7 +538,7 @@
     "https://x.com/Cristiano",
     "https://www.tiktok.com/@cristiano"
    ],
-   "page": "PRE-GEN: TOG-XXXX-0000014",
+   "page": "ToG: TOG-XXXX-0000014",
    "seen_confirmed": false,
    "expect": false
   },
@@ -467,7 +554,7 @@
    ],
    "page": {
     "author": null,
-    "text": "PRE-GEN: TOG-XXXX-0000014"
+    "text": "ToG: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
@@ -501,7 +588,7 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: TOG-XXXX-0000014 withdraw TOG-XXXX-000002E"
+    "text": "ToG: TOG-XXXX-0000014 withdraw TOG-XXXX-000002E"
    },
    "seen_confirmed": false,
    "expect": false
@@ -518,7 +605,7 @@
    ],
    "page": {
     "author": "cristiano_fan",
-    "text": "PRE-GEN: TOG-XXXX-0000014"
+    "text": "ToG: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
@@ -535,7 +622,7 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: TOG-XXXX-0000014"
+    "text": "ToG: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
@@ -552,7 +639,7 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: TOG-XXXX-0000014"
+    "text": "ToG: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
@@ -569,7 +656,7 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: TOG-XXXX-0000014"
+    "text": "ToG: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
@@ -586,7 +673,7 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: TOG-XXXX-0000014"
+    "text": "ToG: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
@@ -603,7 +690,7 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: TOG-XXXX-0000014"
+    "text": "ToG: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
@@ -620,7 +707,7 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: TOG-XXXX-0000014"
+    "text": "ToG: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
@@ -637,7 +724,7 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: TOG-XXXX-0000014"
+    "text": "ToG: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
@@ -654,7 +741,7 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: TOG-XXXX-0000014"
+    "text": "ToG: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
@@ -671,7 +758,7 @@
    ],
    "page": {
     "author": "cristiano",
-    "text": "PRE-GEN: TOG-XXXX-0000014"
+    "text": "ToG: TOG-XXXX-0000014"
    },
    "seen_confirmed": false,
    "expect": false
@@ -1148,7 +1235,7 @@
       "mainsnak": {
        "snaktype": "value",
        "datavalue": {
-        "value": "https://cristianoronaldо.com"
+        "value": "https://cristianoronald\u043e.com"
        }
       },
       "rank": "normal"
