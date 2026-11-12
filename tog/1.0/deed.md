@@ -2,6 +2,8 @@
 
 Terms of Generation: a person's likeness and voice.
 
+> Public draft 1, 11 November 2026. Draft for review by qualified counsel. Not legal advice. Not in force.
+
 This deed is not the licence. It is a plain-language summary of the ToG 1.0 legal code and has no legal effect. The person's rules and the legal code decide what is allowed. If this page and they differ, they control. In this deed "you" is the reader: someone who wants to make or use AI content of the person, or an AI company.
 
 ## What this is
@@ -12,7 +14,13 @@ A person with no Terms of Generation has said nothing. Silence is not permission
 
 ## What the person chose
 
-The card on the person's page is printed from their rules. These are the common lines and what each one means.
+The card on the person's page is printed from their rules.
+
+Conditions in the person's own words, up to 1,000 characters in any language, come first on the card: they can only narrow the rules, never open anything; adding one works at once, removing one needs confirmation.
+
+They mean what a reasonable reader in the person's position would take them to mean; an AI company passes them to whoever or whatever decides each generation and does not generate if it cannot follow them. A signed deal comes first between its parties, and sets a condition aside for the AI company only if it says so.
+
+These are the common lines and what each one means.
 
 | The card says | What it means |
 |---|---|
@@ -23,8 +31,8 @@ The card on the person's page is printed from their rules. These are the common 
 | Only with my approval of each one | Before approval only the person sees the result, apart from the registry that relays it, the AI company's systems and safety reviewers and, under a deal, the people of the party the deal names, all bound to confidence. Approval covers that exact file and its copies in other sizes or formats, but not a crop the approval does not mention. No answer means no. Under a deal, approval is a duty with a 7-day clock: see "A deal is a yes" below. |
 | Ads and paid work only under a deal I sign | No permission by itself. Commercial use always needs a signed deal with the person. |
 | Pictures and video. Not my voice. | Only the listed forms. Voice is allowed only if listed. |
-| Never: politics, alcohol, gambling and so on | Closed for every purpose, unless a deal the person signs opens it. Sexual and adult content stay closed under every deal. |
-| Training AI models on me: no | No model, adapter or clone of the person's face or voice may be deliberately made or kept, nor made from media where the person publishes these terms, that carries their terms or record, or that came with a request naming the person. Training is possible only under a deal with an end date; "training: yes" on a card only means the person will consider such a deal. |
+| Never: politics, alcohol, gambling and so on | Closed for every purpose, unless a deal the person signs opens it. Sexual and adult content open only under a deal the person signs personally for it, after an identity document check. |
+| Training AI models on me: no | No model, adapter or clone of the person's face or voice may be deliberately made or kept, nor made from media where the person publishes these terms, that carries their terms or record, or that came with a request naming the person. Training is possible only under a paid deal with an end date; "training: yes" on a card only means the person will consider such a deal. |
 
 ## Three example cards
 
@@ -62,11 +70,11 @@ Every card is printed from the person's rules.
 >
 > As pictures and video. Not my voice.
 >
-> Never: sexual or adult content; politics; religion; alcohol, tobacco, cannabis and drugs; weapons; violence; gambling; money and investing; medicine and health; fashion and beauty. A deal may open some of these. A deal can never open sexual or adult content.
+> Never: sexual or adult content; politics; religion; alcohol, tobacco, cannabis and drugs; weapons; violence; gambling; money and investing; medicine and health; fashion and beauty. A deal may open some of these; sexual or adult content only by a deal I sign personally for it, after an identity document check.
 >
 > Each output: before I approve, only I see it, apart from the registry that relays it, the AI company's systems and safety reviewers, and the people of the party the deal names, all bound to confidence. My approval covers that exact file and its copies in other sizes or formats. Once I approve, that approval stands. Unless the deal says otherwise, I answer each output within 7 days of its reaching me and refuse only by naming the term of the deal or of the licence that it breaks.
 >
-> Training AI models on me: no, unless a deal says so with an end date.
+> Training AI models on me: no, unless a paid deal says so with an end date.
 >
 > Always shown as made by AI, never as a real recording of me. Each published ad shows the label of the record it was made under.
 >
@@ -90,7 +98,7 @@ Every card is printed from the person's rules.
 
 ## Never, whatever the rules say
 
-- no sexual or adult content of the person;
+- no sexual or adult content of the person, except under a deal the person signs personally for it after an identity document check shows who they are and that they are of age. No rules, agent, agency or guardian can open it. It never shows a minor, anyone as under 18, or any other real person who can be identified and has no such deal of their own. The person can withdraw at any time, even after the deal has ended: generation stops and what was made under the deal comes down within 30 days; the deal sets the money. A registry may refuse such deals;
 - nothing that shows as under 18 a person who was an adult when it was made;
 - nothing passed off as a real recording of the person, and nothing handed to someone you know will pass it off;
 - no permission from anyone under 18, or under the age of majority where they live, acting alone. A minor's terms are made by their parent or guardian, who answers for them, and those terms open nothing for free. A minor can be in AI work only under a deal that the guardian and the minor both sign, each with identity, age and the guardian's authority checked; it may show the minor at their real age, never in sexual or adult content. A minor, or a guardian for them, can always say no. When the minor comes of age they act alone, and the deal continues unless they withdraw. Anything else made by or for a minor is a no, even if they lied about their age;
@@ -110,7 +118,9 @@ When the person signs a deal, they have said yes. If you kept the deal and the p
 
 ## Other contracts
 
-ToG is the base under any contract. An advertising, talent or other written agreement is a deal once the person has signed it, it is confirmed through a registry or with a qualified signature, and it cites ToG 1.0 and the person's ToG code. The contract sets every commercial term: price, term, territory, channels, exclusivity, who checks what and when. Where the contract and ToG both speak, the contract wins and ToG fills only what the contract leaves out. Six things no contract can change, each on its own point: the floors (no sexual or adult content, no adult shown as a child, no fake recording), that only the person signs (for a minor, the guardian with the minor), the record for each generation, the label on an ad, that no one is asked to recognise a face or a voice, and the right to withdraw (the contract sets the money). The contract may choose the courts; if it names none, claims against the person go only to the person's home courts.
+ToG is the base under any contract. An advertising, talent or other written agreement is a deal once the person has signed it, it is confirmed through a registry or with a qualified signature, and it cites ToG 1.0 and the person's ToG code. The contract sets every commercial term: price, term, territory, channels, exclusivity, who checks what and when. Where the contract and ToG both speak, the contract wins and ToG fills only what the contract leaves out. Seven things no contract can change, each on its own point: the floors (sexual or adult content only under the person's own deal for it, never a minor; no adult shown as a child; no fake recording), that only the person signs (for a minor, the guardian with the minor), that training is paid and has an end date, the record for each generation, the label on an ad, that no one is asked to recognise a face or a voice, and the right to withdraw (the contract sets the money). The contract may choose the courts; if it names none, claims against the person go only to the person's home courts.
+
+Rights the person gave someone before they adopted ToG, to a library, a studio or an agency, stay: a no, a change or a withdrawal does not take them back. Whoever uses them relies on that contract, not on ToG, and must show it; a right that was never really given counts for nothing.
 
 A paper contract the person signed earlier becomes a deal the same way, from the day the person confirms it. Content already made under that contract before that day can be approved after the fact, one file at a time, through AFTER-GEN; each approved file gets its own record (code TOG-AG-LIC-…), and an ad that uses it shows that record's label.
 
@@ -128,9 +138,9 @@ Unless the person gave someone the means or took part, if the person lodges with
 
 ## If you are an AI company
 
-You have a permission only if you accept the licence, by a signed request or by a public undertaking. If you give the undertaking, you also promise to check for Terms of Generation when a request identifies a real person, and not to generate the person outside what the person permits, including their deals. You are never asked to identify anyone by analysing a face or a voice, and you need not look for people in material that carries no statement, code, reference, record, name, account or domain. The licence asks for no mark inside the picture or the sound.
+You have a permission only if you accept the licence, by a signed request or by a public undertaking. If you give the undertaking, you also promise to check for Terms of Generation when a request identifies a real person, and not to generate the person outside what the person permits, including their deals. You are never asked to identify anyone by analysing a face or a voice, and you need not look for people in material that carries no statement, code, reference, record, name, account or domain. The licence asks for no mark inside the picture or the sound. Adult sites can adopt ToG like anyone else, as an AI company that checks ToG codes before it generates.
 
-If you are bound by the licence, sexual or adult content of a person who has Terms of Generation, content showing an adult as under 18, or content passed off as a real recording of them comes down within 48 hours of a notice that names the file and says which it is. Two exceptions: the file plainly is not what the notice says; or, for sexual or adult content or a fake recording only, the notice is not from the person and the person approved the file, or a deal covers it, as not being such content. That exception lifts only the 48-hour duty for that notice; sexual and adult content stay closed under every deal. For content showing an adult as under 18 only the first exception applies.
+If you are bound by the licence, sexual or adult content of a person who has Terms of Generation made outside a deal for it, content showing an adult as under 18, or content passed off as a real recording of them comes down within 48 hours of a notice that names the file and says which it is. Two exceptions: the file plainly is not what the notice says or, where the notice is only about sexual or adult content and does not say that anyone shown was a minor, it is under the person's own deal for adult content; or, for sexual or adult content or a fake recording only, the notice is not from the person and the person approved the file, or a deal covers it, as not being such content. The second exception lifts only the 48-hour duty for that notice. Content showing an adult as under 18 stays up only if the file plainly is not that.
 
 ## Notices
 
@@ -138,4 +148,4 @@ A permission under this licence is one person's permission. It does not make a u
 
 The steward publishes the licence text and the list of registries and lookup sources, on published criteria and with public notice. It is not a party to anyone's terms, is not a registry, ranks no registry, and gives no legal advice.
 
-Legal code: ToG-1.0, sha256 2fd26018b920325994cb61ae42deaf93acd5ea00756ad92a373a72408e2d7122, at https://www.pregen.org/tog/1.0.
+Legal code: ToG-1.0, sha256 b5ca28ccaeeecf3be03e7532b3460ff2d0d696c2f72cc7af1cff5ef5cdd178e4, at https://pregen.org/tog.

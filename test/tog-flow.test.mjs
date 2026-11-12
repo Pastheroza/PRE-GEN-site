@@ -71,11 +71,11 @@ function registryStep(t, co = false) {
   assert.match(t, /After verification, your YES or NO becomes global for every registry that integrated PRE-GEN\./);
   if (co) {   // ToG 1.0 covers a natural person's likeness only: a company's card cites no licence text
     assert.match(t, /No licence text applies to a company: its ToG code records its answer/);
-    assert.doesNotMatch(t, /Legal code ToG-1\.0|Read the legal code/);
+    assert.doesNotMatch(t, /ToG 1\.0 public draft|Read the legal code/);
     assert.match(t, /publish the file \/\.well-known\/tog\.json on your company's domain/);
     return;
   }
-  assert.match(t, new RegExp(`Legal code ToG-1\\.0 · SHA-256 ${LEGAL.sha256} · the same text for everyone`));
+  assert.match(t, new RegExp(`ToG 1\\.0 public draft 1 · SHA-256 ${LEGAL.sha256} · the same text for everyone`));
   assert.match(t, /Read the legal code.*Read it in plain words/);
   assert.match(t, /put the line “PRE-GEN: <your code>” on a public account or website you control/);   // the exact proof line
 }

@@ -187,7 +187,7 @@ const SCREENS = {
     return { title: child ? "Your child's answer, as AI apps will read it" : "Your answer, as AI apps will read it", wide: true, body: [
       cardBox(`${whose} · CODE FROM YOUR REGISTRY`, lines, co   // ToG 1.0 covers a natural person's likeness only
         ? "No licence text applies to a company: its ToG code records its answer"
-        : `Legal code ${LEGAL.id} · SHA-256 ${LEGAL.sha256} · the same text for everyone`),
+        : `${LEGAL.label} · SHA-256 ${LEGAL.sha256} · the same text for everyone`),
       !co && el("p", { class: "tf-legal" }, el("a", { href: "/tog/1.0" }, "Read the legal code"), el("a", { href: "/tog/1.0/deed" }, "Read it in plain words")),
       yes() && el("p", { class: "meta" }, ...rich("Your yes is recorded as your wish. **It opens only after identity verification, which is coming soon;** until then it opens nothing.")),
       !child && el("p", { class: "actions" }, el("button", { type: "button", class: "btn", on: () => { trail = trail.slice(0, trail.indexOf("decision") + 1); render(); } }, "Change")),

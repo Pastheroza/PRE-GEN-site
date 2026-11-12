@@ -1,6 +1,6 @@
 ## ToG 1.0 legal code
 
-Copyright [year] [Steward]. This text may be copied and changed only as Section 16(d) allows.
+Copyright 2026 Valerii Egorov (Pastheroza). This text may be copied and changed only as Section 16(d) allows.
 
 By making a Statement that cites this Licence, the Person applies it to the Person's own Likeness; this version covers nothing else. By doing an act listed in Section 9, You accept this Licence. To the extent this Licence is a contract, the Person gives You the Permission in return for Your acceptance, on these terms only.
 
@@ -27,7 +27,7 @@ No other signature and no typed name Authenticates, whatever effect the law give
 
 (g) "Likeness" means the appearance of the Person's face or body and the Person's voice, real or imitated, wherever the Person can be identified from it. "Likeness Rights" means every right any law gives the Person to control or object to the use of the Likeness, including under data protection law, but not copyright, performers' rights or trade mark rights.
 
-(h) "Lookup", "Remove" and "Training" have the meanings given in Sections 9(e), 9(g) and 6(e).
+(h) "Conditions", "Lookup", "Remove" and "Training" have the meanings given in Sections 6(f), 9(e), 9(g) and 6(e).
 
 (i) "Permission" means what Section 3 gives, together with what a Deal opens under Section 10.
 
@@ -37,11 +37,11 @@ No other signature and no typed name Authenticates, whatever effect the law give
 
 (l) "Registry" means a service that authenticates Statements, publishes them and answers Requests under published procedures.
 
-(m) "Rules" means the members `uses`, `modalities`, `excluded_categories` and `training` of a Statement, in the form of profile `likeness/2`, SHA-256 hash [hash] (the "profile"). The profile prescribes the form of the Rules, a Record, a Request, the label, a reference and a Provider's published keys; this Licence alone gives meaning.
+(m) "Rules" means the members `uses`, `modalities`, `excluded_categories` and `training` of a Statement, in the form of profile `likeness/2`, SHA-256 hash [hash] (the "profile"), and the Statement's Conditions. The profile prescribes the form of the Rules, a Record, a Request, the label, a reference and a Provider's published keys; this Licence alone gives meaning.
 
 (n) "Statement" means a record by which the Person applies this Licence: it identifies the Person, contains the Rules and cites this Licence by the identifier in Section 16(a) and the SHA-256 hash of this text or of an official translation. The token in Section 2(h) is also a Statement. The "current" Statement is its latest version in force.
 
-(o) "Steward" means the organisation that publishes this Licence at [URL].
+(o) "Steward" means the person or organisation that publishes this Licence at https://pregen.org/tog.
 
 (p) "Stop" means the token `tog:no`, the withdrawal of a Statement, a Statement whose `uses` is empty, or one that Section 5(d) or 6 makes a Stop. It permits nothing and has effect as the Reservation.
 
@@ -51,7 +51,7 @@ No other signature and no typed name Authenticates, whatever effect the law give
 
 ### Section 2. The Statement
 
-(a) Only the Person opens. Only the Person, acting personally, of age and with legal capacity, can permit anything under this Licence, or, for a minor, as Section 5(d) allows. No agent, agency, employer, Registry or anyone else can do so for the Person, under any authority.
+(a) Only the Person opens. Only the Person, acting personally, of age and with legal capacity, can permit anything under this Licence, or, for a minor, as Section 5(d) allows. No agent, agency, employer, Registry or anyone else can do so for the Person.
 
 (b) Opening. A Statement or a change to one opens if any act is within the Permission after it that was not before. What opens has effect only once Authenticated and held at the Person's home Registry; until then it has effect only so far as it closes. An Approval, a Deal and an opening change to a Deal open.
 
@@ -61,7 +61,7 @@ No other signature and no typed name Authenticates, whatever effect the law give
 
 (e) One version. Each Statement cites one version of this Licence and moves to another only by the Person's own new Statement.
 
-(f) Several Statements. If the Person has more than one current Statement, an act is within the Permission under Section 3 only if it is within every one of them; a Deal is read under Section 10(c).
+(f) Several Statements. If the Person has more than one current Statement, an act is within the Permission under Section 3 only if it is within every one of them.
 
 (g) Copies and codes. A copy of a Statement is evidence of it and neither widens nor narrows it; a code, reference, name, badge or summary permits nothing by itself.
 
@@ -77,7 +77,7 @@ No other signature and no typed name Authenticates, whatever effect the law give
 2. subject to paragraph (c), as the Person's written consent, where the law asks for consent or authorisation, to the extent that law allows consent to be given to persons not individually named; and
 3. as the Person's promise not to bring a claim based on the Likeness Rights against You for an act within the Permission, whether or not the Person has such a right in the place of the act, binding, so far as the law allows, anyone who claims through or in place of the Person. The promise does not cover a claim that an Output is defamatory or is unlawful for a reason other than its use of the Likeness.
 
-(c) Personal data. The Permission under this Section is not consent under Regulation (EU) 2016/679, nor under any law that requires consent to name the person to whom it is given, and it is not a release under a biometric privacy law. A Deal is such consent or such a release only where it meets the requirements of that law. The Permission under this Section records the Person's documented wishes, which You may weigh in establishing Your own lawful basis for processing; You alone answer for Your compliance with data protection law. Paragraph (b)(3) waives no right under data protection law that cannot be waived.
+(c) Personal data. The Permission under this Section is not consent under Regulation (EU) 2016/679, nor under any law that requires consent to name the person to whom it is given, and it is not a release under a biometric privacy law. A Deal is such consent or such a release only where it meets the requirements of that law. The Permission under this Section records the Person's documented wishes, which You may weigh in establishing Your own lawful basis for processing. Paragraph (b)(3) waives no right under data protection law that cannot be waived.
 
 (d) Name. You may identify the Person, by the name or identifier the Statement shows other than a Registry code issued for the Person, to describe an Output truthfully.
 
@@ -93,7 +93,7 @@ No other signature and no typed name Authenticates, whatever effect the law give
 
 (b) Notice. Anyone who reads a Statement, or receives a Record or a Lookup result that reports it, has notice from that time of what the Person does and does not permit.
 
-(c) Data protection. To the extent a use of the Likeness outside the Permission involves the processing of the Person's personal data, the Reservation is, as to every controller that reads, fetches or is answered with the Statement:
+(c) Data protection. To the extent a use of the Likeness outside the Permission and any grant under paragraph (h) involves the processing of the Person's personal data, the Reservation is, as to every controller that reads, fetches or is answered with the Statement:
 
 1. an objection to that processing under Article 21(1) of Regulation (EU) 2016/679 and any equivalent law, to the extent that law allows an objection to be made in that form;
 2. a withdrawal, under Article 7(3) of that Regulation and any equivalent law, of any consent the Person may be said to have given to that processing, other than consent given in a Deal; and
@@ -107,29 +107,31 @@ No other signature and no typed name Authenticates, whatever effect the law give
 
 (g) Rights kept. Nothing in this Licence reduces a right the Person has by law. A Statement is a defence only to a claim by the Person or anyone claiming through or in place of the Person, and only as far as the Permission goes.
 
+(h) Other grants. A Statement, change, Stop or the Reservation takes away no right the Person granted before the Person's first Statement; the grant keeps its own terms. Whoever acts under it relies on it, not on this Licence, and must show it; an act within it that is of no kind Section 5 excludes from the Permission is no breach of this Licence. A grant claimed but never made is none.
+
 ### Section 5. Floors
 
 No Statement, Deal or Approval can set this Section aside.
 
-(a) Sexual and adult content. The Permission never covers an Output in the category `sexual` or `adult`.
+(a) Sexual and adult content. An Output in the category `sexual` or `adult` is within the Permission only under a Deal opening it expressly that the Person signed personally once a check of an official identity document verified the Person's identity and Age of Majority. It never shows a minor, anyone as under 18, or any other identifiable person without their own such Deal. Within 30 days after a withdrawal from that Deal, even after it ends, takes effect for You, You Remove every Output made under it, despite Section 7(d). A Registry may decline such Deals.
 
 (b) Depiction under 18. The Permission never covers an Output that depicts as under 18 a Person who was 18 or over when it was Generated.
 
 (c) Authentic recording. The Permission never covers an Output presented as an authentic recording of something the Person said or did, or supplied to anyone You know intends so to present it.
 
-(d) Minors. A person under the Age of Majority makes no Statement alone; the legal representative makes it and answers for it under Section 14. It permits nothing under Section 3, and otherwise only through a Deal that the representative and the person both sign, each Authenticated. Until the person reaches the Age of Majority the two act together under it wherever this Licence requires the Person's act, though either may Stop or withdraw; from then the Person acts alone and the Deal continues unless the Person withdraws. Anything else made by or for a minor is a Stop, and what in it would permit is void. The Stop stands until a Statement under this paragraph, or the Person, of age and with capacity, replaces it. [For counsel: child-performer laws may add duties.]
+(d) Minors. A person under the Age of Majority makes no Statement alone; the legal representative makes it and answers for it under Section 14. It permits nothing under Section 3, and otherwise only through a Deal, never one under paragraph (a), that the representative and the person both sign, each Authenticated. Until the person reaches the Age of Majority the two act together under it wherever this Licence requires the Person's act, though either may Stop or withdraw; from then the Person acts alone and the Deal continues unless the Person withdraws. Anything else made by or for a minor is a Stop, and what in it would permit is void. The Stop stands until a Statement under this paragraph, or the Person, of age and with capacity, replaces it. [For counsel: child-performer laws may add duties.]
 
 ### Section 6. What the Rules mean
 
-This Section gives each value its only meaning. The Rules have exactly the four members Section 1 names, every value spelled as here in lower case; an act is within the Rules only if it is within every member. A Statement whose Rules lack a member or contain an unnamed member, an undefined value or another spelling is a Stop.
+This Section gives each value its only meaning. Besides the Conditions, the Rules have exactly the four members Section 1 names, every value spelled as here in lower case; an act is within the Rules only if it is within every member. A Statement whose Rules lack a member or contain an unnamed member, an undefined value or another spelling is a Stop.
 
-(a) Purposes (the keys of `uses`). A purpose that `uses` does not list is not allowed. An Output made for several purposes must be within the Rules for each.
+(a) Purposes (the keys of `uses`). An Output made for several purposes must be within the Rules for each.
 
 1. `personal`: Your own non-commercial expression, such as art, humour or fan content, shared without payment and not for a business. A Provider's fee for its System does not make Your use commercial.
 2. `editorial`: news reporting, commentary, criticism and satire about real events or matters of public interest, and documentary.
 3. `educational`: teaching or instructing people, not for a business.
 4. `research`: scientific or technical research, not for a business.
-5. `commercial`: any other use for money or for a business: advertising, endorsement, an Output sold, licensed or made for a product or service offered for money, or shown for a fee or paywall, or with advertising or sponsorship for which You or anyone acting for You is paid. News reporting by a news publisher is not `commercial` only because it carries advertising or charges for access. A `commercial` entry shows that the Person will consider a Deal; it permits nothing by itself.
+5. `commercial`: any other use for money or for a business: advertising, endorsement, an Output sold, licensed or made for a product or service offered for money, or shown for a fee or paywall, or with advertising or sponsorship for which You or anyone acting for You is paid. News reporting by a news publisher is not `commercial` only because it carries advertising or charges for access. A `commercial` entry shows that the Person will consider a Deal.
 
 (b) Modes (the values of `uses`). `open`: the purpose is allowed. `approve`: allowed, and Section 8(e) applies. `commercial` takes either mode, to no effect.
 
@@ -156,9 +158,11 @@ This Section gives each value its only meaning. The Rules have exactly the four 
 
 (e) Training (`training`). "Training" means using media of the Person, or an Output, to make, change or keep a model, adapter, embedding or other representation that can Generate or recognise the Person for another request. A record kept only for safety, provenance or a legal duty, that cannot Generate the Person, is not Training.
 
-1. `training` is `true` or `false`. Training is never within the Permission under Section 3. `true` shows that the Person will consider a Deal that permits Training; neither value permits anything by itself.
+1. `training` is `true` or `false`. Training is never within the Permission under Section 3. `true` shows that the Person will consider a paid Deal that permits Training.
 2. Training a Deal permits is used only to Generate within the Rules as the Deal reads them, on Requests that name the Deal, and never to recognise or identify anyone. It needs no Record of its own; Section 8 applies to each Generation made with the representation. You delete the representation within 30 days after the earliest of: the Training end date the Deal states; the end of the Deal; a withdrawal under Section 10(d) taking effect; any other end of the Deal's Permission.
 3. This paragraph applies when You deliberately make or keep a representation of the Person, and when You use media You know to be the Person's: taken from where the Person publishes a Statement, carrying a Statement or a Record, or received with a Request that names the Person.
+
+(f) Conditions. A Statement may contain conditions in the Person's own words, in any language, of at most 1,000 characters, shown first on its card (the "Conditions"); longer ones make it a Stop. They only narrow the other Rules. An act against them is outside the Permission. They mean what a reasonable reader in the Person's position would understand; Section 15(b) applies to them only where that reader could not choose between two readings. A Deal prevails over them between its parties.
 
 ### Section 7. Change, Stop and what survives
 
@@ -185,13 +189,11 @@ This Section gives each value its only meaning. The Rules have exactly the four 
 
 ## Part 2. If You Generate
 
-This Part binds whoever Generates or uses an Output under a Statement; Section 9 says how.
-
 ### Section 8. Conditions
 
 The Permission covers an act only if every condition in this Section is met for it.
 
-(a) Rules and purpose. The Generation is within the Rules of the version of the Statement that the Record names, as a Deal the Record names widens them under Section 10(b), and for the purposes the Record states; each use of the Output is within them too.
+(a) Rules and purpose. The Generation is within the Rules of the version of the Statement that the Record names, as a Deal the Record names widens them under Section 10(b), and for the purposes the Record states; each use of the Output is within them too. The Provider gives whoever or whatever decides the Generation the Conditions that no Deal the Record names sets aside, and does not Generate where it cannot apply them.
 
 (b) Current Statement. When the Generation started, the version the Record names was the current Statement, or one the Provider could still rely on: a Registry's answer for the period it states and at most 5 minutes; a Statement read where the Person publishes it, for 24 hours after the reading. Under a Deal it is the version the Deal keeps, and no withdrawal under Section 10(d) that had taken effect for the Provider stood.
 
@@ -228,7 +230,7 @@ An Approval of an Output Generated outside the Permission, other than one Sectio
 
 1. if You gave an Undertaking: to every Person who has a Statement, to keep paragraph (e) as to that Person and, where Section 6(e)(3) applies, not to make or keep a representation of that Person outside the Permission, including under a Stop;
 2. if You signed a Request: to the Person the named Statement identifies, not to Generate that Person outside the Permission in the Generation it describes; and
-3. in every case: to each Person whose Statement You act under, to keep Sections 5, 6(e)(2) and 8.
+3. in every case: to each Person whose Statement You act under, to keep Sections 5, 6(e)(2) and 8, and Section 5 to any other Person an Output shows.
 
 Each such Person may enforce these promises against You directly, as a party to this Licence and, where the law requires it, as an intended third-party beneficiary.
 
@@ -242,21 +244,21 @@ Each such Person may enforce these promises against You directly, as a party to 
 
 (a) What a Deal does. A Deal opens only what it names, for the licensee and those acting for it within the channels it states. Every other term of the Statement and of this Licence applies, subject to paragraph (f).
 
-(b) What a Deal may open. If it says so expressly, a Deal may open any purpose, `commercial` included, add a form, lift an excluded category, permit Training until a stated end date, dispense with Approval, permit a statement of endorsement, sponsorship or connection under Section 8(g), and say how the disclosure in Section 8(f) is made.
+(b) What a Deal may open. If it says so expressly, a Deal may open any purpose, add a form, lift an excluded category subject to Section 5(a), set aside a Condition, permit Training for payment until a stated end date, dispense with Approval, permit a statement of endorsement, sponsorship or connection under Section 8(g), and say how the disclosure in Section 8(f) is made.
 
-(c) Version and Stop. A Deal keeps the version of the Statement current when it was Authenticated. No later version, no other Statement of the Person and no Stop, made before or after the Deal, narrows what it opens or stops Generation under it. Apart from the Deal's own terms, Generation under a Deal ends only under paragraph (d) or (e), Section 3(g), 11 or 12(d); what then follows between the parties is for the Deal and the law.
+(c) Version and Stop. A Deal keeps the version of the Statement current when it was Authenticated. No later version, no other Statement of the Person and no Stop, made before or after the Deal, narrows what it opens or stops Generation under it. Apart from the Deal's own terms, Generation under a Deal ends only under paragraph (d) or (e), Section 3(g), 11 or 12(d).
 
 (d) Withdrawal from a Deal. The Person, or the legal representative of a minor or of a Person who lacks capacity, may withdraw from a Deal at any time by a notice, Authenticated, sent through a channel the Deal names or, from the representative, with proof of that authority, given to the licensee or lodged with the Registry that serves the Person. A withdrawal that neither of them made has no effect. From its receipt by the licensee or its logging by that Registry, whichever is earlier, the licensee does not Generate under the Deal and, while the notice stands, has no Permission under Section 3 to Generate the Person; it passes the notice to its Provider at once, which is bound on notice. The Deal stays a contract and is read as stating this right. Where it is silent on money and on Outputs already made, the Person returns the part of any payment for Generation not yet made and owes nothing more, and Section 7(d) applies to Outputs already made. Generation under the Deal resumes only when the Person confirms the Deal again; that confirmation opens.
 
-(e) Outputs under a Deal. A Deal is the Person's yes. Where Approval applies under Section 8(e) and the Deal does not provide otherwise on it, the licensee sends Outputs, at the pace the Deal states or a reasonable one, through a channel the Deal names or else the Registry Section 8(d) names; the Person answers within 7 days after an Output so reaches the Person, as that channel or Registry logs, and refuses only by naming the term of the Deal or of this Licence it breaks; the licensee may then ask for another. A refusal without such a reason, no answer in time, or a material failure of another duty under the Deal not cured within 7 days after notice lets the licensee end the Deal by notice and recover what it paid for Generation that no Approval has made usable. Dislike of an Output that breaks neither is no ground to end it.
+(e) Outputs under a Deal. A Deal is the Person's yes. Where Approval applies under Section 8(e), the licensee sends Outputs, at the pace the Deal states or a reasonable one, through a channel the Deal names or else the Registry Section 8(d) names; the Person answers within 7 days after an Output so reaches the Person, as that channel or Registry logs, and refuses only by naming the term of the Deal or of this Licence it breaks; the licensee may then ask for another. A refusal without such a reason, no answer in time, or a material failure of another duty under the Deal not cured within 7 days after notice lets the licensee end the Deal by notice and recover what it paid for Generation that no Approval has made usable. Dislike of an Output that breaks neither is no ground to end it.
 
-(f) Other agreements. Any written agreement, an advertising contract included, becomes a Deal from the time it meets Section 1(d); one sentence citing this Licence and the code suffices. The agreement sets every commercial term, the law and the courts for disputes. Between the parties the agreement prevails over this Licence, which fills only what it leaves out; but no agreement sets aside Section 5, Section 2(a), the Record under Section 8(d), the label under Section 8(f), Section 9(f) or paragraph (d), each for its own point. Nothing in this Licence or a Deal overrides a collective agreement that protects the Person and binds You. An agreement that is not a Deal is not described as made under this Licence.
+(f) Other agreements. Any written agreement becomes a Deal from the time it meets Section 1(d); one sentence citing this Licence and the code suffices. The agreement sets every commercial term, the law and the courts for disputes. Between the parties the agreement prevails over this Licence, which fills only what it leaves out; but no agreement sets aside Section 5, Section 2(a), paid Training with an end date under paragraph (b), the Record under Section 8(d), the label under Section 8(f), Section 9(f) or paragraph (d), each for its own point. Nothing in this Licence or a Deal overrides a collective agreement that protects the Person and binds You. An agreement that is not a Deal is not described as made under this Licence.
 
 ### Section 11. Termination and reinstatement
 
-(a) Automatic end. If You fail to comply with this Licence as to a Person, Your Permission from that Person ends automatically. The Permission of anyone else is not affected.
+(a) Automatic end. If You fail to comply with this Licence as to a Person, Your Permission from that Person ends automatically.
 
-(b) Reinstatement. Your Permission from that Person is reinstated when the Person expressly reinstates it, or automatically when You cure Your first failure as to that Person within 30 days after You discover it or the Person notifies You of it, whichever is earlier. Under a Deal this applies to every failure; what else follows is for the Deal. To cure, You stop or correct the act and, where the failure concerns the Generation or what an Output shows, Remove the Outputs concerned.
+(b) Reinstatement. Your Permission from that Person is reinstated when the Person expressly reinstates it, or automatically when You cure Your first failure as to that Person within 30 days after You discover it or the Person notifies You of it, whichever is earlier. Under a Deal this applies to every failure. To cure, You stop or correct the act and, where the failure concerns the Generation or what an Output shows, Remove the Outputs concerned.
 
 (c) No automatic reinstatement for a breach of Section 5, for showing, publishing or delivering an Output without a required Approval other than as Section 8(e)(1) allows, or for a Request You knew to be untrue.
 
@@ -272,13 +274,12 @@ Each such Person may enforce these promises against You directly, as a party to 
 
 (d) Fraud and error.
 
-1. A record the Person did not make is not a Statement, Deal or Approval and never gives Permission. But where the Person gave another the means to make it or took part in making it, it has effect, despite Sections 1(d) and 2(a), as the Person's Statement, Deal or Approval, and the Person is liable for it. An act Authenticated with a second factor or certificate the Person enrolled or controlled is presumed the Person's own; the Person bears the burden of showing otherwise.
-2. Where item 1 does not apply and the Person lodges with the Registry or trust service that confirmed such a record, or with a court, a claim that a third party deceived it, or its own error led it, into doing so, from Your notice of the claim You Generate nothing under the record until the Registry, trust service or court decides it; if the claim is rejected, Generation resumes without confirmation. Once a Registry or trust service, under its published procedures, or a court establishes the deception or error, claimed or not, and that item 1 does not apply, the Person owes nothing under the record, a licensee that acted in good faith recovers any payment not yet paid out and keeps its claim against the deceiver, and the Person may require You to Remove Outputs depicting the Person.
+1. A record the Person did not make is not a Statement, Deal or Approval and never gives Permission. But where the Person gave another the means to make it or took part in it, it has effect, despite Sections 1(d) and 2(a), as the Person's Statement, Deal or Approval, other than a Deal under Section 5(a), and the Person is liable for it. An act Authenticated with a second factor or certificate the Person enrolled or controlled is presumed the Person's own; the Person bears the burden of showing otherwise.
+2. Where item 1 does not apply and the Person lodges with the Registry or trust service that confirmed such a record, or with a court, a claim that a third party deceived it, or its own error led it, into doing so, from Your notice of the claim You Generate nothing under the record until the claim is decided; if rejected, Generation resumes without confirmation. Once a Registry or trust service, under its published procedures, or a court establishes the deception or error, claimed or not, and that item 1 does not apply, the Person owes nothing under the record, a licensee that acted in good faith recovers any payment not yet paid out and keeps its claim against the deceiver, and the Person may require You to Remove Outputs depicting the Person.
 3. You are not in breach for relying on such a record if a Registry on the Steward's list when it did so had confirmed it under its published procedure, or it carried a signature of the kind in Section 1(c)(2) that You verified against its certificate; You did not know, and had no reason to suspect, that it was not the Person's; You met Section 8; and on notice of that finding You do as Section 9(g) requires. Nothing in this paragraph passes Your loss to the Person except as item 1 states, or limits a Likeness Right of the real person.
-4. A Registry's liability is under its own terms and the law (Section 13), not under this Licence.
-5. Where a misrepresentation of age, identity or authority led to a record Section 5(d) does not allow, that paragraph applies to it, and items 2 and 3 apply as if the misrepresentation were the deception and the record were not the Person's. A Registry that verified under its published procedures is not at fault; where the minor deceived it, the licensee may also claim its loss from the minor's legal representatives under the law.
+4. Where a misrepresentation of age, identity or authority led to a record Section 5(d) does not allow, that paragraph applies to it, and items 2 and 3 apply as if the misrepresentation were the deception and the record were not the Person's. A Registry that verified under its published procedures is not at fault; where the minor deceived it, the licensee may also claim its loss from the minor's legal representatives under the law.
 
-(e) Content under the floors. Whatever else this Licence provides, within 48 hours after You receive a notice that identifies an Output of the Person and names the paragraph of Section 5(a), (b) or (c) that covers it, You Remove it. You need not where the Output plainly falls outside that paragraph, or where the notice is not from the Person, names Section 5(a) or 5(c), and the Person has Approved the Output, or a Deal covers it, as outside that paragraph. That exception lifts only this duty for that notice and permits nothing.
+(e) Content under the floors. Whatever else this Licence provides, within 48 hours after You receive a notice that identifies an Output of the Person and names the paragraph of Section 5(a), (b) or (c) that covers it, You Remove it. You need not where the Output plainly falls outside that paragraph or, for a notice naming only Section 5(a) and not saying anyone shown was a minor, is within a Deal under Section 5(a), or where the notice is not from the Person, names Section 5(a) or 5(c), and the Person has Approved the Output, or a Deal covers it, as outside that paragraph. That exception lifts only this duty for that notice and permits nothing.
 
 ### Section 13. Registries
 
@@ -286,7 +287,7 @@ Each such Person may enforce these promises against You directly, as a party to 
 
 (b) A Registry's own terms. A Registry may have its own terms with the Person and with Providers for its service, fees, liability and disputes with it. Those terms cannot widen a Permission, narrow a Reservation, set Section 5 aside, reduce what You owe the Person, or limit, delay or charge for the Person's right to change, withdraw or Stop a Statement, withdraw from a Deal or move to another Registry; between You and the Person, this Licence controls.
 
-(c) Equal standing. This Licence prefers no Registry. Each Person has one home Registry, the one serving the Person. The Person may move to another listed Registry, and must when the Registry stops serving the Person; the Statement, its Deals and Records and the code issued for the Person keep their identity and effect.
+(c) Equal standing. Each Person has one home Registry, the one serving the Person. The Person may move to another listed Registry, and must when the Registry stops serving the Person; the Statement, its Deals and Records and the code issued for the Person keep their identity and effect.
 
 (d) Answers. A Registry's answer reports the Rules and whether they are Authenticated. An answer that reports no Statement, or no decision, permits nothing and forbids nothing, and is not a statement that a use is lawful.
 
@@ -294,7 +295,7 @@ Each such Person may enforce these promises against You directly, as a party to 
 
 ### Section 14. Warranty, disclaimer and limitation
 
-(a) Warranty. Where a Statement, Deal or Approval permits anything, the Person warrants that it is the Person's own act and that the Person has reached the Age of Majority and has capacity. Under Section 5(d) the legal representative warrants its own act, its authority and the Person's true age, and this Section binds the representative, not the Person, for those acts. A Stop carries no warranty. Otherwise the Person offers the Permission as it is and warrants nothing: not that the Person holds any Likeness Right anywhere or has given no right to anyone else, that an Output infringes no right of another, or that a use is lawful.
+(a) Warranty. Where a Statement, Deal or Approval permits anything, the Person warrants that it is the Person's own act and that the Person has reached the Age of Majority and has capacity. Under Section 5(d) the legal representative warrants its own act, its authority and the Person's true age, and this Section binds the representative, not the Person, for those acts. A Stop carries no warranty. Otherwise the Person offers the Permission as it is and warrants nothing: not that the Person holds any Likeness Right or has given no right to anyone else, that an Output infringes no right of another, or that a use is lawful.
 
 (b) No liability of the Person. To the extent the law allows, the Person is not liable to You on any legal ground for loss arising from this Licence, a Statement, its change or withdrawal, or an Output, except for loss the Person causes by fraud, by a breach of the warranty in paragraph (a), under Section 12(d)(1) or under an obligation taken on in a Deal, including a refund or compensation under Section 10(d) or (e).
 
@@ -302,7 +303,7 @@ Each such Person may enforce these promises against You directly, as a party to 
 
 ### Section 15. Interpretation, law and courts
 
-(a) The Rules control. The Rules, with the meanings in Section 6, decide what is permitted. A card, deed, badge, name or other summary is an aid to reading; if it differs from the Rules, the Rules control.
+(a) The Rules control. The Rules, with the meanings in Section 6, decide what is permitted. A card, deed, badge, name or other summary is an aid to reading.
 
 (b) Narrow reading. Where a term of this Licence or of a Statement can be read in two ways, the reading that permits less use of the Likeness applies.
 

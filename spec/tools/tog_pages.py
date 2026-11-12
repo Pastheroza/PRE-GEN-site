@@ -7,8 +7,10 @@
     tog/1.0/deed.md         the deed (a plain-language summary; not hashed, not the licence)
 
     python3 -I spec/tools/tog_pages.py      writes tog/1.0/index.html (/tog/1.0) and tog/1.0/deed.html (/tog/1.0/deed)
+    python3 -I spec/tools/tog_pages.py --from DIR   first re-extracts both sources from DIR/ToG-1.0-legal-code.md
+                                            (by the recipe printed at its top) and DIR/ToG-1.0-deed.md ([hash] filled)
 
-One common text for everyone, no names inside (founder, 2026-11-11): a person attaches it with their own short card.
+ToG 1.0 public draft 1 (11 November 2026): one common text for everyone; a person attaches it with their own short card.
 spec/tools/test_tog_pages.py checks the committed pages are what this prints and that the text keeps its form.
 """
 import hashlib
@@ -21,6 +23,21 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 DIR = ROOT / "tog" / "1.0"
 URL = "https://www.pregen.org/tog/1.0"
+LABEL = "ToG 1.0 public draft 1"     # every page and card that cites the text says which text it is
+NAME = ("ToG Protocol (Terms of Generation Protocol). Earlier versions of this protocol were published as Prompt Protocol "
+        "and as PRE-GEN Protocol. It is the same protocol under its current name.")
+
+
+def extract(src: Path):
+    """The sources as written -> tog/1.0/legal-code.txt and tog/1.0/deed.md. The hashed part: the lines between the
+    whole lines `Legal code begins` and `Legal code ends`, those two and the blank line next to each excluded."""
+    lines = (src / "ToG-1.0-legal-code.md").read_text(encoding="utf-8").split("\n")
+    i, j = lines.index("Legal code begins"), lines.index("Legal code ends")
+    assert lines[i + 1] == "" and lines[j - 1] == "", "a blank line next to each marker"
+    (DIR / "legal-code.txt").write_bytes(("\n".join(lines[i + 2:j - 1]) + "\n").encode("utf-8"))
+    deed = (src / "ToG-1.0-deed.md").read_text(encoding="utf-8")
+    assert deed.count("Legal code: ToG-1.0, sha256 [hash],") == 1, "the deed names the legal code's hash once"
+    (DIR / "deed.md").write_text(deed.replace("ToG-1.0, sha256 [hash],", f"ToG-1.0, sha256 {sha256()},"), encoding="utf-8")
 
 
 def legal_text() -> str:
@@ -82,7 +99,7 @@ HEAD = """<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{title} — PRE-GEN</title>
+<title>{title} — ToG Protocol</title>
 <meta name="description" content="{description}">
 <link rel="canonical" href="{url}">
 <link rel="icon" type="image/png" href="/assets/pregen-logo.png">
@@ -105,7 +122,7 @@ HEAD = """<!DOCTYPE html>
 FOOT = """</div></main>
 <footer class="foot"><div class="wrap">
 <div class="foot-top">
-<div class="foot-brand"><a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="56" height="56" alt="PRE-GEN"></a><p>Pre-Generative Authorization Protocol. AI asks before it generates a real person.</p></div>
+<div class="foot-brand"><a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="56" height="56" alt="PRE-GEN"></a><p>{name}</p></div>
 <nav class="foot-cols" aria-label="Site">
 <div><p class="foot-h">Start</p><a href="/connect">Connect your AI</a><a href="/create-registry">Create a registry</a><a href="/lookup">Look up a code</a></div>
 <div><p class="foot-h">Learn</p><a href="/docs">How it works</a><a href="/docs/two-layers">Two layers</a><a href="/faq">FAQ</a><a href="/llms.txt">llms.txt</a></div>
@@ -117,16 +134,18 @@ FOOT = """</div></main>
 </div></footer>
 </body>
 </html>
-"""
-# The one place the Steward will be named. The founder has not decided; inside the fixed text the bracketed places
-# stay as written, because they are part of what the hash covers.
-STEWARD = ('<p class="tl-steward" id="steward"><b>Steward:</b> not yet named. The places in square brackets in the '
-           "legal code ([year], [Steward], [URL], [hash]) are written as in the fixed text and are covered by its hash."
-           "</p>")
+""".replace("{name}", NAME)
+# The source's own status line (ToG-1.0-legal-code.md, above the hashed part), shown on both pages. Its §16(a): the
+# final ToG 1.0 hash is taken once every bracket is completed, so this public-draft hash is not it.
+DRAFT = ('<p class="tl-steward" id="draft"><b>' + LABEL + '</b>, 11 November 2026. Draft for review by qualified '
+         "counsel. Not legal advice. Not in force. Text in square brackets (the hash of profile <code>likeness/2</code> "
+         "in Section 1(m) and a note for counsel in Section 5(d)) is for counsel or the Steward to complete. Under "
+         "Section 16(a) the final ToG 1.0 hash is taken after that, so it will differ from this public-draft hash. "
+         "Steward URL: https://pregen.org/tog.</p>")
 
 
 def hash_block(h: str) -> str:
-    return (f'<p class="tl-hash mono">SHA-256 <span>{h}</span></p>\n'
+    return (f'<p class="tl-hash mono">{LABEL} · SHA-256 <span>{h}</span></p>\n'
             '<p class="tl-links"><a href="/tog/1.0/legal-code.txt">The hashed text, plain</a>'
             '<a href="/tog/1.0">Legal code</a><a href="/tog/1.0/deed">Deed</a><a href="/tog">Make your ToG</a></p>')
 
@@ -136,11 +155,11 @@ def legal_page() -> str:
     return (HEAD.format(title="ToG 1.0 legal code", url=URL,
                         description="Terms of Generation 1.0: one common licence text for a person's likeness and voice, "
                                     "identical for everyone, fixed by its SHA-256.")
-            + '<p class="tl-kicker mono">TERMS OF GENERATION · LEGAL CODE · ToG-1.0</p>\n'
+            + '<p class="tl-kicker mono">TERMS OF GENERATION · LEGAL CODE · ToG 1.0 PUBLIC DRAFT 1</p>\n'
             + "<h1>Terms of Generation 1.0</h1>\n"
-            + '<p class="tl-lede">One common text, the same for everyone, with no names in it. A person applies it with '
-              "their own short card: their ToG code, their answers and a link to this page.</p>\n"
-            + hash_block(h) + "\n" + STEWARD + "\n"
+            + '<p class="tl-lede">One common text, the same for everyone. A person applies it with their own short card: '
+              "their ToG code, their answers and a link to this page.</p>\n"
+            + hash_block(h) + "\n" + DRAFT + "\n"
             + '<article class="tl-text" id="legal-code">\n' + markdown(legal_text()) + "\n</article>\n" + FOOT)
 
 
@@ -151,12 +170,14 @@ def deed_page() -> str:
     assert title == "# ToG 1.0 deed" and "[hash]" not in body.split("\n")[-2], "the deed names the hash, filled in"
     return (HEAD.format(title="ToG 1.0 deed", url=URL + "/deed",
                         description="Terms of Generation 1.0 in plain words: a summary of the legal code, not the licence.")
-            + '<p class="tl-kicker mono">TERMS OF GENERATION · DEED · ToG-1.0</p>\n'
-            + "<h1>ToG 1.0 deed</h1>\n" + hash_block(h) + "\n"
+            + '<p class="tl-kicker mono">TERMS OF GENERATION · DEED · ToG 1.0 PUBLIC DRAFT 1</p>\n'
+            + "<h1>ToG 1.0 deed</h1>\n" + hash_block(h) + "\n" + DRAFT + "\n"
             + '<article class="tl-text">\n' + markdown(body) + "\n</article>\n" + FOOT)
 
 
 def main():
+    if sys.argv[1:2] == ["--from"]:
+        extract(Path(sys.argv[2]))
     (DIR / "index.html").write_text(legal_page(), encoding="utf-8")
     (DIR / "deed.html").write_text(deed_page(), encoding="utf-8")
     print(sha256())

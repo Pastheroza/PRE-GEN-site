@@ -24,9 +24,10 @@ export const WHO = ["company", "child"];  // a person answering for themself has
 export const DECISIONS = ["no", "approve_all", "rules"];
 export const FLOORS = ["each", "project", "video"];
 export const MAX_FRAGMENT = 1024;
-/** The one common licence text every card links to, the same for everyone (tog/1.0/legal-code.txt). */
-export const LEGAL = { id: "ToG-1.0", sha256: "2fd26018b920325994cb61ae42deaf93acd5ea00756ad92a373a72408e2d7122",
-  url: "https://www.pregen.org/tog/1.0" };
+/** The one common licence text every card links to, the same for everyone (tog/1.0/legal-code.txt), and the label
+ *  every card that cites it shows: public draft 1, whose brackets are not yet completed (its §16(a)). */
+export const LEGAL = { id: "ToG-1.0", label: "ToG 1.0 public draft 1",
+  sha256: "b5ca28ccaeeecf3be03e7532b3460ff2d0d696c2f72cc7af1cff5ef5cdd178e4", url: "https://www.pregen.org/tog/1.0" };
 
 const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);

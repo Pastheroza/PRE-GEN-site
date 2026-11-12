@@ -127,7 +127,8 @@
   },
   "legal": {
    "id": "ToG-1.0",
-   "sha256": "2fd26018b920325994cb61ae42deaf93acd5ea00756ad92a373a72408e2d7122",
+   "label": "ToG 1.0 public draft 1",
+   "sha256": "b5ca28ccaeeecf3be03e7532b3460ff2d0d696c2f72cc7af1cff5ef5cdd178e4",
    "url": "https://www.pregen.org/tog/1.0"
   }
  },
