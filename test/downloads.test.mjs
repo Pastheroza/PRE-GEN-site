@@ -14,7 +14,7 @@ const html = read("downloads.html").toString();
 test("each listed file is there, with its own size, SHA-256 and text fingerprint", () => {
   const cards = html.split('<div class="pg-card">').slice(1);
   assert.deepEqual(cards.map((c) => c.match(/href="\/tog\/files\/([^"]+)" download>/)[1]), ["ToG-L-1.0.pdf",
-    "ToG-L-1.0-plain-words.pdf", "ToG-RS-1.0.pdf", "ToG-RS-1.1.pdf", ...["person", "company", "provider", "platform", "security", "frame-deal"]
+    "ToG-L-1.0-plain-words.pdf", "ToG-RS-1.0.pdf", ...["person", "company", "provider", "platform", "security", "frame-deal"]
       .map((x) => `ToG-L-1.0-example-${x}.pdf`)]);
   for (const c of cards) {
     const name = c.match(/href="\/tog\/files\/([^"]+)"/)[1], b = read("tog/files/" + name);
@@ -23,9 +23,8 @@ test("each listed file is there, with its own size, SHA-256 and text fingerprint
   }
   // The text fingerprints: the hashed legal text of each, the same hash the PDF prints.
   assert.equal(sha(read("tog/1.0/legal-code.txt")), "567cc9e2070f1b1a57d6f1c2fed41bb9887489699e7dd49f16e8ab25ac73c3f2");
-  assert.equal(sha(read("tog/files/ToG-RS-1.0.txt")), "ba764bc88ec530f27523785db30925c74a68304d278f2d9883c340ae145c248d");
-  assert.equal(sha(read("tog/files/ToG-RS-1.1.txt")), "8a5d7a608a66f5f9baa505a5646813ee204d51fa2916a2f154bfc9b905438da9");
-  for (const f of ["tog/1.0/legal-code.txt", "tog/files/ToG-RS-1.0.txt", "tog/files/ToG-RS-1.1.txt"]) assert.ok(html.includes(`<span class="mono">${sha(read(f))}</span> <a href="#how-to-check">`), f);
+  assert.equal(sha(read("tog/files/ToG-RS-1.0.txt")), "52a35bb69852584d05d1790d44fcb2283fe264e81bd049ee38b183f3b98326f7");
+  for (const f of ["tog/1.0/legal-code.txt", "tog/files/ToG-RS-1.0.txt"]) assert.ok(html.includes(`<span class="mono">${sha(read(f))}</span> <a href="#how-to-check">`), f);
   assert.match(html, /<h2 id="how-to-check">/);
   assert.match(html, /Examples only\. Every name, code, registry and hash in them is fictional/);
 });

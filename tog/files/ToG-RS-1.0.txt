@@ -4,7 +4,7 @@ Version 1.0, November 2026
 
 https://pregen.org/tog/registry-standard
 
-Copyright 2026 Valerii Egorov (Pastheroza). This text may be copied and changed only as Section 15(d) allows.
+Copyright 2026 Valerii Egorov (Pastheroza). This text may be copied and changed only as Section 16(d) allows.
 
 TERMS FOR REGISTRIES
 
@@ -67,7 +67,7 @@ TERMS FOR REGISTRIES
 3. its Move Policy (Section 11);
 4. how to send it a notice to Remove content (Section 10) and a complaint (Section 14);
 5. its privacy notice and its availability target (Section 13);
-6. whether it holds Authorisations and whether it accepts Deals in the category `sexual` or `adult`; and
+6. whether it holds Authorisations, whether it accepts appointments under Section 15 or receives payments for Holders, and whether it accepts Deals in the category `sexual` or `adult`; and
 7. the version of this Standard it conforms to.
 
 A change never reaches back to an act already done.
@@ -148,11 +148,11 @@ A change never reaches back to an act already done.
 
 (f) *Never rewritten.* Nothing signed is ever changed; a change is a new version. Versions are kept and removed as Licence Section 7(h) states.
 
-(g) *Public checks.* Anyone who holds a Record can fetch and check the version it names. A Deal's terms are shown only to its parties.
+(g) *Public checks.* Anyone who holds a Record can fetch and check the version it names. A Deal's terms are shown only to its parties and as Section 15 allows.
 
 (h) *Stops and withdrawals.* A Registry reports every Stop and withdrawal from the moment it receives it, passes a withdrawal from a Deal to the licensee at once, and never makes either depend on a payment, an account, a Move or a dispute.
 
-(i) *Approvals and Records.* Outputs relayed for Approval are shown to no one else and deleted as Licence Section 8(e) requires. A Record is reported as withdrawn only as Licence Section 9(j)(3) allows.
+(i) *Approvals and Records.* Outputs relayed for Approval are shown to no one else, except as Section 15(b) allows, and deleted as Licence Section 8(e) requires. A Record is reported as withdrawn only as Licence Section 9(j)(3) allows.
 
 ## 8. Authorisations.
 
@@ -220,7 +220,25 @@ A change never reaches back to an act already done.
 
 (b) *To the Steward.* A complaint the Registry has not decided within 7 days, or one about the Registry itself, goes to the Steward, which decides within 30 days. A Registry carries out the Steward's decision. Disputes about a Registry's own service are decided as its terms provide; this Standard chooses no law and no court.
 
-## 15. Versions and Copying.
+## 15. Acting for a Holder.
+
+(a) *Appointment.* A Registry may let a Holder appoint in writing a natural person or an Entity to act for it at the Registry under this Section (an "**Authorised Person**"; the act is an "**appointment**", never an Authorisation). It accepts an appointment only from the Holder, Authenticated with the Holder's second factor, after verifying the Authorised Person as Section 6(b) or 6(c) requires, and records which acts of paragraph (b) it covers, its period and whether it is also the Holder's written authorisation under Licence Sections 2(d) and 12(c), which then ends with it. Widening an appointment, and changing the Holder's second factor, contact details or payout account, also need the Holder's second factor. A Registry refuses an appointment while the Holder's second factor, email address or telephone number is registered to the Authorised Person or anyone acting for it. An Authorised Person that is an Entity acts only through natural persons it names, each Identity Verified; the Registry shows the Holder each of them and each change, and suspends the appointment on a change of control of the Authorised Person until the Holder confirms it. A Registry, its Operator and anyone that controls or is controlled by either are the Authorised Person of a Holder the Registry serves only where the Holder chooses it after the Registry has told it so in writing. The Registry's terms bind the Authorised Person, enforceably by the Holder, to this Section, to pass to the Holder through the Registry every offer it receives for the Holder, and to bear, in proportion to what it was paid, any refund the Licence or a Deal requires from a payment shared under paragraph (f).
+
+(b) *What it may do.* Within its appointment, an Authorised Person may prepare a Statement, a change to one, a Stop, a Deal or a change to a Deal and send it to the Holder to confirm; see the status of the Holder's code, Statements, Deals and Records, the notices to the Holder and the terms of the Deals the Holder lets it see; send notices other than one that opens, reinstates, waives or withdraws; and see an Output held for Approval where a Deal expressly lets it or the Holder has the Registry show it, which is then the Holder's own disclosure.
+
+(c) *What it never does.* An Authorised Person never opens anything and never confirms, signs, Approves or withdraws for the Holder (Licence Sections 2(a), 8(e) and 10(d)), and never holds or changes the Holder's second factor, contact details, payout account or appointments. It never prepares, sees or is paid under anything in the category `sexual` or `adult` (Licence Section 5(a)). For a minor, or a Person who lacks capacity, a Registry accepts an appointment only from the legal representative, verified as Section 6(g) requires, and only to prepare Stops. No natural person acts both as an Entity's Representative and for that Entity's Authorised Person unless the Entity agrees in writing.
+
+(d) *Confirmation.* Nothing an Authorised Person prepares has effect until the Holder or, for a minor or a Person who lacks capacity, the legal representative confirms it from its own account, with a second factor for an act that opens (Section 6(e)); one confirmation covers one Statement, Stop or Deal; whether Outputs under a Deal are Approved one by one or together is for the Deal. Before that, the Registry shows the whole text, what it opens or closes compared with what is in force, who prepared it, every share proposed for it under paragraph (f), and whether the Authorised Person, or anyone that controls it or that it controls, is a party to it, acts for a party under it or is paid by one in connection with it, as the Authorised Person declares; a false declaration is abuse under paragraph (h). The Registry never accepts a confirmation through an Authorised Person's account, logs who prepared and who confirmed each act (Section 13(b)), and never presents an act the Holder has not confirmed as the Holder's.
+
+(e) *The Holder sees everything.* The Registry shows the Holder, no later than the Authorised Person, everything the Authorised Person prepares, sends or sees for it, and delivers to the Holder's own account every offer, notice and Output for Approval that reaches the Registry for the Holder. It sends the Holder a Deal an Authorised Person prepares only if the Deal names the Holder's own account at the Registry as its channel (Licence Section 10(e)). It shows an appointment only to the Holder and the Authorised Person and, if the Holder so chooses, tells anyone who gives the Holder's code and the Authorised Person's identifier whether the appointment is current and which acts of paragraph (b) it covers. Wherever it names an Authorised Person to anyone else, it states that the Authorised Person can open, sign, grant and accept notice for nothing on the Holder's behalf, and it never names the Authorised Person as the Holder's only contact. An appointment never limits, delays or conditions what the Holder sees, receives or does itself.
+
+(f) *Payments.* A Registry may receive payments under Deals for Holders, itself where the law allows it or through a licensed payment service. One that does keeps them apart from its own money and, within 30 days after it receives a payment, pays each share the Holder confirmed for that Deal to its payee and the rest to an account in the Holder's own name that the Holder gave it, except where the law, a court order, a claim under Licence Section 12(d)(2) or a suspension under paragraph (h) requires it to hold or pay otherwise. A share is confirmed by the Holder for one named Deal, is shown to the Holder, its payee and anyone else that Deal names, lasts as long as that Deal says or, where it is silent, as long as that Deal, even after the appointment ends, and passes in a Hand-over. The Holder's confirmation of a share is its direction to pay; whether the payee may lawfully act or be paid is between them. The Registry pays no share the Holder has not confirmed and shows the Holder every payment and share.
+
+(g) *Withdrawal.* The Holder may withdraw or narrow an appointment at any time, without reason and free of charge; a Holder that no longer controls its second factor may do so, and reset its second factor and contact details, by being verified again as Section 6(b) or 6(c) requires. A withdrawal takes effect when the Registry logs it, whatever any agreement says, and any claim about it lies between the Holder and the Authorised Person. It never undoes what the Holder confirmed: each Deal continues under its own terms and the Licence, and what the Holder has not confirmed stays with the Holder to confirm or discard. In the same act the Registry offers withdrawal from each Deal whose licensee is the Authorised Person. An appointment also ends at the end of its period, on a Move, on the Holder's death or an Entity's end and, where a legal representative gave it, when the Person reaches the Age of Majority or that authority ends.
+
+(h) *Abuse.* On the Holder's claim, or its own finding, that an Authorised Person forged a confirmation, hid anything from the Holder or acted beyond its appointment, the Registry suspends the appointment at once, holds every share payable to the Authorised Person until the matter is decided and acts as Section 6(i) requires; any other complaint goes through Section 14. When a Holder appoints, the Registry tells it that an act Authenticated with the Holder's own second factor is presumed the Holder's own (Licence Section 12(d)(1)).
+
+## 16. Versions and Copying.
 
 (a) *Fixed text.* This version is named the ToG Registry Standard, Version 1.0, and has the identifier `ToG-RS-1.0`. Its text never changes and is identified by the SHA-256 hash of the lines of its published Markdown text between "Standard begins" and "Standard ends", those two lines and the blank line next to each excluded, in Unicode NFC with LF line endings. In a final version, each text in square brackets is replaced by the completed text before hashing.
 
