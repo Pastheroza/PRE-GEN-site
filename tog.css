@@ -21,7 +21,6 @@
 .tl-hash { margin: 20px 0 8px; padding: 10px 12px; border: 1px solid var(--fg); font-size: 13px; overflow-wrap: anywhere; }
 .tl-hash span { font-weight: 600; }
 .tl-links { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0 0 16px; font: 12px var(--mono); letter-spacing: .05em; text-transform: uppercase; }
-.tl-steward { margin: 0 0 32px; padding: 10px 12px; border: 1px dashed var(--fg); font-size: 14px; }
 .tl-text { max-width: 46em; }
 .tl-text p, .tl-text li { line-height: 1.55; }
 .tl-text blockquote { margin: 0 0 16px; padding: 4px 16px; border-left: 3px solid var(--fg); background: var(--tint); }

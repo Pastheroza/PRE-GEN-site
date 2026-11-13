@@ -38,10 +38,11 @@ test("nothing is stored, and only the fragment carries answers", () => {
   assert.deepEqual([...js.matchAll(/fetch\(("[^"]+")/g)].map((m) => m[1]), ['"/test/tog-local/steward.json"', '"/api/lookup?code="']);
 });
 
-test("one common legal text: the pages name only ToG-L 1.0 public draft 3, link it, and never build a copy", () => {
+test("one common legal text: the pages name only ToG-L 1.0, link it, and never build a copy", () => {
   // A link to /downloads (the published PDFs) is not a copy; a download attribute or a Blob would be.
-  for (const text of [html, doc, js]) assert.doesNotMatch(text, /ToG-[LB]-1\.0|prampta-likeness|(?<!public )\bdraft\b(?! 3\b)|UNRELEASED|Blob|download(?!s)/i);
-  assert.doesNotMatch(html, /ToG(-L)? 1\.0(?! public draft 3)/);
+  for (const text of [html, doc, js]) assert.doesNotMatch(text, /ToG-[LB]-1\.0|prampta-likeness|\bdraft\b|Not in force|UNRELEASED|Blob|download(?!s)/i);
+  assert.doesNotMatch(html, /ToG 1\.0/);
+  assert.match(html, /ToG-L 1\.0/);
   assert.match(js, /el\("a", \{ href: "\/downloads" \}, "PDF and examples"\)/);
   assert.match(js, /el\("a", \{ href: "\/tog\/1\.0" \}, "Read the legal code"\)/);
   assert.match(js, /el\("a", \{ href: "\/tog\/1\.0\/deed" \}, "Read it in plain words"\)/);

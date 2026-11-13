@@ -71,7 +71,7 @@ code and a company's code have the same form (`TOG-CODE.md` §5).
   answers `pending`, like a code never proved (it permits and forbids nothing, and is not deleted). The next check
   that finds the file, or a new proof, ends the lapse at once. A site outage therefore never cancels a company's no
   on the day it happens.
-- **Conditions** (ToG 1.0 public draft 1, Section 6(f)): a person's own words, in any language, at most 1,000
+- **Conditions** (ToG-L 1.0, Section 6(f)): a person's own words, in any language, at most 1,000
   characters, that only narrow their rules. An `active` code's answer carries them as `"conditions": "<text>"`,
   the exact string the holder gave (the form of `spec/drafts/tog-funnel.md`: non-empty NFC, at most 1,000 code
   points, LF the only control), and a verifier shows them first, as plain text. **A pending or expired code never

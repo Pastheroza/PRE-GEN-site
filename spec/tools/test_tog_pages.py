@@ -24,10 +24,10 @@ def test_both_pages_and_the_deed_show_the_hash_of_the_plain_text():
     for page in ("index.html", "deed.html"):
         assert f"SHA-256 <span>{H}</span>" in (t.DIR / page).read_text(encoding="utf-8"), page
     assert (t.DIR / "deed.md").read_text(encoding="utf-8").endswith(
-        f"Legal code: ToG-L 1.0 public draft 3, sha256 {H}, at https://pregen.org/tog.\n")   # the hash's own text
+        f"Legal code: ToG-L 1.0, sha256 {H}, at https://pregen.org/tog.\n")   # the hash's own text
 
 
-def test_public_draft_3_with_its_four_brackets_as_written_and_labelled_on_both_pages():
+def test_the_text_with_its_four_brackets_as_written_and_labelled_ToG_L_1_0_on_both_pages():
     text = TEXT.decode()
     assert H == "567cc9e2070f1b1a57d6f1c2fed41bb9887489699e7dd49f16e8ab25ac73c3f2" and len(TEXT) == 71589
     assert text.startswith("# Terms of Generation Licence\n\nVersion 1.0, November 2026\n\nhttps://pregen.org/tog\n\n"
@@ -36,8 +36,9 @@ def test_public_draft_3_with_its_four_brackets_as_written_and_labelled_on_both_p
     assert re.findall(r"\[[^\]]*\]", text) == ["[hash]"] * 3 + ["[For counsel: child-performer laws may add duties.]"]
     for page in ("index.html", "deed.html"):
         html = (t.DIR / page).read_text(encoding="utf-8")
-        assert html.count('id="draft"') == 1 and "ToG-L 1.0 public draft 3" in html and "Not in force" in html, page
-        assert "public draft 1" not in html and 'href="/downloads"' in html, page
+        assert f"ToG-L 1.0 · SHA-256 <span>{H}</span>" in html and 'href="/downloads"' in html, page
+        assert not re.search(r"public draft|Not in force|id=\"draft\"", html, re.I), page   # no draft status (2026-11-13)
+        assert "ToG 1.0" not in html, page                     # every citation says ToG-L 1.0
         assert "covered by" not in html, page        # §16(a): the final hash is taken once the brackets are completed
         assert "— PRE-GEN</title>" in html and "ToG Protocol" not in html, page   # the protocol is PRE-GEN Protocol (2026-11-12)
 
@@ -54,7 +55,7 @@ def test_extract_follows_the_recipe_printed_in_the_source(tmp_path, monkeypatch)
     body = b"## ToG 1.0 legal code\n\n(a) [hash] stays.\n"
     assert (out / "legal-code.txt").read_bytes() == body
     deed = (out / "deed.md").read_text(encoding="utf-8")
-    assert deed.endswith(f"Legal code: ToG-L 1.0 public draft 3, sha256 {hashlib.sha256(body).hexdigest()}, at https://pregen.org/tog.\n")
+    assert deed.endswith(f"Legal code: ToG-L 1.0, sha256 {hashlib.sha256(body).hexdigest()}, at https://pregen.org/tog.\n")
     assert "version [n], sha256 [hash], of a Statement" in deed       # the model clause keeps its own blanks
     (src / "ToG-1.0-legal-code.md").write_text("Legal code begins\n## x\n\nLegal code ends\n", encoding="utf-8")
     with pytest.raises(AssertionError):
