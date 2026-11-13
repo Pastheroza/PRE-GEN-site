@@ -43,6 +43,11 @@
       "source": "/for-brands",
       "destination": "/registries",
       "permanent": true
+    },
+    {
+      "source": "/tog/registry-standard",
+      "destination": "/tog/files/ToG-RS-1.0.pdf",
+      "permanent": false
     }
   ],
   "headers": [
