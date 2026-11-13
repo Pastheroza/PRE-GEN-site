@@ -131,7 +131,7 @@ function statement({ code, answers: a, registry }) {
     by: rep ? "Made for a person under 18 by their parent or legal guardian." : null,
     conditions: a.conditions || null,
     lines: co ? cardCompany(companyRules(a)) : card(rulesFromAnswers(a)),
-    licence: co ? null : LEGAL,   // ToG 1.0 covers a natural person's likeness only
+    licence: LEGAL,   // ToG-L 1.0 covers persons and companies alike
     record: `https://www.pregen.org/lookup?code=${code}`,
   };
 }
@@ -327,7 +327,8 @@ const SCREENS = {
         el("h2", {}, "How it will read"),
         el("p", { class: "meta" }, "Your registry adds your code. The statement cites the common legal text; it is not a copy of it."),
         sheet(st),
-        !co && [el("p", { class: "meta" }, `Under ${LEGAL.label}: training AI models on you happens only under a paid agreement you sign; sexual or adult content only under an agreement you sign yourself after an identity document check, which is not yet offered; rights you granted before ToG keep their own terms.`), legalLinks()],
+        !co && el("p", { class: "meta" }, `Under ${LEGAL.label}: training AI models on you happens only under a paid agreement you sign; sexual or adult content only under an agreement you sign yourself after an identity document check, which is not yet offered; rights you granted before ToG keep their own terms.`),
+        legalLinks(),
         el("h2", {}, "Choose your registry"),
         notRegistry(),
         el("p", {}, `Choose one registry from the list. It records your statement, issues your ToG code and confirms ${co ? "that the company controls its domain and holds the rights" : "your identity and your rights"}. You need only one: every other registry and AI service reads your code.`),
@@ -406,7 +407,7 @@ function result(done) {
       el("h2", {}, view === "code" ? "Use it and confirm it" : "Publish it and confirm it"),
       steps,
       keep && copyBlock("Link to this statement", keep, "Bookmark it to come back. The statement is in the part after #, which is read in your browser and never sent to a server."),
-      !co && [el("h2", {}, "The legal text"), el("p", {}, `Your statement is made under ${LEGAL.label}, one common text for everyone.`), legalLinks()],
+      el("h2", {}, "The legal text"), el("p", {}, `Your statement is made under ${LEGAL.label}, one common text for everyone.`), legalLinks(),
       el("p", { class: "tg-actions" }, el("a", { class: "btn", href: "/tog" }, "Start a new statement"))] };
 }
 

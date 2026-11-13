@@ -96,8 +96,8 @@ function registryStep(t, co = false) {
   assert.match(t, /Your registry reminds you on day 3\. On day 7 an unconfirmed code is deleted, and its number is never issued again\./);
   assert.match(t, /Once confirmed, your ToG code takes effect for every registry and AI service on PRE-GEN Protocol\./);
   assert.doesNotMatch(t, /ToG 1\.0|public draft|Not in force/);   // every line that cites the text says "ToG-L 1.0"
-  if (co) assert.doesNotMatch(t, /ToG-L 1\.0|Read the legal code/);   // ToG 1.0 covers natural persons only
-  else assert.match(t, /Read the legal code.*Read it in plain words/);
+  assert.match(t, /Read the legal code.*Read it in plain words/);   // a company cites ToG-L 1.0 like a person
+  if (co) assert.doesNotMatch(t, /training AI models on you/);
 }
 
 test("the intake: an AI service needs no code and a registry is listed; nothing is asked of either", async () => {
@@ -192,7 +192,7 @@ test("under 18: only a parent or legal guardian, and only a No; the date never l
   assert.deepEqual(p.asked, ["/test/tog-local/steward.json", "/test/tog-local/registries.json", "/api/lookup?code=TOG-PRAM-900000037K"]);
 });
 
-test("a company: the same form of code, no licence text cited, its domain confirms it", async () => {
+test("a company: the same form of code, ToG-L 1.0 cited like a person's, its domain confirms it", async () => {
   const p = await page();
   p.press("Start"); p.pick("My company's brand or products"); p.next(); p.pick("Only the code"); p.next();
   assert.match(p.text(), /May AI generate the company's marks, products or characters\?/);
@@ -202,7 +202,7 @@ test("a company: the same form of code, no licence text cited, its domain confir
   const t = p.text();
   assert.match(t, /Your ToG code/);
   assert.match(t, /PRAMPTA gives you the file \/\.well-known\/tog\.json on your code's page/);
-  assert.doesNotMatch(t, /ToG-L 1\.0/);
+  assert.match(t, /Your statement is made under ToG-L 1\.0/);
 });
 
 test("/tog/document: a registry's return shows the statement; a company's tog.json from its record; a broken link", async () => {
@@ -211,6 +211,7 @@ test("/tog/document: a registry's return shows the statement; a company's tog.js
   for (let i = 0; i < 100 && !p.stage.all().some((x) => x.attrs["data-screen"] === "result"); i++) await tick();
   const t = p.text();
   assert.match(t, /Terms of Generation of this company/);
+  assert.match(t, /Licence: ToG-L 1\.0/);
   assert.match(t, new RegExp(`"record": "${co.record}",\\s*"claim": "${co.claim}"`));
   p = await page({ path: "/tog/document", hash: "#code=TOG-PRAM-900000037K&tog=v1.broken" });
   for (let i = 0; i < 100 && !/This link holds no ToG statement/.test(p.text()); i++) await tick();
