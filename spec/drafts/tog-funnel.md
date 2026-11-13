@@ -7,7 +7,7 @@ specification.** It has two layers, so that the process is one standard without 
   meaning: the roles, the intake, the closed answers, the age rule, the order of decisions, the outcomes, what a
   registry does with the answers, pending and proof, the ToG statement, the fragment and the return, with their
   vectors. Every rule written as "does" in Part A is a MUST.
-- **Part B, reference presentation:** the screens and wording of `pregen.org/tog`, recommended and free to restyle
+- **Part B, reference presentation:** the screens and wording of `pregen.org/tog/create`, recommended and free to restyle
   or translate, as long as Part A holds.
 
 # Part A — required
@@ -58,7 +58,7 @@ The registry's `tog_start` receives the answers in the fragment (A.9) and takes 
 to an account, a code and the statement**, without asking the questions again:
 
 1. Decode strictly (`decodeFragment`); remove the fragment from the address at once. `ok`: go on. `minor`,
-   `malformed` or `unknown_version`: never repair; send the person to the process's start (`pregen.org/tog` or the
+   `malformed` or `unknown_version`: never repair; send the person to the process's start (`pregen.org/tog/create` or the
    registry's own copy of Parts A and B).
 2. Show the statement the answers make (the card, conditions first, as plain text) and ask the person to confirm it.
    The person may change answers only through the same closed choices; the registry never adds or widens one.
@@ -131,7 +131,7 @@ https://www.pregen.org/tog/document#code=<code>&tog=v1.<answers>[&record=<record
 - The page reads the fragment in the browser; only the code is sent, to `/api/lookup`, for its public status. The page
   is `noindex` and sends no referrer. The link is the person's own permanent copy of the statement.
 - Vectors: `return.encode` and `return.decode` in `test-vectors/tog-generator.json`; ports: `encodeReturn` and
-  `decodeReturn` in `@pregen/verify` (`tog.js`). Until a registry returns, the person types the code on `/tog`, which
+  `decodeReturn` in `@pregen/verify` (`tog.js`). Until a registry returns, the person types the code on `/tog/create`, which
   builds the same link.
 
 ## A.9 The fragment, the legal text and the registry step
@@ -220,7 +220,7 @@ its code answers `pending` until the file is back; the home re-checks at most da
 
 # Part B — reference presentation (recommended, free to restyle)
 
-The screens of `pregen.org/tog` (`tog.js`, styled by `styles.css`): one question per screen, each with a Back, a step
+The screens of `pregen.org/tog/create` (`tog.js`, styled by `styles.css`): one question per screen, each with a Back, a step
 count and an error message that says what to do; real radio buttons and checkboxes; the statement shown as it will
 stand on the holder's own page. A registry may translate, restyle or merge screens, as long as Part A holds.
 
@@ -241,7 +241,7 @@ stand on the holder's own page. A registry may translate, restyle or merge scree
 6. **Check your statement:** every answer with a Change link, the statement as it will read (without the code), and
    the home registry step (below).
 7. **The registry issues the code.** It opens in a new tab with the answers in the fragment. The person comes back
-   with the code: typed into `/tog` today, or by the registry's return (below).
+   with the code: typed into `/tog/create` today, or by the registry's return (below).
 8. **The ToG statement**, in three forms of one text, with the code's live status from `/api/lookup`.
 
 The list of registries is headed "Available registries", one row per registry: its name, its website, its prefix and

@@ -1,22 +1,8 @@
-/* The legal text only (/tog/1.0, /tog/1.0/deed): paper and ink, square corners, the holders' blue (--acc). This file
-   re-points the site's variables for those pages; the white mark turns to ink. /tog itself is styled in styles.css. */
-:root {
-  --paper: #efeae0; --ink: #161513; --acc: #0b4fd6;
-  --bg: var(--paper); --fg: var(--ink);
-  --muted: color-mix(in srgb, var(--ink) 68%, var(--paper));
-  --rule: var(--ink);
-  --soft: color-mix(in srgb, var(--ink) 20%, var(--paper));
-  --tint: color-mix(in srgb, var(--ink) 5%, var(--paper));
-  color-scheme: light;
-}
-@media (prefers-color-scheme: dark) {
-  :root { --paper: #0d0d0c; --ink: #ebe6dc; --acc: #6f9bff; color-scheme: dark; }
-}
-@media (prefers-color-scheme: light) { .mark img { filter: invert(1); } }
-::selection { background: var(--ink); color: var(--paper); }
+/* The legal text only (/tog/1.0, /tog/1.0/deed): the reading column and the hash. The colours are the site's own
+   (styles.css); the text is set in the serif, like the PDF. */
 /* /tog/1.0 and /tog/1.0/deed: the common text and its hash (spec/tools/tog_pages.py). */
 .tl-wrap { max-width: 880px; }
-.tl-kicker { margin: 0 0 10px; font-size: 12px; letter-spacing: .05em; color: var(--acc); }
+.tl-kicker { margin: 0 0 10px; font-size: 12px; letter-spacing: .05em; color: var(--muted); }
 .tl-lede { max-width: 40em; font-size: 18px; line-height: 1.45; color: var(--muted); }
 .tl-hash { margin: 20px 0 8px; padding: 10px 12px; border: 1px solid var(--fg); font-size: 13px; overflow-wrap: anywhere; }
 .tl-hash span { font-weight: 600; }
@@ -24,3 +10,6 @@
 .tl-text { max-width: 46em; }
 .tl-text p, .tl-text li { line-height: 1.55; }
 .tl-text blockquote { margin: 0 0 16px; padding: 4px 16px; border-left: 3px solid var(--fg); background: var(--tint); }
+.tl-text { font-family: var(--serif); font-size: 17px; }
+.tl-text code { font-size: 0.85em; }
+.tl-text { overflow-wrap: break-word; }   /* the hash line on the deed fits a phone */

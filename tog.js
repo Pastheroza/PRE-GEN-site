@@ -1,4 +1,4 @@
-// /tog and /tog/document: the reference registration process (spec/drafts/tog-funnel.md). One question per screen, in
+// /tog/create and /tog/document: the reference registration process (spec/drafts/tog-funnel.md). One question per screen, in
 // the site's own form controls. The person says what they need ToG for; an AI service or a registry is sent to its own
 // page, a person or a company answers and picks one home registry, which issues the code. The result is one ToG
 // statement (HTML for a website, plain text for a profile, or only the code), which cites the one common legal text and
@@ -362,7 +362,7 @@ const SCREENS = {
   broken() {
     return { label: "ToG statement", title: "This link holds no ToG statement",
       hint: "It may have been cut short when it was copied. Open the link your registry gave you again, or start here.",
-      body: el("p", { class: "tg-actions" }, el("a", { class: "btn primary", href: "/tog" }, "Create your ToG")) };
+      body: el("p", { class: "tg-actions" }, el("a", { class: "btn primary", href: "/tog/create" }, "Create your ToG")) };
   },
 };
 
@@ -408,7 +408,7 @@ function result(done) {
       steps,
       keep && copyBlock("Link to this statement", keep, "Bookmark it to come back. The statement is in the part after #, which is read in your browser and never sent to a server."),
       el("h2", {}, "The legal text"), el("p", {}, `Your statement is made under ${LEGAL.label}, one common text for everyone.`), legalLinks(),
-      el("p", { class: "tg-actions" }, el("a", { class: "btn", href: "/tog" }, "Start a new statement"))] };
+      el("p", { class: "tg-actions" }, el("a", { class: "btn", href: "/tog/create" }, "Start a new statement"))] };
 }
 
 // ---- the network: the signed list of registries, and a code's status ----------------------------------------------

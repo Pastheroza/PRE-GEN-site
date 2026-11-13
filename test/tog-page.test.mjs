@@ -1,6 +1,6 @@
-// /tog and /tog/document (spec/drafts/tog-funnel.md): one module that imports only the ToG library, the CSP kept, the
+// /tog/create and /tog/document (spec/drafts/tog-funnel.md): one module that imports only the ToG library, the CSP kept, the
 // date of birth and the answers never anywhere but the fragment, only the one common legal text named (ToG-L 1.0 public
-// draft 3, with its hash and link), /tog public and /tog/document never indexed, and "Create your ToG" in every
+// draft 3, with its hash and link), /tog/create public and /tog/document never indexed, and "Create your ToG" in every
 // page's menu. The cards: packages/verify-js/test/tog.test.js; the screens: test/tog-flow.test.mjs.
 // Run: node --test test/tog-page.test.mjs
 import { test } from "node:test";
@@ -9,7 +9,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 
 const read = (f) => readFileSync(new URL("../" + f, import.meta.url), "utf8");
 const exists = (f) => existsSync(new URL("../" + f, import.meta.url));
-const html = read("tog.html"), doc = read("tog/document.html"), js = read("tog.js");
+const html = read("tog/create.html"), licence = read("tog.html"), doc = read("tog/document.html"), js = read("tog.js");
 
 test("both pages load only their module, which imports only the ToG library; no inline script or style", () => {
   for (const page of [html, doc]) {
@@ -21,11 +21,11 @@ test("both pages load only their module, which imports only the ToG library; no 
   assert.match(read("vercel.json"), /style-src 'self';/);
 });
 
-test("/tog is public, /tog/document is never indexed and sends no referrer", () => {
+test("/tog/create is public, /tog/document is never indexed and sends no referrer", () => {
   assert.doesNotMatch(html, /noindex|DRAFT|[Nn]ot public/);
   assert.match(doc, /<meta name="robots" content="noindex">/);
   assert.match(doc, /<meta name="referrer" content="no-referrer">/);
-  for (const url of ["/tog", "/tog/1.0", "/tog/1.0/deed"]) assert.match(read("sitemap.xml"), new RegExp(`pregen\\.org${url}<`));
+  for (const url of ["/tog", "/tog/create", "/tog/1.0", "/tog/1.0/deed"]) assert.match(read("sitemap.xml"), new RegExp(`pregen\\.org${url}<`));
   assert.doesNotMatch(read("sitemap.xml"), /tog\/document/);
 });
 
@@ -47,7 +47,7 @@ test("one common legal text: the pages name only ToG-L 1.0, link it, and never b
   assert.match(js, /el\("a", \{ href: "\/tog\/1\.0" \}, "Read the legal code"\)/);
   assert.match(js, /el\("a", \{ href: "\/tog\/1\.0\/deed" \}, "Read it in plain words"\)/);
   for (const f of ["tog/1.0/index.html", "tog/1.0/deed.html", "tog/1.0/legal-code.txt"]) assert.ok(exists(f), f);
-  for (const f of ["tog.html", "tog/document.html", "tog/1.0/index.html", "tog/1.0/deed.html"]) {
+  for (const f of ["tog.html", "tog/create.html", "tog/document.html", "tog/1.0/index.html", "tog/1.0/deed.html", "homepage.html"]) {
     for (const [, href] of read(f).matchAll(/href="(\/[^"#]*)"/g)) {
       const p = href.slice(1);
       assert.ok([p, p + ".html", p + "/index.html"].some(exists), `${f}: ${href}`);
@@ -55,7 +55,7 @@ test("one common legal text: the pages name only ToG-L 1.0, link it, and never b
   }
 });
 
-test("every page's menu opens with Create your ToG", () => {
+test("every page's menu opens with the Licence, then Create your ToG", () => {
   const pages = [];
   const walk = (d) => readdirSync(new URL("../" + d, import.meta.url)).forEach((f) => {
     const p = d + f;
@@ -66,7 +66,19 @@ test("every page's menu opens with Create your ToG", () => {
   walk("");
   const menus = pages.filter((p) => read(p).includes('<nav aria-label="Main">'));
   assert.ok(menus.length >= 25, String(menus.length));
-  for (const p of menus) assert.match(read(p), /<nav aria-label="Main"><a href="\/tog"( aria-current="page")?>Create your ToG<\/a>/, p);
+  for (const p of menus) assert.match(read(p), /<nav aria-label="Main"><a href="\/tog"( aria-current="page")?>The Licence<\/a><a href="\/tog\/create"( aria-current="page")?>Create your ToG<\/a>/, p);
+});
+
+test("/tog is the Licence: the homepage and /tog cite the hash of tog/1.0/legal-code.txt, no script of their own", async () => {
+  const { createHash } = await import("node:crypto");
+  const h = createHash("sha256").update(readFileSync(new URL("../tog/1.0/legal-code.txt", import.meta.url))).digest("hex");
+  assert.match(licence, new RegExp(`<span class="lic-hash">${h}</span>`));
+  assert.match(licence, /<code>ToG-L-1\.0<\/code>/);
+  assert.match(read("homepage.html"), new RegExp(`title="${h}">${h.match(/.{8}/g).join(" ")}<`));
+  for (const page of [licence, read("homepage.html")]) {
+    assert.deepEqual(page.match(/<script[^>]*>/g), ['<script src="/theme.js">', '<script src="/site.js" defer>']);
+    assert.doesNotMatch(page, /\sstyle=|<style/);
+  }
 });
 
 test("the local stand is never deployed nor committed", () => {

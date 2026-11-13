@@ -115,7 +115,7 @@ HEAD = """<!DOCTYPE html>
 <a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt="PRE-GEN"></a>
 <button class="menu-btn" type="button" aria-controls="site-menu" aria-expanded="false" aria-label="Open menu"><span></span><span></span></button>
 <div class="menu" id="site-menu">
-<nav aria-label="Main"><a href="/tog">Create your ToG</a><a href="/connect">Connect your AI</a><a href="/create-registry">Create a registry</a><a href="/docs">How it works</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/downloads">Downloads</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a></nav>
+<nav aria-label="Main"><a href="/tog" aria-current="page">The Licence</a><a href="/tog/create">Create your ToG</a><a href="/connect">Connect your AI</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/downloads">Downloads</a><a href="/docs">How it works</a><a href="/create-registry" class="nav-more">Create a registry</a><a href="/faq" class="nav-more">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site" class="nav-more">GitHub</a></nav>
 </div>
 </div></header>
 <main><div class="wrap tl-wrap">
@@ -125,8 +125,8 @@ FOOT = """</div></main>
 <div class="foot-top">
 <div class="foot-brand"><a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="56" height="56" alt="PRE-GEN"></a><p>Pre-Generative Authorization Protocol. AI asks before it generates a real person.</p></div>
 <nav class="foot-cols" aria-label="Site">
-<div><p class="foot-h">Start</p><a href="/connect">Connect your AI</a><a href="/create-registry">Create a registry</a><a href="/lookup">Look up a code</a></div>
-<div><p class="foot-h">Learn</p><a href="/docs">How it works</a><a href="/docs/two-layers">Two layers</a><a href="/faq">FAQ</a><a href="/llms.txt">llms.txt</a></div>
+<div><p class="foot-h">Start</p><a href="/tog/create">Create your ToG</a><a href="/connect">Connect your AI</a><a href="/create-registry">Create a registry</a><a href="/lookup">Look up a code</a></div>
+<div><p class="foot-h">Learn</p><a href="/tog">The Licence</a><a href="/docs">How it works</a><a href="/docs/two-layers">Two layers</a><a href="/faq">FAQ</a><a href="/llms.txt">llms.txt</a></div>
 <div><p class="foot-h">Project</p><a href="/registries">Registries</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification</a><a href="/downloads">Downloads</a><a href="/support">Support</a></div>
 <div><p class="foot-h">Legal</p><a href="/legal">Legal</a><a href="/contact">Contact</a></div>
 </nav>
@@ -140,7 +140,7 @@ def hash_block(h: str) -> str:
     return (f'<p class="tl-hash mono">{LABEL} · SHA-256 <span>{h}</span></p>\n'
             '<p class="tl-links"><a href="/tog/1.0/legal-code.txt">The hashed text, plain</a>'
             '<a href="/tog/1.0">Legal code</a><a href="/tog/1.0/deed">Deed</a><a href="/downloads">PDF and examples</a>'
-            '<a href="/tog">Create your ToG</a></p>')
+            '<a href="/tog/create">Create your ToG</a></p>')
 
 
 def legal_page() -> str:

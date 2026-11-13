@@ -1,4 +1,5 @@
-/* pregen.org: one blue, white type, Geist. Nothing decorative. */
+/* pregen.org: white paper, black type, the blue only as the header band and the links. Geist for the interface, a
+   book serif for titles. Nothing decorative. */
 /* Geist Sans (Vercel, SIL OFL 1.1 — assets/fonts/Geist-LICENSE.txt), self-hosted. */
 @font-face {
   font-family: "Geist";
@@ -8,32 +9,40 @@
   font-display: swap;
 }
 :root {
-  --bg: #2860dc;            /* the blue */
-  --fg: #ffffff;
-  --muted: #e3ebfd;         /* 4.6:1 on the blue */
-  --rule: rgba(255, 255, 255, 0.9);
-  --soft: rgba(255, 255, 255, 0.28);
-  --tint: #2152c4;          /* a deeper blue, for code and panels */
+  --blue: #2860dc;          /* the header band */
+  --link: #1f55cc;          /* links on paper, 6.4:1 */
+  --bg: #ffffff;
+  --fg: #15171c;
+  --muted: #5a606c;         /* 6.3:1 on white */
+  --rule: #15171c;
+  --soft: #d8dbe2;
+  --tint: #f4f5f7;          /* code and panels */
   --sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --serif: "Iowan Old Style", Charter, "Charter BT", "Bitstream Charter", Georgia, "Times New Roman", serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color-scheme: dark;
+  color-scheme: light;
 }
-::selection { background: #fff; color: var(--bg); }
+::selection { background: var(--fg); color: var(--bg); }
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 var(--sans); -webkit-font-smoothing: antialiased; }
-a { color: inherit; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+a { color: var(--link); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
 a:hover { text-decoration-thickness: 2px; }
-:focus-visible { outline: 3px solid var(--fg); outline-offset: 3px; }
+:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
 
 .wrap { max-width: 880px; margin: 0 auto; padding: 0 16px; }
-/* Header and footer keep one width on every page, so the logo and the menu button never move. */
+/* Header and footer keep one width on every page, so the logo and the menu never move. */
 .top .wrap, .foot .wrap { max-width: 1240px; padding: 0 24px; }
 @media (max-width: 640px) { .top .wrap, .foot .wrap { padding: 0 16px; } }
 
-/* Header: the logo and one menu button, on every screen. */
-.top { position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--soft); background: var(--bg); }
+/* Header: the blue band. It re-points the colours, so the menu inside it is white on blue. */
+.top {
+  --bg: var(--blue); --fg: #ffffff; --rule: rgba(255, 255, 255, 0.9); --soft: rgba(255, 255, 255, 0.28);
+  position: sticky; top: 0; z-index: 10; background: var(--bg); color: var(--fg);
+}
+.top a { color: inherit; }
+.top :focus-visible { outline-color: #fff; }
 .top .wrap { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 60px; }
 .mark { display: block; line-height: 0; text-decoration: none; flex: none; }
 .mark img { display: block; height: 30px; width: auto; }
@@ -46,30 +55,35 @@ a:hover { text-decoration-thickness: 2px; }
 .menu-open .menu-btn span:first-child { transform: translateY(3.75px) rotate(45deg); }
 .menu-open .menu-btn span:last-child { transform: translateY(-3.75px) rotate(-45deg); }
 
-/* Wide screens: a panel under the button. Phones: the whole screen. */
+/* Narrower screens: a panel under the button; phones: the whole screen. Wide screens: the links in the band. */
 .menu {
-  position: absolute; top: calc(100% + 1px); right: 16px; z-index: 9; display: none; flex-direction: column; gap: 0;
-  width: 300px; padding: 8px 20px 20px; border: 1px solid var(--rule); border-top: 0; background: var(--bg);
+  position: absolute; top: 100%; right: 16px; z-index: 9; display: none; flex-direction: column; gap: 0;
+  width: 300px; padding: 8px 20px 20px; background: var(--bg);
 }
 .menu-open .menu { display: flex; }
 .top nav { display: flex; flex-direction: column; font-size: 17px; }
 .top nav a { padding: 12px 0; border-bottom: 1px solid var(--soft); text-decoration: none; }
-.top nav a:hover { text-decoration: underline; }
-.top nav a[aria-current] { font-weight: 600; }
-.top nav a[aria-current]::after { content: " ·"; }
+.top nav a:hover, .top nav a[aria-current] { text-decoration: underline; }
 
 /* Without JavaScript the button cannot open anything: show the links instead. */
 html:not(.js) .menu-btn { display: none; }
-html:not(.js) .menu { position: static; display: flex; width: auto; padding: 0; border: 0; }
+html:not(.js) .menu { position: static; display: flex; width: auto; padding: 0; }
 html:not(.js) .top nav { flex-direction: row; flex-wrap: wrap; gap: 4px 16px; font-size: 15px; }
 html:not(.js) .top nav a { padding: 0; border: 0; }
 
+@media (min-width: 1100px) {
+  html .menu-btn { display: none; }
+  html .menu { position: static; display: flex; width: auto; padding: 0; background: none; }
+  html .top nav { flex-direction: row; gap: 26px; font-size: 15px; }
+  html .top nav a { padding: 0; border: 0; }
+  .top nav .nav-more { display: none; }
+}
 @media (max-width: 720px) {
   .top .wrap { min-height: 56px; }
   .mark img { height: 28px; }
   html.js .menu {
-    position: fixed; inset: 57px 0 0; width: auto; padding: 8px 16px calc(24px + env(safe-area-inset-bottom));
-    border: 0; overflow-y: auto;
+    position: fixed; inset: 56px 0 0; width: auto; padding: 8px 16px calc(24px + env(safe-area-inset-bottom));
+    overflow-y: auto;
   }
   html.menu-open, html.menu-open body { overflow: hidden; }
   .top nav { font-size: 22px; letter-spacing: -0.01em; }
@@ -285,7 +299,7 @@ details p { margin: 10px 0 0; }
 }
 .addr { display: block; width: 100%; margin: 0 0 16px; padding: 12px 14px; border: 1px solid var(--fg); background: var(--tint); color: var(--fg); font: 14px/1.5 var(--mono); resize: none; overflow-wrap: anywhere; border-radius: 0; }
 
-/* Create your ToG (/tog, /tog/document): one question per screen, in the site's own controls. */
+/* Create your ToG (/tog/create, /tog/document): one question per screen, in the site's own controls. */
 .tg-screen { max-width: 720px; }
 .tg-back { margin: 0 0 20px; padding: 6px 0; border: 0; background: none; color: var(--fg); font: 15px var(--sans); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .tg-back::before { content: "← "; }
@@ -376,3 +390,97 @@ button.btn.primary, .tg .btn.primary { padding: 12px 24px; background: var(--fg)
 .tg-reg dt { font-size: 19px; font-weight: 600; }
 .tg-reg dd { margin: 2px 0 0; color: var(--muted); font-size: 15px; }
 .tg-reg dd .mono { color: var(--fg); }
+
+/* Paper: titles in the serif, the interface in Geist; buttons in ink. */
+h1, h2, .guide h1, .tg-h, .tg-h--big, .gsteps h2, .dev h2, .prompt h2 { font-family: var(--serif); font-weight: 400; letter-spacing: -0.01em; }
+h1 { line-height: 1.08; }
+h2 { font-size: 25px; }
+.guide h1, .tg-h--big { line-height: 1.02; }
+.btn { color: var(--fg); }
+.btn.primary, button.btn.primary, .tg .btn.primary { color: var(--bg); }
+.doc aside a, .go a, .dev li a, .tg-change button, .tg-back { color: var(--fg); }
+.tg-sheet { border: 1px solid var(--soft); }
+.foot-brand .mark img { height: 44px; }
+
+/* Home and the Licence page (/homepage, /tog): one reading column, the title, the buttons, the facts. */
+.lic { max-width: 1120px; }
+.lic-hero { padding: 72px 0 48px; }
+.lic-hero h1 { font-size: clamp(38px, 6vw, 68px); margin: 0 0 16px; }
+.lic-lead { max-width: 34em; margin: 0 0 32px; font-family: var(--serif); font-size: clamp(19px, 2vw, 22px); line-height: 1.5; }
+.lic-btns { display: flex; flex-wrap: wrap; gap: 12px; }
+.lic-btns .btn { padding: 11px 20px; font-weight: 500; }
+.lic-facts { margin: 28px 0 0; font-size: 14px; color: var(--muted); }
+.lic-facts code { background: none; padding: 0; color: var(--fg); }
+/* Home: each block a labelled frame. */
+.lic-sec { margin: 0 0 48px; }
+h2.lic-label { margin: 0 0 14px; padding: 0; border: 0; font: 500 12px/1.4 var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.lic-box { display: flex; flex-direction: column; gap: 8px; padding: 22px 24px; border: 1px solid var(--soft); color: var(--fg); text-decoration: none; }
+a.lic-box:hover { border-color: var(--fg); }
+a.lic-box:hover .go-to { text-decoration: underline; }
+.lic-box h3 { margin: 0; font: 400 22px/1.25 var(--serif); }
+.lic-box p { flex: 1; margin: 0; font-size: 15px; color: var(--muted); }
+.lic-tag { font: 500 12px/1.4 var(--sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--link); }
+.go-to { font-size: 15px; color: var(--link); }
+.lic-two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.lic-roles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.lic-check { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
+.lic-check .search { flex: 1 1 360px; max-width: 560px; margin: 0; gap: 0; }
+.lic-check .search input { border-right: 0; }
+.lic-small { font-size: 14px; color: var(--muted); }
+.lic-note { margin: 0; padding: 20px 0 0; border-top: 1px solid var(--soft); font-size: 14px; color: var(--muted); }
+.lic-dl { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 12px 24px; margin: 0; padding: 24px 0; border-block: 1px solid var(--soft); font-size: 15px; }
+.lic-dl dt { color: var(--muted); }
+.lic-dl dd { margin: 0; min-width: 0; }
+.lic-dl details { border: 0; padding: 6px 0 0; }
+.lic-dl summary { font-weight: 400; color: var(--link); font-size: 14px; }
+.lic-hash { font: 13px/1.5 var(--mono); overflow-wrap: anywhere; }
+ol.lic-toc { counter-reset: s; columns: 2; column-gap: 40px; margin: 0; padding: 0; list-style: none; }
+.lic-toc li { counter-increment: s; break-inside: avoid; margin: 0; padding: 7px 0 7px 32px; text-indent: -32px; font-family: var(--serif); font-size: 17px; }
+.lic-toc li::before { content: counter(s); display: inline-block; width: 32px; text-indent: 0; font: 14px var(--sans); color: var(--muted); }
+.lic-toc a { color: var(--fg); text-decoration: none; }
+.lic-toc a:hover { color: var(--link); text-decoration: underline; }
+ul.lic-apply { list-style: none; margin: 0; padding: 0; }
+.lic-apply li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; margin: 0; padding: 12px 0; border-top: 1px solid var(--soft); }
+.lic-apply span { font-size: 14px; color: var(--muted); }
+@media (max-width: 900px) { .lic-roles { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 640px) {
+  .lic-hero { padding: 40px 0 36px; }
+  .lic-roles, .lic-two { grid-template-columns: 1fr; }
+  .lic-box { padding: 18px 16px; }
+  .lic-dl { grid-template-columns: 1fr; gap: 2px; }
+  .lic-dl dd + dt { margin-top: 12px; }
+  ol.lic-toc { columns: 1; }
+}
+.dl .mono, p .mono { overflow-wrap: anywhere; }
+.foot-brand .mark img { background: var(--blue); }
+
+/* Home hero: a light grey band across the page; the text on the left, the licence's title card on the right. */
+.home .lic-hero {
+  display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 56px; align-items: center;
+  margin: 0 0 56px; padding: 72px 0; background: var(--tint);
+  box-shadow: 0 0 0 100vmax var(--tint); clip-path: inset(0 -100vmax);
+}
+.home main { padding-top: 0; }
+.lic-kicker { margin: 0 0 18px; font: 500 12px/1.4 var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--link); }
+.home .lic-hero h1 { font-size: clamp(40px, 5.4vw, 64px); line-height: 1.04; }
+.home .lic-btns .btn.primary { padding: 13px 26px; font-size: 16px; }
+.lic-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 20px 0 0; font-size: 14px; color: var(--muted); }
+.lic-ask span { margin-right: 4px; }
+.btn.btn-ask { padding: 6px 12px; border-color: var(--soft); background: var(--bg); font-size: 14px; }
+.btn.btn-ask:hover { border-color: var(--fg); text-decoration: none; }
+.lic-card { padding: 26px 28px 22px; border: 1px solid var(--soft); border-top: 4px solid var(--blue); background: var(--bg); box-shadow: 0 12px 32px rgba(21, 23, 28, 0.06); }
+.lic-card-h { margin: 0 0 4px; font: 500 12px/1.4 var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.lic-card-t { margin: 0 0 18px; padding-bottom: 16px; border-bottom: 1px solid var(--soft); font: 400 24px/1.2 var(--serif); }
+.lic-card dl { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 10px 16px; margin: 0; font-size: 14px; }
+.lic-card dt { color: var(--muted); }
+.lic-card dd { margin: 0; }
+.lic-card dd code { padding: 0; background: none; }
+.lic-card-hash { font: 12.5px/1.6 var(--mono); word-spacing: 0.15em; }
+.lic-card-links { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 18px 0 0; padding-top: 14px; border-top: 1px solid var(--soft); font-size: 14px; }
+@media (max-width: 960px) {
+  .home .lic-hero { grid-template-columns: 1fr; gap: 36px; padding: 48px 0; }
+}
+@media (max-width: 640px) {
+  .home .lic-hero { padding: 36px 0 40px; margin-bottom: 40px; }
+  .lic-card { padding: 20px 18px 18px; }
+}

@@ -23,7 +23,7 @@
 <a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt="PRE-GEN"></a>
 <button class="menu-btn" type="button" aria-controls="site-menu" aria-expanded="false" aria-label="Open menu"><span></span><span></span></button>
 <div class="menu" id="site-menu">
-<nav aria-label="Main"><a href="/tog">Create your ToG</a><a href="/connect">Connect your AI</a><a href="/create-registry">Create a registry</a><a href="/docs" aria-current="page">How it works</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/downloads">Downloads</a><a href="/faq">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a></nav>
+<nav aria-label="Main"><a href="/tog">The Licence</a><a href="/tog/create">Create your ToG</a><a href="/connect">Connect your AI</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/downloads">Downloads</a><a href="/docs" aria-current="page">How it works</a><a href="/create-registry" class="nav-more">Create a registry</a><a href="/faq" class="nav-more">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site" class="nav-more">GitHub</a></nav>
 </div>
 </div></header>
 <main><div class="wrap">
@@ -79,7 +79,7 @@ canonical      = UTF-8, keys in code-point order, no whitespace, integers only, 
 <p>A person has one home registry; other registries and AI services use and pass their code. A claim the person confirmed on their own official channel wins over unconfirmed ones. Among claims the person confirmed on their own official channel, a refusal of the person in any registry holds in all of them. With no confirmed claim PRE-GEN says nothing: the result is <code>not_blocked</code> (<code>PG_IDENTITY_UNCONFIRMED</code>), which permits nothing and refuses nothing. An impostor can neither permit nor freeze a person. A confirmation counts only at a fixed place, the official website's <code>/.well-known/pregen</code> or the person's own account, and a new channel permits only after seven days. Two confirmed homes for one person are a duplicate, and the stricter answer decides until one home remains; duplicates are never searched for by face or voice. A complaint is not a refusal of the person; only the person or the steward can refuse a person everywhere. A registry answers a complaint within seven days, and the steward can mark a false claim in the directory. See <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/identity.md">identity</a>.</p>
 
 <h2>Creating a ToG</h2>
-<p>A person or a company makes their ToG through one process, the same on <a href="/tog">pregen.org/tog</a> and at every registry: what they need it for, their answers, a check, and one home registry from the signed list, which issues the code. Under 18 only a parent or legal guardian files, and only a No; an AI service gets no code. The code is pending for 7 days and takes effect once confirmed: the ToG statement, whose first line is <code>ToG: &lt;code&gt;</code>, published on a website or profile the holder controls, or a company's <code>/.well-known/tog.json</code>. pregen.org is not a registry. See <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/drafts/tog-funnel.md">the registration process</a>.</p>
+<p>A person or a company makes their ToG through one process, the same on <a href="/tog/create">pregen.org/tog/create</a> and at every registry: what they need it for, their answers, a check, and one home registry from the signed list, which issues the code. Under 18 only a parent or legal guardian files, and only a No; an AI service gets no code. The code is pending for 7 days and takes effect once confirmed: the ToG statement, whose first line is <code>ToG: &lt;code&gt;</code>, published on a website or profile the holder controls, or a company's <code>/.well-known/tog.json</code>. pregen.org is not a registry. See <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/drafts/tog-funnel.md">the registration process</a>.</p>
 
 <h2>No middleman</h2>
 <p>An AI service and a registry talk directly, free. Services that make this easier, such as checking an agent's authority, running a sale, reporting or settlement, are optional, and anyone may offer them.</p>
@@ -96,8 +96,8 @@ canonical      = UTF-8, keys in code-point order, no whitespace, integers only, 
 <div class="foot-top">
 <div class="foot-brand"><a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="56" height="56" alt="PRE-GEN"></a><p>Pre-Generative Authorization Protocol. AI asks before it generates a real person.</p></div>
 <nav class="foot-cols" aria-label="Site">
-<div><p class="foot-h">Start</p><a href="/connect">Connect your AI</a><a href="/create-registry">Create a registry</a><a href="/lookup">Look up a code</a></div>
-<div><p class="foot-h">Learn</p><a href="/docs">How it works</a><a href="/docs/two-layers">Two layers</a><a href="/faq">FAQ</a><a href="/llms.txt">llms.txt</a></div>
+<div><p class="foot-h">Start</p><a href="/tog/create">Create your ToG</a><a href="/connect">Connect your AI</a><a href="/create-registry">Create a registry</a><a href="/lookup">Look up a code</a></div>
+<div><p class="foot-h">Learn</p><a href="/tog">The Licence</a><a href="/docs">How it works</a><a href="/docs/two-layers">Two layers</a><a href="/faq">FAQ</a><a href="/llms.txt">llms.txt</a></div>
 <div><p class="foot-h">Project</p><a href="/registries">Registries</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a><a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">Specification</a><a href="/downloads">Downloads</a><a href="/support">Support</a></div>
 <div><p class="foot-h">Legal</p><a href="/legal">Legal</a><a href="/contact">Contact</a></div>
 </nav>

@@ -1,4 +1,4 @@
-// /tog driven screen by screen in a tiny fake DOM: what the person needs ToG for, then a person's no and yes, an AI
+// /tog/create driven screen by screen in a tiny fake DOM: what the person needs ToG for, then a person's no and yes, an AI
 // service, a minor through a parent or legal guardian, a company; the registry step (pending 7 days, the global yes or
 // no), the code typed back and the ToG statement in its three forms; and /tog/document reading a registry's return.
 // Run: node --test test/tog-flow.test.mjs
@@ -39,7 +39,7 @@ async function stand() {   // test/tog-local.mjs in memory: an ephemeral steward
 
 let n = 0;
 const tick = () => new Promise((r) => setTimeout(r, 5));
-async function page({ path = "/tog", hash = "" } = {}) {
+async function page({ path = "/tog/create", hash = "" } = {}) {
   const files = await stand(), asked = [];
   const stage = new Node("div");
   globalThis.document = { getElementById: (id) => (id === "tg-stage" ? stage : null), createElement: (t) => new Node(t), addEventListener() {} };

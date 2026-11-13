@@ -37,6 +37,10 @@ Text only: no message format, required schema member or vector changes.
   answer stays in force, then its code answers `pending` until the file is back. Replaces "answers `pending` until
   it does again", which no implementation followed and which let an outage cancel a company's no.
   `pregen-registry subject domain-check [--gone]`, `Registry.domain_check()`.
+- **The process moves to `/tog/create`; `/tog` is the Licence** (founder 2026-11-13). pregen.org/tog is where
+  ToG-L 1.0 says the Steward publishes it, so it now shows the Licence (identifier, SHA-256, contents, how to apply
+  it); the registration process of `drafts/tog-funnel.md` is at `pregen.org/tog/create`. `/tog/document`, the return
+  URL and `/tog/1.0` are unchanged.
 - **One registration process** (founder decision 2026-11-12; `drafts/tog-funnel.md`). Part A is required of
   pregen.org and every registry that takes ToG statements: the intake (likeness, brand or products, AI service,
   registry), the age rule (under 18 only a parent or legal guardian, only a No), the order of decisions, what the
