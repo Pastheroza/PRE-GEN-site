@@ -29,7 +29,7 @@ def test_both_pages_and_the_deed_show_the_hash_of_the_plain_text():
 
 def test_the_text_with_its_four_brackets_as_written_and_labelled_ToG_L_1_0_on_both_pages():
     text = TEXT.decode()
-    assert H == "567cc9e2070f1b1a57d6f1c2fed41bb9887489699e7dd49f16e8ab25ac73c3f2" and len(TEXT) == 71589
+    assert H == "c608c6cb477918d040a432417ba2101f1731aee906ce15024933efcb907ba2ac" and len(TEXT) == 73492
     assert text.startswith("# Terms of Generation Licence\n\nVersion 1.0, November 2026\n\nhttps://pregen.org/tog\n\n"
                            "Copyright 2026 Valerii Egorov (Pastheroza). ")
     assert text.endswith("\nEND OF TERMS AND CONDITIONS\n")

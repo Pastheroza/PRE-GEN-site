@@ -152,6 +152,10 @@ A paper contract the holder signed earlier becomes a deal the same way, from the
 
 Model clause, one sentence for the contract: *"This agreement is a Deal under the Terms of Generation Licence, Version 1.0 (ToG-L-1.0); the Holder's Statement is version [n], sha256 [hash], of the Statement for ToG code TOG-…; Outputs for Approval and notices go to [channel]."* Name the channel: without one, outputs go to the holder's registry. Everything else is the contract's own.
 
+## Someone acting for the holder
+
+The holder may appoint someone to help it, such as a manager, an assistant or a firm, in writing, confirmed with its second factor or a qualified signature, and held at its home registry. The helper can prepare terms, a no, a deal or a change for the holder, see what the holder lets it see, send notices for it, and be paid a share of a deal if the holder confirms that share. The helper never says yes or no for the holder: nothing it prepares counts until the holder confirms it, and it never signs, approves or refuses an output, withdraws anything, or holds the holder's second factor. It has no part in sexual or adult content. For a minor, or someone who lacks capacity, only the legal representative appoints a helper, and only to prepare a no. The registry shows the holder everything the helper prepares, sends or sees there, never later than the helper sees it. The holder can end or narrow the appointment at any time, free, whatever any contract says; what the holder confirmed stays, and a share lasts as its deal says. The helper can enforce the holder's terms only if the appointment says so.
+
 ## If a registry closes, the holder moves or a brand is sold
 
 The holder's ToG code is its own for life. It may move its home registry at any time, on the terms each registry publishes, which may charge for a move, and must when its registry closes. After the move its statement, every deal and every record keep their codes and their effect. Requests, outputs for approval and withdrawals go to the registry that now serves the holder; if the home registry closed and none serves the holder 14 days after the buyer asks, requests and outputs may go to any listed registry. If a holder sells a brand, product, character or work, or stops owning or controlling it, its permission for that item ends once you know, a deal over it ends with the refund a withdrawal brings, and its no over the item stays until the new owner publishes its own terms; a company that takes over all of another's brands and works steps into its place.
@@ -193,4 +197,4 @@ A permission under this licence is one holder's permission. It does not make a u
 
 The steward publishes the licence text and the list of registries and lookup sources, on published criteria and with public notice. It is not a party to anyone's terms, is not a registry, ranks no registry, and gives no legal advice.
 
-Legal code: ToG-L 1.0, sha256 567cc9e2070f1b1a57d6f1c2fed41bb9887489699e7dd49f16e8ab25ac73c3f2, at https://pregen.org/tog.
+Legal code: ToG-L 1.0, sha256 c608c6cb477918d040a432417ba2101f1731aee906ce15024933efcb907ba2ac, at https://pregen.org/tog.

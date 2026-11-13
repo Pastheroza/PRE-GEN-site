@@ -39,7 +39,7 @@ export function conditionsOk(c) {
 /** The one common licence text every card links to, the same for everyone (tog/1.0/legal-code.txt), and the label
  *  every card that cites it shows: ToG-L 1.0 (Terms of Generation Licence, Version 1.0, November 2026). */
 export const LEGAL = { id: "ToG-L-1.0", label: "ToG-L 1.0",
-  sha256: "567cc9e2070f1b1a57d6f1c2fed41bb9887489699e7dd49f16e8ab25ac73c3f2", url: "https://www.pregen.org/tog/1.0" };
+  sha256: "c608c6cb477918d040a432417ba2101f1731aee906ce15024933efcb907ba2ac", url: "https://www.pregen.org/tog/1.0" };
 
 const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);

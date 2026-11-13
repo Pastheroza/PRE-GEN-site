@@ -1,0 +1,447 @@
+# Terms of Generation Licence
+
+Version 1.0, November 2026
+
+https://pregen.org/tog
+
+Copyright 2026 Valerii Egorov (Pastheroza). This text may be copied and changed only as Section 16(d) allows.
+
+TERMS AND CONDITIONS FOR THE USE OF A HOLDER'S MATTER
+
+*Who this Licence is for.* This Licence is one common text for everyone. A Holder, a natural person or an Entity, applies this version of it to the Holder's own Matter, and to nothing else, by making a Statement that cites it. Anyone who does an act listed in Section 9, such as signing a Request, giving an Undertaking, instructing a Provider to Generate or using an Output under the Permission, accepts this Licence and is bound by it. To the extent this Licence is a contract, the Holder gives that person the Permission in return for that acceptance, and on these terms only.
+
+## 1. Definitions.
+
+"**Licence**" shall mean the terms and conditions set out in this document, from its title to "END OF TERMS AND CONDITIONS".
+
+"**Holder**" shall mean the natural person or the Entity whom a Statement identifies as its subject.
+
+"**Person**" shall mean a Holder who is a natural person.
+
+"**Entity**" shall mean a company, partnership, association, foundation, public body or other organisation that the law lets hold rights and be sued in its own name.
+
+"**Representative**" shall mean, for an Entity, a natural person it has authorised to bind it for the act concerned.
+
+"**You**" (or "**Your**") shall mean whoever Generates, instructs a Provider to Generate, uses an Output, signs a Request, or gives an Undertaking or a Platform Undertaking.
+
+"**Matter**" shall mean:
+
+1. for a Person, the Person's Likeness; and
+2. for any Holder, each mark, product, character, work and recording that the Holder owns or controls and that its Statement lists, by name or by a description; a Stop that lists none covers all of them.
+
+An item the Holder neither owns nor controls is not its Matter, whatever a Statement says, and the Matter of an Entity never includes the Likeness of a natural person.
+
+"**Likeness**", of a Person, shall mean the appearance of the Person's face or body and the Person's voice, real or imitated, wherever the Person can be identified from it.
+
+"**control**", of an item, shall mean to have the right to permit its use under the rights the law gives in it, or to control the Entity that has that right; a Holder that has that right only for some places or uses controls the item only there, and owning a copy or an example of an item is neither owning nor controlling it.
+
+"**Matter Rights**" shall mean every right any law gives the Holder to control or object to the use of the Matter, including under data protection law; for the Likeness they do not include copyright, performers' rights or trade mark rights, which count only for an item under item 2 of the definition of "Matter".
+
+"**Statement**" shall mean a record by which the Holder applies this Licence: it identifies the Holder, lists the Matter other than the Likeness that it covers, contains the Rules and cites this Licence by the identifier in Section 16(a) and the SHA-256 hash of this text or of an official translation. The token in Section 2(h) is also a Statement. A Statement in profile `marks/1` does not cover the Likeness.
+
+"**current**", of a Statement, shall mean its latest version in force.
+
+"**Age of Majority**" shall mean 18 years, or the higher age of full legal capacity under the law of Home at the time of the act.
+
+"**AI Content**" shall mean images, video, sound or three-dimensional content that a machine-learning model generates, or changes in what it shows or how it sounds other than by changing only its file format, resolution, compression, size or crop, whether or not it is an Output.
+
+"**Appendices**" shall mean the pages that follow "END OF TERMS AND CONDITIONS" in a copy of this Licence made for a Holder, a Provider, a Platform or an Authorisation, set out as Appendix A (Notice), Appendix B (The Holder's Rules), one Appendix C (Deal) for each Deal shown, Appendix D (Provider Undertaking), Appendix E (Platform Undertaking) and Appendix F (Authorisation), each beginning on a page of its own, as Section 16(g) describes them; each of them is an "Appendix".
+
+"**Approval**" shall mean the Holder's Authenticated confirmation that one Output, identified by its SHA-256 hash, may be used in the context it states.
+
+"**Authenticated**" shall mean confirmed as the own act of the Holder or, under Section 5(d), of the legal representative or minor who makes it, with the identity of each natural person who acts, the age of a Person, the authority of anyone who acts for another and the existence of an Entity verified:
+
+1. by a Registry, under a published procedure that verifies them and an Entity's control of a domain name, which its Statement names, by a file on that domain that names the Registry's record as the profile prescribes, requires a second factor for each act that opens and refuses an act Section 5(d) does not allow; or
+2. by that natural person's qualified electronic signature, or a signature under an identity-verified certificate, with age and authority attested by that trust service or by a Registry, or by an Entity's qualified electronic seal, which stands for the identity and authority of the Representative who applies it.
+
+No other signature and no typed name Authenticates, whatever effect the law gives it.
+
+"**Authorisation**" shall mean a permission to provide or perform Restricted Capabilities, issued by an Authority or, for a computer system, by its owner for that system only, held under a code at a Registry and Authenticated, the issuer standing in the definition of "Authenticated" for the Holder and the Authorisation for its Statement. It states the acts it allows, the computer systems it covers by their identifiers or, for one an Authority issues to everyone under its law, by the systems that law covers, its period, and the natural persons or Entities it covers or that it covers anyone who acts within it. An Authority may issue an Authorisation to everyone who meets the conditions its law sets, for the computer systems that law covers. A Registry holds one only after verifying, as the profile prescribes, that its issuer is an Authority or the owner of each computer system it identifies; for a network that cannot be reached from the internet, the issuer's Authenticated declaration that it is the owner suffices.
+
+"**Authority**" shall mean a court or another public body acting under a power to authorise the act concerned that the Authorisation cites and that the law of the place where the computer system is, or where its owner is established or habitually resides, gives it.
+
+"**Check Record**" shall mean a record, in the form the profile prescribes, of the Lookup made for the request or input of one item of AI Content that is not an Output, listing the identifiers queried and what was found but not the request or input itself, signed by the Provider under a key it published as its own under Section 9(a) and carrying a time set by a Registry or independent time-stamping service for it or for a batch that includes it.
+
+"**Conditions**" shall have the meaning given in Section 6(f).
+
+"**Deal**" shall mean a written agreement, signed and Authenticated by the Holder, a Person personally and an Entity through its Representative, or signed as Section 5(d) requires, that names the party it licenses and cites the Holder's code.
+
+"**Generate**" shall mean to produce, with a System, content that shows, imitates or reproduces the Matter and either was made from a request or input that identifies the Holder or the Matter or contains the Matter, or is presented as the Holder or the Matter. To Generate a Holder is to Generate its Matter. A request or input contains Matter other than a Likeness only where You know that it does, and content imitates a work or recording only where it imitates that item itself, not where it shares only a style or genre with it.
+
+"**Generation**" shall mean one act of Generating.
+
+"**Home**" shall mean where a Person habitually resides, or where an Entity has its registered office or, if it has none, its principal place of business, at the time of the act or, for a claim, when it is brought.
+
+"**home Registry**" shall mean the one Registry serving the Holder, as Section 13(c) provides.
+
+"**licensee**" shall mean the party a Deal names as the party it licenses.
+
+"**Lookup**" shall have the meaning given in Section 9(e).
+
+"**Output**" shall mean the result of a Generation.
+
+"**Permission**" shall mean what Section 3 gives, together with what a Deal opens under Section 10.
+
+"**Platform**" shall mean anyone who operates a service that hosts, shows, recommends or forwards content made by others, such as a social network, a video-hosting service, a messenger, an image search service or an app store.
+
+"**Platform Undertaking**" shall mean a Platform's signed public declaration, published with its keys, that it accepts this Licence for its services.
+
+"**profile**" shall mean, of the profiles `likeness/2` and `marks/1` named in the definition of "Rules", the one a Statement, Request or Record uses and, for a ToG Proof, a Check Record, an Authorisation and a Record of a lookup of one, profile `proof/1`, SHA-256 hash [hash]. The profile prescribes the form of the Rules, the list of Matter, a Record, a Request, the label, a reference, a ToG Proof, a Check Record, an Authorisation and a Provider's or Platform's published keys; this Licence alone gives meaning.
+
+"**Provider**" shall mean anyone who operates a System or offers one to others and, for Section 9(a) and (i) only, anyone who operates or offers to others any other machine-learning model or a service built on one.
+
+"**Record**" shall mean a record of one Generation, or of one lookup of an Authorisation, in the form the profile prescribes, that names the Statement by its hash and the code issued for the Holder or, for a lookup of an Authorisation, names the Authorisation by its hash and code, is signed by the Registry that answered the Request or the query for the Authorisation or, under Section 8(e), recorded the Approval, and carries a time set by a Registry or independent time-stamping service.
+
+"**Registry**" shall mean a service that authenticates Statements, publishes them and answers Requests under published procedures and that may, under such procedures, hold Authorisations and report the status of Records.
+
+"**Remove**" shall have the meaning given in Section 9(g).
+
+"**Request**" shall mean a Provider's signed message, in the form the profile prescribes, that names a Statement by its hash and describes one intended Generation.
+
+"**Requester**" shall mean whoever instructs the Provider to Generate.
+
+"**Reservation**" shall have the meaning given in Section 4(a).
+
+"**Restricted Capability**" shall mean any of the following acts against a computer, network, device or online service (a "computer system", whose "owner" is whoever is entitled to permit access to it), other than a computer system You provide only for testing that reaches no other:
+
+1. gaining access to it, to data in it or to control of it, or defeating, bypassing or disabling a measure that guards any of them or data taken from it, beyond what it grants the person for whom You act, credentials issued to another granting that person nothing;
+2. sending it input made to trigger a vulnerability in it, or exploiting one; or
+3. placing code in it made to hide itself or any access, to spread to other computer systems, or to damage, disrupt or hold to ransom it or its data.
+
+To provide or perform a Restricted Capability is to carry one out, or to produce code or commands for one against a computer system that the requests or inputs name or make obvious, or code made to do what item 3 describes. Explaining how an attack works, or how to detect, defend against or fix one, is neither.
+
+"**Rules**" shall mean the members `uses`, `modalities`, `excluded_categories` and `training` of a Statement, in the form of profile `likeness/2`, SHA-256 hash [hash], for the Likeness, or of profile `marks/1`, SHA-256 hash [hash], for other Matter, and the Statement's Conditions.
+
+"**Steward**" shall mean the person or organisation that publishes this Licence at https://pregen.org/tog.
+
+"**Stop**" shall mean the token `tog:no`, the withdrawal of a Statement, a Statement whose `uses` is empty, or one that Section 5(d) or 6 makes a Stop. It permits nothing and has effect as the Reservation.
+
+"**System**" shall mean software that makes images, video, sound or three-dimensional content by automated means, including a machine-learning model and any service built on one.
+
+"**ToG Proof**" shall have the meaning given in Section 9(h).
+
+"**Training**" shall have the meaning given in Section 6(e).
+
+"**Undertaking**" shall mean a Provider's signed public declaration, published with its keys, that it accepts this Licence for every Statement.
+
+## 2. Statements.
+
+(a) *Only the Holder opens.* Only the Holder can permit anything under this Licence: a Person acting personally, of age and with legal capacity, or, for a minor, as Section 5(d) allows; an Entity only through its Representative. No agent, agency, employer, Registry or anyone else can do so for a Person, and no one but its Representative for an Entity.
+
+(b) *Opening.* A Statement or a change to one opens if any act is within the Permission after it that was not before. What opens has effect only once Authenticated and held at the Holder's home Registry and, for an item of Matter other than the Likeness, only once that Registry has verified, under its published procedure, that the Holder owns or controls the item; until then it has effect only so far as it closes. An Approval, a Deal and an opening change to a Deal open.
+
+(c) *Closing.* What only closes has effect as soon as the Holder publishes it in a way that shows it comes from the Holder: Authenticated, or at an account, domain or other identifier the Holder controls. The legal representative of a minor or of a Person who lacks capacity may make a Stop, which is the Person's own, through a Registry that verifies that authority or as paragraph (h) allows.
+
+(d) *Anyone else.* A record made by anyone else is not a Statement and has no effect under this Licence, except that a person acting for an adult Person under a written authorisation may file a Stop, which takes effect when the Person confirms it under paragraph (c).
+
+(e) *One version.* Each Statement cites one version of this Licence and moves to another only by the Holder's own new Statement.
+
+(f) *Several Statements.* If more than one current Statement, of the Holder or of different Holders, covers the same Matter, an act is within the Permission only if, for each of those Holders, it is within every one of that Holder's current Statements or within what a Deal of that Holder opens for You.
+
+(g) *Copies and codes.* A copy of a Statement is evidence of it and neither widens nor narrows it; a code, reference, name, badge or summary permits nothing by itself.
+
+(h) *The token `tog:no`.* The token `tog:no`, in any letter case, placed now or before on the public page of an account or website by whoever holds it, is a Stop: the Holder's own under paragraph (c) where the Holder or a Person's legal representative holds the account or website, otherwise one filed under paragraph (d). The token names no version; this Licence governs it, and no version may narrow what it reserves or give it a permitting effect. A reference on the public page of an account or website points to a Statement only if the Statement names that account or website. Other than a reference, no other `tog:` token has a meaning under this Licence.
+
+## 3. Permission.
+
+(a) *Permission.* Subject to the terms and conditions of this Licence, the Holder permits You, for each purpose other than `commercial` that `uses` lists, in each form `modalities` lists and outside every category `excluded_categories` lists, to Generate, and to copy, publish, distribute, perform and otherwise communicate the Outputs and to edit or combine them with other material without changing what they show of the Matter or what they show a Person doing. Under this Section the Permission is worldwide, free of charge, non-exclusive and personal to You, who may not transfer or sublicense it; each person who uses an Output receives it directly from the Holder.
+
+(b) *Legal form.* The Permission operates in every one of these ways that the applicable law allows:
+
+1. as a licence of the Matter Rights, where they can be licensed;
+2. subject to paragraph (c), as the Holder's written consent, where the law asks for consent or authorisation, to the extent that law allows consent to be given to persons not individually named; and
+3. as the Holder's promise not to bring a claim based on the Matter Rights against You for an act within the Permission, whether or not the Holder has such a right in the place of the act, binding, so far as the law allows, anyone who claims through or in place of the Holder. The promise does not cover a claim that an Output is defamatory or is unlawful for a reason other than its use of the Matter.
+
+(c) *Personal data.* The Permission under this Section is not consent under Regulation (EU) 2016/679, nor under any law that requires consent to name the person to whom it is given, and it is not a release under a biometric privacy law. A Deal is such consent or such a release only where it meets the requirements of that law. The Permission under this Section records the Holder's documented wishes, which You may weigh in establishing Your own lawful basis for processing. Paragraph (b)(3) waives no right under data protection law that cannot be waived.
+
+(d) *Name.* You may identify the Holder and the Matter, by the name or identifier the Statement shows other than a Registry code issued for the Holder, to describe an Output truthfully.
+
+(e) *Limits.* The Permission covers only the Holder's own Matter and Matter Rights. It never covers any other person, the Matter of anyone else, or any other right in the Matter, such as a photographer's copyright in a picture, which You clear Yourself. Under this Section it never permits use of a mark as a mark for goods or services.
+
+(f) *Rights that stay with the Holder.* The Permission waives no moral right and no part of a personality right that the law does not allow to be waived or licensed, and is read no wider than the purpose it names. Every use of a mark under it stays under the Holder's control through the Rules, the Conditions, Approval and Section 8(g).
+
+(g) *End by law, death or transfer.* Where the law limits how long a permission of this kind may last, the Permission ends at that limit, counted from the latest version of the Statement or, under a Deal, from the Deal. It ends when the Person dies, and for You when You have notice of the death. For an item of Matter other than the Likeness it ends when the Holder ceases to own or control the item, and for You when You have notice of that, and Section 10(d) applies to money under a Deal as on a withdrawal; a Stop over the item has effect as that of its new owner or controller until the latter's own Statement replaces it, and a successor to all of an Entity's Matter takes the Entity's place.
+
+## 4. Reservation of Rights and Notice.
+
+(a) *Reservation.* The Holder reserves every use of the Matter, in Generating and in Outputs, outside the Permission, and does not consent to it (the "Reservation"). It grants nothing and needs no acceptance.
+
+(b) *Notice.* Anyone who reads a Statement, or receives a Record or a Lookup result that reports it, has notice from that time of what the Holder does and does not permit.
+
+(c) *Data protection.* To the extent a use of the Matter outside the Permission and any grant under paragraph (h) involves the processing of the personal data of a Holder who is a Person, the Reservation is, as to every controller that reads, fetches or is answered with the Statement:
+
+1. an objection to that processing under Article 21(1) of Regulation (EU) 2016/679 and any equivalent law, to the extent that law allows an objection to be made in that form;
+2. a withdrawal, under Article 7(3) of that Regulation and any equivalent law, of any consent the Person may be said to have given to that processing, other than consent given in a Deal; and
+3. the Person's documented wish, to be weighed in any assessment of a legitimate interest or similar basis.
+
+(d) *Text and data mining.* Where the Holder holds copyright or a related right in material published with a Statement, or in a work or recording in the Matter, the Reservation is also an express reservation of the use of that material for text and data mining, under Article 4(3) of Directive (EU) 2019/790 and any equivalent law, other than for a licensee whose Deal permits Training.
+
+(e) *Duration and limits.* The Reservation applies wherever and for as long as any law, including one made after the Statement, gives the Holder a Matter Right, and outlasts Your Permission and a Person's death. It creates no Matter Right where the law gives none and, against anyone not bound under Section 9, restricts no use the law allows without the Holder's consent.
+
+(f) *No Statement.* This Licence says nothing about anyone who has no Statement; that silence is not permission, and no one's rights depend on having a Statement.
+
+(g) *Rights kept.* Nothing in this Licence reduces a right the Holder has by law. Subject to Section 5, which applies to every Output whoever makes it, nothing in this Licence limits what a Holder does with the Holder's own Matter. A claim that Matter is one's own never sets Section 5 aside. A Statement is a defence only to a claim by the Holder or anyone claiming through or in place of the Holder, and only as far as the Permission goes.
+
+(h) *Other grants.* A Statement, change, Stop or the Reservation takes away no right the Holder granted before the Holder's first Statement; the grant keeps its own terms. Whoever acts under it relies on it, not on this Licence, and must show it; an act within it that is of no kind Section 5 excludes from the Permission is no breach of this Licence. A grant claimed but never made is none.
+
+## 5. Floors.
+
+No Statement, Deal or Approval can set this Section aside.
+
+(a) *Sexual and adult content.* An Output in the category `sexual` or `adult` is never within an Entity's Permission, and is within a Person's only under a Deal opening it expressly that the Person signed personally once a check of an official identity document verified the Person's identity and Age of Majority. It never shows a minor, anyone as under 18, or any other identifiable person without their own such Deal. Within 30 days after a withdrawal from that Deal, even after it ends, takes effect for You, You Remove every Output made under it, despite Section 7(d). A Registry may decline such Deals.
+
+(b) *Depiction under 18.* The Permission never covers an Output that depicts as under 18 a Person who was 18 or over when it was Generated.
+
+(c) *Authentic recording and origin.* The Permission never covers an Output presented as an authentic recording of something a person or an Entity said or did, or of a real event involving the Matter, or supplied to anyone You know intends so to present it; nor one itself presented as a statement, advertisement or product that comes from the Holder, unless the Holder's Approval of that Output, or a Deal, states that context.
+
+(d) *Minors.* A person under the Age of Majority makes no Statement alone; the legal representative makes it and answers for it under Section 14. It permits nothing under Section 3, and otherwise only through a Deal, never one under paragraph (a), that the representative and the person both sign, each Authenticated. Until the person reaches the Age of Majority the two act together under it wherever this Licence requires the Person's act, though either may Stop or withdraw; from then the Person acts alone and the Deal continues unless the Person withdraws. Anything else made by or for a minor is a Stop, and what in it would permit is void. The Stop stands until a Statement under this paragraph, or the Person, of age and with capacity, replaces it. [For counsel: child-performer laws may add duties.]
+
+## 6. Meaning of the Rules.
+
+This Section gives each value its only meaning. Besides the Conditions, the Rules have exactly the four members the definition of "Rules" in Section 1 names, every value spelled as here in lower case; an act is within the Rules only if it is within every member. A Statement whose Rules lack a member or contain an unnamed member, an undefined value or another spelling is a Stop.
+
+(a) *Purposes (the keys of `uses`).* An Output made for several purposes must be within the Rules for each.
+
+1. `personal`: Your own non-commercial expression, such as art, humour or fan content, shared without payment and not for a business. A Provider's fee for its System does not make Your use commercial.
+2. `editorial`: news reporting, commentary, criticism and satire about real events or matters of public interest, and documentary.
+3. `educational`: teaching or instructing people, not for a business.
+4. `research`: scientific or technical research, not for a business.
+5. `commercial`: any other use for money or for a business: advertising, endorsement, an Output sold, licensed or made for a product or service offered for money, or shown for a fee or paywall, or with advertising or sponsorship for which You or anyone acting for You is paid. News reporting by a news publisher is not `commercial` only because it carries advertising or charges for access. A `commercial` entry shows that the Holder will consider a Deal.
+
+(b) *Modes (the values of `uses`).* `open`: the purpose is allowed. `approve`: allowed, and Section 8(e) applies. `commercial` takes either mode, to no effect.
+
+(c) *Forms (`modalities`).* An Output in several forms must be within the Rules for each. `image`: a still picture that shows the Matter. `video`: a moving picture that shows the Matter. `voice`: the Person's voice, or a voice made to imitate it, or a sound that reproduces or imitates other Matter, such as a character's voice, a sound mark or a recording, alone or with any other form. `3d`: a rendered three-dimensional picture that shows the Matter; making or keeping a model, rig or avatar of the Matter that can be posed or rendered again for another request is Training.
+
+(d) *Categories (`excluded_categories`).* A category applies to an Output that depicts the Matter in what it names, associates the Holder or the Matter with it or promotes it.
+
+1. `sexual`: sexual activity; nudity in a sexual context; or a depiction, clothed or not, made or posed for sexual appeal.
+2. `adult`: exposed genitals, buttocks or female nipples outside a sexual context, or content restricted to adults as sexually explicit or suggestive.
+3. `advertising`: promotion of a product, service, brand or business.
+4. `endorsement`: presenting the Person as personally recommending, vouching for or testifying about a product, service, brand, business or cause, or presenting an Entity, or a character in the Matter, as doing so for another's; appearing in advertising is not by itself endorsement.
+5. `alcohol`: alcoholic drinks.
+6. `tobacco`: tobacco and nicotine products.
+7. `cannabis`: cannabis and its products.
+8. `drugs`: other controlled substances, except medicine used as prescribed.
+9. `gambling`: betting, casinos, lotteries and other games of chance for money.
+10. `weapons`: firearms, ammunition, explosives and other weapons.
+11. `violence`: physical harm, or the threat of it, by or to the Person or a character in the Matter, or shown with a mark or product in the Matter.
+12. `political`: elections, candidates, parties, campaigns, and advocacy for or against legislation or a political cause.
+13. `religion`: religious belief, worship, organisations or figures.
+14. `health`: medical conditions, treatments, medicines, health products and health claims.
+15. `financial`: financial products and services, investments, crypto-assets, loans, insurance and claims of earnings.
+16. `fashion`: clothing, footwear, accessories, cosmetics and beauty products.
+
+(e) *Training (`training`).* "Training" shall mean using media of the Matter, or an Output, to make, change or keep a model, adapter, embedding or other representation that can Generate or recognise the Holder or the Matter for another request. A record kept only for safety, provenance or a legal duty, that cannot Generate the Matter, is not Training.
+
+1. `training` is `true` or `false`. Training is never within the Permission under Section 3. `true` shows that the Holder will consider a paid Deal that permits Training.
+2. Training a Deal permits is used only to Generate within the Rules as the Deal reads them, on Requests that name the Deal, and never to recognise or identify any person. It needs no Record of its own; Section 8 applies to each Generation made with the representation. You delete the representation within 30 days after the earliest of: the Training end date the Deal states; the end of the Deal; a withdrawal under Section 10(d) taking effect; any other end of the Deal's Permission.
+3. This paragraph applies when You deliberately make or keep a representation of the Likeness or, for other Matter, one You trained or tuned in order to Generate or recognise it, and when You use media You know to show the Matter: taken from where the Holder publishes a Statement, carrying a Statement or a Record, or received with a Request that names the Holder.
+
+(f) *Conditions.* A Statement may contain conditions in the Holder's own words, in any language, of at most 1,000 characters, shown first on its card (the "Conditions"); longer ones make it a Stop. They only narrow the other Rules. An act against them is outside the Permission. They mean what a reasonable reader in the Holder's position would understand; Section 15(b) applies to them only where that reader could not choose between two readings. A Deal prevails over them between its parties.
+
+## 7. Change, Stop and Survival.
+
+(a) *Right to change.* The Holder may change or withdraw a Statement at any time, without giving a reason. Removing one of several current Statements while another stays current is not a withdrawal. In this Section, a change includes a Stop, a new Statement, a withdrawal from or end of a Deal and an end of the Permission under Section 3(g) or 11(a).
+
+(b) *When a change that closes takes effect.* For You, at the earliest of: (1) Your notice of it; (2) the time a Lookup or a Registry's answer reports it to You, or would have had You made the Lookup Section 9(e) required; and (3) the end of the period in Section 8(b), counted from the last answer or reading You relied on. A withdrawal from a Deal, an end under Section 11(a) and an end on death or on ceasing to own or control under Section 3(g) take effect as Sections 10(d), 11(d) and 3(g) state.
+
+(c) *New Generation stops.* After that time, Generation is within the Permission only so far as the current Statements permit it under Section 2(f), and under a Deal only as Section 10(c) and (d) allow.
+
+(d) *What survives.* An Output Generated within the Permission, under a Record dated before the change took effect for the Provider, remains within the Permission, subject to what a Deal it names states about Outputs already made. It may still be used for the purposes its Record states, on the conditions of Section 8, and one held for Approval may still be approved; an Approval stays valid for the Output and context it names. After the change, the Provider supplies it only to the Requester or licensee its Record names.
+
+(e) *Rights that cannot be waived.* Where a law that cannot be set aside by agreement gives the Holder a right to stop further use of an Output, paragraph (d) does not take it away. The Holder exercises it by a notice to You that identifies the Output; use before You receive the notice remains within the Permission.
+
+(f) *Time and proof.* Whether a Record came before or after a change took effect is decided by the times a Registry or time-stamping service set on the Record and logged for the event that gave the change effect; in one log, log order decides. A period under paragraph (b)(3) runs from the logged time of the answer or reading relied on; a notice to You counts from its delivery to the contact address published with Your keys or to a channel a Deal names or, where You have neither, from its receipt. Your own clock and a signer's time prove nothing; where no such time exists, You bear the burden of proving order, and in any dispute You show that an act was within the Permission. A record validly signed when made stays valid after its key is replaced or retired, unless the key was compromised before the earliest such time set on or logged for it.
+
+(g) *Lifting a Stop.* A Stop is lifted only by the Holder's own act, in the way that matches how it was made; lifting opens.
+
+1. One made by the Holder's control of an account, domain or other identifier, the token included: by removing it and by the Holder's Authenticated Statement, in either order, complete at the later. Where the Holder does not control the identifier, the Authenticated Statement naming it suffices.
+2. One a Registry Authenticated on the Holder's instruction: the same way at that Registry or, where it no longer serves the Holder, at another listed Registry, or by a signature or seal of the kind in item 2 of the definition of "Authenticated" in Section 1.
+3. One made under such a signature or seal: only by such a signature or seal.
+4. One made for the Person under Section 2(c), 2(d) or 5(d): as in item 1, by the Person's own Authenticated Statement, or as Section 5(d) says.
+
+(h) *Versions kept.* A version of the Statement that a Record names or a Deal keeps stays available for as long as the Output or the Deal may be checked; any other may be removed at the Holder's request.
+
+## 8. Requirements of the Permission.
+
+The Permission covers an act only if every condition in this Section is met for it.
+
+(a) *Rules and purpose.* The Generation is within the Rules of the version of the Statement that the Record names, as a Deal the Record names widens them under Section 10(b), and for the purposes the Record states; each use of the Output is within them too. The Provider gives whoever or whatever decides the Generation the Conditions that no Deal the Record names sets aside, and does not Generate where it cannot apply them.
+
+(b) *Current Statement.* When the Generation started, the version the Record names was the current Statement, or one the Provider could still rely on: a Registry's answer for the period it states and at most 5 minutes; a Statement read where the Holder publishes it, for 24 hours after the reading. Under a Deal it is the version the Deal keeps, and no withdrawal under Section 10(d) that had taken effect for the Provider stood.
+
+(c) *Identifier.* The Statement was reached through an identifier it names, the code issued for the Holder or the hash by which a Record names it, never through a name alone; a name leads only to a Reservation. A Statement at a Registry and one where the Holder publishes are one Statement only if each names the other as the profile prescribes; otherwise each is a current Statement under Section 2(f).
+
+(d) *Record.* A Record exists for the Generation, timed before its start. The Request is made to the Registry that serves the Holder or, if none serves the Holder 14 days after the licensee asks, to any listed Registry. One Record covers one Generation and one Output, with the renditions it declares and any made only to publish or transmit the Output; a rendition differs from the Output only in file format, resolution, compression, size or crop and changes nothing it shows of the Matter or shows a Person doing. The Record stays with the Output, as the profile prescribes and the means of publication allows, and You do not remove it. No mark inside the picture or the sound is required.
+
+(e) *Approval.* Where the purpose is listed as `approve` or the Generation is under a Deal, unless a Deal for the Generation expressly dispenses with Approval:
+
+1. before Approval, the Output is shown to no one but the Holder, a Registry relaying it, the Provider's systems and human safety reviewers and, under a Deal, the licensee's personnel, all bound to confidence;
+2. only the Holder can give Approval; a refusal or no answer is not Approval;
+3. an Approval covers the Output it names, the renditions paragraph (d) covers other than a crop the Approval does not state, and the context it states, and no altered copy; an Output placed unchanged beside or over other material is not altered;
+4. a refused Output is deleted at once, an Output not approved within 30 days is deleted then, unless kept under item 1 for a dispute under Section 10(e); a record that cannot reproduce it may be kept.
+
+An Approval of an Output Generated outside the Permission, other than one Section 5 covers, is, with a Record a Registry signs for it, consent to showing that Output, labelled under paragraph (f), in the context it states, and nothing more.
+
+(f) *Disclosure.* Wherever You publish an Output, You state there, in a form an ordinary viewer or listener will notice, that it was made by AI. In advertising You also show the label the profile prescribes for the Record, beside that statement and in any text field the advertisement has or, for sound alone, in the accompanying text or metadata; the label never shows a Registry code issued for the Holder.
+
+(g) *No endorsement.* Unless a Deal expressly permits it, You do not state or imply that the Holder endorses, sponsors or is connected with You, Your product or Your use of an Output, or approved an Output that has no Approval. Neither an Approval nor the appearance of the Matter in an Output within the Permission is such a statement.
+
+(h) *Truthful Request.* The Request describes the Generation truthfully and completely. A Requester who gives a false description is in breach; a Provider is in breach only if it knew, or it was obvious, that the description was false, and otherwise Section 9(g) applies to it.
+
+(i) *Passing on.* A Provider binds each Requester to this Section and Section 5, on terms the Holder can enforce, and gives the Requester the Record with the Output.
+
+## 9. Acceptance and Promises.
+
+(a) *Acceptance by a Provider.* A Provider accepts this Licence by signing a Request, for the Generation it describes and the Holder the named Statement identifies, or by giving an Undertaking, for every Statement and every Generation in its services from publication until the Provider withdraws it by public notice; withdrawal does not affect what was done before, and both times are those a Registry, time-stamping service or public archive shows, not the Provider's. The signature is the acceptance; it counts only under a key the Provider had published as its own at the time, as the profile prescribes, and binds the Provider though its systems signed without human review.
+
+(b) *Acceptance by anyone else.* Anyone else accepts this Licence by instructing a Provider to Generate under a Statement, or by using an Output under the Permission.
+
+(c) *No acceptance, no Permission.* A Provider that has not accepted under paragraph (a) has no Permission; the Reservation and the law apply to it. Anyone who relies on the Permission in answer to a claim is bound by this Licence for the act concerned.
+
+(d) *The bargain.* In return for the Permission Holders offer under this Licence, and for each answer You receive to a Request, a Lookup or a check under paragraph (j), You promise:
+
+1. if You gave an Undertaking: to every Holder who has a Statement, to keep paragraph (e) as to that Holder and paragraphs (h) and (i) and, where Section 6(e)(3) applies, not to make or keep a representation of that Holder's Matter outside the Permission, including under a Stop;
+2. if You signed a Request: to the Holder the named Statement identifies, not to Generate that Holder outside the Permission in the Generation it describes;
+3. in every case: to each Holder whose Statement You act under, to keep Sections 5, 6(e)(2) and 8, Section 5 to any other Person an Output shows, and Section 5 to any other Holder whose Matter other than a Likeness the Output shows where the request or input names that Holder or Matter or You know the Output shows that Matter; and
+4. if You gave a Platform Undertaking: to every Holder who has a Statement, to keep paragraph (j).
+
+A failure under paragraph (h), (i) or (j) is a failure as to a Holder under Section 11(a) only where it concerns that Holder's Matter. Each such Holder may enforce these promises against You directly, as a party to this Licence and, where the law requires it, as an intended third-party beneficiary.
+
+(e) *Lookup.* A "Lookup" queries, for each code, reference or Record in a request or input, and each account, domain or name that it uses to refer to a real person, an Entity or an item of Matter, any Statement it points to and the sources the Steward lists for that kind of identifier at the time (Section 16(f)). If You gave an Undertaking, You make a Lookup before You Generate on such a request or input, and You do not Generate a Holder so found outside the Permission; where a source cannot be reached, You rely on no Permission it could have reported as closed, and a Reservation You already hold still applies. This creates no duty to identify a person or Matter in media that carries none of those.
+
+(f) *No recognition.* This Licence never requires You to identify a person by analysing a face or a voice, or Matter by analysing an image or a sound, and the Permission never covers identifying a person in that way. A name or mark of an Entity or of Matter other than a Likeness that appears only inside a picture or a sound is not one that an input uses under paragraph (e).
+
+(g) *Notice and stop.* You are not in breach for an act outside the Permission by reason only of a Statement, change or falsity of which You had no notice, which a Lookup paragraph (e) required of You would not have returned and which no Registry's answer to Your Request had returned, if on notice You stop at once and within 7 days Remove the Outputs so made. To "Remove" an Output is to delete it from every place You control and to ask those to whom You supplied it to do the same. This limits Your promise only, not a Matter Right.
+
+(h) *ToG Proof on all AI Content.* If You gave an Undertaking, You attach a ToG Proof to every item of AI Content made with a System You operate, including content within the Permission and content that involves no Holder, to show what was checked. A "ToG Proof" is provenance data, signed under a key You published as Your own under paragraph (a), in the content's C2PA manifest or, where the file cannot carry one, in the form the profile prescribes, that gives:
+
+1. the SHA-256 hash of the content as You deliver it;
+2. a reference to the Record of its Generation or, where there is none, to the Check Record of the Lookup You made for it; and
+3. Your identifier and the time the Registry or time-stamping service set.
+
+A ToG Proof is carried with the file, never as a mark inside the picture or the sound, and needs no identification of the kind paragraph (f) excludes. Each item You deliver or publish without a ToG Proof is a breach of this paragraph. A ToG Proof permits nothing beyond what the Record it names shows; one that names a Check Record permits nothing, shows only what You checked and is not a statement that the content involves no Matter or that a use is lawful.
+
+(i) *Restricted Capabilities.* If You gave an Undertaking, You provide or perform a Restricted Capability, for anyone or on Your own account, through any of Your services, a System or not, only within the acts, computer systems and period of a current Authorisation that You looked up before the act, and only for a natural person or Entity it covers, verified as the profile prescribes where it names them. You look an Authorisation up as You would a Statement: only through its code, at the Registry that holds it, relying on the answer only for the period Section 8(b) allows for a Registry's answer; You keep the Record of each lookup. An Authorisation is current within its period until its issuer withdraws it, and a withdrawal takes effect for You as Section 7(b) provides for a change that closes. You are in breach of this paragraph only where You knew, or it was obvious from the requests or inputs, that the act was a Restricted Capability outside a current Authorisation. The owner of a computer system against which You act in breach of this paragraph may enforce it against You directly, as an intended third-party beneficiary where the law requires it. Neither this paragraph nor an Authorisation gives a Permission, makes an act lawful or obliges You to act, and this paragraph does not require You to refuse what the law requires of You.
+
+(j) *Platforms.* A Platform accepts this Licence for its services by giving a Platform Undertaking, which takes effect and is withdrawn as paragraph (a) provides for an Undertaking, from publication until the Platform withdraws it by public notice. While it stands, the Platform, for images, video, sound and three-dimensional content on its services:
+
+1. checks the ToG Proof of each item when it is uploaded or forwarded, so far as the file or a notice given with it carries one: its signature, its hash and the Record or Check Record it names; on forwarding within its services, the result of the check made on upload suffices;
+2. labels "made by AI" each item that its ToG Proof, its metadata or the person who uploads it shows, or the Platform otherwise knows, to be AI Content, and adds to each item so labelled "no ToG proof" where it carries no ToG Proof that passes that check;
+3. does not show, recommend or forward an item whose ToG Proof names a Record that the Registry which signed it reports, when the Platform checks it under item 1 or on a notice from that Registry or the Holder, as withdrawn or as the Record of an Output whose Approval was refused, and acts on such a notice within the deadline in Section 12(f); a report counts as withdrawn only where this Licence requires the Outputs under that Record to be Removed, never only because a Statement changed (Section 7(d));
+4. on a complete notice under Section 12(f), from a person Section 12(c) lists or, for content within Section 5, from anyone, that an item is AI Content that shows a Holder's Matter outside the Permission, Removes it within the deadline that paragraph sets, unless its ToG Proof names a Record under which it is plainly within the Permission;
+5. does not place advertising in or on, or take payment for showing or supplying, an item of AI Content that its ToG Proof or Record shows to be of a Holder's Matter or, from the end of the deadline in Section 12(f) after a complete notice from a person Section 12(c) lists, one that the notice so identifies, unless the Holder published it, a Deal of the Holder permits that use, or it is news reporting that Section 6(a)(5) does not make `commercial`; and
+6. keeps the ToG Proof, or a reference to it, with each item that carries one, as the means of publication allows.
+
+Paragraph (f) applies: a Platform checks only what is attached to a file and what it is told, and need not recognise a face, a voice or a logo. Nothing in this paragraph requires a Platform to read, scan or decrypt a communication that is end-to-end encrypted or that the law does not allow it to read, to send its content or an identifier of it off the user's device, or to weaken encryption; for such a communication, items 1 to 3, 5 and 6 do not apply, and item 4 applies only to a copy the Platform holds in a form it can read, such as one a user has reported to it. A Platform is not in breach of item 4 for an item it acted on as its published procedure provides, if that procedure meets the deadlines in Section 12(f), tells whoever published the item of the removal, gives them a chance to answer and restores the item where the answer shows the notice was wrong; nor of items 1 to 3, 5 and 6 for an item its systems failed to check, if it acts on a notice about that item within the deadline in Section 12(f). A Platform that also operates or offers a System is also a Provider.
+
+## 10. Deals.
+
+(a) *What a Deal does.* A Deal opens only what it names, for the licensee and those acting for it within the channels it states. Every other term of the Statement and of this Licence applies, subject to paragraph (f).
+
+(b) *What a Deal may open.* If it says so expressly, a Deal may open any purpose, add a form, lift an excluded category subject to Section 5(a), set aside a Condition, permit Training for payment until a stated end date, dispense with Approval, permit a statement of endorsement, sponsorship or connection under Section 8(g), and say how the disclosure in Section 8(f) is made.
+
+(c) *Version and Stop.* A Deal keeps the version of the Statement current when it was Authenticated. No later version, no other Statement of the Holder and no Stop of the Holder, made before or after the Deal, narrows what it opens or stops Generation under it. Apart from the Deal's own terms, Generation under a Deal ends only under paragraph (d) or (e), Section 3(g), 11 or 12(d).
+
+(d) *Withdrawal from a Deal.* The Holder, or the legal representative of a minor or of a Person who lacks capacity, may withdraw from a Deal at any time by a notice, Authenticated, sent through a channel the Deal names or, from the legal representative, with proof of that authority, given to the licensee or lodged with the Registry that serves the Holder. A withdrawal that neither of them made has no effect. From its receipt by the licensee or its logging by that Registry, whichever is earlier, the licensee does not Generate under the Deal and, while the notice stands, has no Permission under Section 3 to Generate the Holder; it passes the notice to its Provider at once, which is bound on notice. The Deal stays a contract and is read as stating this right. Where it is silent on money and on Outputs already made, the Holder returns the part of any payment for Generation not yet made and owes nothing more, and Section 7(d) applies to Outputs already made. Generation under the Deal resumes only when the Holder confirms the Deal again; that confirmation opens.
+
+(e) *Outputs under a Deal.* A Deal is the Holder's yes. Where Approval applies under Section 8(e), the licensee sends Outputs, at the pace the Deal states or a reasonable one, through a channel the Deal names or else the Registry Section 8(d) names; the Holder answers within 7 days after an Output so reaches the Holder, as that channel or Registry logs, and refuses only by naming the term of the Deal or of this Licence it breaks; the licensee may then ask for another. A refusal without such a reason, no answer in time, or a material failure of another duty under the Deal not cured within 7 days after notice lets the licensee end the Deal by notice and recover what it paid for Generation that no Approval has made usable. Dislike of an Output that breaks neither is no ground to end it.
+
+(f) *Other agreements.* Any written agreement becomes a Deal from the time it meets the definition of "Deal" in Section 1; one sentence citing this Licence and the code suffices. The agreement sets every commercial term, the law and the courts for disputes. Between the parties the agreement prevails over this Licence, which fills only what it leaves out; but no agreement sets aside Section 5, Section 2(a), paid Training with an end date under paragraph (b), the Record under Section 8(d), the label under Section 8(f), Section 9(f) and (h), Section 12(e) and (f) or paragraph (d), each for its own point. Nothing in this Licence or a Deal overrides a collective agreement that protects a natural person and binds You. An agreement that is not a Deal is not described as made under this Licence.
+
+## 11. Termination and Reinstatement.
+
+(a) *Automatic end.* If You fail to comply with this Licence as to a Holder, Your Permission from that Holder ends automatically.
+
+(b) *Reinstatement.* Your Permission from that Holder is reinstated when the Holder expressly reinstates it, or automatically when You cure Your first failure as to that Holder within 30 days after You discover it or the Holder notifies You of it, whichever is earlier. Under a Deal this applies to every failure. To cure, You stop or correct the act and, where the failure concerns the Generation or what an Output shows, Remove the Outputs concerned.
+
+(c) *No automatic reinstatement.* Reinstatement is never automatic for a breach of Section 5, for showing, publishing or delivering an Output without a required Approval other than as Section 8(e)(1) allows, or for a Request You knew to be untrue.
+
+(d) *What continues.* Every term that by its nature outlasts the Permission, including the Reservation, Section 5, the deletion duties and Your promises under Section 9, continues after Your Permission ends. An Output Generated within the Permission before the failure, and that the failure does not concern, remains within Section 7(d); the end takes effect at the failure.
+
+## 12. Remedies, Fraud and Error.
+
+(a) *Outside the Permission.* The Holder has every remedy the law gives for an act outside the Permission; no remedy in this Licence excludes another.
+
+(b) *Breach.* If the act is within the scope of Your acceptance under Section 9, or breaks a promise under Section 9(d), it is also a breach of this Licence, unless Section 8(h), 9(g) or paragraph (d) says otherwise. You agree that it may cause harm money cannot repair and that the Holder may seek an order to stop and remove an Output, without security where the court may dispense with it.
+
+(c) *Who may enforce.* The Holder; the legal representative of a Holder who is a Person; anyone the Holder authorises in writing; after a Person's death or an Entity's end, whoever the law puts in the Holder's place; and, for Section 9(i), the owner of the computer system concerned.
+
+(d) *Fraud and error.*
+
+1. A record the Holder did not make is not a Statement, Deal or Approval and never gives Permission. But where the Holder gave another the means to make it or took part in it, it has effect, despite the definition of "Deal" in Section 1 and Section 2(a), as the Holder's Statement, Deal or Approval, other than a Deal under Section 5(a), and the Holder is liable for it. An act Authenticated with a second factor, certificate or seal the Holder enrolled or controlled is presumed the Holder's own; the Holder bears the burden of showing otherwise.
+2. Where item 1 does not apply and the Holder lodges with the Registry or trust service that confirmed such a record, or with a court, a claim that a third party deceived it, or its own error led it, into doing so, from Your notice of the claim You Generate nothing under the record until the claim is decided; if rejected, Generation resumes without confirmation. Once a Registry or trust service, under its published procedures, or a court establishes the deception or error, claimed or not, and that item 1 does not apply, the Holder owes nothing under the record, a licensee that acted in good faith recovers any payment not yet paid out and keeps its claim against the deceiver, and the Holder may require You to Remove Outputs of its Matter.
+3. You are not in breach for relying on such a record if a Registry on the Steward's list when it did so had confirmed it under its published procedure, or it carried a signature or seal of the kind in item 2 of the definition of "Authenticated" in Section 1 that You verified against its certificate; You did not know, and had no reason to suspect, that it was not the Holder's; You met Section 8; and on notice of that finding You do as Section 9(g) requires. Nothing in this paragraph passes Your loss to the Holder except as item 1 states, or limits a Matter Right of the real Holder or a right of anyone else.
+4. Where a misrepresentation of age, identity or authority led to a record Section 5(d) does not allow, that paragraph applies to it, and items 2 and 3 apply as if the misrepresentation were the deception and the record were not the Person's. A Registry that verified under its published procedures is not at fault; where the minor deceived it, the licensee may also claim its loss from the minor's legal representatives under the law.
+
+(e) *Content under the floors.* Whatever else this Licence provides, within the deadline in paragraph (f) after You receive a complete notice that identifies an Output of the Holder's Matter and names the paragraph of Section 5(a), (b) or (c) that covers it, You Remove it. You need not where the Output plainly falls outside that paragraph or, for a notice naming only Section 5(a) and not saying anyone shown was a minor, is within a Deal under Section 5(a), or where the notice is not from the Holder, names Section 5(a) or 5(c), and the Holder has Approved the Output, or a Deal covers it, as outside that paragraph. That exception lifts only this duty for that notice and permits nothing.
+
+(f) *Removal deadlines.* A notice to Remove content is complete when it identifies the Holder by the code issued for the Holder or another identifier through which the Holder's Statement is reached or, in a notice not from the Holder, by name, and gives a link to or other locator of the content and what the content breaks, such as a paragraph of Section 5 or a Rule. Where this Licence requires You to Remove content on a notice under paragraph (e) or Section 9(j), You do so within the following time after You receive a complete notice:
+
+1. 48 hours, for content that the notice says is in the category `sexual` or `adult` (Section 6(d)), shows a minor or shows anyone as under 18, unless it plainly is not; and
+2. 7 days, for any other content.
+
+Removing content under this paragraph covers every copy on Your services that has the same SHA-256 hash; for content that is not an Output, and for a Platform, to Remove is to stop showing, recommending, forwarding and supplying it and to delete the copies You control. Removing never requires deleting a copy the law requires You to keep, or one kept hidden from everyone while a dispute or appeal about it is open. While You decide whether the notice is right, You may hide the content from everyone but whoever published it, and from a complete notice under item 1 You neither recommend it nor earn from it; content so hidden within the deadline meets it until You decide, without undue delay, and if the notice is right You then Remove it at once. You tell whoever gave a complete notice what You did and when.
+
+## 13. Registries.
+
+(a) *Not a party.* A Registry is not a party to this Licence and cannot give a Permission. Its signature on a Statement means that it followed its published procedure, not that the Holder signed.
+
+(b) *A Registry's own terms.* A Registry may have its own terms with the Holder and with Providers for its service, fees, liability and disputes with it. Those terms cannot widen a Permission, narrow a Reservation, set Section 5 aside, reduce what You owe the Holder, or limit, delay or charge for the Holder's right to change, withdraw or Stop a Statement or withdraw from a Deal; between You and the Holder, this Licence controls.
+
+(c) *Equal standing.* Each Holder has one home Registry, the one serving the Holder. The Holder may move to another listed Registry, and must when the Registry stops serving the Holder; the Statement, its Deals and Records and the code issued for the Holder keep their identity and effect.
+
+(d) *Answers.* A Registry's answer reports the Rules and whether they are Authenticated. An answer that reports no Statement, or no decision, permits nothing and forbids nothing, and is not a statement that a use is lawful.
+
+## 14. Warranty, Disclaimer and Limitation of Liability.
+
+(a) *Warranty and disclaimer.* Where a Statement, Deal or Approval permits anything, the Holder warrants that it is the Holder's own act, that a Holder who is a Person has reached the Age of Majority and has capacity, that an Entity's Representative has its authority, and that the Holder owns or controls each item of Matter other than the Likeness that it opens. Under Section 5(d) the legal representative warrants its own act, its authority and the Person's true age, and this Section binds the representative, not the Person, for those acts. A Stop carries no warranty. OTHERWISE THE HOLDER OFFERS THE PERMISSION "AS IS" AND WARRANTS NOTHING: NOT, BEYOND THE OWNERSHIP OR CONTROL WARRANTED ABOVE, THAT ANY MATTER RIGHT EXISTS OR IS VALID, THAT THE HOLDER HAS GIVEN NO RIGHT TO ANYONE ELSE, THAT AN OUTPUT INFRINGES NO RIGHT OF ANOTHER, OR THAT A USE IS LAWFUL.
+
+(b) *Limitation of liability.* TO THE EXTENT THE LAW ALLOWS, THE HOLDER IS NOT LIABLE TO YOU ON ANY LEGAL GROUND FOR LOSS ARISING FROM THIS LICENCE, A STATEMENT, ITS CHANGE OR WITHDRAWAL, OR AN OUTPUT, EXCEPT FOR LOSS THE HOLDER CAUSES BY FRAUD, BY A BREACH OF THE WARRANTY IN PARAGRAPH (a), UNDER SECTION 12(d)(1) OR UNDER AN OBLIGATION TAKEN ON IN A DEAL, INCLUDING A REFUND OR COMPENSATION UNDER SECTION 10(d) OR (e).
+
+(c) *Your liability.* Nothing in this Licence limits Your liability to the Holder, and the Permission never relieves You of a duty You owe to anyone else or under any law.
+
+## 15. Interpretation, Law and Courts.
+
+(a) *The Rules control.* The Rules, with the meanings in Section 6, decide what is permitted. A card, deed, badge, name or other summary is an aid to reading.
+
+(b) *Narrow reading.* Where a term of this Licence or of a Statement can be read in two ways, the reading that permits less use of the Matter applies.
+
+(c) *Unenforceable terms.* A term that cannot be enforced is changed only as far as needed to enforce it or, failing that, removed, and the rest stays in force. A condition of the Permission that cannot be enforced against You leaves the act it concerns outside the Permission.
+
+(d) *No waiver.* A failure to enforce a term waives nothing. A waiver binds the Holder only if the Holder signs it.
+
+(e) *Electronic form.* An electronic record or signature meets any requirement in this Licence for writing or signature, to the extent the law allows.
+
+(f) *Mandatory protection.* Nothing in this Licence takes from the Holder a protection that the law of Home gives and that cannot be given up by agreement, nor from You, if You are a consumer, such a protection under the law of the place where You live.
+
+(g) *Law.* This Licence chooses no law; each claim, including one in contract under this Licence, is decided under the law that applies to it.
+
+(h) *Courts.* The Holder may bring a claim under this Licence in any court that has jurisdiction over You, including the courts of Home where the law of Home allows. A claim against the Holder under this Licence, or under a Deal that names no courts, may be brought only in the courts of Home.
+
+## 16. Versions, Translations, the Steward and Appendices.
+
+(a) *Fixed text.* This version of this Licence is named the Terms of Generation Licence, Version 1.0, in short ToG-L 1.0, and has the identifier `ToG-L-1.0`, the only spelling by which a Statement cites it. Its text never changes and is identified by the SHA-256 hash of the text between "Legal code begins" and "Legal code ends", those lines excluded, every text in square brackets replaced, with its brackets, by the completed text, computed as the profile prescribes.
+
+(b) *Versions.* A text is a version of this Licence only if the Steward publishes it as one, with a new number and hash; a change to the meaning of any term takes a new major number. An earlier version stays in force for every Statement that cites it, for as long as such a Statement or an Output made under it may be checked.
+
+(c) *Translations.* An official translation is one the Steward publishes with its own hash. A Statement may cite an official translation, which then governs that Statement, read with this English text, the reading that permits less use of the Matter applying. Any other translation is an aid to reading and may name this Licence if it says it is unofficial and that this English text controls; a record that cites it is read as citing this English text.
+
+(d) *Copying and changing this text.* The Steward holds the copyright in this text and licenses it on these terms. Anyone may copy and distribute it unchanged, or make a changed text under another name and identifier that neither is or begins `ToG` nor uses the Steward's name except to state how it differs, and that claims neither to be this Licence or approved by the Steward nor this text's hash or identifier. A Statement that cites a changed text is not a Statement under this Licence. "Terms of Generation" is a general name, free for anyone to use.
+
+(e) *The Steward.* The Steward is not a party to this Licence and has no rights under it other than those in paragraph (d). It cannot change a published version or any Statement, and is not a Registry. It deposits each published version of this Licence and each profile, with hash and date, in a public archive. If there is no Steward, this Licence continues to apply as written, with the last list published under paragraph (f).
+
+(f) *Registries and sources.* The Steward publishes the list of Registries and of the sources a Lookup must query, under criteria it publishes first and applies to every Registry alike; it lists, suspends or removes a Registry only with public notice, reasons and a chance to answer, and a listing ranks no Registry. The criteria require a listed Registry to keep Section 13(b) in its terms, to verify ownership or control of an item under Section 2(b) only on evidence other than the Holder's own declaration and its domain, and to publish what evidence it accepts, to keep and remove versions of a Statement as Section 7(h) states, to hand over, on a move or before it closes, what the profile prescribes, to report every Stop and withdrawal made as Section 2(c) or 10(d) allows, to return payments as Section 12(d)(2) states, to hold an Authorisation only as the definition of "Authorisation" requires and to require its issuer to warrant that it may issue it, and to report a Record as withdrawn only as Section 9(j)(3) allows, and to state in its terms that it answers for a wrong identity, age, authority or ownership only where it breached its own procedures.
+
+(g) *One text; Appendices.* This text, with the hash under paragraph (a), is the same for every Holder whose Statement cites it and for every Provider and Platform that accepts it. No Holder, Registry, Provider or other person, and no Deal or form, changes this text; a Deal prevails between its parties only as Section 10(f) provides. A copy made for a Holder, a Provider, a Platform or an Authorisation sets out whatever is particular to it only after "END OF TERMS AND CONDITIONS", in Appendices, each beginning on a page of its own, in the order of their letters:
+
+1. Appendix A (Notice): the code issued for the Holder, the Holder's name, the Matter, the identifier and hash of the text the Holder's Statement cites, and the version and hash of that Statement at the Holder's home Registry;
+2. Appendix B (The Holder's Rules): the Rules of that Statement in full, every yes and every no, the Conditions first;
+3. Appendix C (Deal): one Deal, with its terms, its signatures and how the Holder's signature is Authenticated, numbered C-1, C-2 and so on, one for each Deal shown;
+4. Appendix D (Provider Undertaking): the Provider's legal name, its domains, the services it offers, the date the Undertaking was published, the identifier and hash of the text it accepts, the Provider's identifier at a Registry, if it has one, where notices and requests to Remove go, and the Provider's signature and the key, published as its own under Section 9(a), under which it was made. Appendix D contains no Rules;
+5. Appendix E (Platform Undertaking): the Platform's legal name, its domains, the services it offers, the date the Platform Undertaking was published, the identifier and hash of the text it accepts, the Platform's identifier at a Registry, if it has one, where notices and requests to Remove go, and the Platform's signature and the key, published as its own under Section 9(a) and (j), under which it was made. Appendix E contains no Rules; and
+6. Appendix F (Authorisation): one Authorisation, with its code and hash, the Registry that holds it, its issuer and, for an Authority, the power it cites, the natural persons or Entities it covers or that it covers anyone who acts within it, the computer systems it covers by their identifiers, the acts it allows, its period, and the issuer's signature and how it is Authenticated. Appendix F contains no Rules.
+
+A copy made for a Holder contains Appendices A and B and an Appendix C for each Deal the Holder chooses to show; a copy made for a Provider contains Appendix D, if the Provider has given an Undertaking, and an Appendix C for each Deal to which the Provider is a party and which it chooses to show; a copy made for a Platform contains Appendix E, Appendix D as well if the Platform has also given an Undertaking, and an Appendix C for each Deal to which the Platform is a party and which it chooses to show; a copy made for an Authorisation, for its issuer or for one it covers, contains Appendix F and no other Appendix. An Appendix that does not apply is left out; leaving one out changes neither this text nor its hash. Every page of a copy made for a Holder shows at its foot, outside this text, the code issued for the Holder, the version of the Holder's Statement, the first eight characters of that version's hash and where to look them up; where the page and the record of that version at the home Registry differ, the record decides, never the paper. Every page of a copy made for a Provider or a Platform shows at its foot, outside this text, its identifier or domain, the first eight characters of the hash of the text it accepts and where to look them up; where the page and what it published or signed differ, what it published or signed decides, never the paper. Every page of a copy made for an Authorisation shows at its foot, outside this text, its code, the first eight characters of its hash and the Registry that holds it; where the page and the Authorisation as held there differ, the Registry's record decides, never the paper. Anything else in the Appendices is an aid to reading under Section 15(a). The Appendices never amend this Licence: to the extent an Appendix would change a Section of this Licence, it has no effect. The Appendices permit nothing by themselves. Appendix B is a copy of the Statement under Section 2(g); where it differs from the version it names, as held at the home Registry, that version governs. An Appendix C shows a Deal; the Deal has effect only as Sections 2(b) and 10 provide, and binds only its parties. Appendix D is a copy of the Provider's Undertaking, Appendix E of the Platform Undertaking and Appendix F of an Authorisation; each has effect only as Section 9 provides. Which version and which Statements apply to an act is decided by Sections 2, 7, 8 and 10 alone.
+
+END OF TERMS AND CONDITIONS
