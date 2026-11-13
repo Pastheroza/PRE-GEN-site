@@ -33,7 +33,7 @@ if hashlib.sha256(_ref).hexdigest() != REFERENCE_SHA256:
 # ---- the fragment `tog=v1` (PLAN §2.1) ----------------------------------------------------------------------------
 AGES = ("18+", "13-17")             # 13-17 only ever decodes as "minor": a representative registers a minor
 WHO = ("company", "child")          # a person answering for themself has no `who`
-LEGAL = {"id": "ToG-1.0", "label": "ToG 1.0 public draft 1", "sha256": hashlib.sha256((HERE.parents[1] / "tog" / "1.0" / "legal-code.txt").read_bytes())
+LEGAL = {"id": "ToG-L-1.0", "label": "ToG-L 1.0 public draft 3", "sha256": hashlib.sha256((HERE.parents[1] / "tog" / "1.0" / "legal-code.txt").read_bytes())
          .hexdigest(), "url": "https://www.pregen.org/tog/1.0"}
 DECISIONS = ("no", "approve_all", "rules")
 FLOORS = ("each", "project", "video")

@@ -1,6 +1,6 @@
 // /tog and /tog/document (spec/drafts/tog-funnel.md): one module that imports only the ToG library, the CSP kept, the
-// date of birth and the answers never anywhere but the fragment, only the one common legal text named (ToG 1.0 public
-// draft 1, with its hash and link), /tog public and /tog/document never indexed, and "Create your ToG" in every
+// date of birth and the answers never anywhere but the fragment, only the one common legal text named (ToG-L 1.0 public
+// draft 3, with its hash and link), /tog public and /tog/document never indexed, and "Create your ToG" in every
 // page's menu. The cards: packages/verify-js/test/tog.test.js; the screens: test/tog-flow.test.mjs.
 // Run: node --test test/tog-page.test.mjs
 import { test } from "node:test";
@@ -38,9 +38,11 @@ test("nothing is stored, and only the fragment carries answers", () => {
   assert.deepEqual([...js.matchAll(/fetch\(("[^"]+")/g)].map((m) => m[1]), ['"/test/tog-local/steward.json"', '"/api/lookup?code="']);
 });
 
-test("one common legal text: the pages name only ToG 1.0 public draft 1, link it, and never build a copy", () => {
-  for (const text of [html, doc, js]) assert.doesNotMatch(text, /ToG-[LB]-1\.0|prampta-likeness|(?<!public )\bdraft\b(?! 1\b)|UNRELEASED|Blob|download/i);
-  assert.doesNotMatch(html, /ToG 1\.0(?! public draft 1)/);
+test("one common legal text: the pages name only ToG-L 1.0 public draft 3, link it, and never build a copy", () => {
+  // A link to /downloads (the published PDFs) is not a copy; a download attribute or a Blob would be.
+  for (const text of [html, doc, js]) assert.doesNotMatch(text, /ToG-[LB]-1\.0|prampta-likeness|(?<!public )\bdraft\b(?! 3\b)|UNRELEASED|Blob|download(?!s)/i);
+  assert.doesNotMatch(html, /ToG(-L)? 1\.0(?! public draft 3)/);
+  assert.match(js, /el\("a", \{ href: "\/downloads" \}, "PDF and examples"\)/);
   assert.match(js, /el\("a", \{ href: "\/tog\/1\.0" \}, "Read the legal code"\)/);
   assert.match(js, /el\("a", \{ href: "\/tog\/1\.0\/deed" \}, "Read it in plain words"\)/);
   for (const f of ["tog/1.0/index.html", "tog/1.0/deed.html", "tog/1.0/legal-code.txt"]) assert.ok(exists(f), f);

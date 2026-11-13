@@ -37,9 +37,9 @@ export function conditionsOk(c) {
     && c.normalize("NFC") === c && !COND_BAD.test(c);
 }
 /** The one common licence text every card links to, the same for everyone (tog/1.0/legal-code.txt), and the label
- *  every card that cites it shows: public draft 1, whose brackets are not yet completed (its §16(a)). */
-export const LEGAL = { id: "ToG-1.0", label: "ToG 1.0 public draft 1",
-  sha256: "b5ca28ccaeeecf3be03e7532b3460ff2d0d696c2f72cc7af1cff5ef5cdd178e4", url: "https://www.pregen.org/tog/1.0" };
+ *  every card that cites it shows: public draft 3, whose brackets are not yet completed (its §16(a)). */
+export const LEGAL = { id: "ToG-L-1.0", label: "ToG-L 1.0 public draft 3",
+  sha256: "567cc9e2070f1b1a57d6f1c2fed41bb9887489699e7dd49f16e8ab25ac73c3f2", url: "https://www.pregen.org/tog/1.0" };
 
 const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);

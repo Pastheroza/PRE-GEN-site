@@ -95,8 +95,8 @@ function registryStep(t, co = false) {
   assert.match(t, /The code is pending for 7 days\. It permits and forbids nothing until it is confirmed/);
   assert.match(t, /Your registry reminds you on day 3\. On day 7 an unconfirmed code is deleted, and its number is never issued again\./);
   assert.match(t, /Once confirmed, your ToG code takes effect for every registry and AI service on PRE-GEN Protocol\./);
-  assert.doesNotMatch(t, /ToG 1\.0(?! public draft 1)/);   // every line that cites the text says which text it is
-  if (co) assert.doesNotMatch(t, /ToG 1\.0 public draft|Read the legal code/);   // ToG 1.0 covers natural persons only
+  assert.doesNotMatch(t, /ToG(-L)? 1\.0(?! public draft 3)/);   // every line that cites the text says which text it is
+  if (co) assert.doesNotMatch(t, /ToG-L 1\.0 public draft|Read the legal code/);   // ToG 1.0 covers natural persons only
   else assert.match(t, /Read the legal code.*Read it in plain words/);
 }
 
@@ -122,7 +122,7 @@ test("a person's no: checked, registered in a new tab, the code typed back, the 
   p.pick("No"); p.next();
   const t = p.text();
   assert.match(t, /Check your statement/);
-  assert.match(t, /write tog:no in the bio of your own public profile\. Under ToG 1\.0 public draft 1 §2\(h\) it takes effect at once\./);
+  assert.match(t, /write tog:no in the bio of your own public profile\. Under ToG-L 1\.0 public draft 3 §2\(h\) it takes effect at once\./);
   registryStep(t);
   const answers = await codeBack(p, " tog-pram-900000037k ");   // typed codes fold to their one spelling
   assert.deepEqual(answers, { result: "ok", answers: { age: "18+", decision: "no" } });
@@ -202,7 +202,7 @@ test("a company: the same form of code, no licence text cited, its domain confir
   const t = p.text();
   assert.match(t, /Your ToG code/);
   assert.match(t, /PRAMPTA gives you the file \/\.well-known\/tog\.json on your code's page/);
-  assert.doesNotMatch(t, /ToG 1\.0 public draft/);
+  assert.doesNotMatch(t, /ToG-L 1\.0 public draft/);
 });
 
 test("/tog/document: a registry's return shows the statement; a company's tog.json from its record; a broken link", async () => {

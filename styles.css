@@ -164,6 +164,8 @@ details p { margin: 10px 0 0; }
 .pg-card-foot, .pg-card .dim { font-size: 14px; color: var(--muted); margin-top: 12px; }
 .pg-card p { margin: 0 0 6px; }
 .pg-prompt { font-family: var(--mono); }
+.dl { display: grid; gap: 16px; margin: 0 0 16px; }   /* /downloads: one card per file */
+.dl h3 { margin: 0 0 6px; font-size: 17px; }
 
 /* Footer: the mark and one line on the left, four short columns on the right, the small print below. */
 .foot { margin-top: 96px; border-top: 1px solid var(--soft); font-size: 15px; }

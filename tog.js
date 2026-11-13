@@ -117,7 +117,7 @@ function example(prefix) {
   }
 }
 const legalLinks = () => el("p", { class: "tg-legal" }, el("a", { href: "/tog/1.0" }, "Read the legal code"),
-  el("a", { href: "/tog/1.0/deed" }, "Read it in plain words"));
+  el("a", { href: "/tog/1.0/deed" }, "Read it in plain words"), el("a", { href: "/downloads" }, "PDF and examples"));
 
 // ---- the statement: one text, three forms --------------------------------------------------------------------------
 const escHtml = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);   // text only, never in an attribute
