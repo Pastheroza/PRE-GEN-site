@@ -171,7 +171,7 @@ const togJson = (prefix, record, claim) => JSON.stringify({ tog: 1, registered: 
 // ---- screens: each returns {title, hint?, body, next?, cta?, label?} -----------------------------------------------
 const SCREENS = {
   intro() {
-    return { big: true, label: "ToG Protocol", title: "Create your ToG",
+    return { big: true, label: "PRE-GEN Protocol", title: "Create your ToG",
       hint: "State whether AI may generate your likeness, your brand or your products, and on what terms. You prepare your statement here and register it with a registry you choose.",
       body: [
         notRegistry(),
@@ -179,7 +179,7 @@ const SCREENS = {
           ["Answer", "A few questions on this page. Nothing you enter leaves this browser until you choose a registry."],
           ["Choose a registry", "Pick one from the list of available registries. It records your statement and issues your ToG code."],
           ["Confirm", "The registry confirms your identity and your rights. Publishing your ToG statement on a website or profile you control confirms the code is yours."],
-          ["In force", "Once confirmed, your ToG code takes effect for every registry and AI service on ToG Protocol."],
+          ["In force", "Once confirmed, your ToG code takes effect for every registry and AI service on PRE-GEN Protocol."],
         ].map(([h, p], i) => el("li", {}, el("span", { class: "n" }, String(i + 1)), el("div", {}, el("h2", {}, h), el("p", {}, p))))),
         el("p", { class: "tg-actions" }, el("button", { type: "button", class: "btn primary tg-go", onclick: () => go("need") }, "Start"),
           el("span", { class: "meta" }, "About three minutes. Free.")),
@@ -200,7 +200,7 @@ const SCREENS = {
     return provider
       ? { title: "Your AI service needs no ToG code", hint: "An AI service does not register. It reads the ToG codes of the people and brands it is asked to generate, asks their registry before it generates, and generates only on a signed yes.",
         body: el("p", { class: "tg-actions" }, el("a", { class: "btn primary", href: "/connect" }, "Connect your AI"), el("a", { class: "btn", href: "/docs" }, "How it works")) }
-      : { title: "A registry is listed, not registered", hint: "A registry implements ToG Protocol on its own site and asks the steward to list it in the signed list of registries. Once listed, it can take statements through this same process.",
+      : { title: "A registry is listed, not registered", hint: "A registry implements PRE-GEN Protocol on its own site and asks the steward to list it in the signed list of registries. Once listed, it can take statements through this same process.",
         body: el("p", { class: "tg-actions" }, el("a", { class: "btn primary", href: "/create-registry" }, "Create a registry"), el("a", { class: "btn", href: "/registries" }, "Registries")) };
   },
   use() {
@@ -332,7 +332,7 @@ const SCREENS = {
         notRegistry(),
         el("p", {}, `Choose one registry from the list. It records your statement, issues your ToG code and confirms ${co ? "that the company controls its domain and holds the rights" : "your identity and your rights"}. You need only one: every other registry and AI service reads your code.`),
         el("p", {}, `The code is pending for 7 days. It permits and forbids nothing until it is confirmed ${co ? "on the company's domain" : "by publishing your statement or verifying your identity"}. Your registry reminds you on day 3. On day 7 an unconfirmed code is deleted, and its number is never issued again.`),
-        el("p", {}, "Once confirmed, your ToG code takes effect for every registry and AI service on ToG Protocol."),
+        el("p", {}, "Once confirmed, your ToG code takes effect for every registry and AI service on PRE-GEN Protocol."),
         S.rep && el("p", {}, "Your registry will ask you to confirm that you are the parent or legal guardian."),
         !yes() && !co && !S.rep && el("p", { class: "tg-inset" }, `Until your code is confirmed, you may also write tog:no in the bio of your own public profile. Under ${LEGAL.label} §2(h) it takes effect at once.`),
         list,
@@ -373,7 +373,7 @@ function result(done) {
   const status = el("p", { class: "tg-status-line" }, "Reading the code's status at its registry…");
   lookup(done.code).then((d) => status.replaceChildren(...{
     pending: [el("b", {}, "Pending. "), `It permits and forbids nothing until you confirm it, within 7 days of registration.`],
-    active: [el("b", {}, "Active. "), "Your statement is in force for every registry and AI service on ToG Protocol."],
+    active: [el("b", {}, "Active. "), "Your statement is in force for every registry and AI service on PRE-GEN Protocol."],
     expired: [el("b", {}, "Expired. "), "The code was not confirmed within 7 days and was deleted. Register again for a new code."],
   }[d.status] || [el("b", {}, "Not found. "), `${name} does not show this code yet. Check that it is the code it issued.`]),
   () => status.replaceChildren(el("b", {}, "Status not available now. "), "Check it later on ", el("a", { href: `/lookup?code=${done.code}` }, "Look up a code"), "."));

@@ -18,7 +18,7 @@ specification.** It has two layers, so that the process is one standard without 
   registers no person or company and holds no code.
 - **A registry registers.** The person or company chooses one home registry from the signed list. It records the
   answers, issues the ToG code, confirms identity and rights (a company: control of its domain), and from then the code
-  takes effect for every registry and AI service on ToG Protocol. One home per holder.
+  takes effect for every registry and AI service on PRE-GEN Protocol. One home per holder.
 - **An AI service and a registry operator never register** in this process: they get no code (A.2).
 
 ## A.2 Intake and outcomes
@@ -74,7 +74,7 @@ A new code is pending for 7 days: it permits and forbids nothing; the registry r
 an unconfirmed code is deleted and its number is never issued again (`extensions/lookup.md`). A person confirms it by
 the line `ToG: <code>`, alone on its line, at a public account or website they control, or by identity verification;
 a company by its domain's `/.well-known/tog.json` (A.7). Once confirmed the holder's Yes or No is global for every
-registry and AI service on ToG Protocol. One home registry per holder.
+registry and AI service on PRE-GEN Protocol. One home registry per holder.
 
 ## A.7 The ToG statement
 
@@ -148,8 +148,8 @@ of the licence.
 
 **The registry step is mandatory**, for a company too. The home registry issues the code at once, pending: it
 permits nothing until verified, and is deleted after 7 days without it (`extensions/lookup.md`). After verification
-the holder's yes or no is global for every registry on ToG Protocol ("Once verified, your YES or NO is global for
-every registry on ToG Protocol."). A yes is recorded as the holder's wish;
+the holder's yes or no is global for every registry on PRE-GEN Protocol ("Once verified, your YES or NO is global for
+every registry on PRE-GEN Protocol."). A yes is recorded as the holder's wish;
 it opens only after identity verification.
 
 ### The fragment `tog=v1`

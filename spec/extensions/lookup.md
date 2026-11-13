@@ -81,7 +81,7 @@ code and a company's code have the same form (`TOG-CODE.md` §5).
   holder on day 3. A deleted code answers `"status": "expired"` (no other member but `code`, `kind`
   and `registry`): it permits nothing and forbids nothing. **Its serial is never issued again**
   (`TOG-CODE.md` §5). The holder may register again and gets a new code.
-- **Once verified, the holder's yes or no is global:** every registry and AI service on ToG Protocol
+- **Once verified, the holder's yes or no is global:** every registry and AI service on PRE-GEN Protocol
   reads it at the home, by this code.
 
 `level` of a ToG holder: `channel` (control of an account or domain proved) or `verified` (identity

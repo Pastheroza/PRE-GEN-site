@@ -94,7 +94,7 @@ function registryStep(t, co = false) {
   assert.match(t, /You need only one: every other registry and AI service reads your code\./);
   assert.match(t, /The code is pending for 7 days\. It permits and forbids nothing until it is confirmed/);
   assert.match(t, /Your registry reminds you on day 3\. On day 7 an unconfirmed code is deleted, and its number is never issued again\./);
-  assert.match(t, /Once confirmed, your ToG code takes effect for every registry and AI service on ToG Protocol\./);
+  assert.match(t, /Once confirmed, your ToG code takes effect for every registry and AI service on PRE-GEN Protocol\./);
   assert.doesNotMatch(t, /ToG 1\.0(?! public draft 1)/);   // every line that cites the text says which text it is
   if (co) assert.doesNotMatch(t, /ToG 1\.0 public draft|Read the legal code/);   // ToG 1.0 covers natural persons only
   else assert.match(t, /Read the legal code.*Read it in plain words/);

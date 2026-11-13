@@ -25,8 +25,6 @@ ROOT = Path(__file__).resolve().parents[2]
 DIR = ROOT / "tog" / "1.0"
 URL = "https://www.pregen.org/tog/1.0"
 LABEL = "ToG 1.0 public draft 1"     # every page and card that cites the text says which text it is
-NAME = ("ToG Protocol (Terms of Generation Protocol). Earlier versions of this protocol were published as Prompt Protocol "
-        "and as PRE-GEN Protocol. It is the same protocol under its current name.")
 
 
 def extract(src: Path):
@@ -101,7 +99,7 @@ HEAD = """<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{title} — ToG Protocol</title>
+<title>{title} — PRE-GEN</title>
 <meta name="description" content="{description}">
 <link rel="canonical" href="{url}">
 <link rel="icon" type="image/png" href="/assets/pregen-logo.png">
@@ -124,7 +122,7 @@ HEAD = """<!DOCTYPE html>
 FOOT = """</div></main>
 <footer class="foot"><div class="wrap">
 <div class="foot-top">
-<div class="foot-brand"><a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="56" height="56" alt="PRE-GEN"></a><p>{name}</p></div>
+<div class="foot-brand"><a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="56" height="56" alt="PRE-GEN"></a><p>Pre-Generative Authorization Protocol. AI asks before it generates a real person.</p></div>
 <nav class="foot-cols" aria-label="Site">
 <div><p class="foot-h">Start</p><a href="/connect">Connect your AI</a><a href="/create-registry">Create a registry</a><a href="/lookup">Look up a code</a></div>
 <div><p class="foot-h">Learn</p><a href="/docs">How it works</a><a href="/docs/two-layers">Two layers</a><a href="/faq">FAQ</a><a href="/llms.txt">llms.txt</a></div>
@@ -136,7 +134,7 @@ FOOT = """</div></main>
 </div></footer>
 </body>
 </html>
-""".replace("{name}", NAME)
+"""
 # The source's own status line (ToG-1.0-legal-code.md, above the hashed part), shown on both pages. Its §16(a): the
 # final ToG 1.0 hash is taken once every bracket is completed, so this public-draft hash is not it.
 DRAFT = ('<p class="tl-steward" id="draft"><b>' + LABEL + '</b>, 11 November 2026. Draft for review by qualified '

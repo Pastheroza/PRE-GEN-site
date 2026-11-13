@@ -37,7 +37,7 @@ def test_public_draft_1_with_its_two_brackets_as_written_and_labelled_on_both_pa
         html = (t.DIR / page).read_text(encoding="utf-8")
         assert html.count('id="draft"') == 1 and "ToG 1.0 public draft 1" in html and "Not in force" in html, page
         assert "covered by" not in html, page        # §16(a): the final hash is taken once the brackets are completed
-        assert "— ToG Protocol</title>" in html and f"<p>{t.NAME}</p>" in html and "Pre-Generative" not in html, page
+        assert "— PRE-GEN</title>" in html and "ToG Protocol" not in html, page   # the protocol is PRE-GEN Protocol (2026-11-12)
 
 
 def test_extract_follows_the_recipe_printed_in_the_source(tmp_path, monkeypatch):

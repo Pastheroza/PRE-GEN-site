@@ -47,6 +47,11 @@ Text only: no message format, required schema member or vector changes.
   myself. Sexual or adult content only by such a deal after an identity document check, and never showing me as
   under 18." (and the third-person and Russian forms). Reference `tog_generator.py` SHA-256 `8a1a6d19…`; the card
   vectors change; a company's card is unchanged.
+- **The protocol keeps the name PRE-GEN Protocol** (founder decision 2026-11-12). ToG names its licence (ToG 1.0,
+  Terms of Generation), its codes (`TOG-…`) and the ToG statement, never the protocol. The sentence about the
+  protocol's earlier names is removed from `README.md`, `PRE-GEN-SPEC.md` and the package front pages; the spec is
+  again "PRE-GEN Protocol Specification", and `drafts/tog-funnel.md` and `extensions/lookup.md` say "every registry
+  on PRE-GEN Protocol". Package names, the domain and the DOIs never changed.
 
 ## pregen-registry 0.5.0 (unreleased): the registry writes ToG codes
 

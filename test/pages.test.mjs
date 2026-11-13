@@ -30,23 +30,22 @@ test("the sitemap does not list the retired PG code page", () => {
   assert.doesNotMatch(readFileSync(ROOT + "sitemap.xml", "utf8"), /pg-code/);
 });
 
-// The protocol's name (founder, exact wording): every footer and the spec and package front pages carry it; a page title
-// never names the whole protocol PRE-GEN. The historical v5 paper keeps its own title.
-const NAME = "ToG Protocol (Terms of Generation Protocol). Earlier versions of this protocol were published as Prompt "
-  + "Protocol and as PRE-GEN Protocol. It is the same protocol under its current name.";
-test("the name: ToG Protocol in every footer, title and front page; PRE-GEN only as an earlier name", () => {
+// The protocol's name (founder, 2026-11-12): the protocol is PRE-GEN Protocol again; ToG names the licence, the codes
+// and the statement, never the protocol. Every footer carries the site's line, and no page, front page, llms.txt or
+// tog.js calls the protocol ToG Protocol or keeps the sentence about its earlier names.
+const FOOT = "Pre-Generative Authorization Protocol. AI asks before it generates a real person.";
+const NOT_THE_NAME = /ToG Protocol|Terms of Generation Protocol|Earlier versions of this protocol/;
+test("the name: PRE-GEN Protocol; ToG never names the protocol", () => {
   const served = pages.filter((f) => f.endsWith(".html") && !HISTORICAL[f]);
   for (const f of served) {
     const text = readFileSync(ROOT + f, "utf8");
-    if (text.includes('class="foot-brand"')) assert.ok(text.includes(`<p>${NAME}</p>`), f);
-    assert.doesNotMatch(text, /Pre-Generative Authorization Protocol\. AI asks/, f);
-    for (const [, a, b] of text.matchAll(/<title>([^<]*)<\/title>|property="og:title" content="([^"]*)"/g)) assert.doesNotMatch(a ?? b, /PRE-GEN/, f);
+    if (text.includes('class="foot-brand"')) assert.ok(text.includes(`<p>${FOOT}</p>`), f);
     assert.doesNotMatch(text, /integrated PRE-GEN|PRE-GEN: &lt;|“PRE-GEN: /, f);
   }
   assert.ok(served.filter((f) => readFileSync(ROOT + f, "utf8").includes('class="foot-brand"')).length > 20);
-  for (const f of ["spec/README.md", "spec/PRE-GEN-SPEC.md", "packages/verify-py/README.md", "packages/verify-js/README.md",
-    "packages/registry/README.md", "README.md"]) assert.ok(readFileSync(ROOT + f, "utf8").split("\n").slice(0, 4).includes(NAME), f);
-  // llms.txt, linked from every footer: H1 and its one-line summary first (llmstxt.org), then the name.
+  for (const f of [...pages, "spec/README.md", "spec/PRE-GEN-SPEC.md", "packages/verify-py/README.md",
+    "packages/verify-js/README.md", "packages/registry/README.md", "tog.js"]) assert.doesNotMatch(readFileSync(ROOT + f, "utf8"), NOT_THE_NAME, f);
+  // llms.txt, linked from every footer: H1 and its one-line summary first (llmstxt.org).
   const llms = readFileSync(ROOT + "llms.txt", "utf8").split("\n");
-  assert.deepEqual([llms[0], llms[2].slice(0, 41), llms[4]], ["# ToG Protocol", "> ToG Protocol is an open standard by Val", NAME]);
+  assert.deepEqual([llms[0], llms[2].slice(0, 36)], ["# PRE-GEN", "> PRE-GEN is an open standard by Val"]);
 });

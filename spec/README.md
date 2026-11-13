@@ -1,6 +1,4 @@
-# ToG Protocol specification
-
-ToG Protocol (Terms of Generation Protocol). Earlier versions of this protocol were published as Prompt Protocol and as PRE-GEN Protocol. It is the same protocol under its current name.
+# PRE-GEN specification
 
 PRE-GEN is an open standard for asking permission before an AI system
 generates a real person, brand, voice or work, and for proving the answer

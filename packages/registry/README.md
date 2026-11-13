@@ -1,7 +1,5 @@
 # pregen-registry
 
-ToG Protocol (Terms of Generation Protocol). Earlier versions of this protocol were published as Prompt Protocol and as PRE-GEN Protocol. It is the same protocol under its current name.
-
 The reference PRE-GEN registry. **Ask before you generate; get a signed answer anyone can
 check.** It implements [`PRE-GEN-CORE.md`](https://www.pregen.org/spec/PRE-GEN-CORE.md), the profile `likeness/1` and these extensions:
 `reports`, `provider-keys`, `limits`, `jobs`, `grants`, `licensee`, `observe`, `lookup`, `identity`,
