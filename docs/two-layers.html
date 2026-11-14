@@ -19,15 +19,16 @@
 <script src="/site.js" defer></script>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap">
-<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt="PRE-GEN"></a>
+<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt=""><span class="mark-name">PRE-GEN</span></a>
 <button class="menu-btn" type="button" aria-controls="site-menu" aria-expanded="false" aria-label="Open menu"><span></span><span></span></button>
 <div class="menu" id="site-menu">
-<nav aria-label="Main"><a href="/tog">The Licence</a><a href="/tog/create">Create your ToG</a><a href="/connect">Connect your AI</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/downloads">Downloads</a><a href="/docs">How it works</a><a href="/create-registry" class="nav-more">Create a registry</a><a href="/faq" class="nav-more">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site" class="nav-more">GitHub</a></nav>
+<nav aria-label="Main"><a href="/tog">The Licence</a><a href="/tog/create">Create your ToG</a><a href="/docs" aria-current="page">How it works</a><a href="/connect">Connect your AI</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/downloads">Downloads</a><div class="nav-group"><button class="nav-group-btn" type="button" aria-expanded="false" aria-controls="nav-more">More</button><div class="nav-group-list" id="nav-more"><a href="/create-registry">Create a registry</a><a href="/faq">FAQ</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a></div></div></nav>
 </div>
 </div></header>
-<main><div class="wrap">
-<div class="doc"><aside><ul><li><a href="/docs">How it works</a></li><li><a href="/docs/two-layers" aria-current="page">Two layers</a></li><li><a href="/docs/tog-code">ToG codes</a></li><li><a href="/docs/versions">Versions</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Add it to your service</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Build it</a></li></ul></aside><article><h1>Two layers</h1>
+<main id="main"><div class="wrap">
+<div class="doc"><aside><nav aria-label="Documentation"><ul><li class="doc-h" aria-hidden="true">Overview</li><li><a href="/docs">How it works</a></li><li><a href="/docs/two-layers" aria-current="page">Two layers</a></li><li><a href="/docs/proves">What it proves</a></li><li class="doc-h" aria-hidden="true">Integrate</li><li><a href="/docs/sdk">Add it to your service</a></li><li><a href="/docs/implement">Build it</a></li><li><a href="/docs/c2pa">C2PA</a></li><li class="doc-h" aria-hidden="true">Reference</li><li><a href="/docs/tog-code">ToG codes</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/versions">Versions</a></li></ul></nav></aside><article><h1>Two layers</h1>
 <p class="meta">PRE-GEN is mandatory. A registry's commerce is optional. They are separate.</p>
 <p><b>PRE-GEN</b> is the layer every AI service and every registry has: ask before generating, check the signed answer, generate only on a yes, report, keep the proof. It is free, and it needs no account anywhere. Your identity is your domain and a key you make.</p>
 <p><b>Commerce</b> is what a registry may add on top: selling licences, with its own prices, checkout and contract. PRE-GEN names no checkout. A registry that sells nothing is still a complete registry.</p>
@@ -55,14 +56,14 @@
 <tr><td>Cost</td><td>Free, Apache-2.0</td><td>The registry's own</td></tr>
 <tr><td>Where it is written</td><td>This site</td><td>Each registry's own site</td></tr>
 </tbody></table></div>
-<h2>If you run an AI service</h2>
+<h2 id="if-you-run-an-ai-service">If you run an AI service</h2>
 <p><b>Without PRE-GEN:</b> add PRE-GEN first. One sitting: a domain, a key, the library, the test network. <a href="/docs/provider.md">The provider guide</a> takes you through it with complete, tested examples. Then, if you want to buy licences for your product or your users, go to any registry's commerce page.</p>
 <p><b>With PRE-GEN:</b> buying is each registry's own. At PRAMPTA today, people buy licences at <a href="https://prampta.com">prampta.com</a> and connect them to your app on one consent screen (bind). Buying licences for your app under its own domain is not open there yet.</p>
-<h2>If you run a registry</h2>
+<h2 id="if-you-run-a-registry">If you run a registry</h2>
 <p>Implement PRE-GEN (<a href="/docs/registry.md">the registry guide</a>) and get listed. Answer every AI app known by its domain, with no account, on the same terms; you may check an app under your published procedure before you say yes beyond its own users' licences. Whether you sell anything, and how, is yours: publish a commerce page on your own site if you do.</p>
-<h2>If you are a person a registry represents</h2>
+<h2 id="if-you-are-a-person-a-registry-represents">If you are a person a registry represents</h2>
 <p>Your yes or no reaches every AI app that asks, signed by your registry. Selling your licences happens at your registry, under its terms.</p>
-<h2>If you bought a licence</h2>
+<h2 id="if-you-bought-a-licence">If you bought a licence</h2>
 <p>Connect it to the app you use with one consent screen at your registry, like “Sign in with Google” (<a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/bind.md">how it works</a>).</p>
 <p class="note">PRE-GEN belongs to no company. Its author also runs PRAMPTA, the first registry, which has no rights that any other registry lacks.</p>
 <nav class="pager" aria-label="Pages"><a href="/docs">← How it works</a><a href="/docs/sdk">Add it to your service →</a></nav></article></div>

@@ -19,16 +19,17 @@
 <script src="/site.js" defer></script>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap">
-<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt="PRE-GEN"></a>
+<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt=""><span class="mark-name">PRE-GEN</span></a>
 <button class="menu-btn" type="button" aria-controls="site-menu" aria-expanded="false" aria-label="Open menu"><span></span><span></span></button>
 <div class="menu" id="site-menu">
-<nav aria-label="Main"><a href="/tog">The Licence</a><a href="/tog/create">Create your ToG</a><a href="/connect" aria-current="page">Connect your AI</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/downloads">Downloads</a><a href="/docs">How it works</a><a href="/create-registry" class="nav-more">Create a registry</a><a href="/faq" class="nav-more">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site" class="nav-more">GitHub</a></nav>
+<nav aria-label="Main"><a href="/tog">The Licence</a><a href="/tog/create">Create your ToG</a><a href="/docs">How it works</a><a href="/connect" aria-current="page">Connect your AI</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/downloads">Downloads</a><div class="nav-group"><button class="nav-group-btn" type="button" aria-expanded="false" aria-controls="nav-more">More</button><div class="nav-group-list" id="nav-more"><a href="/create-registry">Create a registry</a><a href="/faq">FAQ</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a></div></div></nav>
 </div>
 </div></header>
-<main><div class="wrap guide">
+<main id="main"><div class="wrap guide">
 <h1>Connect your AI</h1>
-<p class="lede">Your AI asks before it shows a real person, a character or a brand, and goes ahead only on a signed yes. No account anywhere. For a developer, about a day.</p>
+<p class="lede">Your AI service asks before it generates a real person, a character or a brand, and goes ahead only on a signed <code>allow</code>. You need no account at any registry. For a developer, about a day of work.</p>
 <section class="prompt" aria-labelledby="prompt-h">
 <h2 id="prompt-h">The easy way: give this to your AI assistant</h2>
 <p>Copy the prompt and paste it into your AI assistant, for example Claude Code, Cursor or ChatGPT. It reads the guides, finds where your product generates people, plans the change with you, and explains every step. When a choice is yours, it pauses that step and asks.</p>

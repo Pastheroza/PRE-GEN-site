@@ -19,23 +19,24 @@
 <script src="/site.js" defer></script>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap">
-<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt="PRE-GEN"></a>
+<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt=""><span class="mark-name">PRE-GEN</span></a>
 <button class="menu-btn" type="button" aria-controls="site-menu" aria-expanded="false" aria-label="Open menu"><span></span><span></span></button>
 <div class="menu" id="site-menu">
-<nav aria-label="Main"><a href="/tog">The Licence</a><a href="/tog/create">Create your ToG</a><a href="/connect">Connect your AI</a><a href="/registries">Registries</a><a href="/lookup" aria-current="page">Look up a code</a><a href="/downloads">Downloads</a><a href="/docs">How it works</a><a href="/create-registry" class="nav-more">Create a registry</a><a href="/faq" class="nav-more">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site" class="nav-more">GitHub</a></nav>
+<nav aria-label="Main"><a href="/tog">The Licence</a><a href="/tog/create">Create your ToG</a><a href="/docs">How it works</a><a href="/connect">Connect your AI</a><a href="/registries">Registries</a><a href="/lookup" aria-current="page">Look up a code</a><a href="/downloads">Downloads</a><div class="nav-group"><button class="nav-group-btn" type="button" aria-expanded="false" aria-controls="nav-more">More</button><div class="nav-group-list" id="nav-more"><a href="/create-registry">Create a registry</a><a href="/faq">FAQ</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a></div></div></nav>
 </div>
 </div></header>
-<main><div class="wrap">
+<main id="main"><div class="wrap">
 <h1>Look up a code</h1>
-<p class="lede">Every person, work and licence in a registry has a permanent code. Enter one to see what the registry says about it. No account needed.</p>
+<p class="lede">Every person, work and licence held by a registry has a permanent code. Enter one to see what that registry says about it. No account is needed.</p>
 <form class="search" id="pgForm" autocomplete="off">
 <input id="pgInput" type="text" name="code" placeholder="TOG-…" aria-label="Code" spellcheck="false" autocapitalize="characters" maxlength="256">
 <button type="submit">Look up</button>
 </form>
-<p class="meta">Character <span class="mono">TOG-PRAM-000037J</span> · brand, before v5 <span class="mono">TOG-0000016</span> · format of a new code at another registry <span class="mono">TOG-NWRD-900000042R</span> (example, not listed) · <span class="mono">PG-</span> codes are retired: use the ToG code your registry shows you</p>
+<p class="meta">Examples: <span class="mono">TOG-PRAM-000037J</span> (a character), <span class="mono">TOG-0000016</span> (a brand, issued before v5), <span class="mono">TOG-NWRD-900000042R</span> (the format of a code at another registry; not listed). Codes that begin with <span class="mono">PG-</span> are retired: use the ToG code your registry shows you.</p>
 <div id="pgResult" class="pg-result" aria-live="polite"></div>
-<p class="meta">Looking up a code permits nothing. An AI service needs a signed yes from the registry before it generates (<a href="/docs/sdk">how to ask</a>). Format: <a href="/docs/tog-code">ToG codes</a>.</p>
+<p class="note">A lookup permits nothing. Before it generates, an AI service needs a signed <code>allow</code> from the registry (<a href="/docs/sdk">how to ask</a>). How codes are built: <a href="/docs/tog-code">ToG codes</a>.</p>
 <script type="module" src="/lookup.js"></script>
 
 </div></main>

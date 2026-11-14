@@ -19,64 +19,72 @@
 <script src="/site.js" defer></script>
 </head>
 <body class="home">
+<a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap">
-<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt="PRE-GEN"></a>
+<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt=""><span class="mark-name">PRE-GEN</span></a>
 <button class="menu-btn" type="button" aria-controls="site-menu" aria-expanded="false" aria-label="Open menu"><span></span><span></span></button>
 <div class="menu" id="site-menu">
-<nav aria-label="Main"><a href="/tog">The Licence</a><a href="/tog/create">Create your ToG</a><a href="/connect">Connect your AI</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/downloads">Downloads</a><a href="/docs">How it works</a><a href="/create-registry" class="nav-more">Create a registry</a><a href="/faq" class="nav-more">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site" class="nav-more">GitHub</a></nav>
+<nav aria-label="Main"><a href="/tog">The Licence</a><a href="/tog/create">Create your ToG</a><a href="/docs">How it works</a><a href="/connect">Connect your AI</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/downloads">Downloads</a><div class="nav-group"><button class="nav-group-btn" type="button" aria-expanded="false" aria-controls="nav-more">More</button><div class="nav-group-list" id="nav-more"><a href="/create-registry">Create a registry</a><a href="/faq">FAQ</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a></div></div></nav>
 </div>
 </div></header>
-<main><div class="wrap lic">
+<main id="main"><div class="wrap lic">
 
-<section class="lic-hero">
+<section class="lic-hero" aria-labelledby="hero-h">
 <div class="lic-hero-text">
-<p class="lic-kicker">The licence of PRE-GEN Protocol</p>
-<h1>Terms of Generation Licence</h1>
+<p class="lic-kicker">PRE-GEN · an open standard</p>
+<h1 id="hero-h">Terms of Generation Licence</h1>
 <p class="lic-lead">One common text that says whether AI may generate a person's likeness, a brand or a work, and on what terms.</p>
-<p class="lic-btns"><a class="btn primary" href="/tog/create">Create your ToG</a></p>
+<p class="lic-also">The PRE-GEN protocol puts it to work. Before an AI service generates a protected subject, it asks the registry that represents the subject and gets a signed answer. Only an <code>allow</code> permits generation.</p>
+<p class="lic-btns"><a class="btn primary" href="/tog/create">Create your ToG</a><a class="btn" href="/docs">How PRE-GEN works</a></p>
 <p class="lic-ask"><span>Not sure? Ask an assistant</span><a class="btn btn-ask" href="https://chatgpt.com/?prompt=Explain%20PRE-GEN%2C%20the%20open%20protocol%20for%20asking%20permission%20before%20AI%20generates%20a%20real%20person%2C%20character%20or%20brand.%20Read%20https%3A//www.pregen.org/llms.txt%20and%20https%3A//www.pregen.org/get-started.md%20first%2C%20then%20tell%20me%20what%20it%20does%2C%20how%20an%20AI%20service%20uses%20it%2C%20and%20what%20a%20signed%20answer%20proves." target="_blank" rel="noopener">Ask ChatGPT <span aria-hidden="true">↗</span></a><a class="btn btn-ask" href="https://claude.ai/new?q=Explain%20PRE-GEN%2C%20the%20open%20protocol%20for%20asking%20permission%20before%20AI%20generates%20a%20real%20person%2C%20character%20or%20brand.%20Read%20https%3A//www.pregen.org/llms.txt%20and%20https%3A//www.pregen.org/get-started.md%20first%2C%20then%20tell%20me%20what%20it%20does%2C%20how%20an%20AI%20service%20uses%20it%2C%20and%20what%20a%20signed%20answer%20proves." target="_blank" rel="noopener">Ask Claude <span aria-hidden="true">↗</span></a></p>
 </div>
-<aside class="lic-card" aria-label="The text">
-<p class="lic-card-h">ToG-L 1.0</p>
+<aside class="lic-card" aria-label="ToG-L 1.0 at a glance">
+<div class="lic-card-head"><p class="lic-card-h">ToG-L 1.0</p><span class="lic-state">Stable</span></div>
 <p class="lic-card-t">Terms of Generation Licence</p>
 <dl>
 <dt>Identifier</dt><dd><code>ToG-L-1.0</code></dd>
 <dt>Version</dt><dd>1.0, November 2026</dd>
 <dt>Status</dt><dd>Stable since 13 November 2026</dd>
-<dt>SHA-256</dt><dd class="lic-card-hash" title="c608c6cb477918d040a432417ba2101f1731aee906ce15024933efcb907ba2ac">c608c6cb 477918d0 40a43241 7ba2101f 1731aee9 06ce1502 4933efcb 907ba2ac</dd>
+<dt>SHA-256</dt><dd class="lic-card-hash" title="c608c6cb477918d040a432417ba2101f1731aee906ce15024933efcb907ba2ac">c608c6cb 477918d0 40a43241 7ba2101f 1731aee9 06ce1502 4933efcb 907ba2ac<button class="copy-value" type="button" data-copy="c608c6cb477918d040a432417ba2101f1731aee906ce15024933efcb907ba2ac" aria-label="Copy the SHA-256 of ToG-L 1.0">Copy hash</button></dd>
 </dl>
-<p class="lic-card-links"><a href="/tog">Read online</a><a href="/tog/files/ToG-L-1.0.pdf">PDF</a><a href="/tog/1.0/legal-code.txt">Text</a><a href="/downloads">All downloads</a></p>
+<p class="lic-card-links"><a href="/tog">Read online</a><a href="/tog/files/ToG-L-1.0.pdf">PDF</a><a href="/tog/1.0/legal-code.txt">Text</a><a href="/downloads">Downloads</a></p>
 </aside>
 </section>
 
-<section class="lic-sec" aria-labelledby="two-h">
-<h2 class="lic-label" id="two-h">Two parts</h2>
-<div class="lic-two">
-<a class="lic-box" href="/tog"><span class="lic-tag">ToG · the licence</span><h3>What is allowed</h3><p>The Terms of Generation Licence: one text that says what AI may and may not do with a likeness, a brand or a work. A Holder applies it with a Statement at a registry and gets a ToG code.</p><span class="go-to">Read the Licence →</span></a>
-<a class="lic-box" href="/docs"><span class="lic-tag">PRE-GEN · the protocol</span><h3>How it is checked</h3><p>Before an AI service generates someone, it asks their registry and gets a signed answer. It generates only on a yes, and the proof travels with what it made.</p><span class="go-to">How it works →</span></a>
+<section class="h-sec" aria-labelledby="parts-h">
+<h2 id="parts-h">Two parts</h2>
+<p class="h-intro">The Licence sets the terms. The protocol is how an AI service learns them in time, with a signature it can keep.</p>
+<div class="h-parts">
+<div class="h-part"><span class="lic-tag">ToG-L 1.0 · the licence</span><h3>What may be generated</h3><p>A legal text, the same for everyone. A Holder applies it to their own likeness, marks or works with a Statement at a registry, and the registry issues a ToG code.</p><p><a class="go-to" href="/tog">The Licence</a></p></div>
+<div class="h-part"><span class="lic-tag">PRE-GEN · the protocol</span><h3>How it is checked</h3><p>Signed requests and answers between AI services and registries, a signed directory of registries, and proof that travels with the output. Open specification, Apache-2.0.</p><p><a class="go-to" href="/docs">How PRE-GEN works</a></p></div>
+</div>
+<ol class="h-steps">
+<li><span class="n" aria-hidden="true">1</span><b>A Holder states the terms</b><p>A person or a company makes a Statement under ToG-L 1.0 at one registry from the signed list. The registry issues the ToG code.</p></li>
+<li><span class="n" aria-hidden="true">2</span><b>The AI service asks first</b><p>Before generating, it sends a signed request to that registry. The registry answers <code>allow</code>, <code>deny</code>, <code>review</code> or <code>not_blocked</code>, and signs the answer.</p></li>
+<li><span class="n" aria-hidden="true">3</span><b>Only allow permits</b><p>The service generates only on a valid <code>allow</code> and keeps it. The signed answer shows what the registry said about that request; it does not settle ownership or legality on its own.</p></li>
+</ol>
+</section>
+
+<section class="h-sec" aria-labelledby="start-h">
+<h2 id="start-h">Where to start</h2>
+<p class="h-intro">Each column starts with the main task for that reader, then links to the full text.</p>
+<div class="h-roles">
+<div class="h-role"><h3>Rights holders</h3><p>Say what AI may do with your likeness, marks or works, and publish it under one code.</p><ul><li><a href="/tog/create">Create your ToG</a></li><li><a href="/tog/1.0/deed">The Licence in plain words</a></li><li><a href="/lookup">Look up a code</a></li></ul></div>
+<div class="h-role"><h3>AI developers</h3><p>Ask before you generate, check the signed answer, keep the proof. No account at any registry.</p><ul><li><a href="/connect">Connect your AI</a></li><li><a href="/docs/sdk">Add it to your service</a></li><li><a href="/docs/provider.md">Provider guide</a></li></ul></div>
+<div class="h-role"><h3>Registries</h3><p>Hold Statements, answer requests and sign the answers. Get listed in the signed directory.</p><ul><li><a href="/create-registry">Create a registry</a></li><li><a href="/docs/registry.md">Registry guide</a></li><li><a href="/registries">Listed registries</a></li></ul></div>
+<div class="h-role"><h3>Platforms</h3><p>Check the ToG Proof on upload, label AI content and remove it on notice.</p><ul><li><a href="/tog/1.0#section-9">Section 9(j)</a></li><li><a href="/docs/proves">What a proof shows</a></li><li><a href="/docs/c2pa">PRE-GEN inside C2PA</a></li></ul></div>
 </div>
 </section>
 
-<section class="lic-sec" aria-labelledby="check-h">
-<h2 class="lic-label" id="check-h">Check a ToG code</h2>
-<form class="lic-box lic-check" action="/lookup" method="get">
+<section class="h-check" aria-labelledby="check-h">
+<div><h2 id="check-h">Check a ToG code</h2><p>The registry that issued the code answers. A lookup shows what it says about the code and permits nothing.</p></div>
+<form action="/lookup" method="get">
 <label class="tg-sr" for="code">ToG code</label>
 <span class="search"><input id="code" name="code" type="text" placeholder="TOG-…" spellcheck="false" autocapitalize="characters" autocomplete="off" maxlength="256"><button type="submit">Check</button></span>
-<span class="lic-small">The registry that holds the code answers. Looking up permits nothing.</span>
 </form>
 </section>
 
-<section class="lic-sec" aria-labelledby="roles-h">
-<h2 class="lic-label" id="roles-h">Who the Licence binds</h2>
-<div class="lic-roles">
-<a class="lic-box" href="/tog/create"><h3>Holders</h3><p>People and companies state what AI may do with their likeness, marks or works.</p><span class="go-to">Create your ToG →</span></a>
-<a class="lic-box" href="/connect"><h3>AI providers</h3><p>Accept the Licence once, look up before generating, attach a ToG Proof.</p><span class="go-to">Connect your AI →</span></a>
-<a class="lic-box" href="/tog/1.0#section-9"><h3>Platforms</h3><p>Check the proof on upload, label AI content, remove on notice.</p><span class="go-to">Section 9(j) →</span></a>
-<a class="lic-box" href="/create-registry"><h3>Registries</h3><p>Verify Holders, hold their Statements and answer lookups.</p><span class="go-to">Create a registry →</span></a>
-</div>
-</section>
-
-<p class="lic-note">pregen.org publishes the Licence, the protocol and the list of registries. It is not a registry: it holds no Statements and issues no codes.</p>
+<div class="h-facts"><p>pregen.org publishes the Licence, the protocol and the signed directory of registries. It is not a registry: it holds no Statements and issues no codes.</p><p>Protocol <a href="/spec/paper/pre-gen-v5">PRE-GEN v5</a> · Licence <a href="/tog">ToG-L 1.0</a></p></div>
 
 </div></main>
 <footer class="foot"><div class="wrap">

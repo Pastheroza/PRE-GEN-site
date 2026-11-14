@@ -19,17 +19,18 @@
 <script src="/site.js" defer></script>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap">
-<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt="PRE-GEN"></a>
+<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt=""><span class="mark-name">PRE-GEN</span></a>
 <button class="menu-btn" type="button" aria-controls="site-menu" aria-expanded="false" aria-label="Open menu"><span></span><span></span></button>
 <div class="menu" id="site-menu">
-<nav aria-label="Main"><a href="/tog">The Licence</a><a href="/tog/create">Create your ToG</a><a href="/connect">Connect your AI</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/downloads">Downloads</a><a href="/docs">How it works</a><a href="/create-registry" class="nav-more">Create a registry</a><a href="/faq" class="nav-more">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site" class="nav-more">GitHub</a></nav>
+<nav aria-label="Main"><a href="/tog">The Licence</a><a href="/tog/create">Create your ToG</a><a href="/docs" aria-current="page">How it works</a><a href="/connect">Connect your AI</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/downloads">Downloads</a><div class="nav-group"><button class="nav-group-btn" type="button" aria-expanded="false" aria-controls="nav-more">More</button><div class="nav-group-list" id="nav-more"><a href="/create-registry">Create a registry</a><a href="/faq">FAQ</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a></div></div></nav>
 </div>
 </div></header>
-<main><div class="wrap">
-<div class="doc"><aside><ul><li><a href="/docs">How it works</a></li><li><a href="/docs/two-layers">Two layers</a></li><li><a href="/docs/tog-code">ToG codes</a></li><li><a href="/docs/versions">Versions</a></li><li><a href="/docs/refusal-codes" aria-current="page">Refusal codes</a></li><li><a href="/docs/sdk">Add it to your service</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Build it</a></li></ul></aside><article><h1>Refusal codes</h1>
+<main id="main"><div class="wrap">
+<div class="doc"><aside><nav aria-label="Documentation"><ul><li class="doc-h" aria-hidden="true">Overview</li><li><a href="/docs">How it works</a></li><li><a href="/docs/two-layers">Two layers</a></li><li><a href="/docs/proves">What it proves</a></li><li class="doc-h" aria-hidden="true">Integrate</li><li><a href="/docs/sdk">Add it to your service</a></li><li><a href="/docs/implement">Build it</a></li><li><a href="/docs/c2pa">C2PA</a></li><li class="doc-h" aria-hidden="true">Reference</li><li><a href="/docs/tog-code">ToG codes</a></li><li><a href="/docs/refusal-codes" aria-current="page">Refusal codes</a></li><li><a href="/docs/versions">Versions</a></li></ul></nav></aside><article><h1>Refusal codes</h1>
 <p class="meta">Version 5: the core and <span class="mono">likeness/1</span> · earlier interface: 38 codes, 17 core and 21 of PRAMPTA's own · policy version <span class="mono">2026-09-22</span></p>
-<h2>Version 5</h2>
+<h2 id="version-5">Version 5</h2>
 <p>A “no” is a signed answer with a <code>reason</code>, not an HTTP error. The core defines two reasons, the profile <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/profiles/likeness-1.md">likeness/1</a> the rest, and a registry may add its own. A reason you do not know is still a no.</p>
 <p><b>Core</b>, for every registry and profile:</p>
 <ul>

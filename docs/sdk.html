@@ -19,18 +19,19 @@
 <script src="/site.js" defer></script>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap">
-<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt="PRE-GEN"></a>
+<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt=""><span class="mark-name">PRE-GEN</span></a>
 <button class="menu-btn" type="button" aria-controls="site-menu" aria-expanded="false" aria-label="Open menu"><span></span><span></span></button>
 <div class="menu" id="site-menu">
-<nav aria-label="Main"><a href="/tog">The Licence</a><a href="/tog/create">Create your ToG</a><a href="/connect">Connect your AI</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/downloads">Downloads</a><a href="/docs">How it works</a><a href="/create-registry" class="nav-more">Create a registry</a><a href="/faq" class="nav-more">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site" class="nav-more">GitHub</a></nav>
+<nav aria-label="Main"><a href="/tog">The Licence</a><a href="/tog/create">Create your ToG</a><a href="/docs" aria-current="page">How it works</a><a href="/connect">Connect your AI</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/downloads">Downloads</a><div class="nav-group"><button class="nav-group-btn" type="button" aria-expanded="false" aria-controls="nav-more">More</button><div class="nav-group-list" id="nav-more"><a href="/create-registry">Create a registry</a><a href="/faq">FAQ</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a></div></div></nav>
 </div>
 </div></header>
-<main><div class="wrap">
-<div class="doc"><aside><ul><li><a href="/docs">How it works</a></li><li><a href="/docs/tog-code">ToG codes</a></li><li><a href="/docs/versions">Versions</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk" aria-current="page">Add it to your service</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Build it</a></li></ul></aside><article><h1>Add PRE-GEN to your AI service</h1>
+<main id="main"><div class="wrap">
+<div class="doc"><aside><nav aria-label="Documentation"><ul><li class="doc-h" aria-hidden="true">Overview</li><li><a href="/docs">How it works</a></li><li><a href="/docs/two-layers">Two layers</a></li><li><a href="/docs/proves">What it proves</a></li><li class="doc-h" aria-hidden="true">Integrate</li><li><a href="/docs/sdk" aria-current="page">Add it to your service</a></li><li><a href="/docs/implement">Build it</a></li><li><a href="/docs/c2pa">C2PA</a></li><li class="doc-h" aria-hidden="true">Reference</li><li><a href="/docs/tog-code">ToG codes</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/versions">Versions</a></li></ul></nav></aside><article><h1>Add PRE-GEN to your AI service</h1>
 <p class="meta">HTTP · v5: <span class="mono">POST /v2/requests</span> and <span class="mono">checkAnswer</span> in <span class="mono">@pregen/verify</span> / <span class="mono">check_answer</span> in <span class="mono">pregen</span> 0.13.0 · earlier interface: <span class="mono">/v1/verify</span></p>
 <p>Three steps: ask the registry, check its signed answer, generate only on a yes. No account anywhere: your identity is your domain and a key you make. Serve one small file on your domain, sign your requests, and every <a href="/registries">registry</a> that accepts apps by their domain answers you; it may check your app before it says yes. Selling licences is a registry's own, optional business (<a href="/docs/two-layers">two layers</a>).</p>
-<h2>Ask, check, generate</h2>
+<h2 id="ask-check-generate">Ask, check, generate</h2>
 <pre><code>POST {api}/v2/requests
 X-Provider-ID: https://your.domain               # your domain is your id; no credential
 Content-Type: application/json

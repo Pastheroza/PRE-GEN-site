@@ -19,18 +19,19 @@
 <script src="/site.js" defer></script>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap">
-<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt="PRE-GEN"></a>
+<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt=""><span class="mark-name">PRE-GEN</span></a>
 <button class="menu-btn" type="button" aria-controls="site-menu" aria-expanded="false" aria-label="Open menu"><span></span><span></span></button>
 <div class="menu" id="site-menu">
-<nav aria-label="Main"><a href="/tog">The Licence</a><a href="/tog/create">Create your ToG</a><a href="/connect">Connect your AI</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/downloads">Downloads</a><a href="/docs">How it works</a><a href="/create-registry" class="nav-more">Create a registry</a><a href="/faq" class="nav-more">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site" class="nav-more">GitHub</a></nav>
+<nav aria-label="Main"><a href="/tog">The Licence</a><a href="/tog/create">Create your ToG</a><a href="/docs" aria-current="page">How it works</a><a href="/connect">Connect your AI</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/downloads">Downloads</a><div class="nav-group"><button class="nav-group-btn" type="button" aria-expanded="false" aria-controls="nav-more">More</button><div class="nav-group-list" id="nav-more"><a href="/create-registry">Create a registry</a><a href="/faq">FAQ</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a></div></div></nav>
 </div>
 </div></header>
-<main><div class="wrap">
-<div class="doc"><aside><ul><li><a href="/docs">How it works</a></li><li><a href="/docs/two-layers">Two layers</a></li><li><a href="/docs/tog-code">ToG codes</a></li><li><a href="/docs/versions" aria-current="page">Versions</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Add it to your service</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Build it</a></li></ul></aside><article><h1>Versions</h1>
+<main id="main"><div class="wrap">
+<div class="doc"><aside><nav aria-label="Documentation"><ul><li class="doc-h" aria-hidden="true">Overview</li><li><a href="/docs">How it works</a></li><li><a href="/docs/two-layers">Two layers</a></li><li><a href="/docs/proves">What it proves</a></li><li class="doc-h" aria-hidden="true">Integrate</li><li><a href="/docs/sdk">Add it to your service</a></li><li><a href="/docs/implement">Build it</a></li><li><a href="/docs/c2pa">C2PA</a></li><li class="doc-h" aria-hidden="true">Reference</li><li><a href="/docs/tog-code">ToG codes</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/versions" aria-current="page">Versions</a></li></ul></nav></aside><article><h1>Versions</h1>
     <p class="meta"><strong>PRE-GEN v5</strong>, 12 October 2026 — the current version · <a href="/spec/PRE-GEN-v5.pdf">PDF</a> · <a href="/spec/VERSIONS.md">VERSIONS.md</a></p>
 
-    <h2>Specification versions</h2>
+    <h2 id="specification-versions">Specification versions</h2>
     <p>PRE-GEN has one version number, the same here, in the <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">specification source</a> and on Zenodo. Each version is one Zenodo release under the concept DOI <a href="https://doi.org/10.5281/zenodo.20129901">10.5281/zenodo.20129901</a>. Until the v5 record is published there, that DOI resolves to v4 (2026-06-01), which v5 supersedes. The current text is this site and the <a href="/spec/PRE-GEN-v5.pdf">v5 PDF</a>.</p>
     <div class="table"><table>
       <thead><tr><th>Version</th><th>Date</th><th>Title</th><th>DOI</th></tr></thead>
@@ -49,10 +50,10 @@
       <li><strong>Drafts for the next version are informative only, not part of v5.</strong> <a href="/spec/drafts/authorized-releases.md">Authorized Releases</a>: releases with the artist's permission, and stamping AI content that already exists.</li>
     </ul>
 
-    <h2>v5 message types</h2>
+    <h2 id="v5-message-types">v5 message types</h2>
     <p>The v5 interface names each message by its <code>type</code>, and the type is part of the signed bytes, so a signature over one kind of message can never be replayed as another: <code>pg.request.v1</code>, <code>pg.answer.v1</code>, <code>pg.report.v1</code>, <code>pg.report_ack.v1</code>, <code>pg.keyset.v1</code>, <code>pg.grant.v1</code>, <code>pg.anchors.v1</code>, <code>pg.access.v1</code> (provider-identity), <code>pg.bind_exchange.v1</code> and <code>pg.binding.v1</code> (bind), <code>pg.terms.v1</code> (terms), and the bundle <code>pg.proof.v1</code>. JSON Schemas for each are in <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec/schemas">spec/schemas</a>. The markers below belong to the earlier interface, which stays valid.</p>
 
-    <h2>Signed object markers (earlier interface)</h2>
+    <h2 id="signed-object-markers-earlier-interface">Signed object markers (earlier interface)</h2>
     <p class="meta">Updated 2026-10-17 · Independent of the specification version</p>
 
     <p>
@@ -69,7 +70,7 @@
       changing a field’s meaning, or changing what a value can mean — that is a new version.
     </div>
 
-    <h2>Summary</h2>
+    <h2 id="summary">Summary</h2>
     <div class="table"><table>
       <thead><tr><th>Surface</th><th>Marker</th><th>Signed?</th><th>Additive-safe today?</th></tr></thead>
       <tbody>
@@ -86,7 +87,7 @@
       </tbody>
     </table></div>
 
-    <h2>Decision vs policy versioning</h2>
+    <h2 id="decision-vs-policy-versioning">Decision vs policy versioning</h2>
     <p>
       The <strong>schema</strong> (<code>schema_version</code>) is the shape of the envelope;
       the <strong>policy</strong> (<code>policy_version</code>) is the rule set that filled it
@@ -97,7 +98,7 @@
       <a href="/docs/refusal-codes">Refusal codes</a>).
     </p>
 
-    <h2>Why some objects are deliberately not additive-safe</h2>
+    <h2 id="why-some-objects-are-deliberately-not-additive-safe">Why some objects are deliberately not additive-safe</h2>
     <p>
       The license body’s <code>v</code> marker was added as a <em>hard cut</em>: the point was
       a real, load-bearing version marker inside the signed bytes, not another optional field a
@@ -107,7 +108,7 @@
       signature from one format era cannot silently pass as another.
     </p>
 
-    <h2>Receipts: a fixed shape</h2>
+    <h2 id="receipts-a-fixed-shape">Receipts: a fixed shape</h2>
     <p>
       Every member of a receipt is always present, so any change of shape is a new marker
       (<code>pg.receipt.v3</code> was added that way, to sign the event type). A registry may

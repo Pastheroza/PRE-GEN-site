@@ -19,15 +19,16 @@
 <script src="/site.js" defer></script>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap">
-<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt="PRE-GEN"></a>
+<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt=""><span class="mark-name">PRE-GEN</span></a>
 <button class="menu-btn" type="button" aria-controls="site-menu" aria-expanded="false" aria-label="Open menu"><span></span><span></span></button>
 <div class="menu" id="site-menu">
-<nav aria-label="Main"><a href="/tog">The Licence</a><a href="/tog/create">Create your ToG</a><a href="/connect">Connect your AI</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/downloads">Downloads</a><a href="/docs">How it works</a><a href="/create-registry" class="nav-more">Create a registry</a><a href="/faq" class="nav-more">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site" class="nav-more">GitHub</a></nav>
+<nav aria-label="Main"><a href="/tog">The Licence</a><a href="/tog/create">Create your ToG</a><a href="/docs" aria-current="page">How it works</a><a href="/connect">Connect your AI</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/downloads">Downloads</a><div class="nav-group"><button class="nav-group-btn" type="button" aria-expanded="false" aria-controls="nav-more">More</button><div class="nav-group-list" id="nav-more"><a href="/create-registry">Create a registry</a><a href="/faq">FAQ</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a></div></div></nav>
 </div>
 </div></header>
-<main><div class="wrap">
-<div class="doc"><aside><ul><li><a href="/docs">How it works</a></li><li><a href="/docs/two-layers">Two layers</a></li><li><a href="/docs/tog-code" aria-current="page">ToG codes</a></li><li><a href="/docs/versions">Versions</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Add it to your service</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Build it</a></li></ul></aside><article><h1>ToG codes</h1>
+<main id="main"><div class="wrap">
+<div class="doc"><aside><nav aria-label="Documentation"><ul><li class="doc-h" aria-hidden="true">Overview</li><li><a href="/docs">How it works</a></li><li><a href="/docs/two-layers">Two layers</a></li><li><a href="/docs/proves">What it proves</a></li><li class="doc-h" aria-hidden="true">Integrate</li><li><a href="/docs/sdk">Add it to your service</a></li><li><a href="/docs/implement">Build it</a></li><li><a href="/docs/c2pa">C2PA</a></li><li class="doc-h" aria-hidden="true">Reference</li><li><a href="/docs/tog-code" aria-current="page">ToG codes</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/versions">Versions</a></li></ul></nav></aside><article><h1>ToG codes</h1>
     <p class="meta">Status: draft, for libraries 0.14.0 (not released yet) · The full rule: <a href="/spec/TOG-CODE.md">TOG-CODE.md</a> · Test vectors: <a href="/spec/test-vectors/tog-code.json">tog-code.json</a> · License: Apache-2.0 · The text is the rule; a vector that disagrees with it gets fixed.</p>
 
     <p>
@@ -37,7 +38,7 @@
     </p>
     <div class="note"><span class="mono">PG codes are retired</span> PG codes are not compatible with ToG codes: a <span class="mono">PG-</span> string is not a code anywhere, and nothing reads, converts or suggests one. <strong>Use the ToG code your registry shows you.</strong> Each registry moves its own people and licences to ToG codes once; a person keeps their number and check. The old format is kept as history on <a href="/docs/pg-code">PG codes (retired)</a>.</div>
 
-    <h2>1 · Shapes</h2>
+    <h2 id="1-shapes">1 · Shapes</h2>
     <ul>
       <li>A person<br><span class="mono codeline">TOG-PRAM-900000037K</span></li>
       <li>A licence<br><span class="mono codeline">TOG-LIC-KAST-ZZZZ-FJ4Y-SM2N</span></li>
@@ -65,7 +66,7 @@
     </table></div>
     <p>The kind's digit goes into the check character, so turning one kind into another (<span class="mono">PG</span> into <span class="mono">AG</span>, or dropping <span class="mono">-LIC</span>) is caught as a mistyped code.</p>
 
-    <h2>2 · Alphabet and check character</h2>
+    <h2 id="2-alphabet-and-check-character">2 · Alphabet and check character</h2>
     <p>Numbers, tails and check characters use Crockford base32, without I, L, O and U, which are easy to misread:</p>
 <pre><code>0123456789ABCDEFGHJKMNPQRSTVWXYZ</code></pre>
     <p>Prefixes use all 26 letters. In a TOG body a character's value is its position in this table, where I, L, O and U take 32 to 35:</p>
@@ -90,7 +91,7 @@ check = "0123456789ABCDEFGHJKMNPQRSTVWXYZ*~$=!"[sum mod 37]</code></pre>
       and every moved dash between two prefixes changes the check.
     </p>
 
-    <h2>3 · Person codes</h2>
+    <h2 id="3-person-codes">3 · Person codes</h2>
 <pre><code>TOG-&lt;PREFIX&gt;-&lt;9 digits&gt;&lt;check&gt;</code></pre>
     <ul>
       <li>The number is exactly nine digits, not starting with 0, picked at random among the registry's unused numbers. A gap means nothing: there is no registration order to read.</li>
@@ -98,7 +99,7 @@ check = "0123456789ABCDEFGHJKMNPQRSTVWXYZ*~$=!"[sum mod 37]</code></pre>
       <li>One person never has two codes. A person who had a <span class="mono">PG-</span> code was moved by their registry to a ToG code, which the registry shows them; the old string is not a code.</li>
     </ul>
 
-    <h2>4 · Event codes</h2>
+    <h2 id="4-event-codes">4 · Event codes</h2>
 <pre><code>TOG-&lt;KIND&gt;-&lt;ISSUER&gt;[-&lt;HOME&gt;]-XXXX-XXXX-XXXX</code></pre>
     <ul>
       <li>The issuer is the registry that signed the act, and the registry to ask.</li>
@@ -112,7 +113,7 @@ check = "0123456789ABCDEFGHJKMNPQRSTVWXYZ*~$=!"[sum mod 37]</code></pre>
       hash.
     </p>
 
-    <h2>5 · PG codes are retired</h2>
+    <h2 id="5-pg-codes-are-retired">5 · PG codes are retired</h2>
     <p>Your ToG code is the one your registry shows you: ask your registry for it.</p>
     <ul>
       <li>Each registry moves its own rows once, inside the registry. Nothing outside a registry does this: from outside, a <span class="mono">PG-</span> string is not a code.</li>
@@ -121,14 +122,14 @@ check = "0123456789ABCDEFGHJKMNPQRSTVWXYZ*~$=!"[sum mod 37]</code></pre>
       <li>What stops working: printed cards, QR codes and links that carry a <span class="mono">PG-</span> string, and every old signed record that holds one (old licences, revocations, proofs). A refusal is listed and compared under its ToG code only, so it cannot be bypassed by spelling.</li>
     </ul>
 
-    <h2>6 · One code, one string</h2>
+    <h2 id="6-one-code-one-string">6 · One code, one string</h2>
     <ul>
       <li>In a message a code has one form: ASCII, upper case, nothing around it. Verifiers and registries never trim, change case or fold look-alikes. A registry answers anything else with <span class="mono">PG_MALFORMED</span>, never with a signed answer.</li>
       <li>Only where a person types, pastes or scans a code may software fold it, and then it shows the result as "Did you mean …?". <span class="mono">tog-pram-9OOOOOO37k</span> typed into a search box is <span class="mono">TOG-PRAM-900000037K</span>. When two readings are valid, neither is chosen.</li>
       <li>A code whose check fails is reported as mistyped, apart from not found and from not a code: the three mean different things to whoever holds the code.</li>
     </ul>
 
-    <h2>7 · Look it up, never take it apart</h2>
+    <h2 id="7-look-it-up-never-take-it-apart">7 · Look it up, never take it apart</h2>
     <p>
       Software may read from a code only its marker, its kind, the <span class="mono">LIC</span> marker and its
       prefixes. The first prefix is always the registry to ask. Everything else is resolved through that registry,
@@ -136,7 +137,7 @@ check = "0123456789ABCDEFGHJKMNPQRSTVWXYZ*~$=!"[sum mod 37]</code></pre>
       which registry to ask, and whether it is an example. It cannot say that the act happened.
     </p>
 
-    <h2>8 · Prefixes</h2>
+    <h2 id="8-prefixes">8 · Prefixes</h2>
     <ul>
       <li>4 to 8 letters A–Z, written only under <span class="mono">TOG-</span>. A prefix never starts or ends with <span class="mono">LIC</span>.</li>
       <li>One prefix per legal entity. A government's prefix contains <span class="mono">GOV</span>, and no other prefix does.</li>
@@ -144,7 +145,7 @@ check = "0123456789ABCDEFGHJKMNPQRSTVWXYZ*~$=!"[sum mod 37]</code></pre>
     </ul>
     <p>Which registry may sign for a prefix is decided by the <a href="/registries">directory</a>, signed by the steward key. A prefix printed in a code proves nothing by itself.</p>
 
-    <h2>9 · Testing an implementation</h2>
+    <h2 id="9-testing-an-implementation">9 · Testing an implementation</h2>
     <p>An implementation is correct when it reproduces every case in <a href="/spec/test-vectors/tog-code.json"><span class="mono">tog-code.json</span></a>: check characters, the reading of each string, must-reject strings, every published <span class="mono">PG-</span> string refused, a registry's own migration, typed input, codes computed from records, and copies in a file's metadata. The file is generated from the reference model, never edited by hand. <a href="/docs/sdk"><span class="mono">@pregen/verify</span> and <span class="mono">pregen</span></a> implement it from version 0.14.0, which is not released yet; 0.13 reads only <span class="mono">PG-</span> codes.</p>
     <nav class="pager" aria-label="Pages"><a href="/docs">← How it works</a><a href="/docs/versions">Versions →</a></nav></article></div>
 </div></main>

@@ -19,15 +19,16 @@
 <script src="/site.js" defer></script>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap">
-<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt="PRE-GEN"></a>
+<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt=""><span class="mark-name">PRE-GEN</span></a>
 <button class="menu-btn" type="button" aria-controls="site-menu" aria-expanded="false" aria-label="Open menu"><span></span><span></span></button>
 <div class="menu" id="site-menu">
-<nav aria-label="Main"><a href="/tog">The Licence</a><a href="/tog/create">Create your ToG</a><a href="/connect">Connect your AI</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/downloads">Downloads</a><a href="/docs">How it works</a><a href="/create-registry" class="nav-more">Create a registry</a><a href="/faq" class="nav-more">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site" class="nav-more">GitHub</a></nav>
+<nav aria-label="Main"><a href="/tog">The Licence</a><a href="/tog/create">Create your ToG</a><a href="/docs" aria-current="page">How it works</a><a href="/connect">Connect your AI</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/downloads">Downloads</a><div class="nav-group"><button class="nav-group-btn" type="button" aria-expanded="false" aria-controls="nav-more">More</button><div class="nav-group-list" id="nav-more"><a href="/create-registry">Create a registry</a><a href="/faq">FAQ</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a></div></div></nav>
 </div>
 </div></header>
-<main><div class="wrap">
-<div class="doc"><aside><ul><li><a href="/docs">How it works</a></li><li><a href="/docs/two-layers">Two layers</a></li><li><a href="/docs/tog-code">ToG codes</a></li><li><a href="/docs/versions">Versions</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Add it to your service</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Build it</a></li></ul></aside><article><h1>PG codes (retired)</h1>
+<main id="main"><div class="wrap">
+<div class="doc"><aside><nav aria-label="Documentation"><ul><li class="doc-h" aria-hidden="true">Overview</li><li><a href="/docs">How it works</a></li><li><a href="/docs/two-layers">Two layers</a></li><li><a href="/docs/proves">What it proves</a></li><li class="doc-h" aria-hidden="true">Integrate</li><li><a href="/docs/sdk">Add it to your service</a></li><li><a href="/docs/implement">Build it</a></li><li><a href="/docs/c2pa">C2PA</a></li><li class="doc-h" aria-hidden="true">Reference</li><li><a href="/docs/tog-code">ToG codes</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/versions">Versions</a></li></ul></nav></aside><article><h1>PG codes (retired)</h1>
     <div class="note"><span class="mono">Retired, not supported</span> PG codes are retired and not compatible with ToG codes: a <span class="mono">PG-</span> string is not a code anywhere, and nothing reads, converts or suggests one. <strong>Use the ToG code your registry shows you.</strong> Every code is now a <a href="/docs/tog-code">ToG code</a>. This page is kept as history only.</div>
     <p class="meta">Status: <strong>retired, not supported</strong> (historical; frozen 2026-08-20), issuer prefix added 2026-09-28 · Test vectors: <span class="mono">pg_code</span>, vectors v2 · License: Apache-2.0 · The text is the rule; a vector that disagrees with it gets fixed.</p>
 
@@ -39,7 +40,7 @@
       code already issued.
     </p>
 
-    <h2>1 · Shapes</h2>
+    <h2 id="1-shapes">1 · Shapes</h2>
     <div class="table"><table>
       <thead><tr><th>Shape</th><th>Example</th><th>Meaning</th></tr></thead>
       <tbody>
@@ -70,7 +71,7 @@
       validate a check character on them.
     </p>
 
-    <h2>2 · Alphabet</h2>
+    <h2 id="2-alphabet">2 · Alphabet</h2>
 <pre><code>0123456789ABCDEFGHJKMNPQRSTVWXYZ</code></pre>
     <p>
       32 symbols: Crockford base32 — digits plus uppercase Latin letters
@@ -89,7 +90,7 @@
     </p>
 <pre><code>0123456789ABCDEFGHJKMNPQRSTVWXYZ*~$=!</code></pre>
 
-    <h2>3 · Check character</h2>
+    <h2 id="3-check-character">3 · Check character</h2>
     <p>Given a <strong>body</strong> (alphabet characters, dashes removed, no check character):</p>
 <pre><code>sum   = Σ value(body[i]) × (i + 1)    for i = 0 … len(body)−1
 check = CHECK_ALPHABET[ sum mod 37 ]</code></pre>
@@ -138,7 +139,7 @@ check = CHECK_ALPHABET[ sum mod 37 ]</code></pre>
     <p>Class letters are part of the body — a wrong class is as much “a wrong code” as a wrong
     serial. The literal <code>PG-</code> prefix is not: it is a fixed marker, identical in every code.</p>
 
-    <h2>4 · Subject codes</h2>
+    <h2 id="4-subject-codes">4 · Subject codes</h2>
 <pre><code>PG-&lt;serial, zero-padded to at least 6 digits&gt;&lt;check&gt;</code></pre>
     <p>
       The serial comes from a registry-wide counter, padded to a <strong>minimum</strong> of 6
@@ -157,7 +158,7 @@ check = CHECK_ALPHABET[ sum mod 37 ]</code></pre>
       </tbody>
     </table></div>
 
-    <h2>5 · License identifiers</h2>
+    <h2 id="5-license-identifiers">5 · License identifiers</h2>
 <pre><code>PG-&lt;CLASS&gt;-&lt;subject serial, ≥6 digits&gt;-&lt;tail&gt;&lt;check&gt;</code></pre>
     <ul>
       <li><strong>CLASS</strong> — three letters. Currently <code>STD</code>, <code>RND</code>, <code>PRM</code>.</li>
@@ -183,7 +184,7 @@ check = CHECK_ALPHABET[ sum mod 37 ]</code></pre>
       it was issued defeats the point of a permanent citation.
     </div>
 
-    <h2>6 · One code, one string</h2>
+    <h2 id="6-one-code-one-string">6 · One code, one string</h2>
     <ul>
       <li><strong>In a message a code has one form</strong>: the canonical string, ASCII, upper case, nothing
       around it. Verifiers and registries never trim, change case or fold look-alikes; a registry answers any other
@@ -196,7 +197,7 @@ check = CHECK_ALPHABET[ sum mod 37 ]</code></pre>
       holds the code.</li>
     </ul>
 
-    <h2>7 · Look it up, never take it apart</h2>
+    <h2 id="7-look-it-up-never-take-it-apart">7 · Look it up, never take it apart</h2>
     <p>
       <strong>An identifier is resolved by database lookup. It is never parsed to extract
       meaning.</strong> The serial inside a license id exists so a human can see which subject
@@ -206,7 +207,7 @@ check = CHECK_ALPHABET[ sum mod 37 ]</code></pre>
       with a repository-wide guard test that fails the build if any code path starts slicing an id.
     </p>
 
-    <h2>8 · Issuers: more than one registry</h2>
+    <h2 id="8-issuers-more-than-one-registry">8 · Issuers: more than one registry</h2>
     <p>Anyone may run a PRE-GEN registry. So that two registries never issue the same code, every registry, the first one included, puts its own <strong>prefix</strong> in every code it issues.</p>
     <div class="table"><table>
       <thead><tr><th>Shape</th><th>Example</th><th>Meaning</th></tr></thead>
@@ -243,7 +244,7 @@ check = CHECK_ALPHABET[ sum mod 37 ]</code></pre>
     </table></div>
     <p>Both keys are held offline by the editor of the standard, not by any registry. Both are in the specification, the v5 paper and the <a href="https://github.com/Pastheroza/PRE-GEN-site">repository README</a>; the steward key is also in the DNS TXT record <code>_pregen-steward.pregen.org</code>. A directory signed by the successor replaces those of the steward key whatever their sequence. <a href="/docs/sdk"><span class="mono">@pregen/verify</span> and <span class="mono">pregen</span></a> have both keys built in.</p>
 
-    <h2>9 · Testing an implementation</h2>
+    <h2 id="9-testing-an-implementation">9 · Testing an implementation</h2>
     <p>An implementation is correct when it reproduces every case in the <code>pg_code</code>
     section of the test vectors:</p>
     <ul>

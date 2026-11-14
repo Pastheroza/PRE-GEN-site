@@ -19,19 +19,20 @@
 <script src="/site.js" defer></script>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap">
-<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt="PRE-GEN"></a>
+<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt=""><span class="mark-name">PRE-GEN</span></a>
 <button class="menu-btn" type="button" aria-controls="site-menu" aria-expanded="false" aria-label="Open menu"><span></span><span></span></button>
 <div class="menu" id="site-menu">
-<nav aria-label="Main"><a href="/tog">The Licence</a><a href="/tog/create">Create your ToG</a><a href="/connect">Connect your AI</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/downloads">Downloads</a><a href="/docs" aria-current="page">How it works</a><a href="/create-registry" class="nav-more">Create a registry</a><a href="/faq" class="nav-more">FAQ</a><a href="https://github.com/Pastheroza/PRE-GEN-site" class="nav-more">GitHub</a></nav>
+<nav aria-label="Main"><a href="/tog">The Licence</a><a href="/tog/create">Create your ToG</a><a href="/docs" aria-current="page">How it works</a><a href="/connect">Connect your AI</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/downloads">Downloads</a><div class="nav-group"><button class="nav-group-btn" type="button" aria-expanded="false" aria-controls="nav-more">More</button><div class="nav-group-list" id="nav-more"><a href="/create-registry">Create a registry</a><a href="/faq">FAQ</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a></div></div></nav>
 </div>
 </div></header>
-<main><div class="wrap">
-<div class="doc"><aside><ul><li><a href="/docs" aria-current="page">How it works</a></li><li><a href="/docs/two-layers">Two layers</a></li><li><a href="/docs/tog-code">ToG codes</a></li><li><a href="/docs/versions">Versions</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/sdk">Add it to your service</a></li><li><a href="/docs/proves">What it proves</a></li><li><a href="/docs/c2pa">C2PA</a></li><li><a href="/docs/implement">Build it</a></li></ul></aside><article><h1>How PRE-GEN works</h1>
+<main id="main"><div class="wrap">
+<div class="doc"><aside><nav aria-label="Documentation"><ul><li class="doc-h" aria-hidden="true">Overview</li><li><a href="/docs" aria-current="page">How it works</a></li><li><a href="/docs/two-layers">Two layers</a></li><li><a href="/docs/proves">What it proves</a></li><li class="doc-h" aria-hidden="true">Integrate</li><li><a href="/docs/sdk">Add it to your service</a></li><li><a href="/docs/implement">Build it</a></li><li><a href="/docs/c2pa">C2PA</a></li><li class="doc-h" aria-hidden="true">Reference</li><li><a href="/docs/tog-code">ToG codes</a></li><li><a href="/docs/refusal-codes">Refusal codes</a></li><li><a href="/docs/versions">Versions</a></li></ul></nav></aside><article><h1>How PRE-GEN works</h1>
 <p class="meta">PRE-GEN v5 · 12 October 2026 · extensions provider-identity and bind added 6 November 2026 · Copyright Valerii Egorov · Apache-2.0 · <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/PRE-GEN-CORE.md">the core</a> · <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec">source</a> · The text is the rule; the schemas and test vectors check it, and where they disagree the text wins and the vectors get fixed.</p>
 <p>Before an AI service generates a real person, a character or a brand, it asks the registry that represents them. The registry answers and signs the answer. Anyone can check that answer later, offline, without trusting whoever shows it. The rules are the same for every kind of subject; a <em>profile</em> says what applies to each, and the first profile covers a person's face and voice.</p>
 
-<h2>The five rules</h2>
+<h2 id="the-five-rules">The five rules</h2>
 <p>They fit on one page: <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/PRE-GEN-CORE.md">PRE-GEN-CORE.md</a>. An AI service that does exactly this, and nothing more, implements PRE-GEN.</p>
 <ol>
 <li><strong>A code names the person and their registry.</strong> <code>TOG-&lt;prefix&gt;-&lt;number&gt;&lt;check&gt;</code>, for example <code>TOG-TEST-000001N</code>. The prefix names the registry. PG codes are retired: a <code>PG-</code> string is not a code. Use the ToG code your registry shows you. Codes without a prefix were issued before v5; they keep their meaning, and no registry issues new ones.</li>
@@ -42,7 +43,7 @@
 </ol>
 <p class="note">Works today: on 7 November 2026 an AI app known only by its domain asked PRAMPTA with no account, a person connected a licence to it with <code>bind</code>, and the app got an allow, reported the output and kept a proof that was checked offline.</p>
 
-<h2>Messages</h2>
+<h2 id="messages">Messages</h2>
 <pre><code>envelope       = { type, body, signatures }      body.signers = [{ role, key_id }, …]
 signing input  = "PREGEN-V5" 0x00 type 0x00 canonical(body)      → Ed25519 (RFC 8032), hex
 message id     = SHA-256("PREGEN-V5-ID" 0x00 type 0x00 canonical(body))   signatures not included
@@ -50,7 +51,7 @@ key id         = "pg-ed25519:" + hex(SHA-256(raw public key))[0:32]
 canonical      = UTF-8, keys in code-point order, no whitespace, integers only, no normalization</code></pre>
 <p class="note">Never Unicode-normalize a signed body before verifying. Verify the bytes you received.</p>
 
-<h2>Optional extensions</h2>
+<h2 id="optional-extensions">Optional extensions</h2>
 <div class="table"><table>
 <thead><tr><th>Extension</th><th>Solves</th></tr></thead>
 <tbody>
@@ -72,23 +73,23 @@ canonical      = UTF-8, keys in code-point order, no whitespace, integers only, 
 </tbody></table></div>
 <p>An extension can only add. None may turn a refusal the core or a profile requires into a permission. A service uses an extension only with a registry that declares it.</p>
 
-<h2>The profile likeness/1</h2>
+<h2 id="the-profile-likeness-1">The profile likeness/1</h2>
 <p><a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/profiles/likeness-1.md">likeness/1</a> says what a request about a person's face and voice contains, and which refusals nothing overrides: an opt-out, a person who is not available, a minor in a prohibited category, a fixed refusal, and intimate content without the person's own signature.</p>
 
-<h2>One person, one home registry</h2>
+<h2 id="one-person-one-home-registry">One person, one home registry</h2>
 <p>A person has one home registry; other registries and AI services use and pass their code. A claim the person confirmed on their own official channel wins over unconfirmed ones. Among claims the person confirmed on their own official channel, a refusal of the person in any registry holds in all of them. With no confirmed claim PRE-GEN says nothing: the result is <code>not_blocked</code> (<code>PG_IDENTITY_UNCONFIRMED</code>), which permits nothing and refuses nothing. An impostor can neither permit nor freeze a person. A confirmation counts only at a fixed place, the official website's <code>/.well-known/pregen</code> or the person's own account, and a new channel permits only after seven days. Two confirmed homes for one person are a duplicate, and the stricter answer decides until one home remains; duplicates are never searched for by face or voice. A complaint is not a refusal of the person; only the person or the steward can refuse a person everywhere. A registry answers a complaint within seven days, and the steward can mark a false claim in the directory. See <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/identity.md">identity</a>.</p>
 
-<h2>Creating a ToG</h2>
+<h2 id="creating-a-tog">Creating a ToG</h2>
 <p>A person or a company makes their ToG through one process, the same on <a href="/tog/create">pregen.org/tog/create</a> and at every registry: what they need it for, their answers, a check, and one home registry from the signed list, which issues the code. Under 18 only a parent or legal guardian files, and only a No; an AI service gets no code. The code is pending for 7 days and takes effect once confirmed: the ToG statement, whose first line is <code>ToG: &lt;code&gt;</code>, published on a website or profile the holder controls, or a company's <code>/.well-known/tog.json</code>. pregen.org is not a registry. See <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/drafts/tog-funnel.md">the registration process</a>.</p>
 
-<h2>No middleman</h2>
+<h2 id="no-middleman">No middleman</h2>
 <p>An AI service and a registry talk directly, free. Services that make this easier, such as checking an agent's authority, running a sale, reporting or settlement, are optional, and anyone may offer them.</p>
 <p>An AI service chooses which registries it connects and whom it offers; a registry chooses which services it serves. Every answer means the same thing in every registry: a registry may refuse more than the core requires, never permit more, and decides whether it gives an answer, never what the answer means. The standard is owned by no company; its author's commitment to hand it to an independent organization is in the paper, §15, and in <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/PRE-GEN-SPEC.md">PRE-GEN-SPEC.md</a> §7.</p>
 
-<h2>The earlier interface (v1)</h2>
+<h2 id="the-earlier-interface-v1">The earlier interface (v1)</h2>
 <p><code>pg.decision.v1</code>, <code>POST /v1/verify/</code>, licences <code>pg.license.v2</code> and receipts stay valid and verifiable for everything issued under them, and get no new features. Their text, and the foundations the core builds on, are in <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/PRE-GEN-SPEC.md">PRE-GEN-SPEC.md</a>; PRAMPTA's additions to the earlier interface (informative) are in <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/PRE-GEN-EXTENSIONS.md">PRE-GEN-EXTENSIONS.md</a>.</p>
 
-<h2>Testing an implementation</h2>
+<h2 id="testing-an-implementation">Testing an implementation</h2>
 <p>JSON Schemas for every v5 message are in <a href="https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec/schemas">spec/schemas</a>; byte vectors in <a href="/spec/test-vectors/messages.json">messages.json</a> and <a href="/spec/test-vectors/vectors.json">vectors.json</a>. The vectors use fixed public test keys — never use them in a deployment. An open reference registry and the verification libraries are described under <a href="/docs/implement">Build it</a>.</p>
 <nav class="pager" aria-label="Pages"><span></span><a href="/docs/tog-code">ToG codes →</a></nav></article></div>
 </div></main>
