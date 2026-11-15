@@ -1,7 +1,7 @@
 # ToG-L 1.0 and PRE-GEN: what maps to what
 
 **Status:** informative. It explains how the terms of the Terms of Generation Licence, Version 1.0
-(`ToG-L-1.0`, sha256 `c608c6cb477918d040a432417ba2101f1731aee906ce15024933efcb907ba2ac`,
+(`ToG-L-1.0`, sha256 `bfff2e4620d2786f150d0582434b7b9741a12d21637a365a246c7bd203243939`,
 [pregen.org/tog/1.0](https://www.pregen.org/tog/1.0)) meet the messages of the PRE-GEN core
 ([`PRE-GEN-CORE.md`](PRE-GEN-CORE.md)) and its extensions. Where they differ, the licence decides
 what is permitted and the core decides what a valid message is. This page changes neither.

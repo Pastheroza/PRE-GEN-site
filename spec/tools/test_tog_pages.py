@@ -29,9 +29,9 @@ def test_both_pages_and_the_deed_show_the_hash_of_the_plain_text():
 
 def test_the_text_with_its_four_brackets_as_written_and_labelled_ToG_L_1_0_on_both_pages():
     text = TEXT.decode()
-    assert H == "c608c6cb477918d040a432417ba2101f1731aee906ce15024933efcb907ba2ac" and len(TEXT) == 73492
+    assert H == "bfff2e4620d2786f150d0582434b7b9741a12d21637a365a246c7bd203243939" and len(TEXT) == 73381
     assert text.startswith("# Terms of Generation Licence\n\nVersion 1.0, November 2026\n\nhttps://pregen.org/tog\n\n"
-                           "Copyright 2026 Valerii Egorov (Pastheroza). ")
+                           "TERMS AND CONDITIONS")   # no copyright line since 2026-11-15; Section 16(d) keeps it
     assert text.endswith("\nEND OF TERMS AND CONDITIONS\n")
     assert re.findall(r"\[[^\]]*\]", text) == ["[hash]"] * 3 + ["[For counsel: child-performer laws may add duties.]"]
     for page in ("index.html", "deed.html"):

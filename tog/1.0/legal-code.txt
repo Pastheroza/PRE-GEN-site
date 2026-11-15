@@ -4,8 +4,6 @@ Version 1.0, November 2026
 
 https://pregen.org/tog
 
-Copyright 2026 Valerii Egorov (Pastheroza). This text may be copied and changed only as Section 16(d) allows.
-
 TERMS AND CONDITIONS FOR THE USE OF A HOLDER'S MATTER
 
 *Who this Licence is for.* This Licence is one common text for everyone. A Holder, a natural person or an Entity, applies this version of it to the Holder's own Matter, and to nothing else, by making a Statement that cites it. Anyone who does an act listed in Section 9, such as signing a Request, giving an Undertaking, instructing a Provider to Generate or using an Output under the Permission, accepts this Licence and is bound by it. To the extent this Licence is a contract, the Holder gives that person the Permission in return for that acceptance, and on these terms only.
