@@ -68,7 +68,7 @@ test("every page's menu opens with Create your ToG, then the Licence", () => {
   walk("");
   const menus = pages.filter((p) => read(p).includes('<nav aria-label="Main">'));
   assert.ok(menus.length >= 25, String(menus.length));
-  for (const p of menus) assert.match(read(p), /<nav aria-label="Main"><a href="\/tog\/create"( aria-current="page")?>Create your ToG<\/a><a href="\/tog"( aria-current="page")?>The Licence<\/a>/, p);
+  for (const p of menus) assert.match(read(p), /<nav aria-label="Main">(<button class="nav-search"[^]*?<\/button>)?<a href="\/tog\/create"( aria-current="page")?>Create your ToG<\/a><a href="\/tog"( aria-current="page")?>The Licence<\/a>/, p);
 });
 
 // The home page's card names ToG-L 1.0 and links the text; the hash stands on /tog (founder, 2026-11-14).
