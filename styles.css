@@ -550,8 +550,14 @@ ul.h-why { list-style: none; display: grid; grid-template-columns: repeat(3, min
 }
 @media (max-width: 560px) {
   .h-roles { grid-template-columns: 1fr; gap: 36px; }
-  .lic-card-t { padding: 22px 18px; font-size: 24px; }
-  .lic-card-links a { padding: 0 18px; }
+  /* Phones: the card is one compact block, so the hero fits one screen. */
+  .lic-card-t { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 14px 16px; font-size: 20px; }
+  .lic-card-t small { margin: 0; font-size: 12px; text-align: right; }
+  .lic-card-links { display: grid; grid-template-columns: 1fr 1fr; font-size: 15px; }
+  .lic-card-links a { min-height: 44px; padding: 0 16px; }
+  .lic-card-links a:nth-child(odd) { border-right: 1px solid var(--soft); }
+  .lic-card-links a:nth-child(n+3) { border-bottom: 0; }
+  .home .lic-hero { gap: 28px; }
   .home .lic-btns .btn { flex: 1 1 100%; }
 }
 
