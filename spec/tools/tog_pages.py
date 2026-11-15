@@ -132,7 +132,7 @@ FOOT = """</div></main>
 <div><p class="foot-h">Legal</p><a href="/legal">Legal</a><a href="/contact">Contact</a></div>
 </nav>
 </div>
-<div class="foot-bottom"><p>&copy; 2026 Valerii Egorov. Open standard, Apache-2.0. Not owned by any registry, including PRAMPTA.</p></div>
+<div class="foot-bottom"><p>&copy; 2026 Valerii Egorov. Open standard, Apache-2.0. Not owned by any registry.</p></div>
 </div></footer>
 </body>
 </html>

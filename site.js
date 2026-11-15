@@ -72,6 +72,16 @@ document.querySelectorAll(".doc article h2[id]").forEach(function (h) {
   if (ul && ul.scrollWidth > ul.clientWidth) ul.scrollLeft = cur.getBoundingClientRect().left - ul.getBoundingClientRect().left - 16;
 })();
 
+// Tables on phones: each cell carries its column's name, so a row can be read as a short list.
+document.querySelectorAll(".table table").forEach(function (t) {
+  var names = Array.prototype.map.call(t.querySelectorAll("thead th"), function (th) { return th.textContent.trim(); });
+  if (names.length < 3) return;
+  t.classList.add("stack");
+  t.querySelectorAll("tbody tr").forEach(function (tr) {
+    Array.prototype.forEach.call(tr.children, function (td, i) { if (names[i] && !td.hasAttribute("colspan")) td.setAttribute("data-label", names[i]); });
+  });
+});
+
 // A Copy button for one value (data-copy holds it).
 document.querySelectorAll("button[data-copy]").forEach(function (b) {
   var label = b.textContent;

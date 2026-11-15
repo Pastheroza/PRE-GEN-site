@@ -484,7 +484,7 @@ ul.lic-apply { list-style: none; margin: 0; padding: 0; }
 
 /* The licence card: a column from the header down to the end of the hero, its name on top, the links below. */
 .lic-card { display: flex; flex-direction: column; align-self: stretch; margin: -80px 0 -72px; background: var(--bg); }
-.lic-card-t { margin: 0; padding: 40px 28px 28px; border-bottom: 1px solid var(--soft); font: 600 30px/1.2 var(--mono); }
+.lic-card-t { margin: 0; padding: 40px 28px 28px; border-bottom: 1px solid var(--soft); font: 600 30px/1.2 var(--sans); letter-spacing: -0.01em; }
 .lic-card-t small { display: block; margin-top: 8px; font: 400 14px/1.4 var(--sans); color: var(--muted-blue); }
 .lic-card-links { display: flex; flex-direction: column; margin: 0; font-size: 16px; }
 .lic-card-links a { display: flex; align-items: center; justify-content: space-between; min-height: 60px; padding: 0 28px; border-bottom: 1px solid var(--soft); font-weight: 500; text-decoration: none; }
@@ -551,8 +551,8 @@ ul.h-why { list-style: none; display: grid; grid-template-columns: repeat(3, min
 @media (max-width: 560px) {
   .h-roles { grid-template-columns: 1fr; gap: 36px; }
   /* Phones: the card is one compact block, so the hero fits one screen. */
-  .lic-card-t { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 14px 16px; font-size: 20px; }
-  .lic-card-t small { margin: 0; font-size: 12px; text-align: right; }
+  .lic-card-t { padding: 14px 16px; font-size: 20px; }
+  .lic-card-t small { margin-top: 2px; font-size: 13px; }
   .lic-card-links { display: grid; grid-template-columns: 1fr 1fr; font-size: 15px; }
   .lic-card-links a { min-height: 44px; padding: 0 16px; }
   .lic-card-links a:nth-child(odd) { border-right: 1px solid var(--soft); }
@@ -568,6 +568,23 @@ ul.h-why { list-style: none; display: grid; grid-template-columns: repeat(3, min
   table { font-size: 13.5px; }
   th, td { padding: 8px 10px; }
   .actions .btn { flex: 1 1 auto; }
+}
+
+/* Phones: a two-column table (a label and its value) reads as a list. */
+@media (max-width: 640px) {
+  .table tr:has(> :nth-child(2):last-child) { display: block; padding: 10px 12px; border-bottom: 1px solid var(--soft); }
+  .table tr:has(> :nth-child(2):last-child) > * { display: block; padding: 0; border: 0; }
+  .table tr:has(> :nth-child(2):last-child) > :first-child { color: var(--muted); font-size: 13px; }
+  .table thead tr:has(> :nth-child(2):last-child) { display: none; }
+  .table tbody tr:last-child { border-bottom: 0; }
+  h1 { overflow-wrap: break-word; hyphens: auto; }
+  /* Wider tables: one block per row, each value under its column's name. */
+  table.stack thead { display: none; }
+  table.stack tr { display: block; padding: 10px 12px; border-bottom: 1px solid var(--soft); }
+  table.stack tr:last-child { border-bottom: 0; }
+  table.stack td { position: relative; display: block; min-height: 1.6em; padding: 3px 0 3px 106px; border: 0; white-space: normal; overflow-wrap: anywhere; }
+  table.stack td[data-label]::before { content: attr(data-label); position: absolute; left: 0; top: 4px; width: 96px; color: var(--muted); font: 13px/1.5 var(--sans); }
+  table.stack td:not([data-label]) { padding-left: 0; }
 }
 
 /* Print: browsers drop the blue background, so print black on white. */
