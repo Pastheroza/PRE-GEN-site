@@ -538,7 +538,7 @@ ul.h-why { list-style: none; display: grid; grid-template-columns: repeat(3, min
   ul.h-why { gap: 0 28px; }
 }
 @media (max-width: 760px) {
-  .home .lic-hero { padding: 36px 0 44px; margin-bottom: 56px; }
+  .home .lic-hero { min-height: calc(100svh - var(--band)); align-content: center; padding: 36px 0 44px; margin-bottom: 56px; }
   .ask-bar a { min-height: 60px; font-size: 15px; }
   .h-sec { margin-bottom: 64px; }
   .h-parts { grid-template-columns: 1fr; }
