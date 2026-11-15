@@ -8,7 +8,7 @@ const HEX64 = /^[0-9a-f]{64}$/;
 /** The running foot, outside the licence text: "ToG: <code> · v<version> · <8 hex> · Check: pregen.org/lookup?code=<code>". */
 export function foot({ code, statement }) {
   const ok = statement && statement.version != null && HEX64.test(statement.sha256 || "");
-  return `ToG: ${code} · ${ok ? "v" + statement.version : "pending"} · ${ok ? statement.sha256.slice(0, 8) : "pending"}`
+  return `ToG: ${code} · ${ok ? "v" + statement.version : statement?.held ? "in force" : "pending"} · ${ok ? statement.sha256.slice(0, 8) : statement?.held ? "see Registry" : "pending"}`
     + ` · Check: pregen.org/lookup?code=${encodeURIComponent(code)}`;
 }
 
@@ -25,6 +25,7 @@ export function holderCopy({ code, holder = "", company = false, conditions = nu
     : "The likeness and voice of the Holder";
   const st = statement && statement.version != null && HEX64.test(statement.sha256 || "")
     ? `Version ${statement.version}, SHA-256 <span class="hash">${esc(statement.sha256)}</span>${registry ? ", at " + esc(registry.name) : ""}`
+    : statement?.held ? "In force at the home Registry, which shows its version and hash. The Registry&#39;s record decides."
     : "Pending at the home Registry. The Registry&#39;s record decides.";
   const reg = registry ? `${esc(registry.name)} (prefix ${esc(registry.prefix)})` : "Not known";
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><link rel="stylesheet" href="/tog-copy.css"></head><body>

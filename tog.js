@@ -380,7 +380,7 @@ function copyPart(done, looked) {
       const co = done.answers.who === "company";
       const { title, html, pageCss } = holderCopy({ code: done.code, holder: S.holder, company: co, conditions: done.answers.conditions || null,
         lines: statement(done).lines, rules: co ? companyRules(done.answers) : rulesFromAnswers(done.answers), licenceText: text, licence: LEGAL,
-        statement: sx ? { version: sx.version, sha256: sx.sha256 ?? sx.statement_sha256 } : null, registry: { name: done.registry, prefix: done.prefix } });
+        statement: sx && sx.version != null ? { version: sx.version, sha256: sx.sha256 ?? sx.statement_sha256 } : sx ? { held: true } : null, registry: { name: done.registry, prefix: done.prefix } });
       const f = el("iframe", { title: "Your copy", class: "tg-print" });
       const old = document.title;
       f.addEventListener("load", () => {
