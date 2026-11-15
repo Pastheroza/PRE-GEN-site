@@ -4,8 +4,6 @@ Version 1.0, November 2026
 
 https://pregen.org/tog/registry-standard
 
-Copyright 2026 Valerii Egorov (Pastheroza). This text may be copied and changed only as Section 16(d) allows.
-
 TERMS FOR REGISTRIES
 
 *Purpose.* This Standard sets out what every Registry must do to be listed by the Steward, so that Holders, Providers and Platforms can rely on any listed Registry in the same way. It gives no one a Permission and takes none away: the Licence alone does that.
