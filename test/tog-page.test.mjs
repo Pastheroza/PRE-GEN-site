@@ -57,7 +57,7 @@ test("one common legal text: the pages name only ToG-L 1.0, link it, and never b
   }
 });
 
-test("every page's menu opens with the Licence, then Create your ToG", () => {
+test("every page's menu opens with Create your ToG, then the Licence", () => {
   const pages = [];
   const walk = (d) => readdirSync(new URL("../" + d, import.meta.url)).forEach((f) => {
     const p = d + f;
@@ -68,7 +68,7 @@ test("every page's menu opens with the Licence, then Create your ToG", () => {
   walk("");
   const menus = pages.filter((p) => read(p).includes('<nav aria-label="Main">'));
   assert.ok(menus.length >= 25, String(menus.length));
-  for (const p of menus) assert.match(read(p), /<nav aria-label="Main"><a href="\/tog"( aria-current="page")?>The Licence<\/a><a href="\/tog\/create"( aria-current="page")?>Create your ToG<\/a>/, p);
+  for (const p of menus) assert.match(read(p), /<nav aria-label="Main"><a href="\/tog\/create"( aria-current="page")?>Create your ToG<\/a><a href="\/tog"( aria-current="page")?>The Licence<\/a>/, p);
 });
 
 // The home page's card names ToG-L 1.0 and links the text; the hash stands on /tog (founder, 2026-11-14).
