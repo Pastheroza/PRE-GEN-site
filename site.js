@@ -127,3 +127,73 @@ document.querySelectorAll(".ask-copy").forEach(function (b) {
     pgCopy(document.title + "\n" + location.href + "\nMore: https://www.pregen.org/llms.txt\n\n" + (main ? main.innerText : ""), b, label);
   });
 });
+
+// Search: the pages listed on /map are fetched once, on first open, and searched here in the browser.
+(function () {
+  var btn = document.querySelector(".nav-search");
+  var top = document.querySelector(".top");
+  if (!btn || !top) return;
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; }
+  var box = el("div", "site-search"); box.id = "site-search"; box.hidden = true;
+  var form = el("form"); form.setAttribute("role", "search");
+  var input = el("input"); input.type = "search"; input.placeholder = "Search pregen.org"; input.setAttribute("aria-label", "Search pregen.org");
+  var note = el("p"); note.setAttribute("aria-live", "polite");
+  var list = el("ul");
+  form.append(input, note, list); box.appendChild(form); top.appendChild(box);
+  var pages = null;
+
+  function load() {
+    if (pages) return pages;
+    var parse = function (html) { return new DOMParser().parseFromString(html, "text/html"); };
+    pages = fetch("/map").then(function (r) { return r.text(); }).then(function (html) {
+      var urls = Array.prototype.map.call(parse(html).querySelectorAll("main a[href^='/']"), function (a) { return a.getAttribute("href"); })
+        .filter(function (u) { return !/\.\w+$/.test(u); });
+      return Promise.all(urls.map(function (u) {
+        return fetch(u).then(function (r) { return r.ok ? r.text() : ""; }).then(function (h) {
+          var d = parse(h), m = d.querySelector("main");
+          if (m) m.querySelectorAll("aside, nav, script").forEach(function (n) { n.remove(); });
+          return { url: u, title: (d.title || u).replace(/ — PRE-GEN$/, ""), text: m ? m.textContent.replace(/\s+/g, " ").trim() : "" };
+        }, function () { return null; });
+      }));
+    }).then(function (all) { return all.filter(function (p) { return p && p.text; }); });
+    return pages;
+  }
+
+  function run() {
+    var q = input.value.trim().toLowerCase();
+    list.textContent = ""; note.textContent = "";
+    if (q.length < 2) return;
+    load().then(function (all) {
+      if (input.value.trim().toLowerCase() !== q) return;
+      var words = q.split(/\s+/);
+      var hits = all.map(function (p) {
+        var t = p.title.toLowerCase(), x = p.text.toLowerCase(), score = 0;
+        for (var i = 0; i < words.length; i++) {
+          if (x.indexOf(words[i]) < 0 && t.indexOf(words[i]) < 0) return null;
+          score += (t.indexOf(words[i]) >= 0 ? 10 : 0) + x.split(words[i]).length - 1;
+        }
+        var at = x.indexOf(q) >= 0 ? x.indexOf(q) : x.indexOf(words[0]);
+        var snip = (at > 60 ? "…" : "") + p.text.slice(Math.max(0, at - 60), at + 100) + "…";
+        return { p: p, score: score, snip: snip };
+      }).filter(Boolean).sort(function (a, b) { return b.score - a.score; }).slice(0, 8);
+      list.textContent = "";
+      note.textContent = hits.length ? "" : "Nothing found.";
+      hits.forEach(function (h) {
+        var a = el("a"); a.href = h.p.url + "#:~:text=" + encodeURIComponent(input.value.trim());
+        a.append(el("b", "", h.p.title), el("span", "", h.snip));
+        var li = el("li"); li.appendChild(a); list.appendChild(li);
+      });
+    }, function () { note.textContent = "Search is not available right now."; });
+  }
+
+  function show(open) {
+    box.hidden = !open;
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) { document.documentElement.classList.remove("menu-open"); input.focus(); load(); }
+  }
+  btn.addEventListener("click", function (e) { e.stopPropagation(); show(box.hidden); });
+  form.addEventListener("submit", function (e) { e.preventDefault(); var a = list.querySelector("a"); if (a) location.href = a.href; });
+  input.addEventListener("input", run);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !box.hidden) { show(false); btn.focus(); } });
+  document.addEventListener("click", function (e) { if (!box.hidden && !e.target.closest(".site-search")) show(false); });
+})();

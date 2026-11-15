@@ -101,6 +101,20 @@ img, svg { max-width: 100%; }
 .top nav a:hover { text-decoration: underline; }
 .top nav a[aria-current] { text-decoration: underline; text-decoration-thickness: 2px; }
 .nav-group-btn { display: none; }
+/* Search: a button in the menu; the box opens under the band. */
+.nav-search { display: none; }
+html.js .nav-search { display: flex; align-items: center; gap: 12px; padding: 14px 0; border: 0; border-bottom: 1px solid var(--soft); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.site-search { position: absolute; top: 100%; left: 0; right: 0; z-index: 10; --bg: #fff; --fg: #15171c; --soft: #d8dbe2; background: var(--bg); color: var(--fg); box-shadow: 0 16px 32px rgba(10, 20, 50, 0.18); }
+.site-search[hidden] { display: none; }
+.site-search form { max-width: calc(var(--page) + 2 * var(--gutter)); margin: 0 auto; padding: 20px var(--gutter); }
+.site-search input { width: 100%; height: 48px; padding: 0 14px; border: 1px solid var(--soft); border-radius: var(--radius); font: 400 17px/1 var(--sans); color: var(--fg); background: var(--bg); }
+.site-search input:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
+.site-search ul { margin: 12px 0 0; padding: 0; list-style: none; max-height: 60vh; overflow-y: auto; }
+.site-search li a { display: block; padding: 12px 0; border-bottom: 1px solid var(--soft); text-decoration: none; color: var(--fg); }
+.site-search li a b { display: block; color: var(--link); font-weight: 500; }
+.site-search li a span { display: block; margin-top: 4px; font-size: 14px; color: var(--muted); }
+.site-search li a:hover b { text-decoration: underline; }
+.site-search p { margin: 12px 0 0; color: var(--muted); font-size: 15px; }
 .nav-group, .nav-group-list { display: contents; }
 
 /* Without JavaScript the button cannot open anything: the links stand in the band. */
@@ -122,17 +136,20 @@ html:not(.js) .top nav a { padding: 0; border: 0; }
   html .menu-btn { display: none; }
   html .menu { position: static; display: flex; width: auto; max-height: none; overflow: visible; padding: 0; background: none; box-shadow: none; }
   html .top nav { flex-direction: row; align-items: center; gap: 2px; font-size: 15px; }
-  html .top nav > a, .nav-group-btn { position: relative; display: flex; align-items: center; height: var(--band); padding: 0 8px; border: 0; white-space: nowrap; }
+  html .top nav > a, .nav-group-btn { position: relative; display: flex; align-items: center; height: var(--band); padding: 0 7px; border: 0; white-space: nowrap; }
   html .top nav > a:hover { text-decoration: none; background: rgba(255, 255, 255, 0.12); }
   /* The current page: a white bar on the band's lower edge. */
   html .top nav > a[aria-current] { text-decoration: none; }
-  html .top nav > a[aria-current]::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: 0; height: 3px; background: #fff; }
+  html .top nav > a[aria-current]::after { content: ""; position: absolute; left: 7px; right: 7px; bottom: 0; height: 3px; background: #fff; }
   /* The main action stands out as a button. */
   html .top nav > a[href="/tog/create"] { height: 36px; margin: 0 8px; padding: 0 14px; border: 1px solid rgba(255, 255, 255, 0.85); border-radius: var(--radius); }
   html .top nav > a[href="/tog/create"]:hover, html .top nav > a[href="/tog/create"][aria-current] { background: #fff; color: var(--blue); }
   html .top nav > a[href="/tog/create"][aria-current]::after { display: none; }
   html .top nav > a.donate { height: 36px; margin-left: 8px; padding: 0 14px; background: #fff; color: var(--blue); border-radius: var(--radius); font-weight: 600; }
   html .top nav > a.donate:hover { background: var(--wash); }
+  html.js .nav-search { height: var(--band); padding: 0 7px; border: 0; }
+  html.js .nav-search span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .nav-search:hover, .nav-search[aria-expanded="true"] { background: rgba(255, 255, 255, 0.12); }
   .nav-group { display: block; position: relative; }
   html.js .nav-group-btn { display: flex; gap: 8px; background: none; color: inherit; font: inherit; cursor: pointer; }
   .nav-group-btn:hover, .nav-group-btn[aria-expanded="true"] { background: rgba(255, 255, 255, 0.12); }
