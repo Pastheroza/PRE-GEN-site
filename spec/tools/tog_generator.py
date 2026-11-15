@@ -160,7 +160,7 @@ def rules_from_answers(a: dict) -> dict:
     else:                                             # "within my rules": approval on paid work only
         uses = {p: "approve" if p == "commercial" else "open" for p in purposes}
     r = {"uses": dict(sorted(uses.items())), "training": False,
-         "modalities": sorted({"image", "video"} | ({"voice"} if a["voice"] else set())),
+         "modalities": sorted(({"image", "video"} if a.get("face", True) else set()) | ({"voice"} if a["voice"] else set())),
          "excluded_categories": sorted(set(FLOOR) | set(REGISTRY_LOCK) | {c for k in a["never"] for c in NEVER[k]})}
     return validate(r)
 
@@ -214,6 +214,7 @@ L = {
         "paid": {"1": "Ads and paid work: only under a deal I sign.",
                  "3": "Ads and paid work: only under a deal they sign."},
         "as": "As: {list}.", "no_voice": {"1": "Not my voice.", "3": "Not their voice."},
+        "no_face": {"1": "No pictures or video of me.", "3": "No pictures or video of them."},
         "never": "Never: {list}.",
         "train_no": {"1": "Training AI models on me: no.", "3": "Training AI models on this person: no."},
         "train_yes": {"1": "Training AI models on me: allowed. Each later use must still ask.",
@@ -258,6 +259,7 @@ L = {
         "paid": {"1": "Реклама и платная работа — только по договору с моей подписью.",
                  "3": "Реклама и платная работа — только по договору с подписью этого человека."},
         "as": "В виде: {list}.", "no_voice": {"1": "Без моего голоса.", "3": "Без голоса этого человека."},
+        "no_face": {"1": "Без фото и видео со мной.", "3": "Без фото и видео этого человека."},
         "never": "Никогда: {list}.",
         "train_no": {"1": "Обучать ИИ-модели на мне: нельзя.", "3": "Обучать ИИ-модели на этом человеке: нельзя."},
         "train_yes": {"1": "Обучать ИИ-модели на мне: можно. Каждое следующее использование всё равно спрашивает.",
@@ -323,7 +325,10 @@ def card(r: dict, lang: str, who: str = "1") -> list:
     if "commercial" in r["uses"]:
         lines.append(t["paid"])
     as_line = t["as"].format(list=_join(_items(set(r["modalities"]), MODALITY_ORDER, t), t, ", "))
-    lines.append(as_line if "voice" in r["modalities"] else f"{as_line} {t['no_voice']}")
+    if "image" not in r["modalities"]:                                  # face: false (voice is then the only form left)
+        lines.append(f"{as_line} {t['no_face']}")
+    else:
+        lines.append(as_line if "voice" in r["modalities"] else f"{as_line} {t['no_voice']}")
     lines.append(t["never"].format(list=_join(_items(set(r["excluded_categories"]), CATEGORY_ORDER, t), t)))
     lines.append(t["train_yes" if r["training"] else "train_no"])
     return lines + [t["real"], t["except"], t["binds_yes"]]

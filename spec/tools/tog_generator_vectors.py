@@ -25,7 +25,7 @@ sys.path.insert(0, str(HERE))
 import tog_code as tc  # noqa: E402
 import tog_generator as g  # noqa: E402
 
-REFERENCE_SHA256 = "8a1a6d1936276462e68db0315993569359c535a3946baabcc22864c04c0b8ac0"   # PRE-GEN-Drafts copy, 2026-11-12 (the exceptions line follows ToG 1.0 §5(a))
+REFERENCE_SHA256 = "e1eaccda9ae120d55944a1138e24d23efb13fcfe0e485b16bf64ef13e01ddd5f"   # PRE-GEN-Drafts copy, 2026-11-12, plus the optional face answer 2026-11-15 (the exceptions line follows ToG 1.0 §5(a))
 _ref = (HERE / "tog_generator.py").read_bytes().split(b"\n", 2)[2]      # the copy minus its two header lines
 if hashlib.sha256(_ref).hexdigest() != REFERENCE_SHA256:
     sys.exit("spec/tools/tog_generator.py is not the approved reference; copy it again, do not edit it here")
@@ -89,8 +89,10 @@ def answers_ok(a) -> bool:
     f = a.get("for")
     if not _ordered(f, g.FOR) or not f or not _ordered(a.get("never"), g.NEVER) or type(a.get("voice")) is not bool:
         return False
+    if "face" in a and (a["face"] is not False or not a["voice"]):    # only `false`, and never with no voice: nothing left
+        return False
     paid = "paid" in f
-    if set(a) - {"conditions"} != {"age", "decision", "for", "never", "voice"} | ({"floor"} if paid else set()):
+    if set(a) - {"conditions", "face"} != {"age", "decision", "for", "never", "voice"} | ({"floor"} if paid else set()):
         return False
     if "conditions" in a and not conditions_ok(a["conditions"]):
         return False
@@ -194,7 +196,7 @@ def decode_return(f) -> dict:
 
 def rules_of(a: dict) -> dict:
     """Fragment answers -> rules (age and floor do not enter the rules)."""
-    return g.rules_from_answers({k: a[k] for k in ("decision", "for", "never", "voice") if k in a})
+    return g.rules_from_answers({k: a[k] for k in ("decision", "for", "never", "voice", "face") if k in a})
 
 
 # ---- the company card and statement body (PLAN §3.1, draft wording, en) -------------------------------------------
@@ -305,6 +307,9 @@ def answer_sets():
     for name in ("NEWS", "FANS", "ADS"):
         p = g.PRESETS[name]
         out.append((name, {**p, "for": L(p["for"]), "never": L(p["never"])}))
+    for d, f in (("rules", ("news",)), ("approve_all", ("fun", "paid"))):    # face: false, voice: true: only the voice is left
+        out.append((f"face false {d} for={'+'.join(f)}",
+                    {"decision": d, "for": L(f), "never": L(g.default_never(f)), "voice": True, "face": False}))
     rng = random.Random(20261110)
     for i in range(16):
         f = rng.choice(fors)
@@ -389,6 +394,7 @@ def main():
     p_no = no[len("tog=v1."):]
     raw = lambda s: "tog=v1." + base64.urlsafe_b64encode(s.encode()).decode().rstrip("=")
     rawb = lambda b: "tog=v1." + base64.urlsafe_b64encode(b).decode().rstrip("=")
+    face_off = {**ads, "voice": True, "face": False}
     ads_wo = lambda **kw: _canon({**{k: v for k, v in ads.items() if k not in kw.get("drop", ())},
                                   **{k: v for k, v in kw.items() if k != "drop"}})
     cases = [
@@ -408,6 +414,14 @@ def main():
         ("not UTF-8", rawb(b'{"age":"18+","decision":"\xff"}')), ("not an object", raw("[]")),
         ("extra member on a no", raw('{"age":"18+","decision":"no","voice":false}')),
         ("extra member name", raw(_canon({**ads, "name": "x"}))),
+        ("ok: face false with voice", encode(face_off)), ("face: true", raw(_canon({**face_off, "face": True}))),
+        ("face: 0", raw(_canon({**face_off, "face": 0}))), ("face: \"false\"", raw(_canon({**face_off, "face": "false"}))),
+        ("face: null", raw(_canon({**face_off, "face": None}))),
+        ("face false with voice false", raw(_canon({**face_off, "voice": False}))),
+        ("face false on a no", raw('{"age":"18+","decision":"no","face":false}')),
+        ("face false on a minor's representative", raw('{"decision":"no","face":false,"who":"child"}')),
+        ("face false on a company", raw(_canon({**co_ads, "face": False}))),
+        ("face false on a company no", raw('{"decision":"no","face":false,"who":"company"}')),
         ("missing voice", raw(ads_wo(drop=("voice",)))), ("missing age", raw('{"decision":"no"}')),
         ("voice: 0", raw(ads_wo(voice=0))), ("for: [] with a yes", raw(ads_wo(drop=("floor",), **{"for": []}))),
         ("for: [ads]", raw(ads_wo(drop=("floor",), **{"for": ["ads"]}))),
@@ -451,9 +465,9 @@ def main():
         ("conditions on a minor's representative's no", raw('{"conditions":"no blood","decision":"no","who":"child"}')),
     ]
     dec = [{"name": n, "fragment": f, **decode(f)} for n, f in cases]
-    want = {"ok": 9, "unknown_version": 4, "minor": 2}
+    want = {"ok": 10, "unknown_version": 4, "minor": 2}
     got = {r: sum(d["result"] == r for d in dec) for r in ("ok", "unknown_version", "minor", "malformed")}
-    assert all(got[k] == v for k, v in want.items()) and got["malformed"] == len(cases) - 15, got
+    assert all(got[k] == v for k, v in want.items()) and got["malformed"] == len(cases) - 16, got
     assert all(len(f) > MAX_FRAGMENT for n, f in cases if n.startswith(f"{MAX_FRAGMENT + 1} chars"))
     assert all(decode(e["fragment"]) == {"result": "ok", "answers": e["answers"]} for e in enc)
 

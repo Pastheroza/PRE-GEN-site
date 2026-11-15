@@ -115,3 +115,14 @@ test("return: the home registry sends the person back to /tog/document with the 
   for (const { name, fragment, ...want } of V.return.decode) assert.deepEqual(decodeReturn(fragment), want, name);
   assert.throws(() => encodeReturn({ code: "TOG-PRAM-900000037K", answers: { age: "18+", decision: "no" }, record: "https://a.example/c", claim: "0".repeat(16) }));
 });
+
+test("face: false is a person's yes with voice only; every other use of face is malformed", () => {
+  const yes = { age: "18+", decision: "rules", for: ["news"], never: [], voice: true };
+  assert.deepEqual(rulesFromAnswers({ ...yes, face: false }).modalities, ["voice"]);
+  assert.ok(card(rulesFromAnswers({ ...yes, face: false })).includes("As: my voice. No pictures or video of me."));
+  assert.equal(decodeFragment(encodeAnswers({ ...yes, face: false })).result, "ok");
+  for (const bad of [{ ...yes, face: true }, { ...yes, face: 0 }, { ...yes, face: false, voice: false },
+    { age: "18+", decision: "no", face: false }, { who: "company", decision: "no", face: false }]) {
+    assert.throws(() => encodeAnswers(bad), JSON.stringify(bad));
+  }
+});

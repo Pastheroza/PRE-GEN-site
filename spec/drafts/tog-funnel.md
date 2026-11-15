@@ -165,7 +165,12 @@ it opens only after identity verification.
   if the decision is not no: `for` (non-empty, ⊆ `fun, news, paid` in that order), `never` (⊆ `vice, weapons,
   violence, gambling, money, health, religion, ads, endorse, fashion` in that order), `voice` (boolean); `floor`
   (`"each"` | `"project"` | `"video"`, the kind of lowest price, never an amount) iff `paid` is in `for`;
-  optionally `conditions` (below).
+  optionally `face` and `conditions` (below).
+- **`face`**: only on a person's yes, and only the value `false` (the person does not allow pictures or video of
+  themself). It is absent when the face may be reproduced, so every older link is unchanged; `face: true`, any other
+  value, `face: false` with `voice: false` (nothing would be left; the registry records a No), or `face` on a no, a
+  company or a representative is malformed. Without `face` the forms are pictures and video, plus voice if `voice`;
+  with `face: false` and `voice: true` the only form is voice, and the card says "As: my voice. No pictures or video of me."
 - **`conditions`** (ToG-L 1.0, Section 6(f)): the person's own words, in any language, which only
   narrow what they allow. Optional, and only on a yes, a person's or a company's: never on a no (a no has nothing to narrow) or on a
   representative's answer. A company's conditions follow the same rules and only narrow. When present it is a JSON string that is:

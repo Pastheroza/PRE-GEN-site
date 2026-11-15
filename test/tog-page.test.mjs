@@ -31,9 +31,9 @@ test("/tog/create is public, /tog/document is never indexed and sends no referre
 
 test("nothing is stored, and only the fragment carries answers", () => {
   assert.doesNotMatch(js, /localStorage|sessionStorage|indexedDB|document\.cookie|history\.|location\.(search|href\s*=)|URLSearchParams|\?tog=/);
-  // The one link out: the registry's start URL, '#', the encoded answers (never the date, a name or a domain).
-  assert.deepEqual([...js.matchAll(/href: r\.start \+ "#" \+ ([^,]+),/g)].map((m) => m[1]), ["encodeAnswers(a)"]);
-  assert.doesNotMatch(js.slice(js.indexOf("function answers()"), js.indexOf("function plan()")), /S\.[dmy]\b|name|domain/);
+  // The one link out: the registry's start URL with ?path=tog, never an answer, a date, a name or a domain; the answers are asked there.
+  assert.deepEqual([...js.matchAll(/searchParams\.set\(("[^"]+"), ("[^"]+")\)/g)].map((m) => [m[1], m[2]]), [['"path"', '"tog"']]);
+  assert.doesNotMatch(js, /encodeAnswers|r\.start \+/);
   // What is fetched: the signed list (or the local stand's), and a code's public status by the code alone.
   assert.deepEqual([...js.matchAll(/fetch\(("[^"]+")/g)].map((m) => m[1]), ['"/tog/1.0/legal-code.txt"', '"/test/tog-local/steward.json"', '"/api/lookup?code="']);
   assert.doesNotMatch(read("tog-copy.js"), /localStorage|sessionStorage|location|fetch\(/);   // the copy builder only builds a string

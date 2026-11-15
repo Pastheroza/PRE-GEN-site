@@ -73,14 +73,14 @@ export function defaultNever(for_) {
   return Object.keys(NEVER).filter((k) => k !== "fashion" && !(k === "ads" && for_.includes("paid")));
 }
 
-/** Answers {decision, for, never, voice} (age and floor ignored) -> rules. Nothing ticked is the "no". */
+/** Answers {decision, for, never, voice, face?} (age and floor ignored) -> rules. Nothing ticked is the "no". */
 export function rulesFromAnswers(a) {
   if (a.decision === "no" || !a.for.length) return no();
   const uses = {};
   for (const p of a.for.flatMap((k) => FOR[k]).sort()) {
     uses[p] = a.decision === "approve_all" || p === "commercial" ? "approve" : "open";
   }
-  return validate({ uses, training: false, modalities: a.voice ? ["image", "video", "voice"] : ["image", "video"],
+  return validate({ uses, training: false, modalities: [...(a.face === false ? [] : ["image", "video"]), ...(a.voice ? ["voice"] : [])],
     excluded_categories: sortedSet([...FLOOR, ...REGISTRY_LOCK, ...a.never.flatMap((k) => NEVER[k])]) });
 }
 
@@ -101,7 +101,7 @@ const EN = {
   only: "AI may make me **only for {list}**.",
   mixed: "AI may make me for {open}, and **for {approve} only with my approval of each one**.",
   for: "For: {list}.", paid: "Ads and paid work: only under a deal I sign.", as: "As: {list}.",
-  no_voice: "Not my voice.", never: "Never: {list}.", train_no: "Training AI models on me: no.",
+  no_voice: "Not my voice.", no_face: "No pictures or video of me.", never: "Never: {list}.", train_no: "Training AI models on me: no.",
   train_yes: "Training AI models on me: allowed. Each later use must still ask.",
   except: "Exceptions only by a deal I sign myself. Sexual or adult content only by such a deal after an identity "
     + "document check, and never showing me as under 18.",
@@ -148,7 +148,8 @@ function head(r, t, voiceLine) {
     : [fill(t.only, { list: ps("open") })];
   if ("commercial" in r.uses) lines.push(t.paid);
   const as = fill(t.as, { list: join(items(new Set(r.modalities), MODALITY_ORDER, t), t, ", ") });
-  lines.push(voiceLine && !r.modalities.includes("voice") ? `${as} ${t.no_voice}` : as);
+  lines.push(voiceLine && !r.modalities.includes("image") ? `${as} ${t.no_face}`
+    : voiceLine && !r.modalities.includes("voice") ? `${as} ${t.no_voice}` : as);
   lines.push(fill(t.never, { list: join(items(new Set(r.excluded_categories), CATEGORY_ORDER, t), t) }));
   return lines;
 }
@@ -202,8 +203,9 @@ export function answersOk(a) {
   if (a.decision === "no") return same(keys, ["age", "decision"]);
   const f = a.for;
   if (!ordered(f, Object.keys(FOR)) || !f.length || !ordered(a.never, Object.keys(NEVER)) || typeof a.voice !== "boolean") return false;
+  if ("face" in a && (a.face !== false || !a.voice)) return false;   // only `false`, and never with no voice: nothing left
   const paid = f.includes("paid");
-  if (!same(keys.filter((k) => k !== "conditions"), ["age", "decision", ...(paid ? ["floor"] : []), "for", "never", "voice"])) return false;
+  if (!same(keys.filter((k) => k !== "conditions" && k !== "face"), ["age", "decision", ...(paid ? ["floor"] : []), "for", "never", "voice"])) return false;
   if ("conditions" in a && !conditionsOk(a.conditions)) return false;
   return !paid || (typeof a.floor === "string" && FLOORS.includes(a.floor));
 }
