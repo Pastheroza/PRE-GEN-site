@@ -479,11 +479,11 @@ ul.lic-apply { list-style: none; margin: 0; padding: 0; }
 }
 .home .lic-btns .btn { min-height: 48px; padding: 0 24px; font-size: 16px; }
 /* Ask an assistant: one blue bar under the hero, two halves. */
-.ask-bar { display: grid; grid-template-columns: 1fr 1fr; background: var(--blue); }
-.ask-bar a { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 72px; padding: 0 16px; color: #fff; font-size: 17px; font-weight: 500; text-align: center; text-decoration: none; }
-.ask-bar a + a { border-left: 1px solid rgba(255, 255, 255, 0.4); }
-.ask-bar a:hover { text-decoration: underline; text-underline-offset: 4px; }
-.ask-bar a:focus-visible { outline: 2px solid #fff; outline-offset: -6px; }
+.ask-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: calc(var(--page) + 2 * var(--gutter)); margin: 64px auto 0; padding: 0 var(--gutter) 48px; }
+.ask-bar a, .ask-bar button { display: inline-flex; align-items: center; gap: 10px; height: 44px; padding: 0 20px; border: 0; border-radius: var(--radius); background: var(--blue); color: #fff; font: 500 15px/1 var(--sans); text-decoration: none; cursor: pointer; }
+.ask-bar a:hover, .ask-bar button:hover { background: var(--blue-strong); }
+.ask-bar a:focus-visible, .ask-bar button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.ask-ico { flex: none; }
 
 /* The licence card: a column from the header down to the end of the hero, its name on top, the links below. */
 .lic-card { display: flex; flex-direction: column; align-self: stretch; margin: -80px 0 -72px; background: var(--bg); }
@@ -543,7 +543,6 @@ ul.h-why { list-style: none; display: grid; grid-template-columns: repeat(3, min
 }
 @media (max-width: 760px) {
   .home .lic-hero { min-height: calc(100svh - var(--band)); align-content: center; padding: 36px 0 44px; margin-bottom: 56px; }
-  .ask-bar a { min-height: 60px; font-size: 15px; }
   .h-sec { margin-bottom: 64px; }
   .h-parts { grid-template-columns: 1fr; }
   .h-part { padding: 20px 18px; }

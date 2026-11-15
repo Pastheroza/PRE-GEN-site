@@ -118,3 +118,12 @@ document.querySelectorAll("button[data-copy]").forEach(function (b) {
     });
   });
 })();
+
+// Copy for AI: this page as plain text, with its address, to paste into any assistant.
+document.querySelectorAll(".ask-copy").forEach(function (b) {
+  var label = b.textContent;
+  b.addEventListener("click", function () {
+    var main = document.getElementById("main");
+    pgCopy(document.title + "\n" + location.href + "\nMore: https://www.pregen.org/llms.txt\n\n" + (main ? main.innerText : ""), b, label);
+  });
+});
