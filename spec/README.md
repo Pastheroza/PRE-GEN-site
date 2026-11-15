@@ -20,6 +20,7 @@ it without asking permission.
 | `TOG-CODE.md` | **ToG code** (formerly PG code): every code written from 0.14.0 on, prefixes, directory v3 (draft, unreleased) |
 | `PG-CODE.md` | PG identifier format: retired, not supported; kept as history (a `PG-` string is not a code) |
 | `REFUSAL-CODES.md` | The first registry's reason codes, core codes marked |
+| `TOG-MAPPING.md` | How ToG-L 1.0's terms (Statement, Stop, Request, Deal, Record, ToG Proof) map to PRE-GEN messages; informative |
 | `VERSIONS.md` | Every version, numbered as on Zenodo, and what changed |
 | `PRE-GEN-v5.pdf` | Version 5 as a paper (source: `paper/`) |
 | `CHANGELOG.md` | Protocol changes |
