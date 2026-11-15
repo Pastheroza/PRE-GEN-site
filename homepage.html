@@ -21,7 +21,7 @@
 <body class="home">
 <a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap">
-<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt=""><span class="mark-name">PRE-GEN</span></a>
+<a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="32" height="32" alt=""><span class="mark-name">PREGEN.ORG</span></a>
 <button class="menu-btn" type="button" aria-controls="site-menu" aria-expanded="false" aria-label="Open menu"><span></span><span></span></button>
 <div class="menu" id="site-menu">
 <nav aria-label="Main"><a href="/tog">The Licence</a><a href="/tog/create">Create your ToG</a><a href="/docs">How it works</a><a href="/connect">Connect your AI</a><a href="/registries">Registries</a><a href="/lookup">Look up a code</a><a href="/downloads">Downloads</a><div class="nav-group"><button class="nav-group-btn" type="button" aria-expanded="false" aria-controls="nav-more">More</button><div class="nav-group-list" id="nav-more"><a href="/create-registry">Create a registry</a><a href="/faq">FAQ</a><a href="/support">Support</a><a href="/contact">Contact</a><a href="https://github.com/Pastheroza/PRE-GEN-site">GitHub</a></div></div></nav>
@@ -31,24 +31,23 @@
 
 <section class="lic-hero" aria-labelledby="hero-h">
 <div class="lic-hero-text">
-<p class="lic-kicker">PRE-GEN · an open standard</p>
 <h1 id="hero-h">Terms of Generation Licence</h1>
-<p class="lic-lead">One common text that says whether AI may generate a person's likeness, a brand or a work, and on what terms.</p>
-<p class="lic-also">The PRE-GEN protocol puts it to work. Before an AI service generates a protected subject, it asks the registry that represents the subject and gets a signed answer. Only an <code>allow</code> permits generation.</p>
+<p class="lic-lead">One common licence that says whether AI may generate a person, a brand or a work, and on what terms.</p>
 <p class="lic-btns"><a class="btn primary" href="/tog/create">Create your ToG</a><a class="btn" href="/docs">How PRE-GEN works</a></p>
-<p class="lic-ask"><span>Not sure? Ask an assistant</span><a class="btn btn-ask" href="https://chatgpt.com/?prompt=Explain%20PRE-GEN%2C%20the%20open%20protocol%20for%20asking%20permission%20before%20AI%20generates%20a%20real%20person%2C%20character%20or%20brand.%20Read%20https%3A//www.pregen.org/llms.txt%20and%20https%3A//www.pregen.org/get-started.md%20first%2C%20then%20tell%20me%20what%20it%20does%2C%20how%20an%20AI%20service%20uses%20it%2C%20and%20what%20a%20signed%20answer%20proves." target="_blank" rel="noopener">Ask ChatGPT <span aria-hidden="true">↗</span></a><a class="btn btn-ask" href="https://claude.ai/new?q=Explain%20PRE-GEN%2C%20the%20open%20protocol%20for%20asking%20permission%20before%20AI%20generates%20a%20real%20person%2C%20character%20or%20brand.%20Read%20https%3A//www.pregen.org/llms.txt%20and%20https%3A//www.pregen.org/get-started.md%20first%2C%20then%20tell%20me%20what%20it%20does%2C%20how%20an%20AI%20service%20uses%20it%2C%20and%20what%20a%20signed%20answer%20proves." target="_blank" rel="noopener">Ask Claude <span aria-hidden="true">↗</span></a></p>
 </div>
-<aside class="lic-card" aria-label="ToG-L 1.0 at a glance">
-<div class="lic-card-head"><p class="lic-card-h">ToG-L 1.0</p><span class="lic-state">Stable</span></div>
-<p class="lic-card-t">Terms of Generation Licence</p>
-<dl>
-<dt>Identifier</dt><dd><code>ToG-L-1.0</code></dd>
-<dt>Version</dt><dd>1.0, November 2026</dd>
-<dt>Status</dt><dd>Stable since 13 November 2026</dd>
-<dt>SHA-256</dt><dd class="lic-card-hash" title="c608c6cb477918d040a432417ba2101f1731aee906ce15024933efcb907ba2ac">c608c6cb 477918d0 40a43241 7ba2101f 1731aee9 06ce1502 4933efcb 907ba2ac<button class="copy-value" type="button" data-copy="c608c6cb477918d040a432417ba2101f1731aee906ce15024933efcb907ba2ac" aria-label="Copy the SHA-256 of ToG-L 1.0">Copy hash</button></dd>
-</dl>
+<aside class="lic-card" aria-label="ToG-L 1.0">
+<p class="lic-card-t">ToG-L 1.0</p>
 <p class="lic-card-links"><a href="/tog">Read online</a><a href="/tog/files/ToG-L-1.0.pdf">PDF</a><a href="/tog/1.0/legal-code.txt">Text</a><a href="/downloads">Downloads</a></p>
 </aside>
+</section>
+
+<section class="h-sec" aria-labelledby="why-h">
+<h2 id="why-h">What it is for</h2>
+<ul class="h-why">
+<li><h3>Protection from deepfakes</h3><p>AI services that use PRE-GEN check before they generate a real person. Without a signed <code>allow</code> from that person's registry, they do not generate.</p></li>
+<li><h3>Control of your identity</h3><p>You decide whether AI may use your face, voice, brand or work, and on what terms. You can change your terms or withdraw them.</p></li>
+<li><h3>Clear rules between people and AI</h3><p>One licence and open rules for people, AI companies and platforms. Every answer is signed, so anyone can check it later.</p></li>
+</ul>
 </section>
 
 <section class="h-sec" aria-labelledby="parts-h">
@@ -58,11 +57,6 @@
 <div class="h-part"><span class="lic-tag">ToG-L 1.0 · the licence</span><h3>What may be generated</h3><p>A legal text, the same for everyone. A Holder applies it to their own likeness, marks or works with a Statement at a registry, and the registry issues a ToG code.</p><p><a class="go-to" href="/tog">The Licence</a></p></div>
 <div class="h-part"><span class="lic-tag">PRE-GEN · the protocol</span><h3>How it is checked</h3><p>Signed requests and answers between AI services and registries, a signed directory of registries, and proof that travels with the output. Open specification, Apache-2.0.</p><p><a class="go-to" href="/docs">How PRE-GEN works</a></p></div>
 </div>
-<ol class="h-steps">
-<li><span class="n" aria-hidden="true">1</span><b>A Holder states the terms</b><p>A person or a company makes a Statement under ToG-L 1.0 at one registry from the signed list. The registry issues the ToG code.</p></li>
-<li><span class="n" aria-hidden="true">2</span><b>The AI service asks first</b><p>Before generating, it sends a signed request to that registry. The registry answers <code>allow</code>, <code>deny</code>, <code>review</code> or <code>not_blocked</code>, and signs the answer.</p></li>
-<li><span class="n" aria-hidden="true">3</span><b>Only allow permits</b><p>The service generates only on a valid <code>allow</code> and keeps it. The signed answer shows what the registry said about that request; it does not settle ownership or legality on its own.</p></li>
-</ol>
 </section>
 
 <section class="h-sec" aria-labelledby="start-h">
@@ -87,6 +81,7 @@
 <div class="h-facts"><p>pregen.org publishes the Licence, the protocol and the signed directory of registries. It is not a registry: it holds no Statements and issues no codes.</p><p>Protocol <a href="/spec/paper/pre-gen-v5">PRE-GEN v5</a> · Licence <a href="/tog">ToG-L 1.0</a></p></div>
 
 </div></main>
+<nav class="ask-bar" aria-label="Ask an assistant about PRE-GEN"><a href="https://chatgpt.com/?prompt=Explain%20PRE-GEN%2C%20the%20open%20protocol%20for%20asking%20permission%20before%20AI%20generates%20a%20real%20person%2C%20character%20or%20brand.%20Read%20https%3A//www.pregen.org/llms.txt%20and%20https%3A//www.pregen.org/get-started.md%20first%2C%20then%20tell%20me%20what%20it%20does%2C%20how%20an%20AI%20service%20uses%20it%2C%20and%20what%20a%20signed%20answer%20proves." target="_blank" rel="noopener">Ask ChatGPT about PRE-GEN <span aria-hidden="true">↗</span></a><a href="https://claude.ai/new?q=Explain%20PRE-GEN%2C%20the%20open%20protocol%20for%20asking%20permission%20before%20AI%20generates%20a%20real%20person%2C%20character%20or%20brand.%20Read%20https%3A//www.pregen.org/llms.txt%20and%20https%3A//www.pregen.org/get-started.md%20first%2C%20then%20tell%20me%20what%20it%20does%2C%20how%20an%20AI%20service%20uses%20it%2C%20and%20what%20a%20signed%20answer%20proves." target="_blank" rel="noopener">Ask Claude about PRE-GEN <span aria-hidden="true">↗</span></a></nav>
 <footer class="foot"><div class="wrap">
 <div class="foot-top">
 <div class="foot-brand"><a class="mark" href="/homepage"><img src="/assets/pregen-mark.png" width="56" height="56" alt="PRE-GEN"></a><p>Pre-Generative Authorization Protocol. AI asks before it generates a real person.</p></div>
@@ -97,7 +92,7 @@
 <div><p class="foot-h">Legal</p><a href="/legal">Legal</a><a href="/contact">Contact</a></div>
 </nav>
 </div>
-<div class="foot-bottom"><p>&copy; 2026 Valerii Egorov. Open standard, Apache-2.0. Not owned by any registry, including PRAMPTA.</p><p class="foot-ver">v5</p></div>
+<div class="foot-bottom"><p>&copy; 2026 Valerii Egorov. Open standard, Apache-2.0. Not owned by any registry, including PRAMPTA.</p></div>
 </div></footer>
 </body>
 </html>

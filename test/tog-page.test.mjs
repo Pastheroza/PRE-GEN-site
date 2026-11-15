@@ -69,12 +69,13 @@ test("every page's menu opens with the Licence, then Create your ToG", () => {
   for (const p of menus) assert.match(read(p), /<nav aria-label="Main"><a href="\/tog"( aria-current="page")?>The Licence<\/a><a href="\/tog\/create"( aria-current="page")?>Create your ToG<\/a>/, p);
 });
 
-test("/tog is the Licence: the homepage and /tog cite the hash of tog/1.0/legal-code.txt, no script of their own", async () => {
+// The home page's card names ToG-L 1.0 and links the text; the hash stands on /tog (founder, 2026-11-14).
+test("/tog is the Licence: /tog cites the hash of tog/1.0/legal-code.txt, the homepage links it; no script of their own", async () => {
   const { createHash } = await import("node:crypto");
   const h = createHash("sha256").update(readFileSync(new URL("../tog/1.0/legal-code.txt", import.meta.url))).digest("hex");
   assert.match(licence, new RegExp(`<span class="lic-hash">${h}</span>`));
   assert.match(licence, /<code>ToG-L-1\.0<\/code>/);
-  assert.match(read("homepage.html"), new RegExp(`title="${h}">${h.match(/.{8}/g).join(" ")}<`));
+  assert.match(read("homepage.html"), /<p class="lic-card-t">ToG-L 1\.0<\/p>\n<p class="lic-card-links"><a href="\/tog">Read online<\/a>/);
   for (const page of [licence, read("homepage.html")]) {
     assert.deepEqual(page.match(/<script[^>]*>/g), ['<script src="/theme.js">', '<script src="/site.js" defer>']);
     assert.doesNotMatch(page, /\sstyle=|<style/);
