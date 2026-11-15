@@ -51,7 +51,8 @@ async function page({ path = "/tog/create", hash = "" } = {}) {
     return { ok: url in files, status: url in files ? 200 : 404, json: async () => structuredClone(files[url]) };
   };
   const lib = new URL("../packages/verify-js/tog.js", import.meta.url).href;
-  const src = (await readFile(new URL("../tog.js", import.meta.url), "utf8")).replace('"/packages/verify-js/tog.js"', JSON.stringify(lib));
+  const src = (await readFile(new URL("../tog.js", import.meta.url), "utf8")).replace('"/packages/verify-js/tog.js"', JSON.stringify(lib))
+    .replace('"/tog-copy.js"', JSON.stringify(new URL("../tog-copy.js", import.meta.url).href));
   await import("data:text/javascript," + encodeURIComponent(src + `\n// page ${n++}`));
   const find = (pred, what) => { const x = stage.all().find(pred); assert.ok(x, `no ${what} on: ${stage.text.slice(0, 300)}`); return x; };
   const p = {
@@ -203,6 +204,21 @@ test("a company: the same form of code, ToG-L 1.0 cited like a person's, its dom
   assert.match(t, /Your ToG code/);
   assert.match(t, /PRAMPTA gives you the file \/\.well-known\/tog\.json on your code's page/);
   assert.match(t, /Your statement is made under ToG-L 1\.0/);
+});
+
+test("a company's yes may add conditions: the words screen, the review row, the fragment; a no has none", async () => {
+  const p = await page();
+  p.press("Start"); p.pick("My company's brand or products"); p.next(); p.pick("Only the code"); p.next();
+  p.pick("Yes, within terms the company sets"); p.next();
+  p.pick("Personal and fan content"); p.next(); p.next();
+  assert.equal(p.screen(), "words");
+  assert.match(p.text(), /Additional conditions/);
+  p.type("tg-words", "Never in a horror film."); p.next();
+  assert.match(p.text(), /Check your statement.*Your conditionsNever in a horror film\./);
+  assert.match(p.text(), /Your name, or your company's name, is asked at your registry and goes on your copy\. It never travels in a link\./);
+  const a = await codeBack(p);
+  assert.equal(a.answers.who, "company");
+  assert.equal(a.answers.conditions, "Never in a horror film.");
 });
 
 test("/tog/document: a registry's return shows the statement; a company's tog.json from its record; a broken link", async () => {

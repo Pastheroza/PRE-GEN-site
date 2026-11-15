@@ -16,7 +16,7 @@ test("both pages load only their module, which imports only the ToG library; no 
     assert.deepEqual(page.match(/<script[^>]*>/g), ['<script src="/theme.js">', '<script src="/site.js" defer>', '<script type="module" src="/tog.js">']);
     assert.doesNotMatch(page, /\sstyle=|<style|tog\.css/);   // the site's own styles.css, not the legal pages' paper
   }
-  assert.deepEqual([...js.matchAll(/^import[^;]*from "([^"]+)"/gms)].map((m) => m[1]), ["/packages/verify-js/tog.js"]);
+  assert.deepEqual([...js.matchAll(/^import[^;]*from "([^"]+)"/gms)].map((m) => m[1]), ["/packages/verify-js/tog.js", "/tog-copy.js"]);
   assert.doesNotMatch(js, /innerHTML|insertAdjacentHTML|\.style\b|"style"|eval\(|new Function/);
   assert.match(read("vercel.json"), /style-src 'self';/);
 });
@@ -35,12 +35,14 @@ test("nothing is stored, and only the fragment carries answers", () => {
   assert.deepEqual([...js.matchAll(/href: r\.start \+ "#" \+ ([^,]+),/g)].map((m) => m[1]), ["encodeAnswers(a)"]);
   assert.doesNotMatch(js.slice(js.indexOf("function answers()"), js.indexOf("function plan()")), /S\.[dmy]\b|name|domain/);
   // What is fetched: the signed list (or the local stand's), and a code's public status by the code alone.
-  assert.deepEqual([...js.matchAll(/fetch\(("[^"]+")/g)].map((m) => m[1]), ['"/test/tog-local/steward.json"', '"/api/lookup?code="']);
+  assert.deepEqual([...js.matchAll(/fetch\(("[^"]+")/g)].map((m) => m[1]), ['"/tog/1.0/legal-code.txt"', '"/test/tog-local/steward.json"', '"/api/lookup?code="']);
+  assert.doesNotMatch(read("tog-copy.js"), /localStorage|sessionStorage|location|fetch\(/);   // the copy builder only builds a string
 });
 
-test("one common legal text: the pages name only ToG-L 1.0, link it, and never build a copy", () => {
-  // A link to /downloads (the published PDFs) is not a copy; a download attribute or a Blob would be.
-  for (const text of [html, doc, js]) assert.doesNotMatch(text, /ToG-[LB]-1\.0|prampta-likeness|\bdraft\b|Not in force|UNRELEASED|Blob|download(?!s)/i);
+test("one common legal text: the pages name only ToG-L 1.0, link it, and never build a copy of the text", () => {
+  // A link to /downloads (the published PDFs) is not a copy; a download attribute or a Blob would be. The one button
+  // "Download your ToG-L" prints the Holder's copy (Section 16(g)) from the one text, fetched unchanged.
+  for (const text of [html, doc, js]) assert.doesNotMatch(text, /ToG-[LB]-1\.0|prampta-likeness|\bdraft\b|Not in force|UNRELEASED|Blob|download(?!s)(?! your ToG-L)/i);
   assert.doesNotMatch(html, /ToG 1\.0/);
   assert.match(html, /ToG-L 1\.0/);
   assert.match(js, /el\("a", \{ href: "\/downloads" \}, "PDF and examples"\)/);

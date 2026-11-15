@@ -9,6 +9,7 @@
 import { rulesFromAnswers, card, companyRules, cardCompany, encodeAnswers, offeredRegistries, defaultNever,
   conditionsOk, loadDirectory, proofLine, normalizeTyped, CodeError, kindOf, issuerOf, checkChar, parseCode, encodeReturn, decodeReturn,
   NEVER, LEGAL, CONDITIONS_MAX, RETURN_URL } from "/packages/verify-js/tog.js";
+import { holderCopy } from "/tog-copy.js";
 
 const LOCAL = ["localhost", "127.0.0.1"].includes(location.hostname);
 const DOCUMENT = /\/tog\/document\/?$/.test(location.pathname);
@@ -40,7 +41,7 @@ const ALWAYS = "Always excluded: political content, and sexual or adult content.
 let S, trail, error = null;
 function reset() {
   S = { need: null, use: null, rep: false, d: "", m: "", y: "", decision: null, for: [], never: null, neverFor: "",
-    voice: false, floor: "each", conditions: "", registry: null, typed: "", done: null, view: null };
+    voice: false, floor: "each", conditions: "", holder: "", registry: null, typed: "", done: null, view: null };
   trail = ["intro"];
 }
 const company = () => S.need === "brand";
@@ -51,7 +52,7 @@ const words = () => S.conditions.replace(/\r\n?/g, "\n").replace(/\t/g, " ").tri
 /** The answers a registry gets (tog-funnel.md): closed codes only, never a date, a name or a domain. */
 function answers() {
   if (S.rep) return { who: "child", decision: "no" };
-  if (company()) return yes() ? { who: "company", decision: S.decision, for: S.for, never: S.never } : { who: "company", decision: "no" };
+  if (company()) return yes() ? { who: "company", decision: S.decision, for: S.for, never: S.never, ...(words() && { conditions: words() }) } : { who: "company", decision: "no" };
   if (!yes()) return { age: "18+", decision: "no" };
   return { age: "18+", decision: S.decision, for: S.for, never: S.never, voice: S.voice,
     ...(S.for.includes("paid") && { floor: S.floor }), ...(words() && { conditions: words() }) };
@@ -60,7 +61,7 @@ function answers() {
 function plan() {
   if (S.need === "provider" || S.need === "registry") return ["need", "end"];
   const more = yes() ? ["for", "never"] : [];
-  if (company()) return ["need", "use", "decision", ...more, "review"];
+  if (company()) return ["need", "use", "decision", ...more, ...(yes() ? ["words"] : []), "review"];
   if (S.rep) return ["need", "use", "dob", "minor", "review"];
   return ["need", "use", "dob", "decision", ...more, ...(yes() ? ["voice", ...(S.for.includes("paid") ? ["floor"] : []), "words"] : []), "review"];
 }
@@ -270,7 +271,7 @@ const SCREENS = {
       body: [choices("never", opts, (v) => S.never.includes(v), (v, on) => {
         S.never = Object.keys(NEVER).filter((k) => (k === v ? on : S.never.includes(k)));
       }, true), el("p", { class: "tg-inset" }, ALWAYS)],
-      next: () => go(company() ? "review" : "voice") };
+      next: () => go(company() ? "words" : "voice") };
   },
   voice() {
     return { title: "May AI reproduce your voice?", hint: "Copies of voices are often used in telephone fraud. Allow it only if you need it.",
@@ -308,7 +309,7 @@ const SCREENS = {
       yes() && ["Excluded", [listOf(S.never, EXCLUDED) || "None selected", el("span", { class: "tg-also" }, ALWAYS)], "never"],
       yes() && !co && ["Voice", S.voice ? "May be reproduced" : "May not be reproduced", "voice"],
       yes() && !co && S.for.includes("paid") && ["Commercial fees", FEES.find(([k]) => k === S.floor)[1], "floor"],
-      yes() && !co && ["Your conditions", words() || "None", "words"]].filter(Boolean);
+      yes() && ["Your conditions", words() || "None", "words"]].filter(Boolean);
     const st = statement({ code: null, answers: a, registry: "" });
     const list = el("div", { class: "tg-registries", "aria-live": "polite" }, el("p", { class: "meta" }, "Loading the signed list of registries…"));
     registries().then((offered) => {
@@ -337,6 +338,7 @@ const SCREENS = {
         S.rep && el("p", {}, "Your registry will ask you to confirm that you are the parent or legal guardian."),
         !yes() && !co && !S.rep && el("p", { class: "tg-inset" }, `Until your code is confirmed, you may also write tog:no in the bio of your own public profile. Under ${LEGAL.label} §2(h) it takes effect at once.`),
         list,
+        el("p", { class: "meta tg-fine" }, "Your name, or your company's name, is asked at your registry and goes on your copy. It never travels in a link."),
         el("p", { class: "meta tg-fine" }, `The registry opens in a new tab. Only your answers are passed on, in the part of the link after #, which browsers do not send to servers.${co || S.rep ? "" : " Your date of birth stays here."} You enter your email at the registry.`)] };
   },
   code() {
@@ -366,13 +368,50 @@ const SCREENS = {
   },
 };
 
+/** Print the Holder's copy (ToG-L 1.0 §16(g)): built here, printed from a hidden frame; the person saves it as a PDF.
+ *  The name stays in S.holder: never in a URL, never in storage. */
+function copyPart(done, looked) {
+  const note = el("p", { class: "meta tg-fine", "aria-live": "polite" });
+  const go = async () => {
+    note.replaceChildren("Preparing your copy…");
+    try {
+      const [text, d] = await Promise.all([fetch("/tog/1.0/legal-code.txt").then((r) => (r.ok ? r.text() : Promise.reject(r.status))), looked.catch(() => null)]);
+      const sx = d && d.status === "active" && (d.statement || d);
+      const co = done.answers.who === "company";
+      const { title, html, pageCss } = holderCopy({ code: done.code, holder: S.holder, company: co, conditions: done.answers.conditions || null,
+        lines: statement(done).lines, rules: co ? companyRules(done.answers) : rulesFromAnswers(done.answers), licenceText: text, licence: LEGAL,
+        statement: sx ? { version: sx.version, sha256: sx.sha256 ?? sx.statement_sha256 } : null, registry: { name: done.registry, prefix: done.prefix } });
+      const f = el("iframe", { title: "Your copy", class: "tg-print" });
+      const old = document.title;
+      f.addEventListener("load", () => {
+        document.title = title;   // the name the browser suggests for the PDF
+        const w = f.contentWindow, d = f.contentDocument;
+        if ("CSSMarginRule" in w) {   // the foot in the page margin; the constructable sheet passes the site's CSP
+          const sheet = new w.CSSStyleSheet(); sheet.replaceSync(pageCss); d.adoptedStyleSheets = [sheet];
+        } else d.querySelector(".foot").classList.add("fallback");
+        w.addEventListener("afterprint", () => { document.title = old; f.remove(); });
+        w.focus(); w.print();
+      });
+      f.srcdoc = html;
+      document.body.append(f);
+      note.replaceChildren("Choose Save as PDF in the print window.");
+    } catch { note.replaceChildren("The copy could not be prepared. Check your connection and try again."); }
+  };
+  return [el("h2", {}, "Your copy of the licence"),
+    el("p", {}, `A PDF of ${LEGAL.label} with your code, your statement and your conditions after it. The text is the same for everyone.`),
+    field("Name on your copy (optional)", S.holder, (v) => (S.holder = v), { autocomplete: "name" }),
+    el("p", { class: "meta tg-fine" }, "It stays on this page and goes only onto your copy. It is not sent or saved."),
+    el("p", { class: "tg-actions" }, el("button", { type: "button", class: "btn primary", onclick: go }, "Download your ToG-L")), note];
+}
+
 /** The result: the code's live status, the statement in the form the person needs, and how to publish it. */
 function result(done) {
   const st = statement(done), name = done.registry, co = st.co;
   const view = S.view || "site";
   const line = () => el("span", { class: "tg-nowrap" }, proofLine(done.code));   // never broken at a dash; a new node per use
   const status = el("p", { class: "tg-status-line" }, "Reading the code's status at its registry…");
-  lookup(done.code).then((d) => status.replaceChildren(...{
+  const looked = lookup(done.code);
+  looked.then((d) => status.replaceChildren(...{
     pending: [el("b", {}, "Pending. "), `It permits and forbids nothing until you confirm it, within 7 days of registration.`],
     active: [el("b", {}, "Active. "), "Your statement is in force for every registry and AI service on PRE-GEN Protocol."],
     expired: [el("b", {}, "Expired. "), "The code was not confirmed within 7 days and was deleted. Register again for a new code."],
@@ -406,6 +445,7 @@ function result(done) {
       view !== "code" && sheet(st),
       el("h2", {}, view === "code" ? "Use it and confirm it" : "Publish it and confirm it"),
       steps,
+      copyPart(done, looked),
       keep && copyBlock("Link to this statement", keep, "Bookmark it to come back. The statement is in the part after #, which is read in your browser and never sent to a server."),
       el("h2", {}, "The legal text"), el("p", {}, `Your statement is made under ${LEGAL.label}, one common text for everyone.`), legalLinks(),
       el("p", { class: "tg-actions" }, el("a", { class: "btn", href: "/tog/create" }, "Start a new statement"))] };

@@ -1,0 +1,19 @@
+/* The Holder's copy of ToG-L 1.0, printed from a frame of /tog/document (tog-copy.js). White paper, black ink. */
+@page { size: A4; margin: 20mm 18mm 24mm; }
+html { background: #fff; }
+body { margin: 0; color: #000; background: #fff; font: 10.5pt/1.5 Georgia, "Times New Roman", serif; }
+pre.licence { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; margin: 0; }
+section.app { break-before: page; }
+h2 { font-size: 13pt; margin: 0 0 .8em; }
+h3 { font-size: 11pt; margin: 1.2em 0 .3em; }
+table { border-collapse: collapse; width: 100%; }
+th, td { text-align: left; vertical-align: top; padding: .3em .6em .3em 0; border-top: 1px solid #000; }
+th { width: 7em; font-weight: normal; font-style: italic; }
+.hash { font: 9pt "Courier New", monospace; overflow-wrap: anywhere; }
+.cond { border: 1px solid #000; padding: .6em .9em; white-space: pre-wrap; overflow-wrap: anywhere; }
+ul { margin: .3em 0; padding-left: 1.2em; }
+pre.rules { white-space: pre-wrap; font: 9pt "Courier New", monospace; }
+/* The running foot (Section 16(g)): in the bottom page margin, from an @page rule that tog.js adds with a constructable
+   sheet (the site's CSP allows no inline style). A browser without margin boxes shows this fixed copy instead. */
+.foot { display: none; }
+.foot.fallback { display: block; position: fixed; bottom: 0; left: 0; right: 0; text-align: center; font-size: 8.5pt; background: #fff; }

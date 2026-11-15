@@ -23326,6 +23326,24 @@
     "fragment": "tog=v1.eyJkZWNpc2lvbiI6ImFwcHJvdmVfYWxsIiwiZm9yIjpbInBhaWQiXSwibmV2ZXIiOltdLCJ3aG8iOiJjb21wYW55In0"
    },
    {
+    "name": "company ADS with conditions",
+    "answers": {
+     "who": "company",
+     "decision": "rules",
+     "for": [
+      "fun",
+      "news",
+      "paid"
+     ],
+     "never": [
+      "vice",
+      "endorse"
+     ],
+     "conditions": "Never in a horror film."
+    },
+    "fragment": "tog=v1.eyJjb25kaXRpb25zIjoiTmV2ZXIgaW4gYSBob3Jyb3IgZmlsbS4iLCJkZWNpc2lvbiI6InJ1bGVzIiwiZm9yIjpbImZ1biIsIm5ld3MiLCJwYWlkIl0sIm5ldmVyIjpbInZpY2UiLCJlbmRvcnNlIl0sIndobyI6ImNvbXBhbnkifQ"
+   },
+   {
     "name": "a minor's representative: NO",
     "answers": {
      "who": "child",
@@ -23735,6 +23753,35 @@
     "result": "malformed"
    },
    {
+    "name": "ok: company yes with conditions",
+    "fragment": "tog=v1.eyJjb25kaXRpb25zIjoiTmV2ZXIgaW4gYSBob3Jyb3IgZmlsbS4iLCJkZWNpc2lvbiI6InJ1bGVzIiwiZm9yIjpbImZ1biIsIm5ld3MiLCJwYWlkIl0sIm5ldmVyIjpbInZpY2UiLCJlbmRvcnNlIl0sIndobyI6ImNvbXBhbnkifQ",
+    "result": "ok",
+    "answers": {
+     "conditions": "Never in a horror film.",
+     "decision": "rules",
+     "for": [
+      "fun",
+      "news",
+      "paid"
+     ],
+     "never": [
+      "vice",
+      "endorse"
+     ],
+     "who": "company"
+    }
+   },
+   {
+    "name": "company no with conditions",
+    "fragment": "tog=v1.eyJjb25kaXRpb25zIjoieCIsImRlY2lzaW9uIjoibm8iLCJ3aG8iOiJjb21wYW55In0",
+    "result": "malformed"
+   },
+   {
+    "name": "company yes, conditions: empty",
+    "fragment": "tog=v1.eyJjb25kaXRpb25zIjoiIiwiZGVjaXNpb24iOiJydWxlcyIsImZvciI6WyJmdW4iLCJuZXdzIiwicGFpZCJdLCJuZXZlciI6WyJ2aWNlIiwiZW5kb3JzZSJdLCJ3aG8iOiJjb21wYW55In0",
+    "result": "malformed"
+   },
+   {
     "name": "company with a domain",
     "fragment": "tog=v1.eyJkZWNpc2lvbiI6Im5vIiwiZG9tYWluIjoibm9ydGh3aW5kLmV4YW1wbGUiLCJ3aG8iOiJjb21wYW55In0",
     "result": "malformed"
@@ -23883,11 +23930,6 @@
    {
     "name": "conditions on a no",
     "fragment": "tog=v1.eyJhZ2UiOiIxOCsiLCJjb25kaXRpb25zIjoibm8gYmxvb2QiLCJkZWNpc2lvbiI6Im5vIn0",
-    "result": "malformed"
-   },
-   {
-    "name": "conditions on a company's yes",
-    "fragment": "tog=v1.eyJjb25kaXRpb25zIjoibm8gYmxvb2QiLCJkZWNpc2lvbiI6InJ1bGVzIiwiZm9yIjpbImZ1biIsIm5ld3MiLCJwYWlkIl0sIm5ldmVyIjpbInZpY2UiLCJlbmRvcnNlIl0sIndobyI6ImNvbXBhbnkifQ",
     "result": "malformed"
    },
    {

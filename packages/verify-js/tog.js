@@ -181,15 +181,16 @@ function ordered(v, keys) {
   return Array.isArray(v) && v.every((x) => typeof x === "string" && keys.includes(x)) && same(v, keys.filter((k) => v.includes(k)));
 }
 
-/** A company's or a representative's answers: `who` names which; never an age, a domain or a name. A minor's
- *  representative may only say no (founder, 2026-11-11). */
+/** A company's or a representative's answers: `who` names which; never an age, a domain or a name. A company's
+ *  yes may carry `conditions`, its no never. A minor's representative may only say no (founder, 2026-11-11). */
 function whoOk(a) {
   const keys = Object.keys(a).sort();
   if (a.who === "child") return same(keys, ["decision", "who"]) && a.decision === "no";
   if (a.who !== "company" || typeof a.decision !== "string" || !DECISIONS.includes(a.decision)) return false;
   if (a.decision === "no") return same(keys, ["decision", "who"]);
-  return same(keys, ["decision", "for", "never", "who"]) && ordered(a.for, Object.keys(FOR)) && a.for.length > 0
-    && ordered(a.never, Object.keys(NEVER));
+  if ("conditions" in a && !conditionsOk(a.conditions)) return false;
+  return same(keys.filter((k) => k !== "conditions"), ["decision", "for", "never", "who"]) && ordered(a.for, Object.keys(FOR))
+    && a.for.length > 0 && ordered(a.never, Object.keys(NEVER));
 }
 
 /** The exact member set for the decision and every value in its closed set (the age rule is decodeFragment's). */

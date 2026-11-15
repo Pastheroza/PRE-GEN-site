@@ -65,15 +65,16 @@ def _ordered(v, keys) -> bool:
 
 
 def who_ok(a) -> bool:
-    """A company's or a minor's representative's answers: never an age, a domain or a name; a minor's only a no."""
+    """A company's or a minor's representative's answers: never an age, a domain or a name; a minor's only a no.
+    A company's yes may carry `conditions` like a person's; its no never does."""
     if a["who"] == "child":
         return set(a) == {"who", "decision"} and a["decision"] == "no"
     if a["who"] != "company" or type(a.get("decision")) is not str or a["decision"] not in DECISIONS:
         return False
     if a["decision"] == "no":
         return set(a) == {"who", "decision"}
-    return set(a) == {"who", "decision", "for", "never"} and _ordered(a["for"], g.FOR) and bool(a["for"]) \
-        and _ordered(a["never"], g.NEVER)
+    return set(a) - {"conditions"} == {"who", "decision", "for", "never"} and _ordered(a["for"], g.FOR) \
+        and bool(a["for"]) and _ordered(a["never"], g.NEVER) and ("conditions" not in a or conditions_ok(a["conditions"]))
 
 
 def answers_ok(a) -> bool:
@@ -371,6 +372,7 @@ def main():
     co_ads = {"who": "company", "decision": "rules", "for": ["fun", "news", "paid"], "never": ["vice", "endorse"]}
     for n, a in [("company NO", {"who": "company", "decision": "no"}), ("company ADS", co_ads),
                  ("company approve_all", {"who": "company", "decision": "approve_all", "for": ["paid"], "never": []}),
+                 ("company ADS with conditions", {**co_ads, "conditions": "Never in a horror film."}),
                  ("a minor's representative: NO", {"who": "child", "decision": "no"})]:
         enc.append({"name": n, "answers": a, "fragment": encode(a)})
     biggest = {"age": "18+", "decision": "approve_all", "for": L(g.FOR), "never": L(g.NEVER), "voice": True,
@@ -425,6 +427,9 @@ def main():
         ("company with an age", raw('{"age":"18+","decision":"no","who":"company"}')),
         ("company with a voice", raw(_canon({**co_ads, "voice": False}))),
         ("company with a floor", raw(_canon({**co_ads, "floor": "each"}))),
+        ("ok: company yes with conditions", encode({**co_ads, "conditions": "Never in a horror film."})),
+        ("company no with conditions", raw(_canon({"who": "company", "decision": "no", "conditions": "x"}))),
+        ("company yes, conditions: empty", raw(_canon({**co_ads, "conditions": ""}))),
         ("company with a domain", raw('{"decision":"no","domain":"northwind.example","who":"company"}')),
         ("company yes, for: []", raw(_canon({**co_ads, "for": []}))),
         ("company yes without never", raw(_canon({k: v for k, v in co_ads.items() if k != "never"}))),
@@ -443,13 +448,12 @@ def main():
         ("conditions: a lone surrogate", raw(_canon({**ads, "conditions": "x"}).replace('"x"', '"\\ud800"'))),
         ("conditions: escaped, not raw UTF-8", raw(_canon({**ads, "conditions": "é"}).replace("é", "\\u00e9"))),
         ("conditions on a no", raw('{"age":"18+","conditions":"no blood","decision":"no"}')),
-        ("conditions on a company's yes", raw(_canon({**co_ads, "conditions": "no blood"}))),
         ("conditions on a minor's representative's no", raw('{"conditions":"no blood","decision":"no","who":"child"}')),
     ]
     dec = [{"name": n, "fragment": f, **decode(f)} for n, f in cases]
-    want = {"ok": 8, "unknown_version": 4, "minor": 2}
+    want = {"ok": 9, "unknown_version": 4, "minor": 2}
     got = {r: sum(d["result"] == r for d in dec) for r in ("ok", "unknown_version", "minor", "malformed")}
-    assert all(got[k] == v for k, v in want.items()) and got["malformed"] == len(cases) - 14, got
+    assert all(got[k] == v for k, v in want.items()) and got["malformed"] == len(cases) - 15, got
     assert all(len(f) > MAX_FRAGMENT for n, f in cases if n.startswith(f"{MAX_FRAGMENT + 1} chars"))
     assert all(decode(e["fragment"]) == {"result": "ok", "answers": e["answers"]} for e in enc)
 

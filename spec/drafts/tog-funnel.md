@@ -167,8 +167,8 @@ it opens only after identity verification.
   (`"each"` | `"project"` | `"video"`, the kind of lowest price, never an amount) iff `paid` is in `for`;
   optionally `conditions` (below).
 - **`conditions`** (ToG-L 1.0, Section 6(f)): the person's own words, in any language, which only
-  narrow what they allow. Optional, and only on a person's yes: never on a no (a no has nothing to narrow), a
-  company's answer or a representative's. When present it is a JSON string that is:
+  narrow what they allow. Optional, and only on a yes, a person's or a company's: never on a no (a no has nothing to narrow) or on a
+  representative's answer. A company's conditions follow the same rules and only narrow. When present it is a JSON string that is:
   - non-empty, and at most **1,000 Unicode code points** (`CONDITIONS_MAX`; a code point is a character, so an
     emoji counts 1 although JavaScript's `length` says 2); a longer text is refused, never cut;
   - in Unicode NFC (`s.normalize("NFC") === s`), never normalised for the person: the page normalises before encoding;
@@ -181,8 +181,8 @@ it opens only after identity verification.
   person agreed (ToG 1.0 §1(m)): a registry that signs a version carries them in its body as `conditions`, and any
   change makes a new version. Vectors: `fragment.encode` and `fragment.decode`
   entries named `conditions…`; `meta.fragment.conditions_max`.
-- A company: exactly `{"who": "company", "decision"}` for a no, `{"who": "company", "decision", "for", "never"}` for
-  a yes, the same closed sets. Never an age, a voice, a floor, a domain or a name: the domain is typed at the registry.
+- A company: exactly `{"who": "company", "decision"}` for a no, `{"who": "company", "decision", "for", "never"}`
+  plus optional `conditions` for a yes, the same closed sets. Never an age, a voice, a floor, a domain or a name: the domain is typed at the registry.
 - A minor's parent, guardian or other legal representative: exactly `{"who": "child", "decision": "no"}`. A minor
   is registered only by them, and only with a no for now.
 - Under 18 is never encoded for a person themself.
@@ -237,7 +237,7 @@ stand on the holder's own page. A registry may translate, restyle or merge scree
    each output · Yes, within terms I set. A Yes is recorded now and takes effect only after identity verification.
 5. On a Yes: **purposes** (at least one), **excluded categories** (the usual ones preselected; political content and
    sexual or adult content always excluded), and for a person **voice**, **commercial fees** (when commercial work is
-   allowed) and **additional conditions** in their own words.
+   allowed) and **additional conditions** in their own words (a company too, on a Yes).
 6. **Check your statement:** every answer with a Change link, the statement as it will read (without the code), and
    the home registry step (below).
 7. **The registry issues the code.** It opens in a new tab with the answers in the fragment. The person comes back

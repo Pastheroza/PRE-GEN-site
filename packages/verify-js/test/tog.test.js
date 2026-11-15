@@ -59,14 +59,14 @@ test("fragment.encode and decode", () => {
   assert.throws(() => encodeAnswers({ age: "13-17", decision: "no" }));
   assert.throws(() => encodeAnswers({ who: "child", decision: "rules", for: ["fun"], never: [] }));
   assert.throws(() => encodeAnswers({ who: "company", decision: "no", domain: "northwind.example" }));
-  assert.equal(V.fragment.encode.filter((e) => e.answers.who).length, 4);
+  assert.equal(V.fragment.encode.filter((e) => e.answers.who).length, 5);
 });
 
-test("conditions: the person's own words ride a person's yes only, code points counted, never repaired", () => {
+test("conditions: the person's own words ride a yes only (a person's or a company's), code points counted, never repaired", () => {
   assert.equal(MAX_FRAGMENT, V.meta.fragment.max_length);
   assert.equal(CONDITIONS_MAX, V.meta.fragment.conditions_max);
   const withC = V.fragment.encode.filter((e) => "conditions" in e.answers);
-  assert.equal(withC.length, 3);
+  assert.equal(withC.length, 4);
   const longest = withC.find((e) => e.name.includes("longest"));
   assert.equal([...longest.answers.conditions].length, 1000);   // 2,000 UTF-16 units: a code point is a character
   assert.equal(longest.fragment.length, V.meta.fragment.longest_encoded);

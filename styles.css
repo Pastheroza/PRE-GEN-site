@@ -393,6 +393,7 @@ button.btn.primary, .tg .btn.primary { min-height: 48px; padding: 0 26px; font-s
 .tg-sum dt { font-weight: 600; }
 .tg-sum dd { margin: 0; overflow-wrap: anywhere; }
 .tg-change button { min-height: 32px; padding: 0; border: 0; background: none; color: var(--link); font: 15px var(--sans); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.tg-print { position: fixed; inline-size: 0; block-size: 0; border: 0; inset-inline-start: -9999px; }
 .tg-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 /* The statement as it will stand on the person's own page: a sheet of paper. */
 .tg-sheet { max-width: 680px; margin: 16px 0 12px; padding: 28px 32px; border: 1px solid var(--soft); background: #fff; color: #111827; font-size: 16px; line-height: 1.55; }
