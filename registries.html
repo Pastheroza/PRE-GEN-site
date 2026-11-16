@@ -29,7 +29,7 @@
 </div></header>
 <main id="main"><div class="wrap">
 <h1>Registries</h1>
-<p class="lede">Who runs PRE-GEN today. Registries and AI services are listed here so they can find each other.</p>
+<p class="lede">Who runs PRE-GEN today. Registries are listed here so AI services can find them.</p>
 <p class="meta">Updated 2026-11-06 · directory sequence 3 (2026-10-14) · machine-readable: <a href="/registries.json">registries.json</a>, signed by the <a href="/docs/pg-code">steward key</a></p>
 
 
@@ -38,12 +38,6 @@
 <div class="table"><table>
 <thead><tr><th>Name</th><th>Role</th><th>Prefix</th><th>API</th><th>Status</th><th>Since</th></tr></thead>
 <tbody><tr><td><a href="https://prampta.com">PRAMPTA</a></td><td>First registry</td><td><span class="mono">PRAM</span> (listed 2026-10-14); bare codes issued before v5, closed</td><td class="mono">https://api2.prampta.com</td><td>Production</td><td class="mono">2026</td></tr></tbody></table></div>
-
-<h2>AI services</h2>
-<p>Services that ask a listed registry before they generate.</p>
-<div class="table"><table>
-<thead><tr><th>Name</th><th>Registry</th><th>Status</th></tr></thead>
-<tbody><tr><td colspan="3" class="muted">None yet. A service appears here once it has made a real request and report with a listed registry.</td></tr></tbody></table></div>
 
 <h2>Getting listed</h2>
 <p>The directory is what keeps fake registries out: verification accepts a registry's signatures only for the prefix the signed directory gives it. <strong>A listing says the registry met the conditions below. It does not certify that everyone the registry represents is genuine.</strong> That stays the registry's responsibility.</p>
@@ -56,7 +50,6 @@
 <li>open access for AI services: answer any AI app known by its domain, with no account, on the same terms for all (<a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/provider-identity.md">provider-identity</a>). You may also issue your own credentials, and you may check an app before you answer it fully. Registries listed earlier have 90 days from this rule's publication;</li>
 <li>a passing run of the published test vectors and schemas.</li>
 </ol>
-<p><b>AI services</b> are listed by the registry they work with, after a real request and matching report.</p>
 
 <h2>Revocation</h2>
 <p>The steward can remove a registry that licenses people or works it has no right to, ignores proven complaints, breaks the core rules, or is compromised. A removed registry stays in the directory forever, its prefix is never reused, and <strong>nothing signed by its keys permits a generation again</strong>. A single stolen key can be removed the same way while the registry keeps its other keys. A removal is never undone, and each one is announced here with its reason. Verifiers see it the next time they load a current directory, at least daily.</p>
