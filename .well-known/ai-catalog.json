@@ -1,6 +1,9 @@
 {
   "specVersion": "1.0",
-  "host": { "displayName": "PRE-GEN", "identifier": "did:web:pregen.org" },
+  "host": {
+    "displayName": "PRE-GEN",
+    "identifier": "did:web:pregen.org"
+  },
   "entries": [
     {
       "identifier": "urn:air:pregen.org:guide:get-started",
@@ -12,6 +15,18 @@
         "integrate PRE-GEN as a provider",
         "check a proof of permission for a generated file",
         "run a registry that answers PRE-GEN requests"
+      ]
+    },
+    {
+      "identifier": "urn:air:pregen.org:guide:register-tog",
+      "displayName": "Get a ToG code with an AI agent",
+      "type": "text/markdown",
+      "url": "https://www.pregen.org/tog/agent.md",
+      "representativeQueries": [
+        "register a ToG code for me",
+        "stop AI from generating my face and voice",
+        "say no to AI using my likeness",
+        "get a ToG code for my company"
       ]
     },
     {
@@ -50,7 +65,10 @@
       "displayName": "PRE-GEN summary for language models",
       "type": "text/markdown",
       "url": "https://www.pregen.org/llms.txt",
-      "representativeQueries": ["what is PRE-GEN", "what is the difference between PRE-GEN, ToG and AFTER-GEN"]
+      "representativeQueries": [
+        "what is PRE-GEN",
+        "what is the difference between PRE-GEN, ToG and AFTER-GEN"
+      ]
     }
   ]
 }
