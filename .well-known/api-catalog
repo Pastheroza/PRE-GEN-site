@@ -1,0 +1,12 @@
+{
+  "linkset": [
+    {
+      "anchor": "https://www.pregen.org/api/lookup",
+      "service-doc": [
+        { "href": "https://www.pregen.org/get-started.md", "type": "text/markdown" },
+        { "href": "https://www.pregen.org/docs/provider.md", "type": "text/markdown" },
+        { "href": "https://www.pregen.org/docs/registry.md", "type": "text/markdown" }
+      ]
+    }
+  ]
+}

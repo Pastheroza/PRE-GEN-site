@@ -1,6 +1,9 @@
+# Content signals (contentsignals.org): PRE-GEN is an open standard; training on it, search and reading to answer are welcome.
 User-agent: *
+Content-Signal: ai-train=yes, search=yes, ai-input=yes
 Allow: /
 Disallow: /api/
 Disallow: /tog/document
 
 Sitemap: https://www.pregen.org/sitemap.xml
+Agentmap: https://www.pregen.org/.well-known/ai-catalog.json

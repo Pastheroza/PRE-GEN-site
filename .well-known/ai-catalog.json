@@ -1,0 +1,56 @@
+{
+  "specVersion": "1.0",
+  "host": { "displayName": "PRE-GEN", "identifier": "did:web:pregen.org" },
+  "entries": [
+    {
+      "identifier": "urn:air:pregen.org:guide:get-started",
+      "displayName": "One-file guide for AI agents",
+      "type": "text/markdown",
+      "url": "https://www.pregen.org/get-started.md",
+      "representativeQueries": [
+        "how can an AI app ask permission before generating a real person",
+        "integrate PRE-GEN as a provider",
+        "check a proof of permission for a generated file",
+        "run a registry that answers PRE-GEN requests"
+      ]
+    },
+    {
+      "identifier": "urn:air:pregen.org:guide:provider",
+      "displayName": "PRE-GEN provider guide",
+      "type": "text/markdown",
+      "url": "https://www.pregen.org/docs/provider.md",
+      "representativeQueries": [
+        "sign a PRE-GEN request",
+        "what a registry answer allow, deny and needs review means"
+      ]
+    },
+    {
+      "identifier": "urn:air:pregen.org:guide:registry",
+      "displayName": "PRE-GEN registry guide",
+      "type": "text/markdown",
+      "url": "https://www.pregen.org/docs/registry.md",
+      "representativeQueries": [
+        "how to create a registry for ToG codes",
+        "publish a signed registry listing"
+      ]
+    },
+    {
+      "identifier": "urn:air:pregen.org:licence:tog-l-1-1",
+      "displayName": "Terms of Generation Licence 1.1 (ToG-L)",
+      "type": "text/plain",
+      "url": "https://www.pregen.org/tog/1.1/legal-code.txt",
+      "representativeQueries": [
+        "licence that lets a person say no to AI generation of their likeness",
+        "what is a ToG code",
+        "ToG-L 1.1 text"
+      ]
+    },
+    {
+      "identifier": "urn:air:pregen.org:guide:llms",
+      "displayName": "PRE-GEN summary for language models",
+      "type": "text/markdown",
+      "url": "https://www.pregen.org/llms.txt",
+      "representativeQueries": ["what is PRE-GEN", "what is the difference between PRE-GEN, ToG and AFTER-GEN"]
+    }
+  ]
+}
