@@ -82,36 +82,3 @@ def test_the_shapes_the_sources_use():
     assert t.markdown("1. `a` & b\n2. **c**") == "<ol>\n<li><code>a</code> &amp; b</li>\n<li><strong>c</strong></li>\n</ol>"
     assert t.markdown("> one\n>\n> *two*") == "<blockquote>\n<p>one</p>\n<p><em>two</em></p>\n</blockquote>"
     assert "<th>A</th>" in t.markdown("| A |\n|---|\n| b |") and t.markdown("- x") == "<ul>\n<li>x</li>\n</ul>"
-
-
-# ---- ToG-L 1.1: current; 1.0 stays as the earlier version ----
-D11 = t.DIR.parent / "1.1"
-H11 = hashlib.sha256((D11 / "legal-code.txt").read_bytes()).hexdigest()
-
-
-def test_1_1_pages_are_what_the_tool_builds_and_show_its_hash():
-    assert (D11 / "index.html").read_text(encoding="utf-8") == t.legal_page(D11)
-    assert (D11 / "deed.html").read_text(encoding="utf-8") == t.deed_page(D11)
-    assert t.sha256(D11) == H11 and H11 != H
-    for page in ("index.html", "deed.html"):
-        html = (D11 / page).read_text(encoding="utf-8")
-        assert f"ToG-L 1.1 · SHA-256 <span>{H11}</span>" in html and 'href="/tog/1.0"' in html, page   # 1.0 is linked as earlier
-        assert "ToG-L 1.0 ·" not in html and "ToG Protocol" not in html, page
-    assert (D11 / "deed.md").read_text(encoding="utf-8").endswith(f"Legal code: ToG-L 1.1, sha256 {H11}, at https://pregen.org/tog.\n")
-
-
-def test_1_1_text_keeps_its_form_and_the_new_mechanisms():
-    text = (D11 / "legal-code.txt").read_text(encoding="utf-8")
-    assert text.startswith("# Terms of Generation Licence\n\nVersion 1.1, November 2026\n\nhttps://pregen.org/tog\n\n")
-    assert text.endswith("\nEND OF TERMS AND CONDITIONS\n") and "`ToG-L-1.1`" in text
-    assert re.findall(r"\[[^\]]*\]", text) == ["[hash]"] * 3 + ["[For counsel: child-performer laws may add duties.]"]
-    assert "Authorised Person" not in text and "(i) *Delegations.*" in text and "(j) *Level.*" in text
-    for ch in "\u2014\u2013\u201c\u201d\u2018\u2019":
-        assert ch not in text
-
-
-def test_registry_standard_1_1_is_no_longer_than_1_0_and_has_no_placeholders():
-    f = t.DIR.parent / "files"
-    a, b = (f / "ToG-RS-1.0.txt").read_text(encoding="utf-8"), (f / "ToG-RS-1.1.txt").read_text(encoding="utf-8")
-    assert len(b.split()) <= len(a.split())
-    assert "[version and hash]" not in b and "`ToG-RS-1.1`" in b and "## 15. Delegations." in b

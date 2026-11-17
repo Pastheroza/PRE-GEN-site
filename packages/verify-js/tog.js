@@ -36,10 +36,10 @@ export function conditionsOk(c) {
   return typeof c === "string" && c.length > 0 && [...c].length <= CONDITIONS_MAX
     && c.normalize("NFC") === c && !COND_BAD.test(c);
 }
-/** The one common licence text every card links to, the same for everyone (tog/1.1/legal-code.txt), and the label
- *  every card that cites it shows: ToG-L 1.1 (Terms of Generation Licence, Version 1.1, November 2026). */
-export const LEGAL = { id: "ToG-L-1.1", label: "ToG-L 1.1",
-  sha256: "b010104acec8f3b63eea04580ba378159066282334dc8db54d6318fdf998b6ef", url: "https://www.pregen.org/tog/1.1" };
+/** The one common licence text every card links to, the same for everyone (tog/1.0/legal-code.txt), and the label
+ *  every card that cites it shows: ToG-L 1.0 (Terms of Generation Licence, Version 1.0, November 2026). */
+export const LEGAL = { id: "ToG-L-1.0", label: "ToG-L 1.0",
+  sha256: "bfff2e4620d2786f150d0582434b7b9741a12d21637a365a246c7bd203243939", url: "https://www.pregen.org/tog/1.0" };
 
 const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);

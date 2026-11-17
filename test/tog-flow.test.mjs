@@ -101,7 +101,7 @@ test("/tog/create is one screen: a chooser that sends the person to a registry a
   assert.equal(go[0].attrs.target, "_blank");
   assert.equal(go[0].attrs.rel, "noopener noreferrer");
   const links = p.stage.all().filter((x) => x.tag === "a").map((x) => x.attrs.href);
-  for (const h of ["/connect", "/create-registry", "/tog/1.1"]) assert.ok(links.includes(h), h);
+  for (const h of ["/connect", "/create-registry", "/tog/1.0"]) assert.ok(links.includes(h), h);
   assert.equal(p.stage.all().filter((x) => x.tag === "form" || x.tag === "input").length, 0);   // no question is asked here
   assert.deepEqual(p.asked, ["/test/tog-local/steward.json", "/test/tog-local/registries.json"]);
 });
@@ -112,7 +112,7 @@ test("/tog/document: a registry's return shows the statement; a company's tog.js
   for (let i = 0; i < 100 && !p.stage.all().some((x) => x.attrs["data-screen"] === "result"); i++) await tick();
   const t = p.text();
   assert.match(t, /Terms of Generation of this company/);
-  assert.match(t, /Licence: ToG-L 1\.1/);
+  assert.match(t, /Licence: ToG-L 1\.0/);
   assert.match(t, new RegExp(`"record": "${co.record}",\\s*"claim": "${co.claim}"`));
   p = await page({ path: "/tog/document", hash: "#code=TOG-PRAM-900000037K&tog=v1.broken" });
   for (let i = 0; i < 100 && !/This link holds no ToG statement/.test(p.text()); i++) await tick();

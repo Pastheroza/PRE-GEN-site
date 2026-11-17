@@ -4,7 +4,7 @@ Give this to any AI agent that works for you: paste the line below, or give it t
 
 > Read https://www.pregen.org/tog/agent.md and help me get my ToG code. Ask me the questions it lists. Do only what it says you may do.
 
-A ToG code is the number that names you (or your company) in a registry. It records your answer to one question: may AI generate me? The licence is ToG-L 1.1 (https://www.pregen.org/tog/1.1). Everything here is free.
+A ToG code is the number that names you (or your company) in a registry. It records your answer to one question: may AI generate me? The licence is ToG-L 1.0 (https://www.pregen.org/tog/1.0). Everything here is free.
 
 ## What you, the agent, may do and may not do
 

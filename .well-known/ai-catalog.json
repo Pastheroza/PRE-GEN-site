@@ -51,13 +51,13 @@
     },
     {
       "identifier": "urn:air:pregen.org:licence:tog-l-1-1",
-      "displayName": "Terms of Generation Licence 1.1 (ToG-L)",
+      "displayName": "Terms of Generation Licence 1.0 (ToG-L)",
       "type": "text/plain",
-      "url": "https://www.pregen.org/tog/1.1/legal-code.txt",
+      "url": "https://www.pregen.org/tog/1.0/legal-code.txt",
       "representativeQueries": [
         "licence that lets a person say no to AI generation of their likeness",
         "what is a ToG code",
-        "ToG-L 1.1 text"
+        "ToG-L 1.0 text"
       ]
     },
     {

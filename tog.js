@@ -57,8 +57,8 @@ function example(prefix) {
     try { parseCode(c); return c; } catch { /* no check character from the code's alphabet: the next serial */ }
   }
 }
-const legalLinks = () => el("p", { class: "tg-legal" }, el("a", { href: "/tog/1.1" }, "Read the legal code"),
-  el("a", { href: "/tog/1.1/deed" }, "Read it in plain words"), el("a", { href: "/downloads" }, "PDF and examples"));
+const legalLinks = () => el("p", { class: "tg-legal" }, el("a", { href: "/tog/1.0" }, "Read the legal code"),
+  el("a", { href: "/tog/1.0/deed" }, "Read it in plain words"), el("a", { href: "/downloads" }, "PDF and examples"));
 
 // ---- the statement: one text, three forms --------------------------------------------------------------------------
 const escHtml = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);   // text only, never in an attribute
@@ -72,7 +72,7 @@ function statement({ code, answers: a, registry }) {
     by: rep ? "Made for a person under 18 by their parent or legal guardian." : null,
     conditions: a.conditions || null,
     lines: co ? cardCompany(companyRules(a)) : card(rulesFromAnswers(a)),
-    licence: LEGAL,   // ToG-L 1.1 covers persons and companies alike
+    licence: LEGAL,   // ToG-L 1.0 covers persons and companies alike
     record: `https://www.pregen.org/lookup?code=${code}`,
   };
 }
@@ -136,7 +136,7 @@ const SCREENS = {
         list,
         el("p", { class: "meta tg-fine" }, "Your AI service needs no ToG code. ", el("a", { href: "/connect" }, "Connect your AI"), "."),
         el("p", { class: "meta tg-fine" }, "To register people or companies yourself, ", el("a", { href: "/create-registry" }, "create a registry"), "."),
-        el("p", { class: "meta tg-fine" }, `Under ${LEGAL.label}, one common text for everyone. `, el("a", { href: "/tog/1.1" }, "Read the legal code"), "."),
+        el("p", { class: "meta tg-fine" }, `Under ${LEGAL.label}, one common text for everyone. `, el("a", { href: "/tog/1.0" }, "Read the legal code"), "."),
       ] };
   },
   result() { return result(S.done); },
@@ -147,14 +147,14 @@ const SCREENS = {
   },
 };
 
-/** Print the Holder's copy (ToG-L 1.1 §16(g)): built here, printed from a hidden frame; the person saves it as a PDF.
+/** Print the Holder's copy (ToG-L 1.0 §16(g)): built here, printed from a hidden frame; the person saves it as a PDF.
  *  The name stays in S.holder: never in a URL, never in storage. */
 function copyPart(done, looked) {
   const note = el("p", { class: "meta tg-fine", "aria-live": "polite" });
   const go = async () => {
     note.replaceChildren("Preparing your copy…");
     try {
-      const [text, d] = await Promise.all([fetch("/tog/1.1/legal-code.txt").then((r) => (r.ok ? r.text() : Promise.reject(r.status))), looked.catch(() => null)]);
+      const [text, d] = await Promise.all([fetch("/tog/1.0/legal-code.txt").then((r) => (r.ok ? r.text() : Promise.reject(r.status))), looked.catch(() => null)]);
       const sx = d && d.status === "active" && (d.statement || d);
       const co = done.answers.who === "company";
       const { title, html, pageCss } = holderCopy({ code: done.code, holder: S.holder, company: co, conditions: done.answers.conditions || null,
