@@ -46,7 +46,7 @@
     },
     {
       "source": "/tog/registry-standard",
-      "destination": "/tog/files/ToG-RS-1.0.pdf",
+      "destination": "/tog/files/ToG-RS-1.1.pdf",
       "permanent": false
     }
   ],

@@ -25,7 +25,7 @@ test("/tog/create is public, /tog/document is never indexed and sends no referre
   assert.doesNotMatch(html, /noindex|DRAFT|[Nn]ot public/);
   assert.match(doc, /<meta name="robots" content="noindex">/);
   assert.match(doc, /<meta name="referrer" content="no-referrer">/);
-  for (const url of ["/tog", "/tog/create", "/tog/1.0", "/tog/1.0/deed"]) assert.match(read("sitemap.xml"), new RegExp(`pregen\\.org${url}<`));
+  for (const url of ["/tog", "/tog/create", "/tog/1.1", "/tog/1.1/deed", "/tog/1.0", "/tog/1.0/deed"]) assert.match(read("sitemap.xml"), new RegExp(`pregen\\.org${url}<`));
   assert.doesNotMatch(read("sitemap.xml"), /tog\/document/);
 });
 
@@ -48,8 +48,8 @@ test("one common legal text: the pages name only ToG-L 1.0, link it, and never b
   assert.match(js, /el\("a", \{ href: "\/downloads" \}, "PDF and examples"\)/);
   assert.match(js, /el\("a", \{ href: "\/tog\/1\.0" \}, "Read the legal code"\)/);
   assert.match(js, /el\("a", \{ href: "\/tog\/1\.0\/deed" \}, "Read it in plain words"\)/);
-  for (const f of ["tog/1.0/index.html", "tog/1.0/deed.html", "tog/1.0/legal-code.txt"]) assert.ok(exists(f), f);
-  for (const f of ["tog.html", "tog/create.html", "tog/document.html", "tog/1.0/index.html", "tog/1.0/deed.html", "homepage.html"]) {
+  for (const f of ["tog/1.0/index.html", "tog/1.0/deed.html", "tog/1.0/legal-code.txt", "tog/1.1/index.html", "tog/1.1/deed.html", "tog/1.1/legal-code.txt"]) assert.ok(exists(f), f);
+  for (const f of ["tog.html", "tog/create.html", "tog/document.html", "tog/1.0/index.html", "tog/1.0/deed.html", "tog/1.1/index.html", "tog/1.1/deed.html", "homepage.html"]) {
     for (const [, href] of read(f).matchAll(/href="(\/[^"#]*)"/g)) {
       const p = href.slice(1);
       assert.ok([p, p + ".html", p + "/index.html"].some(exists), `${f}: ${href}`);
@@ -74,10 +74,10 @@ test("every page's menu opens with Create your ToG, then the Licence", () => {
 // The home page's card names ToG-L 1.0 and links the text; the hash stands on /tog (founder, 2026-11-14).
 test("/tog is the Licence: /tog cites the hash of tog/1.0/legal-code.txt, the homepage links it; no script of their own", async () => {
   const { createHash } = await import("node:crypto");
-  const h = createHash("sha256").update(readFileSync(new URL("../tog/1.0/legal-code.txt", import.meta.url))).digest("hex");
+  const h = createHash("sha256").update(readFileSync(new URL("../tog/1.1/legal-code.txt", import.meta.url))).digest("hex");
   assert.match(licence, new RegExp(`<span class="lic-hash">${h}</span>`));
-  assert.match(licence, /<code>ToG-L-1\.0<\/code>/);
-  assert.match(read("homepage.html"), /<p class="lic-card-t">ToG-L 1\.0<small>Terms of Generation Licence<\/small><\/p>\n<p class="lic-card-links"><a href="\/tog">Read online<\/a>/);
+  assert.match(licence, /<code>ToG-L-1\.1<\/code>/);
+  assert.match(read("homepage.html"), /<p class="lic-card-t">ToG-L 1\.1<small>Terms of Generation Licence<\/small><\/p>\n<p class="lic-card-links"><a href="\/tog">Read online<\/a>/);
   for (const page of [licence, read("homepage.html")]) {
     assert.deepEqual(page.match(/<script[^>]*>/g), ['<script src="/theme.js">', '<script src="/site.js" defer>']);
     assert.doesNotMatch(page, /\sstyle=|<style/);

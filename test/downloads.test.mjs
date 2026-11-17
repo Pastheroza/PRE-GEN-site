@@ -13,7 +13,7 @@ const html = read("downloads.html").toString();
 
 test("each listed file is there, with its own size, SHA-256 and text fingerprint", () => {
   const cards = html.split('<div class="pg-card">').slice(1);
-  assert.deepEqual(cards.map((c) => c.match(/href="\/tog\/files\/([^"]+)" download>/)[1]), ["ToG-L-1.0.pdf",
+  assert.deepEqual(cards.map((c) => c.match(/href="\/tog\/files\/([^"]+)" download>/)[1]), ["ToG-L-1.1.pdf", "ToG-L-1.1-plain-words.pdf", "ToG-RS-1.1.pdf", "ToG-L-1.0.pdf",
     "ToG-L-1.0-plain-words.pdf", "ToG-RS-1.0.pdf", ...["person", "company", "provider", "platform", "security", "frame-deal"]
       .map((x) => `ToG-L-1.0-example-${x}.pdf`)]);
   for (const c of cards) {
@@ -24,7 +24,8 @@ test("each listed file is there, with its own size, SHA-256 and text fingerprint
   // The text fingerprints: the hashed legal text of each, the same hash the PDF prints.
   assert.equal(sha(read("tog/1.0/legal-code.txt")), "bfff2e4620d2786f150d0582434b7b9741a12d21637a365a246c7bd203243939");
   assert.equal(sha(read("tog/files/ToG-RS-1.0.txt")), "2aef9f53e94a4e228200a78eea6917f9256997d5b2c91b28c975fdd139eeb1bd");
-  for (const f of ["tog/1.0/legal-code.txt", "tog/files/ToG-RS-1.0.txt"]) assert.ok(html.includes(`<span class="mono">${sha(read(f))}</span> <a href="#how-to-check">`), f);
+  for (const f of ["tog/1.0/legal-code.txt", "tog/files/ToG-RS-1.0.txt", "tog/1.1/legal-code.txt", "tog/files/ToG-RS-1.1.txt"]) assert.ok(html.includes(`<span class="mono">${sha(read(f))}</span> <a href="#how-to-check">`), f);
+  assert.ok(sha(read("tog/1.1/legal-code.txt")) !== sha(read("tog/1.0/legal-code.txt")));   // 1.1 is its own text; 1.0 stays unchanged above
   assert.equal(sha(read("tog/files/history/ToG-L-1.0-first-text.txt")), "567cc9e2070f1b1a57d6f1c2fed41bb9887489699e7dd49f16e8ab25ac73c3f2");
   assert.equal(sha(read("tog/files/history/ToG-L-1.0-second-text.txt")), "c608c6cb477918d040a432417ba2101f1731aee906ce15024933efcb907ba2ac");
   assert.equal(sha(read("tog/files/history/ToG-RS-1.0-first-text.txt")), "0f94221aa2bae9591f9e0e09889220a60b70cd3eaf13490423019bb3203f928a");

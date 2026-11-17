@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the ToG 1.0 pages of pregen.org from their sources, so the page shows exactly the fixed text and its hash.
+"""Build the ToG-L pages (1.0 and 1.1) of pregen.org from their sources, so the page shows exactly the fixed text and its hash.
 
     tog/1.0/legal-code.txt  the legal code: the lines between "Legal code begins" and "Legal code ends", those lines
                             and the blank lines next to them excluded, UTF-8, NFC, one LF per line, no trailing space,
@@ -41,9 +41,9 @@ def extract(src: Path):
     (DIR / "deed.md").write_text(deed.replace("ToG-L-1.0, sha256 [hash],", f"{LABEL}, sha256 {sha256()},"), encoding="utf-8")
 
 
-def legal_text() -> str:
+def legal_text(d: Path = None) -> str:
     """The fixed text, refused if it is not in the hashed form (§ docstring)."""
-    t = (DIR / "legal-code.txt").read_bytes().decode("utf-8")
+    t = ((d or DIR) / "legal-code.txt").read_bytes().decode("utf-8")
     lines = t.split("\n")
     assert t.endswith("\n") and lines[-2] != "" and lines[0] != "", "no blank first or last line, LF-terminated"
     assert unicodedata.normalize("NFC", t) == t and "\r" not in t, "NFC, LF only"
@@ -51,8 +51,8 @@ def legal_text() -> str:
     return t
 
 
-def sha256() -> str:
-    return hashlib.sha256(legal_text().encode("utf-8")).hexdigest()
+def sha256(d: Path = None) -> str:
+    return hashlib.sha256(legal_text(d).encode("utf-8")).hexdigest()
 
 
 def inline(s: str) -> str:
@@ -138,46 +138,55 @@ FOOT = """</div></main>
 </body>
 </html>
 """
-def hash_block(h: str) -> str:
-    return (f'<p class="tl-hash mono">{LABEL} · SHA-256 <span>{h}</span></p>\n'
-            '<p class="tl-links"><a href="/tog/1.0/legal-code.txt">The hashed text, plain</a>'
-            '<a href="/tog/1.0">Legal code</a><a href="/tog/1.0/deed">Deed</a><a href="/downloads">PDF and examples</a>'
-            '<a href="/tog/create">Create your ToG</a></p>')
+def hash_block(h: str, ver: str = "1.0") -> str:
+    earlier = '<a href="/tog/1.0">ToG-L 1.0, earlier version</a>' if ver != "1.0" else ""
+    return (f'<p class="tl-hash mono">ToG-L {ver} · SHA-256 <span>{h}</span></p>\n'
+            f'<p class="tl-links"><a href="/tog/{ver}/legal-code.txt">The hashed text, plain</a>'
+            f'<a href="/tog/{ver}">Legal code</a><a href="/tog/{ver}/deed">Deed</a><a href="/downloads">PDF and examples</a>'
+            f'<a href="/tog/create">Create your ToG</a>{earlier}</p>')
 
 
-def legal_page() -> str:
-    h = sha256()
-    return (HEAD.format(title="ToG-L 1.0 legal code", url=URL,
-                        description="Terms of Generation Licence 1.0: one common licence text for a person's likeness "
+def legal_page(d: Path = None) -> str:
+    d = d or DIR
+    v, h = d.name, sha256(d)
+    return (HEAD.format(title=f"ToG-L {v} legal code", url=f"https://www.pregen.org/tog/{v}",
+                        description=f"Terms of Generation Licence {v}: one common licence text for a person's likeness "
                                     "and voice and for what a person or a company owns, identical for everyone, fixed by "
                                     "its SHA-256.")
-            + '<p class="tl-kicker mono">TERMS OF GENERATION · LEGAL CODE · ToG-L 1.0</p>\n'
-            + "<h1>Terms of Generation Licence 1.0</h1>\n"
+            + f'<p class="tl-kicker mono">TERMS OF GENERATION · LEGAL CODE · ToG-L {v}</p>\n'
+            + f"<h1>Terms of Generation Licence {v}</h1>\n"
             + '<p class="tl-lede">One common text, the same for every person and company. Each holder adds its own '
               "pages after it: its ToG code, its rules, its deals.</p>\n"
-            + hash_block(h) + "\n"
-            + '<article class="tl-text" id="legal-code">\n' + markdown(legal_text()) + "\n</article>\n" + FOOT)
+            + hash_block(h, v) + "\n"
+            + '<article class="tl-text" id="legal-code">\n' + markdown(legal_text(d)) + "\n</article>\n" + FOOT)
 
 
-def deed_page() -> str:
-    h = sha256()
-    src = (DIR / "deed.md").read_text(encoding="utf-8")
+def deed_page(d: Path = None) -> str:
+    d = d or DIR
+    v, h = d.name, sha256(d)
+    src = (d / "deed.md").read_text(encoding="utf-8")
     title, body = src.split("\n", 1)
-    assert title == "# ToG-L 1.0 deed" and "[hash]" not in body.split("\n")[-2], "the deed names the hash, filled in"
-    return (HEAD.format(title="ToG-L 1.0 deed", url=URL + "/deed",
-                        description="Terms of Generation Licence 1.0 in plain words: a summary of the legal code, not "
+    assert title == f"# ToG-L {v} deed" and "[hash]" not in body.split("\n")[-2], "the deed names the hash, filled in"
+    return (HEAD.format(title=f"ToG-L {v} deed", url=f"https://www.pregen.org/tog/{v}/deed",
+                        description=f"Terms of Generation Licence {v} in plain words: a summary of the legal code, not "
                                     "the licence.")
-            + '<p class="tl-kicker mono">TERMS OF GENERATION · DEED · ToG-L 1.0</p>\n'
-            + "<h1>ToG-L 1.0 deed</h1>\n" + hash_block(h) + "\n"
+            + f'<p class="tl-kicker mono">TERMS OF GENERATION · DEED · ToG-L {v}</p>\n'
+            + f"<h1>ToG-L {v} deed</h1>\n" + hash_block(h, v) + "\n"
             + '<article class="tl-text">\n' + markdown(body) + "\n</article>\n" + FOOT)
 
 
 def main():
     if sys.argv[1:2] == ["--from"]:
         extract(Path(sys.argv[2]))
-    (DIR / "index.html").write_text(legal_page(), encoding="utf-8")
-    (DIR / "deed.html").write_text(deed_page(), encoding="utf-8")
-    print(sha256())
+    for d in (DIR, DIR.parent / "1.1"):
+        deed = d / "deed.md"
+        text = deed.read_text(encoding="utf-8")
+        if "sha256 [hash]," in text.split("\n")[-2]:        # 1.1: the deed's last line takes the hash of its own text
+            head, _, tail = text.rpartition("sha256 [hash],")      # only the last line: the model clause keeps its own blank
+            deed.write_text(head + f"sha256 {sha256(d)}," + tail, encoding="utf-8")
+        (d / "index.html").write_text(legal_page(d), encoding="utf-8")
+        (d / "deed.html").write_text(deed_page(d), encoding="utf-8")
+        print(d.name, sha256(d))
 
 
 if __name__ == "__main__":
