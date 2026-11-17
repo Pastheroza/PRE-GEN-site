@@ -1,4 +1,4 @@
-// The Holder's copy of ToG-L 1.0 (tog-copy.js): title, order of the parts, conditions first, the foot, pending wording.
+// The Holder's copy of ToG-L 1.1 (tog-copy.js): title, order of the parts, conditions first, the foot, pending wording.
 // Run: node --test test/tog-copy.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -13,8 +13,8 @@ const SHA = "ab".repeat(32);
 
 test("title is the file name; the licence comes first, then Appendix A, then B", () => {
   const { title, html } = holderCopy(base);
-  assert.equal(title, "ToG-L 1.0 - TOG-PRAM-0000123X");
-  assert.match(html, /<title>ToG-L 1\.0 - TOG-PRAM-0000123X<\/title>/);
+  assert.equal(title, "ToG-L 1.1 - TOG-PRAM-0000123X");
+  assert.match(html, /<title>ToG-L 1\.1 - TOG-PRAM-0000123X<\/title>/);
   const at = ["LICENCE TEXT &lt;unchanged&gt;", "Appendix A (Notice)", "Appendix B (The Holder&#39;s Rules)"].map((x) => html.indexOf(x));
   assert.ok(at[0] > 0 && at[0] < at[1] && at[1] < at[2], at.join());
   assert.ok(html.includes(LEGAL.sha256));

@@ -1,4 +1,4 @@
-// The Holder's copy of ToG-L 1.0 (Section 16(g)): the licence text unchanged, then Appendix A (Notice) and Appendix B
+// The Holder's copy of ToG-L 1.1 (Section 16(g)): the licence text unchanged, then Appendix A (Notice) and Appendix B
 // (The Holder's Rules), with a running foot outside the licence text. A pure function: it returns one HTML document,
 // which /tog/document prints with window.print() (the person saves it as a PDF). Nothing here reads or writes a URL.
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -19,7 +19,7 @@ export const pageCss = (f) => `@page { @bottom-center { content: ${JSON.stringif
  *  statement: {version, sha256} when the home Registry shows it, else null (pending). registry: {name, prefix} or null. */
 export function holderCopy({ code, holder = "", company = false, conditions = null, lines = [], rules = null, licenceText,
   licence, statement = null, registry = null }) {
-  const title = `ToG-L 1.0 - ${code}`;
+  const title = `ToG-L 1.1 - ${code}`;
   const name = holder.trim();
   const matter = company ? "The marks, products and characters the Holder owns" + (name ? ` (${name})` : "")
     : "The likeness and voice of the Holder";

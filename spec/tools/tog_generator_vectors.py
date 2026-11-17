@@ -5,7 +5,7 @@ reference spec/tools/tog_generator.py; contract: spec/drafts/tog-funnel.md.
 Every rule and card value is computed by the reference; this file adds only what the funnel defines on top of it:
 the `tog=v1` fragment (encode / strict decode: a person, a company, a minor's representative; a person's yes may carry
 the person's own-words `conditions`, ToG 1.0 §6(f)), the company card, the
-common legal text every card links to (tog/1.0/legal-code.txt) and the registry chooser. Deterministic, no dependencies, about 25 s (the reference's own exhaustive check):
+common legal text every card links to (tog/1.1/legal-code.txt) and the registry chooser. Deterministic, no dependencies, about 25 s (the reference's own exhaustive check):
 
     python3 -I spec/tools/tog_generator_vectors.py > spec/test-vectors/tog-generator.json
 """
@@ -33,8 +33,8 @@ if hashlib.sha256(_ref).hexdigest() != REFERENCE_SHA256:
 # ---- the fragment `tog=v1` (PLAN §2.1) ----------------------------------------------------------------------------
 AGES = ("18+", "13-17")             # 13-17 only ever decodes as "minor": a representative registers a minor
 WHO = ("company", "child")          # a person answering for themself has no `who`
-LEGAL = {"id": "ToG-L-1.0", "label": "ToG-L 1.0", "sha256": hashlib.sha256((HERE.parents[1] / "tog" / "1.0" / "legal-code.txt").read_bytes())
-         .hexdigest(), "url": "https://www.pregen.org/tog/1.0"}
+LEGAL = {"id": "ToG-L-1.1", "label": "ToG-L 1.1", "sha256": hashlib.sha256((HERE.parents[1] / "tog" / "1.1" / "legal-code.txt").read_bytes())
+         .hexdigest(), "url": "https://www.pregen.org/tog/1.1"}
 DECISIONS = ("no", "approve_all", "rules")
 FLOORS = ("each", "project", "video")
 MAX_FRAGMENT = 6144                 # the longest answers with 1,000 four-byte characters of conditions encode to 5,629

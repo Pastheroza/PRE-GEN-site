@@ -127,10 +127,10 @@
    ]
   },
   "legal": {
-   "id": "ToG-L-1.0",
-   "label": "ToG-L 1.0",
-   "sha256": "bfff2e4620d2786f150d0582434b7b9741a12d21637a365a246c7bd203243939",
-   "url": "https://www.pregen.org/tog/1.0"
+   "id": "ToG-L-1.1",
+   "label": "ToG-L 1.1",
+   "sha256": "b010104acec8f3b63eea04580ba378159066282334dc8db54d6318fdf998b6ef",
+   "url": "https://www.pregen.org/tog/1.1"
   }
  },
  "answers": [

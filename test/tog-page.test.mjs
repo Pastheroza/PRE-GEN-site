@@ -35,7 +35,7 @@ test("nothing is stored, and only the fragment carries answers", () => {
   assert.deepEqual([...js.matchAll(/searchParams\.set\(("[^"]+"), ("[^"]+")\)/g)].map((m) => [m[1], m[2]]), [['"path"', '"tog"']]);
   assert.doesNotMatch(js, /encodeAnswers|r\.start \+/);
   // What is fetched: the signed list (or the local stand's), and a code's public status by the code alone.
-  assert.deepEqual([...js.matchAll(/fetch\(("[^"]+")/g)].map((m) => m[1]), ['"/tog/1.0/legal-code.txt"', '"/test/tog-local/steward.json"', '"/api/lookup?code="']);
+  assert.deepEqual([...js.matchAll(/fetch\(("[^"]+")/g)].map((m) => m[1]), ['"/tog/1.1/legal-code.txt"', '"/test/tog-local/steward.json"', '"/api/lookup?code="']);
   assert.doesNotMatch(read("tog-copy.js"), /localStorage|sessionStorage|location|fetch\(/);   // the copy builder only builds a string
 });
 
@@ -44,10 +44,10 @@ test("one common legal text: the pages name only ToG-L 1.0, link it, and never b
   // "Download your ToG-L" prints the Holder's copy (Section 16(g)) from the one text, fetched unchanged.
   for (const text of [html, doc, js]) assert.doesNotMatch(text, /ToG-[LB]-1\.0|prampta-likeness|\bdraft\b|Not in force|UNRELEASED|Blob|download(?!s)(?! your ToG-L)/i);
   assert.doesNotMatch(html, /ToG 1\.0/);
-  assert.match(html, /ToG-L 1\.0/);
+  assert.match(html, /ToG-L 1\.1/);
   assert.match(js, /el\("a", \{ href: "\/downloads" \}, "PDF and examples"\)/);
-  assert.match(js, /el\("a", \{ href: "\/tog\/1\.0" \}, "Read the legal code"\)/);
-  assert.match(js, /el\("a", \{ href: "\/tog\/1\.0\/deed" \}, "Read it in plain words"\)/);
+  assert.match(js, /el\("a", \{ href: "\/tog\/1\.1" \}, "Read the legal code"\)/);
+  assert.match(js, /el\("a", \{ href: "\/tog\/1\.1\/deed" \}, "Read it in plain words"\)/);
   for (const f of ["tog/1.0/index.html", "tog/1.0/deed.html", "tog/1.0/legal-code.txt", "tog/1.1/index.html", "tog/1.1/deed.html", "tog/1.1/legal-code.txt"]) assert.ok(exists(f), f);
   for (const f of ["tog.html", "tog/create.html", "tog/document.html", "tog/1.0/index.html", "tog/1.0/deed.html", "tog/1.1/index.html", "tog/1.1/deed.html", "homepage.html"]) {
     for (const [, href] of read(f).matchAll(/href="(\/[^"#]*)"/g)) {
