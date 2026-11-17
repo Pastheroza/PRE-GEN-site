@@ -3,6 +3,28 @@
 // which /tog/document prints with window.print() (the person saves it as a PDF). Nothing here reads or writes a URL.
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const plain = (s) => s.replace(/\*\*/g, "");
+const inline = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/`(.+?)`/g, "<code>$1</code>");
+/** The licence text set as a document (headings, numbered lists, bold, italic, code). Presentation only: the hashed
+ * text is never altered. prampta.com's copy (togCopy.ts, renderLicence) sets it the same way; change both together. */
+export function renderLicence(text) {
+  return text.trim().split(/\n{2,}/).map((block) => {
+    const head = /^(#{1,3}) (.*)$/.exec(block);
+    if (head) return `<h${head[1].length}>${inline(head[2])}</h${head[1].length}>`;
+    const out = []; let list = [], para = [];
+    const flush = () => {
+      if (list.length) out.push(`<ol>${list.join("")}</ol>`);
+      if (para.length) out.push(`<p>${para.join("<br>")}</p>`);
+      list = []; para = [];
+    };
+    for (const line of block.split("\n")) {
+      const li = /^\d+\. (.*)$/.exec(line);
+      if (li) { if (para.length) flush(); list.push(`<li>${inline(li[1])}</li>`); }
+      else { if (list.length) flush(); para.push(inline(line)); }
+    }
+    flush();
+    return out.join("");
+  }).join("\n");
+}
 const HEX64 = /^[0-9a-f]{64}$/;
 
 /** The running foot, outside the licence text: "ToG: <code> · v<version> · <8 hex> · Check: pregen.org/lookup?code=<code>". */
@@ -30,7 +52,7 @@ export function holderCopy({ code, holder = "", company = false, conditions = nu
   const reg = registry ? `${esc(registry.name)} (prefix ${esc(registry.prefix)})` : "Not known";
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><link rel="stylesheet" href="/tog-copy.css"></head><body>
 <div class="foot">${esc(foot({ code, statement }))}</div>
-<pre class="licence">${esc(licenceText)}</pre>
+<div class="licence">${renderLicence(licenceText)}</div>
 <section class="app"><h2>Appendix A (Notice)</h2>
 <table>
 <tr><th>Code</th><td>${esc(code)}</td></tr>

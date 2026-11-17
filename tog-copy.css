@@ -2,7 +2,12 @@
 @page { size: A4; margin: 20mm 18mm 24mm; }
 html { background: #fff; }
 body { margin: 0; color: #000; background: #fff; font: 10.5pt/1.5 Georgia, "Times New Roman", serif; }
-pre.licence { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; margin: 0; }
+.licence { overflow-wrap: anywhere; }
+.licence h1 { font-size: 16pt; margin: 0 0 .8em; }
+.licence h2 { font-size: 12pt; margin: 1.4em 0 .5em; break-after: avoid; }
+.licence p { margin: 0 0 .7em; }
+.licence ol { margin: 0 0 .7em; padding-left: 1.6em; }
+.licence code { font: 9pt "Courier New", monospace; }
 section.app { break-before: page; }
 h2 { font-size: 13pt; margin: 0 0 .8em; }
 h3 { font-size: 11pt; margin: 1.2em 0 .3em; }

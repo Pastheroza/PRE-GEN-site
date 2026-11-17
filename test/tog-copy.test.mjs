@@ -60,3 +60,9 @@ test("the page rule puts the foot in the bottom margin with the page count", () 
   assert.equal(css, pageCss(foot({ code: CODE, statement: null })));
   assert.match(css, /^@page \{ @bottom-center \{ content: "ToG: TOG-PRAM-0000123X · pending · pending · Check: pregen\.org\/lookup\?code=TOG-PRAM-0000123X · Page " counter\(page\) " of " counter\(pages\);/);
 });
+
+test("the licence is set as a document, the same as prampta.com sets it", async () => {
+  const { renderLicence } = await import("../tog-copy.js");
+  assert.equal(renderLicence("# Title\n\n*Who.* A **bold** `code` & more\nsecond line\n\n1. one\n2. two"),
+    "<h1>Title</h1>\n<p><em>Who.</em> A <strong>bold</strong> <code>code</code> &amp; more<br>second line</p>\n<ol><li>one</li><li>two</li></ol>");
+});
