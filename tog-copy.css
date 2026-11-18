@@ -1,23 +1,49 @@
-/* The Holder's copy of ToG-L 1.0, printed from a frame of /tog/document (tog-copy.js). White paper, black ink. */
-@page { size: A4; margin: 20mm 18mm 24mm; }
+/* The Holder's copy of ToG-L 1.0, printed from a frame of /tog/document (tog-copy.js). White paper, black ink, set the way
+   the official PDF at /tog/files is set; prampta.com's server sets its copy with the same rules (backend app/core/tog_copy.py),
+   so change both together. */
+@page { size: Letter; margin: 2.1cm 2.3cm 2.2cm; }
 html { background: #fff; }
-body { margin: 0; color: #000; background: #fff; font: 10.5pt/1.5 Georgia, "Times New Roman", serif; }
-.licence { overflow-wrap: anywhere; }
-.licence h1 { font-size: 16pt; margin: 0 0 .8em; }
-.licence h2 { font-size: 12pt; margin: 1.4em 0 .5em; break-after: avoid; }
-.licence p { margin: 0 0 .7em; }
-.licence ol { margin: 0 0 .7em; padding-left: 1.6em; }
-.licence code { font: 9pt "Courier New", monospace; }
-section.app { break-before: page; }
-h2 { font-size: 13pt; margin: 0 0 .8em; }
-h3 { font-size: 11pt; margin: 1.2em 0 .3em; }
-table { border-collapse: collapse; width: 100%; }
-th, td { text-align: left; vertical-align: top; padding: .3em .6em .3em 0; border-top: 1px solid #000; }
-th { width: 7em; font-weight: normal; font-style: italic; }
-.hash { font: 9pt "Courier New", monospace; overflow-wrap: anywhere; }
-.cond { border: 1px solid #000; padding: .6em .9em; white-space: pre-wrap; overflow-wrap: anywhere; }
-ul { margin: .3em 0; padding-left: 1.2em; }
-pre.rules { white-space: pre-wrap; font: 9pt "Courier New", monospace; }
+body { margin: 0; color: #000; background: #fff; font: 11.5pt/1.62 "Times New Roman", "Liberation Serif", Times, serif; }
+h1, h2 { font: inherit; font-weight: bold; }
+p { margin: 0 0 .85em; text-align: justify; }
+.title, .sub { text-align: center; margin: 0; line-height: 1.45; }
+.title { font-size: 1.15em; }
+.sub { font-weight: bold; }
+.copy { text-align: center; margin: 1.2em 0 1.6em; font-size: .92em; }
+.caps { text-align: left; margin-top: 1.6em; }
+.section { text-align: left; margin: 1.6em 0 .7em; break-after: avoid; }
+a, a.ref, .section a { color: #000; text-decoration: underline; }
+.def, ol.def { margin-left: 2.2em; }
+.para { padding-left: 2.2em; text-indent: -2.2em; }
+ol { margin: 0 0 .85em; padding-left: 0; list-style: none; }
+ol li { margin: 0 0 .5em; text-align: justify; padding-left: 2em; position: relative; break-inside: avoid; }
+ol li::before { content: attr(value) "."; position: absolute; left: 0; }
+ol.items { margin-left: 4.4em; }
+code { font-family: "Courier New", "Liberation Mono", Courier, monospace; font-size: .9em; }
+pre { font: 9.5pt/1.5 "Courier New", "Liberation Mono", Courier, monospace; margin: 1em 0 1em 2.2em; white-space: pre; text-align: left; break-inside: avoid; }
+.end { break-before: avoid; }
+p, li { orphans: 3; widows: 3; }
+.keep, p.def, pre, tr { break-inside: avoid; }
+h1, .sub, .caps { break-after: avoid; }
+.addl { break-before: page; font-size: 10.5pt; line-height: 1.5; }
+.addl h2 { text-align: center; letter-spacing: .06em; margin: 0 0 .3em; break-after: avoid; }
+.addl .lead { text-align: center; font-size: .92em; margin: 0 0 1.3em; }
+.code { text-align: center; font-size: 1.5em; font-weight: bold; letter-spacing: .02em; margin: .4em 0 1em; }
+.code span { font-weight: normal; }
+table { width: 100%; border-collapse: collapse; margin: 0 0 1.1em; break-inside: avoid; }
+th, td { text-align: left; vertical-align: top; padding: .38em .6em .38em 0; border-top: 1px solid #d8d8d8; }
+th { font-weight: normal; font-style: italic; width: 7.5em; }
+td code, th code { font-size: .88em; }
+.hash { font-family: "Courier New", "Liberation Mono", monospace; font-size: .8em; overflow-wrap: anywhere; }
+.kv code { display: inline-block; width: 8.5em; }
+.cats { display: flex; flex-wrap: wrap; column-gap: 1.6em; break-inside: avoid; }
+.cats div { width: 30%; display: flex; justify-content: space-between; border-top: 1px solid #d8d8d8; padding: .05em 0; font-size: .94em; line-height: 1.4; }
+.cond, .stop { box-sizing: border-box; border: 1px solid #000; padding: .8em 1.1em; margin: 0 0 1.2em; break-inside: avoid; }
+.cond p { margin: .3em 0 0; font-style: italic; text-align: left; font-size: .95em; overflow-wrap: anywhere; white-space: pre-wrap; }
+.cond .k { font-size: .78em; letter-spacing: .08em; text-transform: uppercase; font-style: normal; margin: 0; }
+.stop { font-weight: bold; text-align: center; }
+.small { font-size: .9em; }
+.yes { font-weight: bold; }
 /* The running foot (Section 16(g)): in the bottom page margin, from an @page rule that tog.js adds with a constructable
    sheet (the site's CSP allows no inline style). A browser without margin boxes shows this fixed copy instead. */
 .foot { display: none; }
