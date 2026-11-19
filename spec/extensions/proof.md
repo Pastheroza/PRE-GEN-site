@@ -67,7 +67,8 @@ copy is not an error. Vectors: `metadata`.
   subject.
 
 For a job with several subjects the full bundle travels in the C2PA manifest; by id a
-platform recovers the subject that report names. PRE-GEN defines no watermark.
+platform recovers the subject that report names. PRE-GEN defines no watermark. Adding one is
+the creator's choice: a watermark is not proof, and it never changes an allow or a refusal.
 
 ## Checking it
 
