@@ -1176,3 +1176,13 @@ rather than about the proposal: of the four objects that would change, only
 dual-accept window §7 describes as built-but-dormant — with the
 `Deprecation`/`Sunset` headers, `CHANGELOG` entry, and new PRE-GEN version
 that §7 requires.
+
+**A signed "no record" (proposed, optional, not built).** Against an invented
+leak ("this file came from registry R's archive"), R could sign that, as of its
+log head N, it holds no record of output hash H. It covers this registry, this
+head and these exact bytes only: a report may still arrive after N, and a
+re-encoded copy has another hash, so it never clears or blames anyone. It is
+the registry's word, checkable only if the log is later opened. It needs a log
+with positions, which v5's reference registry does not have, so nothing is
+built. It would be a new message type: no existing object, schema or vector
+changes.
