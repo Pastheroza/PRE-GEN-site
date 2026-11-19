@@ -1075,6 +1075,19 @@ before hitting one in production.
   applied but never what it contains, so there is nothing to resolve
   against. C2PA's term for the durable form is a *soft binding*; PRE-GEN
   has no field for one.
+- **Which bytes `output_hash` covers inside a C2PA file is not specified.**
+  Embedding a manifest changes the file, so its SHA-256 can no longer equal
+  the reported `output_hash`, and a report cannot name a hash that includes
+  its own manifest. A verifier has to hash the file without the manifest
+  store, and v5 does not say how. No end-to-end test exists.
+- **A record shows who generated a file, not who disclosed it.** A report
+  names the provider that said it generated the file. It says nothing about
+  who held copies or who published them, and nothing in v5 records whether
+  a given output was approved for publication.
+- **No record proves nothing about origin.** A registry with no record of a
+  file's hash knows nothing about where the file came from: it may have been
+  made outside PRE-GEN, edited or re-encoded. "No record at this registry"
+  is never evidence of forgery or theft.
 - **A license cannot express commercial terms.** `pg.license.v2` (§1.2)
   carries scope, term, and obligations, but no rate, floor, or settlement
   terms — so commercial terms cannot be bound to the moment a decision was
