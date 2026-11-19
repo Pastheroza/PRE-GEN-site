@@ -505,7 +505,9 @@ const result = await checkProof(bundle, { directory, outputSha256 });
 ```
 
 **Always pass the SHA-256 of the file you hold.** Without it, the check says nothing about
-that file, and its result must never be shown as a label on it. It returns `{output_hash,
+that file, and its result must never be shown as a label on it. If the file carries its C2PA
+manifest, pass the SHA-256 that C2PA computes without the manifest store, after a C2PA library
+has validated the manifest ([`proof`](../spec/extensions/proof.md)). It returns `{output_hash,
 job_id, subjects: [{code, level, basis, terms, terms_assent}]}` / `{outputHash, jobId, subjects}` (`terms`: the section
 "Accepting a person's terms"), or raises with
 the reason (`str(e)` / `e.message`). Without `output_sha256` it still runs, but says nothing

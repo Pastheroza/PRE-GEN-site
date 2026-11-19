@@ -1075,11 +1075,13 @@ before hitting one in production.
   applied but never what it contains, so there is nothing to resolve
   against. C2PA's term for the durable form is a *soft binding*; PRE-GEN
   has no field for one.
-- **Which bytes `output_hash` covers inside a C2PA file is not specified.**
-  Embedding a manifest changes the file, so its SHA-256 can no longer equal
-  the reported `output_hash`, and a report cannot name a hash that includes
-  its own manifest. A verifier has to hash the file without the manifest
-  store, and v5 does not say how. No end-to-end test exists.
+- **`output_hash` inside a C2PA file is defined only for data-hash formats.**
+  Embedding a manifest changes the file, so `extensions/proof.md` compares
+  `output_hash` with the SHA-256 C2PA computes without the manifest store.
+  MP4 and other BMFF files use a different C2PA binding (`c2pa.hash.bmff`),
+  and PRE-GEN does not yet say what their `output_hash` covers. The one
+  conformance check for this (`conformance/README.md`) is described, not yet
+  run.
 - **A record shows who generated a file, not who disclosed it.** A report
   names the provider that said it generated the file. It says nothing about
   who held copies or who published them, and nothing in v5 records whether

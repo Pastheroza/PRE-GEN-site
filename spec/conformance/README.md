@@ -100,6 +100,22 @@ Level 2 is a set of HTTP scenarios: each step a request with an expected status 
 answer. They run against the first registry's earlier interface (`/v1`) and are not published in this repository
 yet.
 
+## One C2PA check — described, not yet run
+
+It tests [`proof`](../extensions/proof.md) for a file that carries its C2PA manifest. It needs a C2PA tool, such as
+`c2patool`, which this repository does not ship.
+
+**Given:** a JPEG made under a sandbox allow for `PG-TEST-000001N`, its report with `output_hash` = SHA-256 of the
+JPEG as generated, and the same JPEG with a C2PA manifest embedded that carries the bundle as `org.pregen.proof`.
+
+1. **C2PA passes.** The final file validates: the claim signature, and the data hash over the file without the
+   manifest store.
+2. **PRE-GEN passes.** The assertion parses as `pg.proof.v1`, and `check_proof` passes against the test directory.
+3. **The hashes match.** The SHA-256 in the data hash equals the report's `output_hash`.
+4. **One changed pixel fails** step 3 and the C2PA validation.
+5. **The same manifest copied onto another image fails** step 3.
+6. **The file with its manifest stripped** gives "no proof found": the origin is unknown, never "forged".
+
 ## Sabotage-testing this suite
 
 If you change the runner or an adapter, prove it catches a real break before trusting it: corrupt one character of
