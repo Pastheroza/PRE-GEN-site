@@ -1076,7 +1076,7 @@ before hitting one in production.
   against. C2PA's term for the durable form is a *soft binding*; PRE-GEN
   has no field for one.
 - **`output_hash` inside a C2PA file is defined only for data-hash formats.**
-  Embedding a manifest changes the file, so `extensions/proof.md` compares
+  Putting a manifest in a file changes it, so `extensions/proof.md` compares
   `output_hash` with the SHA-256 C2PA computes without the manifest store.
   MP4 and other BMFF files use a different C2PA binding (`c2pa.hash.bmff`),
   and PRE-GEN does not yet say what their `output_hash` covers. The one

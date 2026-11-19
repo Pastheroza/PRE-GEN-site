@@ -89,7 +89,7 @@ and all reports name one `output_hash` and one `job_id`. Given the file, its SHA
 equal `output_hash`. After re-encoding, a platform may match a soft binding with that
 algorithm's own tooling, outside this specification; `check_proof` does not.
 
-**A file that carries its C2PA manifest.** Embedding the manifest changes the file, so the
+**A file that carries its C2PA manifest.** Putting the manifest in the file changes it, so the
 hash compared with `output_hash` is the one C2PA computes itself: SHA-256 over the file with
 the manifest store's bytes left out, as the manifest's data hash (`c2pa.hash.data`) covers it.
 The provider reports `output_hash` before it embeds the manifest, and adds nothing but the
