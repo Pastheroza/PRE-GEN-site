@@ -45,12 +45,14 @@ person under 18 is never permitted, under any statement.
 
 ## A.4 The order of decisions
 
-need → use → (a person: date of birth → under 18 ends at the representative's No) → decision → on a Yes: purposes
+pregen.org/tog/create only offers the registries of the signed list (the registry chooser, below; since 2026-11-15). The
+chosen registry asks the questions, in this order: need → use → (a person: date of birth → under 18 ends at the representative's No) → decision → on a Yes: purposes
 (at least one; none means No) → excluded categories → (a person: voice → commercial fees when commercial work is
-allowed → own conditions) → check of every answer → choice of one home registry → the registry issues the code → the
+allowed → own conditions) → check of every answer → the registry issues the code → the
 statement. The closed answer sets are those of the fragment (A.9). Political content and sexual or adult content are
-always excluded on every Yes. A Yes is recorded at once and takes effect only after identity verification; a No takes
-effect once the code is confirmed.
+always excluded on every Yes. A Yes is recorded at once and takes effect at the level the registry's policy sets (PRAMPTA: a confirmed channel code, no ID check; a deliberate difference from the reference, whose `OPEN_LEVELS` in `tools/tog_generator.py` are `channel-official` and `verified`); a No takes
+effect once the code is confirmed. No registry carries out "Yes, with my approval of each output" yet: PRAMPTA
+answers every request under it as a No (`deny`, `PG_TERMS_EXCLUDED`).
 
 ## A.5 What the home registry does with the answers
 
@@ -143,14 +145,14 @@ hash: ToG-L 1.0 (identifier `ToG-L-1.0`, 2026-11-13) at `https://www.pregen.org/
 `/tog/1.0/deed`; the hashed bytes at `/tog/1.0/legal-code.txt`, SHA-256
 `bfff2e4620d2786f150d0582434b7b9741a12d21637a365a246c7bd203243939`, 73,381 bytes; `meta.legal` in the vectors; the PDFs
 at `/downloads`). Every page and card that cites it says "ToG-L 1.0" (`meta.legal.label`).
-The page's output is a short card (the answers, later the code) that links that text. It never builds a personal copy
+The registry's output, shown back on pregen.org/tog/document, is a short card (the answers, later the code) that links that text. It never builds a personal copy
 of the licence.
 
 **The registry step is mandatory**, for a company too. The home registry issues the code at once, pending: it
 permits nothing until verified, and is deleted after 7 days without it (`extensions/lookup.md`). After verification
 the holder's yes or no is global for every registry on PRE-GEN Protocol ("Once verified, your YES or NO is global for
 every registry on PRE-GEN Protocol."). A yes is recorded as the holder's wish;
-it opens only after identity verification.
+it opens at the level the registry's policy sets (A.4).
 
 ### The fragment `tog=v1`
 
@@ -208,7 +210,7 @@ used. The registry reads the fragment and removes it from the address at once.
 The page reads the signed directory (`/registries.json`) and offers an entry only if its `prefix` is non-empty, it
 is not revoked, and its `tog_start` is `https:` with the same origin as its `website` (default port and letter case
 do not matter), without credentials, query or fragment. The button is a top-level navigation, in a new tab (`noopener noreferrer`), to
-`tog_start + "#" + fragment`. Until a steward lists a `tog_start`, the page says "No registry takes ToG statements yet."
+`tog_start` with `path=tog`; it carries no answers, because the registry asks the questions. Until a steward lists a `tog_start`, the page says "No registry takes ToG statements yet."
 
 On `localhost` only, the page reads `/test/tog-local/registries.json`, signed by the ephemeral key in
 `/test/tog-local/steward.json` (`node test/tog-local.mjs [origin]`), and then also allows `http://localhost`.
@@ -225,7 +227,7 @@ its code answers `pending` until the file is back; the home re-checks at most da
 
 # Part B — reference presentation (recommended, free to restyle)
 
-The screens of `pregen.org/tog/create` (`tog.js`, styled by `styles.css`): one question per screen, each with a Back, a step
+The screens a registry shows (until 2026-11-15 they were `pregen.org/tog/create`; that page is now only the chooser): one question per screen, each with a Back, a step
 count and an error message that says what to do; real radio buttons and checkboxes; the statement shown as it will
 stand on the holder's own page. A registry may translate, restyle or merge screens, as long as Part A holds.
 
@@ -239,7 +241,8 @@ stand on the holder's own page. A registry may translate, restyle or merge scree
    make one for them, and the only statement is No (`{"who": "child", "decision": "no"}`). There is no "my child"
    choice before the date.
 4. **May AI generate your likeness?** (a company: its marks, products or characters) No · Yes, with my approval of
-   each output · Yes, within terms I set. A Yes is recorded now and takes effect only after identity verification.
+   each output · Yes, within terms I set. A Yes is recorded now and takes effect at the level the registry's policy sets (A.4).
+   "With my approval of each output" is recorded, but no registry carries it out yet (PRAMPTA answers it as a No).
 5. On a Yes: **purposes** (at least one), **excluded categories** (the usual ones preselected; political content and
    sexual or adult content always excluded), and for a person **voice**, **commercial fees** (when commercial work is
    allowed) and **additional conditions** in their own words (a company too, on a Yes).

@@ -16,7 +16,7 @@ You may not create an account, accept terms or consent for the person, enter a p
 
 1. Is the ToG for the person themselves, for a company's brand, products or characters, or for a child (then a parent or legal guardian does it)?
 2. Is the person 18 or older? If they are 13 to 17, stop: a parent or guardian must register for them at the registry. Do not build a link with their answers.
-3. What is the answer? **No** (AI may not generate me), **Yes, only what I approve**, or **Yes, within my rules**.
+3. What is the answer? **No** (AI may not generate me), **Yes, only what I approve**, or **Yes, within my rules**. **Yes, only what I approve** is recorded, but no registry carries it out yet: PRAMPTA answers every request under it as a No (`deny`, `PG_TERMS_EXCLUDED`).
 4. Which registry? Today: PRAMPTA (https://prampta.com). The list is at https://www.pregen.org/tog/create.
 
 ## Step 2. Open the registry
@@ -52,5 +52,5 @@ The registry shows a code like `TOG-PRAM-900000037K`. It is **pending**: it perm
 ## What to tell the person, in short
 
 - A **pending** code does nothing yet. A confirmed **No** applies to every registry and AI service that uses ToG.
-- A **Yes** opens only what they approved, and they can change or withdraw it. A No always wins over a Yes.
+- A **Yes, within my rules** opens only what they allowed, and they can change or withdraw it. **Yes, only what I approve** is recorded, but for now registries answer it as a No. A No always wins over a Yes.
 - Nothing is sold and nothing is charged for a code.
