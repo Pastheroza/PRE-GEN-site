@@ -50,7 +50,7 @@
       ]
     },
     {
-      "identifier": "urn:air:pregen.org:licence:tog-l-1-1",
+      "identifier": "urn:air:pregen.org:licence:tog-l-1-0",
       "displayName": "Terms of Generation Licence 1.0 (ToG-L)",
       "type": "text/plain",
       "url": "https://www.pregen.org/tog/1.0/legal-code.txt",
