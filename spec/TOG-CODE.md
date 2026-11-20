@@ -1,7 +1,7 @@
 # ToG code (formerly PG code) — identifier format
 
-**Part of:** PRE-GEN, collected for the next version; libraries 0.14.0 ([`CHANGELOG.md`](CHANGELOG.md)) ·
-**Status:** draft, unreleased · **Vectors:** [`test-vectors/tog-code.json`](test-vectors/tog-code.json) ·
+**Part of:** PRE-GEN, collected for the next version; libraries 0.14.0, released 2026-11-12 ([`CHANGELOG.md`](CHANGELOG.md)) ·
+**Status:** draft; directory v3 not published yet · **Vectors:** [`test-vectors/tog-code.json`](test-vectors/tog-code.json) ·
 **Reference model:** [`tools/tog_code.py`](tools/tog_code.py)  
 **License:** Apache License 2.0 — see [`LICENSE`](LICENSE).
 
@@ -575,9 +575,9 @@ leading space, U+200B, `L1C`, a Cyrillic `А` in a message; a QR fragment; a bar
   generate (fail closed). Vectors: `refused_by_0_13`.
 - **One path failed open:** 0.13.0's `verify_anchors` dropped lines of a shape it did not know, so a refusal
   listed as `TOG-` was lost. The 0.13.1 patch refuses the whole list instead (`extensions/identity.md`). It
-  ships before any registry writes `TOG-`. 0.14 reads `TOG-` lines only; a `PG-` line is an entry of unknown
+  was to ship before any registry writes `TOG-`; **0.13.1 was not published; decision pending.** 0.14 reads `TOG-` lines only; a `PG-` line is an entry of unknown
   shape and fails the whole list.
-- **Order.** 1. The 0.13.1 patch. 2. Libraries learn this document and directory v3 (0.14.0). 3. The steward
+- **Order.** 1. The 0.13.1 patch (not published; decision pending). 2. Libraries learn this document and directory v3 (0.14.0). 3. The steward
   signs v2 (old URL, frozen entries) and v3 (new URL) together; v3 states `min_library`. 4. After a notice
   period, the switch in one release: registries write `TOG-` everywhere (persons respelled, licences by their
   `TOG-LIC` codes, anchor lists in TOG), refuse `PG-` everywhere, mint new persons with 9 digits and new

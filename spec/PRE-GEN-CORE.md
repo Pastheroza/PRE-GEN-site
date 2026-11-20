@@ -56,7 +56,7 @@ a prefix to a registry: `name`, `prefix`, `api`, `keys` (its key set URL) and
 A registry not in the directory is not refused by anyone's opinion; it simply cannot sign
 anything a verifier accepts. Steward key: `pg-ed25519:dcdd244659e6d0e2426f2b504cb11590`,
 public key `5cb949aab04186e3e216ec541b847c912fc3f78138c0ec3cb2560b2dad0d1f1b`, also in DNS
-at `_pregen-steward.pregen.org`. Admission, revocation and key handover: `PG-CODE.md` §9.1;
+at `_pregen-steward.pregen.org`. Admission, revocation and key handover: `PG-CODE.md` §9.1 (retired, see `TOG-CODE.md`);
 prefixes and directory v3: `TOG-CODE.md` §9.
 
 **3. Ask.**

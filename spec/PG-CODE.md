@@ -7,7 +7,7 @@
 **Part of:** PRE-GEN v5 ([`VERSIONS.md`](VERSIONS.md)) · **Status:** retired, not supported (historical; frozen as of 2026-08-20, issuer prefix added 2026-09-28) · **Vectors:** `spec/test-vectors/vectors.v2.json` (`pg_code` section, vectors v2, frozen)  
 **License:** Apache License 2.0 — see [`spec/LICENSE`](LICENSE).
 
-> **Replaced by [`TOG-CODE.md`](TOG-CODE.md)** (ToG code; libraries 0.14.0, unreleased). The rules below are
+> **Replaced by [`TOG-CODE.md`](TOG-CODE.md)** (ToG code; libraries 0.14.0, released 2026-11-12). The rules below are
 > kept unchanged as history. Their check algorithm, alphabet and reserved floor live on in `TOG-CODE.md`; their
 > grammar is no longer read. Errata found since: `TOG-CODE.md` §18.
 

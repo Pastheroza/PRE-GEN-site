@@ -57,7 +57,7 @@ Text only: no message format, required schema member or vector changes.
   again "PRE-GEN Protocol Specification", and `drafts/tog-funnel.md` and `extensions/lookup.md` say "every registry
   on PRE-GEN Protocol". Package names, the domain and the DOIs never changed.
 
-## pregen-registry 0.5.0 (unreleased): the registry writes ToG codes
+## pregen-registry 0.5.0 (2026-11-12): the registry writes ToG codes
 
 Needs `pregen` 0.14.
 - **Persons:** a new person is born `TOG-<prefix>-<9 random digits><check>`. PG code is incompatible: a `PG-`
@@ -84,7 +84,7 @@ Needs `pregen` 0.14.
 - **A grant signed before 0.5 whose bytes hold a PG id is not served:** `GET /v2/grants/{id}` answers 404
   `PG_NOT_FOUND`, and `GET /v2/grants?licensee_id=…` leaves it out. Its ToG code answers at `/v2/codes`.
 
-## pregen 0.14.0, @pregen/verify 0.14.0 (unreleased): the ToG code
+## pregen 0.14.0, @pregen/verify 0.14.0 (2026-11-12): the ToG code
 
 A core change (ToG code design, all decisions approved; decision 4 replaced by the hard switch, then PG code made
 incompatible).
@@ -154,16 +154,16 @@ Both libraries implement it: `parse_code`, `kind_of`, `describe`, `issuer_of`, `
   `identity_cases.json` changes one case and adds two. Duplicates are never searched for by face or voice
   (`extensions/identity.md`, `PRE-GEN-SPEC.md` P-10, `PRE-GEN-CORE.md`).
 
-## pregen 0.13.1, @pregen/verify 0.13.1 (unreleased)
+## pregen 0.13.1, @pregen/verify 0.13.1 (not published; decision pending)
 
 A patch that changes published behaviour (ToG code design, decision 14, approved):
 - **`identity`:** an anchor-list entry of unknown shape fails the whole list. 0.13.0 dropped it silently, so a
   refusal written in a code shape it cannot read (a `TOG-` code) was lost. Now `verify_anchors` / `verifyAnchors`
   refuse the list, and that registry's people get no decision until a list verifies. Another registry's code of a
   known shape is still dropped. Vectors: `test-vectors/anchors.json`. This patch ships before any registry writes
-  `TOG-` codes.
+  `TOG-` codes. **0.13.1 was not published; decision pending.**
 
-## pregen 0.13.0, @pregen/verify 0.13.0, pregen-registry 0.4.0 (unreleased)
+## pregen 0.13.0, @pregen/verify 0.13.0, pregen-registry 0.4.0 (2026-11-08)
 
 Four clarifications of existing extensions (approved 2026-11-07), no new extension:
 - **`licensee`, `catalog`:** a provider sends a person's `licensee_id` only when the request rests on that person's
