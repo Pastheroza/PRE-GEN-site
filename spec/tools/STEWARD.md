@@ -85,6 +85,18 @@ in a handover): edit, then `python3 $S sign $K registries.json`. It finds the pu
 directory in git (`origin/main`, else `HEAD`) and refuses to sign if anything was dropped;
 `--previous FILE` names it explicitly.
 
+## Directory v3 (TOG-CODE.md §9.2)
+
+`registries.v3.json` is what the 0.14 libraries load by default. It lists the same registries as
+`registries.json`, with `schema` `pregen.registries.v3` and `min_library` `0.14.0`. `registries.json`
+stays at its URL for older clients and is signed again with every v3 signing.
+
+1. `python3 $S sign --previous registries.json $K registries.v3.json` (the first v3: it follows the
+   published v2, so its sequence is one higher).
+2. `python3 $S sign $K registries.json` (the v2 copy, same entries, the same new sequence).
+3. `python3 $S verify registries.v3.json` and `python3 $S verify registries.json`, commit both, merge,
+   and check the live copies: `curl -s https://www.pregen.org/registries.v3.json > /tmp/v3.json && python3 $S verify /tmp/v3.json`.
+
 ## Handover (the steward key is lost or stolen)
 
 1. Take the successor key out of its offline place.

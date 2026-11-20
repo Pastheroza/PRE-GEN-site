@@ -228,3 +228,16 @@ def test_a_freeze_lasts_the_days_given_and_is_never_dropped(env, monkeypatch):
     env.d.write_text(json.dumps(edited))
     with pytest.raises(SystemExit, match="Not signed"):
         sign(env, published)
+
+
+def test_a_v3_copy_of_a_signed_v2_directory_is_signed_and_read_by_pregen(env):
+    """TOG-CODE.md §9.2: v3 at its own URL, built from the v2 file it follows; the 0.14 library reads it."""
+    v2 = add(env)
+    v2_path = env.tmp / "v2.json"
+    v2_path.write_text(json.dumps(v2))
+    v3 = {k: v for k, v in v2.items() if k != "signature"} | {"schema": "pregen.registries.v3", "min_library": "0.14.0"}
+    env.d.write_text(json.dumps(v3))
+    sign(env, v2_path)
+    d = json.loads(env.d.read_text())
+    assert d["schema"] == "pregen.registries.v3" and d["sequence"] == v2["sequence"] + 1
+    steward.pregen.verify_directory(d, public_hex(env.key), previous=v2, successor_public_key_hex=None)

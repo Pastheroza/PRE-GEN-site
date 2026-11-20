@@ -22,7 +22,11 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey,
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 SCHEMA = "pregen.registries.v2"
+# Directory v3 (TOG-CODE.md §9.2): the same shape, prefixes of 4 to 8 letters A-Z. Its added members are
+# checked by the pregen library, which steward.py runs on everything it signs.
+SCHEMA_V3 = "pregen.registries.v3"
 _PREFIX = re.compile(r"[ABCDEFGHJKMNPQRSTVWXYZ]{4}")
+_TOG_PREFIX = re.compile(r"(?!LIC|L[A-Z]IC(?![A-Z])|LI[A-Z]C(?![A-Z]))[A-Z]{4,8}(?<!LIC)")
 _FINGERPRINT = re.compile(r"pg-ed25519:[0-9a-f]{32}")
 # After "PG-": a four-letter issuer followed by "-" (three letters is a licence
 # class or a legacy STD/SUB shape, both in the bare namespace).
@@ -76,11 +80,12 @@ def signed_bytes(directory: dict) -> bytes:
 
 
 def check_invariants(directory: dict) -> None:
-    """Raise DirectoryError unless the directory has the v2 shape and rules."""
+    """Raise DirectoryError unless the directory has the v2 (or v3) shape and rules."""
     if not isinstance(directory, dict):
         raise DirectoryError("directory must be an object")
-    if directory.get("schema") != SCHEMA:
-        raise DirectoryError(f"schema must be {SCHEMA!r}")
+    if directory.get("schema") not in (SCHEMA, SCHEMA_V3):
+        raise DirectoryError(f"schema must be {SCHEMA!r} or {SCHEMA_V3!r}")
+    v3 = directory["schema"] == SCHEMA_V3
     seq = directory.get("sequence")
     if not isinstance(seq, int) or isinstance(seq, bool) or not 1 <= seq <= 2**53 - 1:
         raise DirectoryError("sequence must be a positive integer")
@@ -107,8 +112,8 @@ def check_invariants(directory: dict) -> None:
             except ValueError as e:
                 raise DirectoryError(f"invalid registry {field} URL") from e
         prefix = r.get("prefix")
-        if prefix != "" and not (isinstance(prefix, str) and _PREFIX.fullmatch(prefix)):
-            raise DirectoryError(f"bad prefix {prefix!r}: empty, or four letters of the PG alphabet")
+        if prefix != "" and not (isinstance(prefix, str) and (_TOG_PREFIX if v3 else _PREFIX).fullmatch(prefix)):
+            raise DirectoryError(f"bad prefix {prefix!r}: empty, or " + ("4 to 8 letters A-Z" if v3 else "four letters of the PG alphabet"))
         if prefix in seen:
             raise DirectoryError("the bare namespace is listed twice" if prefix == "" else f"prefix {prefix} is listed twice")
         seen.add(prefix)

@@ -1,0 +1,42 @@
+{
+  "schema": "pregen.registries.v3",
+  "sequence": 4,
+  "note": "Signed registry directory v3 (TOG-CODE.md §9.2): each namespace — the closed legacy bare namespace, or a prefix of 4 to 8 letters — and the operator keys allowed to sign in it. Verify the signature with the published steward key, never with a key taken from this file.",
+  "registries": [
+    {
+      "name": "PRAMPTA",
+      "prefix": "",
+      "role": "Closed legacy namespace: bare codes issued by the first registry before v5",
+      "website": "https://prampta.com",
+      "api": "https://api2.prampta.com",
+      "keys": "https://api2.prampta.com/keys",
+      "key_fingerprints": [
+        "pg-ed25519:1904514fd2ac442f0a5388d13cc313a0",
+        "pg-ed25519:58d4a309fff25a0f4763cffc5c92cb0e"
+      ],
+      "status": "Production",
+      "since": "2026",
+      "pregen_version": "5"
+    },
+    {
+      "name": "PRAMPTA",
+      "prefix": "PRAM",
+      "role": "Registry operator, first registry",
+      "website": "https://prampta.com",
+      "api": "https://api2.prampta.com",
+      "keys": "https://api2.prampta.com/keys",
+      "key_fingerprints": [
+        "pg-ed25519:1904514fd2ac442f0a5388d13cc313a0",
+        "pg-ed25519:58d4a309fff25a0f4763cffc5c92cb0e"
+      ],
+      "status": "Production",
+      "since": "2026",
+      "pregen_version": "5",
+      "tog_start": "https://prampta.com/start"
+    }
+  ],
+  "providers": [],
+  "issued_at": "2026-11-12T19:12:38Z",
+  "steward_key_id": "pg-ed25519:dcdd244659e6d0e2426f2b504cb11590",
+  "min_library": "0.14.0"
+}
