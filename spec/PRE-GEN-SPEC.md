@@ -1167,7 +1167,7 @@ before hitting one in production.
 `pg.revenue.v1` (reporter-signed revenue attestation) and
 `pg.settlement.v1` (operator-signed reconciliation statement), plus field
 additions to License, Decision, Receipt, and Assertion — is in
-[`docs/PRE-GEN-Revenue-Extensions-DRAFT.md`](../docs/PRE-GEN-Revenue-Extensions-DRAFT.md),
+a draft that is not published in this repository,
 along with a per-object analysis against §6.1's versioning rules. One point
 from it is worth stating here because it is a fact about *this* document
 rather than about the proposal: of the four objects that would change, only

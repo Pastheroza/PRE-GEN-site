@@ -245,7 +245,7 @@ categories need the person's own signed grant).
   and answer shapes:
 
   ```bash
-  pip install "pregen-registry>=0.4.0"
+  pip install "pregen-registry>=0.5.0"
   pregen-registry init --dir ./data --prefix TEST --name "My sandbox" --api http://127.0.0.1:8000 --sandbox
   pregen-registry serve --dir ./data
   curl -X POST http://127.0.0.1:8000/v2/sandbox/party -H 'Content-Type: application/json' --data @pregen-party.json   # your party document, by post
@@ -321,6 +321,8 @@ Every message is `{type, body, signatures}`.
 | Message id | SHA-256 hex of `"PREGEN-V5-ID" \|\| 0x00 \|\| type \|\| 0x00 \|\| canonical(body)`; signatures are not part of it |
 | Unknown members | Rejected unless the profile or an extension the registry declares defines them; `ext` holds registry extensions, `critical` lists those a receiver must understand |
 
+PRAMPTA's answers (from 0.434.0) may carry `ext.prampta.next`: a hint for the person's next step (`kind`, `label`, `message`, optional `url`). It is signed with the answer and never in `critical`, so a client may ignore it.
+
 The libraries export `canonicalJson` / `canonical_json` and `messageId` / `message_id`.
 JSON Schemas: `https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec/schemas`.
 
@@ -361,7 +363,7 @@ Any company or person can run a registry on the same terms; the first one has no
 rights.
 
 1. **Run one.** The open reference registry:
-   `pip install "pregen-registry>=0.4.0"`,
+   `pip install "pregen-registry>=0.5.0"`,
    then `pregen-registry init --dir ./data --prefix ABCD --name "…" --api https://… --policy https://… --complaints mailto:… --open-providers`
    (`--open-providers`: answer any provider known by its domain and key, with no credential).
    Step by step: `https://www.pregen.org/docs/registry.md`. Or implement the core yourself
