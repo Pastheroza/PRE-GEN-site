@@ -64,7 +64,7 @@ copy is not an error. Vectors: `metadata`.
 - **By id:** if the manifest is stripped, the holder presents the bundle, or a platform that
   knows the report id fetches that registry's part:
   `GET {api}/v2/proofs/{first 16 hex of the report id}` → a `pg.proof.v1` bundle with that
-  subject.
+  subject. PRAMPTA does not serve the proof extension yet (`GET /v2/proofs/{id}` is 404).
 
 For a job with several subjects the full bundle travels in the C2PA manifest; by id a
 platform recovers the subject that report names. PRE-GEN defines no watermark. Adding one is

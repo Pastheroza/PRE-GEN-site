@@ -1071,7 +1071,7 @@ before hitting one in production.
 - **`output_hash` does not survive re-encoding.** It is a SHA-256 (§1.3),
   which is correct for proving a specific byte sequence was produced and
   useless for recognizing the same work after a transcode, crop, or
-  platform re-encode. `watermark_embedded` records *that* a watermark was
+  platform re-encode. `watermark_embedded` (legacy: recognised, not used) records *that* a watermark was
   applied but never what it contains, so there is nothing to resolve
   against. C2PA's term for the durable form is a *soft binding*; PRE-GEN
   has no field for one.

@@ -490,7 +490,8 @@ pregen.check_proof(bundle, directory, output_sha256=output_hash)   # raises if a
 
 Store it with the file: alongside it as JSON, or in the file's C2PA manifest as an assertion
 labelled `org.pregen.proof`. **An output made without a valid `allow` is never presented as
-permitted.**
+permitted.** Keep your own copy. PRAMPTA does not serve the proof extension yet (`GET /v2/proofs/{id}` is 404). A proof
+reaches a platform in the file's manifest or from you.
 
 **Checking someone's proof** (a platform, a distributor, an auditor; if that is all you do, you
 need steps 1, 3 and 8 only):

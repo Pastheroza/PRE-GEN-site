@@ -392,7 +392,7 @@ The libraries implement this as `decideIdentity` / `decide_identity`.
 ## Links
 
 - Core (one page): `https://www.pregen.org/spec/PRE-GEN-CORE.md`
-- Specification PDF: `https://www.pregen.org/spec/PRE-GEN-v5.pdf`
+- Specification PDF: `https://www.pregen.org/spec/PRE-GEN-v5.pdf` (kept as published; the text on pregen.org supersedes it: no watermark, `TOG-` codes)
 - Profile `likeness/1` and the fourteen extensions:
   `https://github.com/Pastheroza/PRE-GEN-site/tree/main/spec`
 - Signed registry directory: `https://www.pregen.org/registries.json`
