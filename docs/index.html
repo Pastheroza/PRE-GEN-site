@@ -41,7 +41,7 @@
 <li><strong>A signed answer.</strong> <code>allow</code>, <code>deny</code>, <code>review</code> or <code>not_blocked</code>, signed by the registry, bound to the exact request, valid for at most 900 seconds. <strong>Only <code>allow</code> permits.</strong></li>
 <li><strong>Generate only on a valid allow, and keep it.</strong> Every person in the job needs a valid <code>allow</code>. The kept answers are the service's proof.</li>
 </ol>
-<p class="note">Works today: on 7 November 2026 an AI app known only by its domain asked PRAMPTA with no account, a person connected a licence to it with <code>bind</code>, and the app got an allow, reported the output and kept a proof that was checked offline.</p>
+<p class="note">Tested on 6 November 2026: a test AI app of PRAMPTA's own asked PRAMPTA, got an allow, generated, and reported the output with a signed acknowledgement in return. No outside AI provider has used it yet.</p>
 
 <h2 id="messages">Messages</h2>
 <pre><code>envelope       = { type, body, signatures }      body.signers = [{ role, key_id }, …]
