@@ -29,7 +29,7 @@
 </div></header>
 <main id="main"><div class="wrap">
 <div class="doc"><aside><nav aria-label="Documentation"><ul><li class="doc-h" aria-hidden="true">Overview</li><li><a href="/docs">How it works</a></li><li><a href="/docs/two-layers">Two layers</a></li><li><a href="/docs/proves">What it proves</a></li><li class="doc-h" aria-hidden="true">Integrate</li><li><a href="/docs/sdk">Add it to your service</a></li><li><a href="/docs/implement">Build it</a></li><li><a href="/docs/c2pa">C2PA</a></li><li class="doc-h" aria-hidden="true">Reference</li><li><a href="/docs/tog-code">ToG codes</a></li><li><a href="/docs/refusal-codes" aria-current="page">Refusal codes</a></li><li><a href="/docs/versions">Versions</a></li></ul></nav></aside><article><h1>Refusal codes</h1>
-<p class="meta">Version 5: the core and <span class="mono">likeness/1</span> · earlier interface: 38 codes, 17 core and 21 of PRAMPTA's own · policy version <span class="mono">2026-09-22</span></p>
+<p class="meta">Version 5: the core and <span class="mono">likeness/1</span> · earlier interface: 38 codes, 17 core and 21 of PRAMPTA's own · policy version <span class="mono">2026-11-07.1</span></p>
 <h2 id="version-5">Version 5</h2>
 <p>A “no” is a signed answer with a <code>reason</code>, not an HTTP error. The core defines two reasons, the profile <a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/profiles/likeness-1.md">likeness/1</a> the rest, and a registry may add its own. A reason you do not know is still a no.</p>
 <p><b>Core</b>, for every registry and profile:</p>
@@ -40,13 +40,14 @@
 <p><b>Protections of likeness/1</b>, checked before any licence; no licence, extension or registry policy overrides them:</p>
 <ul>
 <li><code>PG_SUBJECT_OPTED_OUT</code> — an opt-out in effect.</li>
-<li><code>PG_SUBJECT_UNAVAILABLE</code> — the subject is pending, paused or withdrawn.</li>
+<li><code>PG_SUBJECT_UNAVAILABLE</code> — the subject is paused or withdrawn, or awaits the registry's own review.</li>
 <li><code>PG_PROHIBITED_USE</code> — a fixed protection forbids the use: a minor's likeness in a sexualised or otherwise prohibited category.</li>
 <li><code>PG_IMMUTABLE_DENIAL</code> — an immutable denial.</li>
 <li><code>PG_PERSONAL_SIGNATURE_REQUIRED</code> — an intimate category (<code>sexual</code>, <code>adult</code>) without the person's own signature.</li>
 </ul>
 <p><b>Other reasons of likeness/1:</b></p>
 <ul>
+<li><code>PG_SUBJECT_PENDING</code> — with status <code>not_blocked</code>: a ToG code not yet verified. It permits nothing and forbids nothing, and is not a refusal of the person.</li>
 <li><code>PG_NO_LICENSE</code> — no grant covers this licensee and use.</li>
 <li><code>PG_USAGE_LIMIT</code> — the grant's uses are spent.</li>
 <li><code>PG_SUBJECT_DISPUTED</code> — a complaint about this code is being examined. Refused at this registry only: it is not a refusal of the person in other registries.</li>
@@ -58,9 +59,12 @@
 <ul>
 <li><code>PG_PROVIDER_NOT_ACCEPTED</code> — the registry has not vetted this provider, known only by its domain, and answers it only about published subjects (their refusals included) and its own connected licensees (<a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/provider-identity.md">provider-identity</a>). A refusal; it hides whether a private code exists, and a private subject's own refusals.</li>
 <li><code>PG_NOT_BOUND</code> — HTTP 403: the licensee has not connected their licences to this app; show it as “connect your licence” (<a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/bind.md">bind</a>).</li>
+<li><code>PG_TERMS_NOT_ACCEPTED</code> — the request names terms that are not the subject's current version, or another subject's, or terms where the subject has none. It binds no ask (<a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/terms.md">terms</a>).</li>
+<li><code>PG_TERMS_EXCLUDED</code> — the use is outside the subject's terms (<a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/terms.md">terms</a>).</li>
 </ul>
 <p><code>PG_IDENTITY_UNCONFIRMED</code> is an outcome of the client's own check of a public person (<a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/identity.md">identity</a>), not a registry answer.</p>
 <p>Errors about the request itself are HTTP errors with <code>{"error", "error_description"}</code>: <code>PG_MALFORMED</code> (422, the request does not follow the core), <code>PG_NOT_AUTHENTICATED</code> (401, credential, signature or <code>provider_id</code> not accepted), <code>PG_PROFILE_UNSUPPORTED</code> (422, the registry does not answer under this profile).</p>
+<p>Errors of the extensions: <code>PG_JOB_CONFLICT</code> (409, another <code>job_hash</code> for the same provider and job), <code>PG_ASK_CONFLICT</code> (409, a different request for the same provider, job and subject) and <code>PG_ASK_CLOSED</code> (409, with the stored acknowledgement: that subject of the job was already reported generated) (<a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/jobs.md">jobs</a>); <code>PG_REPORT_CONFLICT</code> (409, a different report for an answer already reported) (<a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/reports.md">reports</a>); <code>PG_UNKNOWN_TERMS</code> (404, no terms with this id were ever published here) (<a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/terms.md">terms</a>); <code>PG_BIND_CODE</code> (400, the code is unknown, used or expired, or not for this client, redirect URI or verifier) (<a href="https://github.com/Pastheroza/PRE-GEN-site/blob/main/spec/extensions/bind.md">bind</a>).</p>
 <h2 id="legacy">Earlier interface (/v1)</h2>
 <p><b>Core</b> codes are used by every registry with this meaning (spec §3). The rest are PRAMPTA’s own, defined before v5 without a prefix and kept for compatibility; new codes of every registry, PRAMPTA included, carry its issuer prefix, <code>PG_&lt;ISSUER&gt;_…</code>.</p>
 <p>Every decision from <code>POST /v1/verify/</code> carries a <code>reason</code>. A <b>hard</b> code means no retry, reshaped request or new licence changes the answer. A soft code means a different request, a valid licence or a different provider might succeed. An unknown code must be treated as hard.</p>
