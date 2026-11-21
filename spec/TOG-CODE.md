@@ -574,14 +574,13 @@ leading space, U+200B, `L1C`, a Cyrillic `А` in a message; a QR fragment; a bar
 - **0.13 cannot read `TOG-`.** A lookup, request or answer naming a TOG code fails there: no decision, do not
   generate (fail closed). Vectors: `refused_by_0_13`.
 - **One path failed open:** 0.13.0's `verify_anchors` dropped lines of a shape it did not know, so a refusal
-  listed as `TOG-` was lost. The 0.13.1 patch refuses the whole list instead (`extensions/identity.md`). It
-  was to ship before any registry writes `TOG-`; **0.13.1 was not published; decision pending.** 0.14 reads `TOG-` lines only; a `PG-` line is an entry of unknown
-  shape and fails the whole list.
-- **Order.** 1. The 0.13.1 patch (not published; decision pending). 2. Libraries learn this document and directory v3 (0.14.0). 3. The steward
-  signs v2 (old URL, frozen entries) and v3 (new URL) together; v3 states `min_library`. 4. After a notice
+  listed as `TOG-` was lost. 0.14 reads `TOG-` lines only; a `PG-` line is an entry of unknown shape and fails
+  the whole list (`extensions/identity.md`).
+- **Order.** 1. Libraries learn this document and directory v3 (0.14.0). 2. The steward
+  signs v2 (old URL, frozen entries) and v3 (new URL) together; v3 states `min_library`. 3. After a notice
   period, the switch in one release: registries write `TOG-` everywhere (persons respelled, licences by their
   `TOG-LIC` codes, anchor lists in TOG), refuse `PG-` everywhere, mint new persons with 9 digits and new
-  licences as `pg.grant.v1`, and announce TOG in `pg-policy`. 5. `PG` and `AG` codes by computation from
+  licences as `pg.grant.v1`, and announce TOG in `pg-policy`. 4. `PG` and `AG` codes by computation from
   records. Before the switch nothing breaks; at a registry's switch its `PG-` strings stop working.
 - **What stops working** (intended; there is no legacy verifier mode). Printed cards, QRs and links that carry
   a `PG-` string, `/v1/pg/{code}` links included: they resolve to nothing; the person needs the TOG code from the

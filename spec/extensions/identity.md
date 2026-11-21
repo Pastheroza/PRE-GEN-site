@@ -47,7 +47,7 @@ and refuses a list that names one code twice. **An entry that is not a person co
 whole list.** A client refuses the list when one entry's `code` is not a code, is mistyped, or is
 a licence or event code: it cannot tell whose person it is, and the entry may be a refusal. It
 never drops such an entry. A client returns the entries it keeps with their codes in the TOG
-spelling. Vectors: `test-vectors/anchors.json`. (0.13.1 refused any `TOG-` line; 0.14 reads
+spelling. Vectors: `test-vectors/anchors.json`. (0.13.0 dropped `TOG-` lines; 0.14 reads
 them.)
 
 **A list that fails blocks only that registry's people.** While a registry's list has not

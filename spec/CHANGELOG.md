@@ -144,8 +144,8 @@ Both libraries implement it: `parse_code`, `kind_of`, `describe`, `issuer_of`, `
 - **Typed input:** a PG string typed in any form (wrapped in brackets or quotes, a leading dash or letter, no dash,
   `:` `_` `.` `/` as the separator, `P G`, a Cyrillic `РГ`) gets the retired message, never a TOG suggestion. The
   pregen.org lookup proxy gives the same message on its own route.
-- **Old clients:** 0.13 refuses every TOG code (fails closed); 0.13.1 refuses an anchor list
-  with a TOG line instead of dropping it. 0.14 reads it, and refuses a list with a `PG-` line the same way.
+- **Old clients:** 0.13 refuses every TOG code (fails closed), except in an anchor list, where 0.13.0 drops a TOG
+  line. 0.14 reads `TOG-` lines only, and refuses a list with a `PG-` line.
 - **`identity`: one home registry per person** (founder, 2026-11-11). Only the home registers a person; other
   registries and providers use and pass the code. Two confirmed claims for one anchor are a duplicate, examined under
   Disputes; until one home remains the stricter answer decides: rule 5 now takes the strongest refusal among the
@@ -153,15 +153,6 @@ Both libraries implement it: `parse_code`, `kind_of`, `describe`, `issuer_of`, `
   one settled allow permit beside another home's refusal). `decide_identity` / `decideIdentity` follow;
   `identity_cases.json` changes one case and adds two. Duplicates are never searched for by face or voice
   (`extensions/identity.md`, `PRE-GEN-SPEC.md` P-10, `PRE-GEN-CORE.md`).
-
-## pregen 0.13.1, @pregen/verify 0.13.1 (not published; decision pending)
-
-A patch that changes published behaviour (ToG code design, decision 14, approved):
-- **`identity`:** an anchor-list entry of unknown shape fails the whole list. 0.13.0 dropped it silently, so a
-  refusal written in a code shape it cannot read (a `TOG-` code) was lost. Now `verify_anchors` / `verifyAnchors`
-  refuse the list, and that registry's people get no decision until a list verifies. Another registry's code of a
-  known shape is still dropped. Vectors: `test-vectors/anchors.json`. This patch ships before any registry writes
-  `TOG-` codes. **0.13.1 was not published; decision pending.**
 
 ## pregen 0.13.0, @pregen/verify 0.13.0, pregen-registry 0.4.0 (2026-11-08)
 
