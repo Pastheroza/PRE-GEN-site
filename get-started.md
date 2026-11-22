@@ -74,11 +74,11 @@ guide, with tested examples: `https://www.pregen.org/docs/provider.md`.
 ### A2. Install a verification library
 
 ```bash
-npm install @pregen/verify@^0.13.0
+npm install @pregen/verify@^0.14.0
 ```
 
 ```bash
-pip install "pregen>=0.13.0"
+pip install "pregen>=0.14.0"
 ```
 
 Both libraries carry the steward key, load and check the directory, and check answers and

@@ -63,12 +63,12 @@ business, joined later and separately (the section "Selling and connected users"
 ## 1. Install the library
 
 ```bash
-pip install "pregen>=0.13.0"
+pip install "pregen>=0.14.0"
 ```
 
 ```bash
 npm init -y && npm pkg set type=module    # in your project folder, if it has no package.json yet
-npm install @pregen/verify@^0.13.0
+npm install @pregen/verify@^0.14.0
 ```
 
 Both carry the PRE-GEN steward key, check the directory, answers and proofs, and sign your
