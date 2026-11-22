@@ -1,6 +1,6 @@
 {
   "schema": "pregen.registries.v2",
-  "sequence": 4,
+  "sequence": 5,
   "note": "Signed registry directory (PG-CODE.md §9.1): each namespace — the closed legacy bare namespace, or a four-letter prefix — and the operator keys allowed to sign in it. Verify the signature with the published steward key, never with a key taken from this file.",
   "registries": [
     {
@@ -36,7 +36,7 @@
     }
   ],
   "providers": [],
-  "issued_at": "2026-11-12T19:12:38Z",
+  "issued_at": "2026-11-22T17:58:34Z",
   "steward_key_id": "pg-ed25519:dcdd244659e6d0e2426f2b504cb11590",
-  "signature": "df2ae99a443da93333db39c335b0dfdc30cce8396b8700229dea66d5fbabef200409b07b93c3e78afc33c88d3a67fe2e458b8fec75afe59230ff6b69c588d106"
+  "signature": "bd0547c2c4ce40535fc87d61871691f0e50c80a6e470e8b6c541982c2ba8e55a3405910ca6f88a9b6b1d985e9bfe344e9df82709527d8c1648b16c9ef4aeb60b"
 }

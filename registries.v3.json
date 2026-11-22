@@ -1,6 +1,6 @@
 {
   "schema": "pregen.registries.v3",
-  "sequence": 4,
+  "sequence": 5,
   "note": "Signed registry directory v3 (TOG-CODE.md §9.2): each namespace — the closed legacy bare namespace, or a prefix of 4 to 8 letters — and the operator keys allowed to sign in it. Verify the signature with the published steward key, never with a key taken from this file.",
   "registries": [
     {
@@ -36,7 +36,8 @@
     }
   ],
   "providers": [],
-  "issued_at": "2026-11-12T19:12:38Z",
+  "issued_at": "2026-11-21T01:10:45Z",
   "steward_key_id": "pg-ed25519:dcdd244659e6d0e2426f2b504cb11590",
-  "min_library": "0.14.0"
+  "min_library": "0.14.0",
+  "signature": "75d58d3567120036f7daba93b1ccb3f1dfcb6040d2a7affe623f6519d08b060bc9f6defcf2301e22307c128b18eddb4cee136001405b7ccf8d1e54c7cec8d008"
 }
