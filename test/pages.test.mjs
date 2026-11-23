@@ -54,9 +54,9 @@ test("the name: PRE-GEN Protocol; ToG never names the protocol", () => {
 // /tog/document (a person's own statement, read from the address) stays out of both.
 test("the ToG pages are findable: title, canonical, card, sitemap", () => {
   const sitemap = readFileSync(ROOT + "sitemap.xml", "utf8");
-  for (const [file, url] of [["tog.html", "/tog"], ["tog/create.html", "/tog/create"], ["tog/1.0/index.html", "/tog/1.0"], ["tog/1.0/deed.html", "/tog/1.0/deed"]]) {
+  for (const [file, url] of [["tog.html", "/tog"], ["tog/create.html", "/tog/create"], ["tog/1.0/index.html", "/tog/1.0"], ["tog/1.0/deed.html", "/tog/1.0/deed"], ["protect.html", "/protect"], ["check-file.html", "/check-file"]]) {
     const t = readFileSync(ROOT + file, "utf8");
-    assert.match(t, /<title>[^<]*ToG[^<]*<\/title>/, file);
+    assert.match(t, /<title>[^<]*(ToG|likeness|file)[^<]*<\/title>/i, file);
     assert.ok(t.includes(`<link rel="canonical" href="https://www.pregen.org${url}">`), file);
     assert.ok(t.includes(`<meta property="og:url" content="https://www.pregen.org${url}">`), file);
     assert.ok(sitemap.includes(`<loc>https://www.pregen.org${url}</loc>`), file);
