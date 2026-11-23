@@ -79,7 +79,7 @@ test("/tog is the Licence: /tog cites the hash of tog/1.0/legal-code.txt, the ho
   assert.match(licence, /<code>ToG-L-1\.0<\/code>/);
   assert.match(read("homepage.html"), /<p class="lic-card-t">ToG-L 1\.0<small>Terms of Generation Licence<\/small><\/p>\n<p class="lic-card-links"><a href="\/tog">Read online<\/a>/);
   for (const page of [licence, read("homepage.html")]) {
-    assert.deepEqual(page.match(/<script[^>]*>/g), ['<script src="/theme.js">', '<script src="/site.js" defer>']);
+    assert.deepEqual(page.match(/<script(?! type="application\/ld\+json")[^>]*>/g), ['<script src="/theme.js">', '<script src="/site.js" defer>']);
     assert.doesNotMatch(page, /\sstyle=|<style/);
   }
 });
